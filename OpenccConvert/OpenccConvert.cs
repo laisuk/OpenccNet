@@ -22,24 +22,21 @@ namespace OpenccConvert
             [Option('p', "punct", Default = false, HelpText = "Punctuation conversion: True/False")]
             public bool Punct { get; set; } = false;
 
-            [Option("in-enc", Default = "UTF-8", HelpText = "Encoding for input")]
+            [Option("in-enc", Default = "UTF-8", HelpText = "Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]")]
             public string InputEncoding { get; set; } = "UTF-8";
 
-            [Option("out-enc", Default = "UTF-8", HelpText = "Encoding for output")]
+            [Option("out-enc", Default = "UTF-8", HelpText = "Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]")]
             public string OutputEncoding { get; set; } = "UTF-8";
         }
 
         private static int Main(string[] args)
         {
-            //Console.WriteLine($"[Before] OutputEncoding: {Console.OutputEncoding.EncodingName} ({Console.OutputEncoding.WebName})");
-            //Console.WriteLine($"[Before] InputEncoding:  {Console.InputEncoding.EncodingName} ({Console.InputEncoding.WebName})");
+            // Register the CodePages encoding provider at application startup to enable using single and double byte encodings.
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
             // Set to UTF-8 explicitly
             Console.OutputEncoding = Encoding.UTF8;
             Console.InputEncoding = Encoding.UTF8;
-
-            //Console.WriteLine($"[After] OutputEncoding: {Console.OutputEncoding.EncodingName} ({Console.OutputEncoding.WebName})");
-            //Console.WriteLine($"[After] InputEncoding:  {Console.InputEncoding.EncodingName} ({Console.InputEncoding.WebName})");
 
             return Parser.Default.ParseArguments<Options>(args)
                 .MapResult(RunOptionsAndReturnExitCode, _ => 1);
@@ -99,9 +96,6 @@ namespace OpenccConvert
             {                
                 lock (ConsoleLock)
                 {
-                    //var bytes = Encoding.UTF8.GetBytes(outputStr);
-                    //Console.WriteLine($"Output UTF-8 bytes: {BitConverter.ToString(bytes)}");
-
                     Console.Error.Write(outputStr);
                 }
             }
