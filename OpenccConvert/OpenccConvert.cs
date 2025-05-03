@@ -6,6 +6,7 @@ namespace OpenccConvert
 {
     internal static class OpenccConvert
     {
+        private static readonly object ConsoleLock = new();
         private class Options
         {
             [Option('i', "input", Required = false, HelpText = "Read original text from <file>.")]
@@ -42,7 +43,10 @@ namespace OpenccConvert
         {
             if (string.IsNullOrEmpty(opts.Config))
             {
-                Console.Error.WriteLine("Please set conversion configuration.");
+                lock (ConsoleLock)
+                {
+                    Console.Error.WriteLine("Please set conversion configuration.");
+                }
                 return 1;
             }
 
@@ -53,7 +57,10 @@ namespace OpenccConvert
 
             var inFrom = opts.InputFile ?? "<stdin>";
             var outTo = opts.OutputFile ?? "<stdout>";
-            Console.Error.WriteLine($"Conversion completed ({opts.Config}): {inFrom} -> {outTo}");
+            lock (ConsoleLock)
+            {
+                Console.Error.WriteLine($"Conversion completed ({opts.Config}): {inFrom} -> {outTo}");
+            }
 
             return 0;
         }
@@ -64,7 +71,10 @@ namespace OpenccConvert
             {
                 return File.ReadAllText(inputFile, Encoding.GetEncoding(inputEncoding));
             }
-            Console.Error.WriteLine("Input text to convert, <ctrl-z> or <ctrl-d> to summit：");
+            lock (ConsoleLock)
+            {
+                Console.Error.WriteLine("Input text to convert, <ctrl-z> or <ctrl-d> to summit：");
+            }
             using var reader = new StreamReader(Console.OpenStandardInput(), Encoding.GetEncoding(inputEncoding));
             return reader.ReadToEnd();
         }
@@ -81,7 +91,10 @@ namespace OpenccConvert
             }
             else
             {
-                Console.Write(outputStr);
+                lock (ConsoleLock)
+                {
+                    Console.Error.Write(outputStr);
+                }
             }
         }
     }
