@@ -31,9 +31,15 @@ namespace OpenccConvert
 
         private static int Main(string[] args)
         {
-            // Set the console to use UTF-8 encoding
+            //Console.WriteLine($"[Before] OutputEncoding: {Console.OutputEncoding.EncodingName} ({Console.OutputEncoding.WebName})");
+            //Console.WriteLine($"[Before] InputEncoding:  {Console.InputEncoding.EncodingName} ({Console.InputEncoding.WebName})");
+
+            // Set to UTF-8 explicitly
             Console.OutputEncoding = Encoding.UTF8;
             Console.InputEncoding = Encoding.UTF8;
+
+            //Console.WriteLine($"[After] OutputEncoding: {Console.OutputEncoding.EncodingName} ({Console.OutputEncoding.WebName})");
+            //Console.WriteLine($"[After] InputEncoding:  {Console.InputEncoding.EncodingName} ({Console.InputEncoding.WebName})");
 
             return Parser.Default.ParseArguments<Options>(args)
                 .MapResult(RunOptionsAndReturnExitCode, _ => 1);
@@ -90,9 +96,12 @@ namespace OpenccConvert
                 File.WriteAllText(outputFile, outputStr, encoding);
             }
             else
-            {
+            {                
                 lock (ConsoleLock)
                 {
+                    //var bytes = Encoding.UTF8.GetBytes(outputStr);
+                    //Console.WriteLine($"Output UTF-8 bytes: {BitConverter.ToString(bytes)}");
+
                     Console.Error.Write(outputStr);
                 }
             }
