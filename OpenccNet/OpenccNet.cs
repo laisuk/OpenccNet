@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DictionaryLib;
@@ -103,7 +105,6 @@ namespace OpenccNet
                 _lastError = _lastError == null
                     ? $"Error initializing dictionary: {e.Message}"
                     : $"{_lastError} Error initializing dictionary: {e.Message}";
-
             }
         }
 
@@ -118,12 +119,8 @@ namespace OpenccNet
                 ? 1
                 : dictionaries.Max(d => d.MaxLength);
 
-            List<List<char>> splitChunks = SplitStringInclusivePar(text);
+            List<string> splitChunks = SplitStringInclusivePar(text); // Pass delimiters
 
-            // var results = splitChunks
-            //     .AsParallel()
-            //     .AsOrdered() // Ensures chunks are reassembled in original order
-            //     .Select(chunk => ConvertBy(chunk, dictionaries, maxWordLength));
             var results = new string[splitChunks.Count];
             Parallel.ForEach(Enumerable.Range(0, splitChunks.Count),
                 i => { results[i] = ConvertBy(splitChunks[i], dictionaries, maxWordLength); });
@@ -131,38 +128,41 @@ namespace OpenccNet
             return string.Concat(results);
         }
 
-        private string ConvertBy(List<char> textChars, List<DictWithMaxLength> dictionaries, int maxWordLength)
+        private string ConvertBy(string text, List<DictWithMaxLength> dictionaries, int maxWordLength)
         {
-            if (textChars == null || textChars.Count == 0)
+            int textLen = text.Length;
+            if (textLen == 0)
                 return "";
 
-            if (textChars.Count == 1 && Delimiters.Contains(textChars[0]))
-                return textChars[0].ToString();
+            if (textLen == 1 && Delimiters.Contains(text[0]))
+                return text;
 
-            var result = new List<string>();
+            var resultBuilder = new StringBuilder(textLen * 2);
             int i = 0;
-            int textCharsLen = textChars.Count;
+
             char[] buffer = new char[maxWordLength]; // reuse buffer
 
-            while (i < textCharsLen)
+            while (i < textLen)
             {
                 string bestMatch = null;
                 int bestLength = 0;
 
-                int tryMaxLen = Math.Min(maxWordLength, textCharsLen - i);
+                int tryMaxLen = Math.Min(maxWordLength, textLen - i);
                 for (int length = tryMaxLen; length > 0; --length)
                 {
-                    // Copy directly to buffer
-                    textChars.CopyTo(i, buffer, 0, length);
-                    string word = new string(buffer, 0, length);
-
-                    foreach (var dictObj in dictionaries)
+                    if (i + length <= textLen) // Ensure we don't go out of bounds
                     {
-                        if (dictObj.Data.TryGetValue(word, out string match))
+                        text.CopyTo(i, buffer, 0, length);
+                        string word = new string(buffer, 0, length);
+
+                        foreach (var dictObj in dictionaries)
                         {
-                            bestMatch = match;
-                            bestLength = length;
-                            break;
+                            if (dictObj.Data.TryGetValue(word, out string match))
+                            {
+                                bestMatch = match;
+                                bestLength = length;
+                                break;
+                            }
                         }
                     }
 
@@ -172,15 +172,15 @@ namespace OpenccNet
 
                 if (bestLength == 0)
                 {
-                    bestMatch = textChars[i].ToString();
+                    bestMatch = text[i].ToString();
                     bestLength = 1;
                 }
 
-                result.Add(bestMatch);
+                resultBuilder.Append(bestMatch);
                 i += bestLength;
             }
 
-            return string.Concat(result);
+            return resultBuilder.ToString();
         }
 
         public string S2T(string inputText, bool punctuation = false)
@@ -438,15 +438,17 @@ namespace OpenccNet
         public string St(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.st_characters };
-            var chars = inputText.ToList();
-            return ConvertBy(chars, dictRefs, 1);
+            // var chars = inputText.ToList();
+            // return ConvertBy(chars, dictRefs, 1);
+            return ConvertBy(inputText, dictRefs, 1);
         }
 
         public string Ts(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.ts_characters };
-            var chars = inputText.ToList();
-            return ConvertBy(chars, dictRefs, 1);
+            // var chars = inputText.ToList();
+            // return ConvertBy(chars, dictRefs, 1);
+            return ConvertBy(inputText, dictRefs, 1);
         }
 
         public int ZhoCheck(string inputText)
@@ -499,7 +501,7 @@ namespace OpenccNet
 
         private static int FindMaxUtf8Length(string s, int maxByteCount)
         {
-            byte[] encoded = System.Text.Encoding.UTF8.GetBytes(s);
+            byte[] encoded = Encoding.UTF8.GetBytes(s);
             if (encoded.Length <= maxByteCount)
             {
                 return s.Length;
@@ -512,65 +514,49 @@ namespace OpenccNet
             }
 
             // Adjust for potential partial character at the end
-            string partialString = System.Text.Encoding.UTF8.GetString(encoded, 0, byteCount);
+            string partialString = Encoding.UTF8.GetString(encoded, 0, byteCount);
             return partialString.Length;
         }
 
-        public static List<List<char>> SplitStringInclusivePar(string input, int chunkCount = 4)
+        public static List<string> SplitStringInclusivePar(string input, int minChunkSize = 4096)
         {
             if (string.IsNullOrEmpty(input))
-                return new List<List<char>>();
+                return new List<string>();
 
             int length = input.Length;
+            var orderedResults = new List<KeyValuePair<int, string>>();
+            var lockObject = new object();
 
-            // Step 1: Find aligned split points (after delimiters)
-            var splitPoints = new List<int> { 0 };
-
-            for (int i = 0; i < length; i++)
+            Parallel.ForEach(Partitioner.Create(0, length, minChunkSize), (range) =>
             {
-                if (Delimiters.Contains(input[i]))
-                    splitPoints.Add(i + 1); // +1 to include delimiter
-            }
+                int start = range.Item1;
+                int end = range.Item2;
+                var localResults = new List<KeyValuePair<int, string>>(); // Corrected type
+                int currentStart = start;
 
-            if (splitPoints[splitPoints.Count - 1] < length)
-                splitPoints.Add(length); // Final chunk end
-
-            // Step 2: Create ranges (start, end) from splitPoints
-            var ranges = new List<(int Start, int End)>();
-            for (int i = 0; i < splitPoints.Count - 1; i++)
-            {
-                int start = splitPoints[i];
-                int end = splitPoints[i + 1];
-                ranges.Add((start, end));
-            }
-
-            // Step 3: Group ranges into balanced chunks
-            var chunkedRanges = new List<List<(int, int)>>();
-            int groupSize = (int)Math.Ceiling((double)ranges.Count / chunkCount);
-            for (int i = 0; i < ranges.Count; i += groupSize)
-            {
-                chunkedRanges.Add(ranges.Skip(i).Take(groupSize).ToList());
-            }
-
-            // Step 4: Parallel processing of grouped ranges
-            var chunkResults = chunkedRanges
-                .AsParallel()
-                .Select(rangeGroup =>
+                for (int i = start; i < end; i++)
                 {
-                    var result = new List<List<char>>();
-                    foreach (var (start, end) in rangeGroup)
+                    if (Delimiters.Contains(input[i]))
                     {
-                        if (end > start)
-                        {
-                            result.Add(input.Substring(start, end - start).ToList());
-                        }
+                        localResults.Add(new KeyValuePair<int, string>(currentStart,
+                            input.Substring(currentStart, i - currentStart + 1)));
+                        currentStart = i + 1;
                     }
+                }
 
-                    return result;
-                }).ToList();
+                if (currentStart < end)
+                {
+                    localResults.Add(new KeyValuePair<int, string>(currentStart,
+                        input.Substring(currentStart, end - currentStart)));
+                }
 
-            // Step 5: Merge all results
-            return chunkResults.SelectMany(r => r).ToList();
+                lock (lockObject)
+                {
+                    orderedResults.AddRange(localResults);
+                }
+            });
+
+            return orderedResults.OrderBy(item => item.Key).Select(item => item.Value).ToList();
         }
     }
 }

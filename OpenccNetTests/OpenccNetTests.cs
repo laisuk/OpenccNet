@@ -9,9 +9,9 @@ namespace OpenccNetTests
         public void S2T_SimpleConversion()
         {
             var opencc = new Opencc("s2t");
-            string simplified = "美丽";
-            string expectedTraditional = "美麗";
-            string actualTraditional = opencc.S2Twp(simplified);
+            string simplified = "俨骖𬴂于上路，访风景于崇阿；临帝子之长洲，得天人之旧馆。";
+            string expectedTraditional = "儼驂騑於上路，訪風景於崇阿；臨帝子之長洲，得天人之舊館。";
+            string actualTraditional = opencc.S2T(simplified);
             Assert.AreEqual(expectedTraditional, actualTraditional);
         }
 
