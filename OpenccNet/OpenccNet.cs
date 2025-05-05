@@ -11,9 +11,9 @@ namespace OpenccNet
 {
     public class DictRefs
     {
-        public List<DictWithMaxLength> Round1 { get; }
-        public List<DictWithMaxLength> Round2 { get; private set; }
-        public List<DictWithMaxLength> Round3 { get; private set; }
+        private List<DictWithMaxLength> Round1 { get; }
+        private List<DictWithMaxLength> Round2 { get; set; }
+        private List<DictWithMaxLength> Round3 { get; set; }
 
         public DictRefs(List<DictWithMaxLength> round1)
         {
@@ -113,7 +113,7 @@ namespace OpenccNet
             return _lastError;
         }
 
-        private string SegmentReplace(string text, List<DictWithMaxLength> dictionaries)
+        private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries)
         {
             int maxWordLength = dictionaries.Count == 0
                 ? 1
@@ -128,7 +128,7 @@ namespace OpenccNet
             return string.Concat(results);
         }
 
-        private string ConvertBy(string text, List<DictWithMaxLength> dictionaries, int maxWordLength)
+        private static string ConvertBy(string text, List<DictWithMaxLength> dictionaries, int maxWordLength)
         {
             int textLen = text.Length;
             if (textLen == 0)
@@ -518,45 +518,51 @@ namespace OpenccNet
             return partialString.Length;
         }
 
-        public static List<string> SplitStringInclusivePar(string input, int minChunkSize = 4096)
+        private static List<string> SplitStringInclusivePar(string input, int minChunkSize = 4096)
         {
             if (string.IsNullOrEmpty(input))
                 return new List<string>();
 
             int length = input.Length;
-            var orderedResults = new List<KeyValuePair<int, string>>();
-            var lockObject = new object();
+            var partitionResults = new ConcurrentBag<List<KeyValuePair<int, string>>>();
 
-            Parallel.ForEach(Partitioner.Create(0, length, minChunkSize), (range) =>
+            Parallel.ForEach(Partitioner.Create(0, length, minChunkSize), range =>
             {
                 int start = range.Item1;
                 int end = range.Item2;
-                var localResults = new List<KeyValuePair<int, string>>(); // Corrected type
+                var localResults = new List<KeyValuePair<int, string>>();
                 int currentStart = start;
 
                 for (int i = start; i < end; i++)
                 {
                     if (Delimiters.Contains(input[i]))
                     {
-                        localResults.Add(new KeyValuePair<int, string>(currentStart,
-                            input.Substring(currentStart, i - currentStart + 1)));
+                        int chunkLength = i - currentStart + 1;
+                        if (chunkLength > 0)
+                        {
+                            localResults.Add(new KeyValuePair<int, string>(
+                                currentStart, input.Substring(currentStart, chunkLength)));
+                        }
+
                         currentStart = i + 1;
                     }
                 }
 
                 if (currentStart < end)
                 {
-                    localResults.Add(new KeyValuePair<int, string>(currentStart,
-                        input.Substring(currentStart, end - currentStart)));
+                    localResults.Add(new KeyValuePair<int, string>(
+                        currentStart, input.Substring(currentStart, end - currentStart)));
                 }
 
-                lock (lockObject)
-                {
-                    orderedResults.AddRange(localResults);
-                }
+                partitionResults.Add(localResults);
             });
 
-            return orderedResults.OrderBy(item => item.Key).Select(item => item.Value).ToList();
+            // Sort and flatten in one go
+            return partitionResults
+                .SelectMany(x => x)
+                .OrderBy(pair => pair.Key)
+                .Select(pair => pair.Value)
+                .ToList();
         }
     }
 }

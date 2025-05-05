@@ -28,7 +28,8 @@ namespace OpenccNetTests
         [TestMethod]
         public void S2TWP_SimpleConversion()
         {
-            var opencc = new Opencc("s2tw");
+            var opencc = new Opencc();
+            opencc.Config = "s2twp";
             string simplified = "软件";
             string expectedTaiwan = "軟體";
             string actualTaiwan = opencc.S2Twp(simplified);
