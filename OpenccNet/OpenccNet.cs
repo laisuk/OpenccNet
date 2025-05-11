@@ -102,9 +102,7 @@ namespace OpenccNet
             }
             catch (Exception e)
             {
-                _lastError = _lastError == null
-                    ? $"Error initializing dictionary: {e.Message}"
-                    : $"{_lastError} Error initializing dictionary: {e.Message}";
+                _lastError = $"Error initializing dictionary: {e.Message}";
             }
         }
 
