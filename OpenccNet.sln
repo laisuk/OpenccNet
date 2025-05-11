@@ -5,8 +5,6 @@ VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenccNet", "OpenccNet\OpenccNet.csproj", "{A14E5D31-0605-435B-86B7-7D6BF5B531EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictionaryLibTests", "..\DictionaryLib\DictionaryLibTests\DictionaryLibTests.csproj", "{CBAF6C08-F46B-4A50-B949-36BD79AE7146}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenccNetTests", "OpenccNetTests\OpenccNetTests.csproj", "{E3A074FB-7C75-40AA-9DED-3B5370928266}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenccConvert", "OpenccConvert\OpenccConvert.csproj", "{D10DC4F8-8309-438D-841C-130A1C8FB6E5}"
@@ -14,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictionaryLib", "DictionaryLib\DictionaryLib.csproj", "{B610B4E3-2BA2-4189-AA0D-96C30B07B79B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictGenerate", "DictGenerate\DictGenerate.csproj", "{E08896BB-3EF8-41E3-AA26-29BEB9554D41}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictionaryLibTests", "DictionaryLibTests\DictionaryLibTests.csproj", "{5DC88399-EA2B-4048-B986-F564805048E1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,10 +25,6 @@ Global
 		{A14E5D31-0605-435B-86B7-7D6BF5B531EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A14E5D31-0605-435B-86B7-7D6BF5B531EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A14E5D31-0605-435B-86B7-7D6BF5B531EA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CBAF6C08-F46B-4A50-B949-36BD79AE7146}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CBAF6C08-F46B-4A50-B949-36BD79AE7146}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CBAF6C08-F46B-4A50-B949-36BD79AE7146}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CBAF6C08-F46B-4A50-B949-36BD79AE7146}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E3A074FB-7C75-40AA-9DED-3B5370928266}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E3A074FB-7C75-40AA-9DED-3B5370928266}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3A074FB-7C75-40AA-9DED-3B5370928266}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -45,6 +41,10 @@ Global
 		{E08896BB-3EF8-41E3-AA26-29BEB9554D41}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E08896BB-3EF8-41E3-AA26-29BEB9554D41}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E08896BB-3EF8-41E3-AA26-29BEB9554D41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DC88399-EA2B-4048-B986-F564805048E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DC88399-EA2B-4048-B986-F564805048E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DC88399-EA2B-4048-B986-F564805048E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DC88399-EA2B-4048-B986-F564805048E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
