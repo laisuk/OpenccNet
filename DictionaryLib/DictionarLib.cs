@@ -41,24 +41,45 @@ namespace DictionaryLib
 
         public static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")
         {
-            var baseDir = AppContext.BaseDirectory;
-            var fullPath = Path.Combine(baseDir, relativePath);
-            var json = File.ReadAllText(fullPath);
-            return JsonSerializer.Deserialize<DictionaryMaxlength>(json);
+            try
+            {
+                var baseDir = AppContext.BaseDirectory;
+                var fullPath = Path.Combine(baseDir, relativePath);
+
+                if (!File.Exists(fullPath))
+                    throw new FileNotFoundException($"JSON dictionary file not found: {fullPath}");
+
+                var json = File.ReadAllText(fullPath);
+                return JsonSerializer.Deserialize<DictionaryMaxlength>(json);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to load dictionary from JSON.", ex);
+            }
         }
 
         public static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
         {
-            var baseDir = AppContext.BaseDirectory;
-            var fullPath = Path.Combine(baseDir, relativePath);
-
-            var compressed = File.ReadAllBytes(fullPath);
-
-            using (var decompressor = new ZstdNet.Decompressor())
+            try
             {
-                var jsonBytes = decompressor.Unwrap(compressed);
-                var json = Encoding.UTF8.GetString(jsonBytes);
-                return JsonSerializer.Deserialize<DictionaryMaxlength>(json);
+                var baseDir = AppContext.BaseDirectory;
+                var fullPath = Path.Combine(baseDir, relativePath);
+
+                if (!File.Exists(fullPath))
+                    throw new FileNotFoundException($"Zstd dictionary file not found: {fullPath}");
+
+                var compressed = File.ReadAllBytes(fullPath);
+
+                using (var decompressor = new Decompressor())
+                {
+                    var jsonBytes = decompressor.Unwrap(compressed);
+                    var json = Encoding.UTF8.GetString(jsonBytes);
+                    return JsonSerializer.Deserialize<DictionaryMaxlength>(json);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to load dictionary from Zstd.", ex);
             }
         }
 
@@ -108,11 +129,12 @@ namespace DictionaryLib
 
             if (!File.Exists(path))
             {
-                return new DictWithMaxLength
-                {
-                    Data = dict,
-                    MaxLength = maxLength
-                };
+                throw new FileNotFoundException($"Dictionary file not found: {path}");
+                // return new DictWithMaxLength
+                // {
+                //     Data = dict,
+                //     MaxLength = maxLength
+                // };
             }
 
             foreach (var line in File.ReadAllLines(path))
