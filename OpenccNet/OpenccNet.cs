@@ -148,19 +148,16 @@ namespace OpenccNet
                 int tryMaxLen = Math.Min(maxWordLength, textLen - i);
                 for (int length = tryMaxLen; length > 0; --length)
                 {
-                    if (i + length <= textLen) // Ensure we don't go out of bounds
-                    {
-                        text.CopyTo(i, buffer, 0, length);
-                        string word = new string(buffer, 0, length);
+                    text.CopyTo(i, buffer, 0, length);
+                    string word = new string(buffer, 0, length);
 
-                        foreach (var dictObj in dictionaries)
+                    foreach (var dictObj in dictionaries)
+                    {
+                        if (dictObj.Data.TryGetValue(word, out string match))
                         {
-                            if (dictObj.Data.TryGetValue(word, out string match))
-                            {
-                                bestMatch = match;
-                                bestLength = length;
-                                break;
-                            }
+                            bestMatch = match;
+                            bestLength = length;
+                            break;
                         }
                     }
 
