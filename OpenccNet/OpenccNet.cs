@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -128,51 +129,75 @@ namespace OpenccNet
 
         private static string ConvertBy(string text, List<DictWithMaxLength> dictionaries, int maxWordLength)
         {
-            int textLen = text.Length;
-            if (textLen == 0)
-                return "";
-
-            if (textLen == 1 && Delimiters.Contains(text[0]))
+            if (string.IsNullOrEmpty(text))
                 return text;
 
-            var resultBuilder = new StringBuilder(textLen * 2);
+            if (text.Length == 1 && Delimiters.Contains(text[0]))
+                return text;
+
+            var resultBuilder = new StringBuilder(text.Length * 2);
+            var span = text.AsSpan();
+            int textLen = span.Length;
             int i = 0;
 
-            char[] buffer = new char[maxWordLength]; // reuse buffer
+            Span<char> buffer = maxWordLength <= 128
+                ? stackalloc char[maxWordLength]
+                : new char[maxWordLength]; // fallback if too big for stackalloc
 
-            while (i < textLen)
+            // Use ArrayPool for reusable buffer
+            var pool = ArrayPool<char>.Shared;
+            char[] keyBuffer = pool.Rent(maxWordLength);
+
+            try
             {
-                string bestMatch = null;
-                int bestLength = 0;
-
-                int tryMaxLen = Math.Min(maxWordLength, textLen - i);
-                for (int length = tryMaxLen; length > 0; --length)
+                while (i < textLen)
                 {
-                    text.CopyTo(i, buffer, 0, length);
-                    string word = new string(buffer, 0, length);
+                    ReadOnlySpan<char> remaining = span.Slice(i);
+                    int tryMaxLen = Math.Min(maxWordLength, remaining.Length);
 
-                    foreach (var dictObj in dictionaries)
+                    ReadOnlySpan<char> bestMatchSpan = default;
+                    string bestMatch = null;
+
+                    for (int length = tryMaxLen; length > 0; --length)
                     {
-                        if (dictObj.Data.TryGetValue(word, out string match))
+                        var wordSpan = remaining.Slice(0, length);
+                        wordSpan.CopyTo(buffer);
+
+                        foreach (var dictObj in dictionaries)
                         {
-                            bestMatch = match;
-                            bestLength = length;
-                            break;
+                            if (dictObj.MaxLength < length) continue;
+
+                            buffer.Slice(0, length).CopyTo(keyBuffer);
+                            var key = new string(keyBuffer, 0, length);
+
+                            if (dictObj.Data.TryGetValue(key, out string match))
+                            {
+                                bestMatch = match;
+                                bestMatchSpan = wordSpan;
+                                break;
+                            }
                         }
+
+                        if (bestMatch != null)
+                            break;
                     }
 
-                    if (bestLength > 0)
-                        break;
+                    if (bestMatch != null)
+                    {
+                        resultBuilder.Append(bestMatch);
+                        i += bestMatchSpan.Length;
+                    }
+                    else
+                    {
+                        resultBuilder.Append(span[i]);
+                        i++;
+                    }
                 }
-
-                if (bestLength == 0)
-                {
-                    bestMatch = text[i].ToString();
-                    bestLength = 1;
-                }
-
-                resultBuilder.Append(bestMatch);
-                i += bestLength;
+            }
+            finally
+            {
+                // Always return rented array
+                pool.Return(keyBuffer);
             }
 
             return resultBuilder.ToString();

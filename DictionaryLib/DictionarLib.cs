@@ -150,7 +150,8 @@ namespace DictionaryLib
                     // dict[key] = value;
                     // Use SetItem to return a new dictionary
                     dict = dict.SetItem(key, value);
-                    int keyLength = new StringInfo(key).LengthInTextElements;
+                    // int keyLength = new StringInfo(key).LengthInTextElements;
+                    int keyLength = key.Length;
                     maxLength = Math.Max(maxLength, keyLength);
                 }
             }
@@ -184,10 +185,12 @@ namespace DictionaryLib
 
         public void SaveCompressed(string path)
         {
-            var json = JsonSerializer.Serialize(this);
-            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            // var json = JsonSerializer.Serialize(this);
+            // var jsonBytes = Encoding.UTF8.GetBytes(json);
+            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(this);
 
-            using (var compressor = new Compressor())
+            using (var options = new CompressionOptions(compressionLevel: 19))
+            using (var compressor = new Compressor(options))
             {
                 var compressed = compressor.Wrap(jsonBytes);
                 File.WriteAllBytes(path, compressed);
