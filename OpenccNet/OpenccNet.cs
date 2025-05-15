@@ -496,28 +496,62 @@ namespace OpenccNet
             }
         }
 
+        // private static string ConvertPunctuation(string inputText, string config)
+        // {
+        //     Dictionary<char, char> s2T = new Dictionary<char, char>
+        //     {
+        //         { '“', '「' },
+        //         { '”', '」' },
+        //         { '‘', '『' },
+        //         { '’', '』' }
+        //     };
+        //
+        //     if (config.StartsWith("s"))
+        //     {
+        //         string pattern = "[" + string.Concat(s2T.Keys.Select(c => Regex.Escape(c.ToString()))) + "]";
+        //         return Regex.Replace(inputText, pattern, m => s2T[m.Value[0]].ToString());
+        //     }
+        //     else
+        //     {
+        //         Dictionary<char, char> t2S = s2T.ToDictionary(k => k.Value, v => v.Key);
+        //         string pattern = "[" + string.Concat(t2S.Keys.Select(c => Regex.Escape(c.ToString()))) + "]";
+        //         return Regex.Replace(inputText, pattern, m => t2S[m.Value[0]].ToString());
+        //     }
+        // }
         private static string ConvertPunctuation(string inputText, string config)
         {
-            Dictionary<char, char> s2T = new Dictionary<char, char>
-            {
-                { '“', '「' },
-                { '”', '」' },
-                { '‘', '『' },
-                { '’', '』' }
-            };
+            if (string.IsNullOrEmpty(inputText))
+                return inputText;
 
+            // Static mappings
+            var s2 = "“”‘’".AsSpan(); // Source: Simplified punctuation
+            var t2 = "「」『』".AsSpan(); // Target: Traditional punctuation
+
+            ReadOnlySpan<char> from, to;
             if (config.StartsWith("s"))
             {
-                string pattern = "[" + string.Concat(s2T.Keys.Select(c => Regex.Escape(c.ToString()))) + "]";
-                return Regex.Replace(inputText, pattern, m => s2T[m.Value[0]].ToString());
+                from = s2;
+                to = t2;
             }
             else
             {
-                Dictionary<char, char> t2S = s2T.ToDictionary(k => k.Value, v => v.Key);
-                string pattern = "[" + string.Concat(t2S.Keys.Select(c => Regex.Escape(c.ToString()))) + "]";
-                return Regex.Replace(inputText, pattern, m => t2S[m.Value[0]].ToString());
+                from = t2;
+                to = s2;
             }
+
+            var result = new StringBuilder(inputText.Length);
+            foreach (char c in inputText)
+            {
+                int idx = from.IndexOf(c);
+                if (idx >= 0)
+                    result.Append(to[idx]);
+                else
+                    result.Append(c);
+            }
+
+            return result.ToString();
         }
+
 
         private static int FindMaxUtf8Length(string s, int maxByteCount)
         {

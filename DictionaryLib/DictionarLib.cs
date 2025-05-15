@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections.Immutable;
-using System.Globalization;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -11,7 +10,7 @@ namespace DictionaryLib
 {
     public class DictWithMaxLength
     {
-        public ImmutableDictionary<string, string> Data { get; set; } = ImmutableDictionary<string, string>.Empty;
+        public ConcurrentDictionary<string, string> Data { get; set; } = new ConcurrentDictionary<string, string>();
         public int MaxLength { get; set; } = 0;
     }
 
@@ -124,7 +123,7 @@ namespace DictionaryLib
 
         private static DictWithMaxLength LoadFile(string path)
         {
-            var dict = ImmutableDictionary<string, string>.Empty;
+            var dict = new ConcurrentDictionary<string, string>();
             int maxLength = 1;
 
             if (!File.Exists(path))
@@ -147,9 +146,9 @@ namespace DictionaryLib
                 {
                     var key = parts[0];
                     var value = parts[1];
-                    // dict[key] = value;
+                    dict[key] = value;
                     // Use SetItem to return a new dictionary
-                    dict = dict.SetItem(key, value);
+                    // dict = dict.SetItem(key, value);
                     // int keyLength = new StringInfo(key).LengthInTextElements;
                     int keyLength = key.Length;
                     maxLength = Math.Max(maxLength, keyLength);

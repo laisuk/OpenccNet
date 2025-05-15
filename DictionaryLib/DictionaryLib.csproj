@@ -6,7 +6,6 @@
 
     <ItemGroup>
       <PackageReference Include="PeterO.Cbor" Version="4.5.5" />
-      <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
       <PackageReference Include="System.Text.Json" Version="8.0.5" />
       <PackageReference Include="ZstdNet" Version="1.4.5" />
     </ItemGroup>
