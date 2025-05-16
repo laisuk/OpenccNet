@@ -12,14 +12,14 @@ namespace OpenccNet
 {
     public class DictRefs
     {
-        private List<DictWithMaxLength> Round1 { get; }
-        private List<DictWithMaxLength> Round2 { get; set; }
-        private List<DictWithMaxLength> Round3 { get; set; }
-
         public DictRefs(List<DictWithMaxLength> round1)
         {
             Round1 = round1;
         }
+
+        private List<DictWithMaxLength> Round1 { get; }
+        private List<DictWithMaxLength> Round2 { get; set; }
+        private List<DictWithMaxLength> Round3 { get; set; }
 
         public DictRefs WithRound2(List<DictWithMaxLength> round2)
         {
@@ -36,16 +36,10 @@ namespace OpenccNet
         public string ApplySegmentReplace(string inputText,
             Func<string, List<DictWithMaxLength>, string> segmentReplace)
         {
-            string output = segmentReplace(inputText, Round1);
-            if (Round2 != null)
-            {
-                output = segmentReplace(output, Round2);
-            }
+            var output = segmentReplace(inputText, Round1);
+            if (Round2 != null) output = segmentReplace(output, Round2);
 
-            if (Round3 != null)
-            {
-                output = segmentReplace(output, Round3);
-            }
+            if (Round3 != null) output = segmentReplace(output, Round3);
 
             return output;
         }
@@ -68,27 +62,6 @@ namespace OpenccNet
         private string _config;
         private string _lastError;
 
-        public string Config
-        {
-            get => _config;
-            set
-            {
-                string lower = value?.ToLowerInvariant();
-                if (_configList.Contains(lower))
-                {
-                    _config = lower;
-                    _lastError = null;
-                }
-                else
-                {
-                    _config = "s2t";
-                    _lastError = $"Invalid config provided: {value}. Using default 's2t'.";
-                }
-            }
-        }
-
-        private DictionaryMaxlength Dictionary { get; }
-
         public Opencc(string config = null)
         {
             Config = config; // Calls the setter with validation logic
@@ -107,6 +80,27 @@ namespace OpenccNet
             }
         }
 
+        public string Config
+        {
+            get => _config;
+            set
+            {
+                var lower = value?.ToLowerInvariant();
+                if (_configList.Contains(lower))
+                {
+                    _config = lower;
+                    _lastError = null;
+                }
+                else
+                {
+                    _config = "s2t";
+                    _lastError = $"Invalid config provided: {value}. Using default 's2t'.";
+                }
+            }
+        }
+
+        private DictionaryMaxlength Dictionary { get; }
+
         public string GetLastError()
         {
             return _lastError;
@@ -114,11 +108,11 @@ namespace OpenccNet
 
         private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries)
         {
-            int maxWordLength = dictionaries.Count == 0
+            var maxWordLength = dictionaries.Count == 0
                 ? 1
                 : dictionaries.Max(d => d.MaxLength);
 
-            List<string> splitChunks = SplitStringInclusivePar(text); // Pass delimiters
+            var splitChunks = SplitStringInclusivePar(text); // Pass delimiters
 
             var results = new string[splitChunks.Count];
             Parallel.ForEach(Enumerable.Range(0, splitChunks.Count),
@@ -132,33 +126,30 @@ namespace OpenccNet
             if (string.IsNullOrEmpty(text))
                 return text;
 
-            if (text.Length == 1 && Delimiters.Contains(text[0]))
-                return text;
-
             var resultBuilder = new StringBuilder(text.Length * 2);
             var span = text.AsSpan();
-            int textLen = span.Length;
-            int i = 0;
+            var textLen = span.Length;
+            var i = 0;
 
-            Span<char> buffer = maxWordLength <= 128
+            var buffer = maxWordLength <= 128
                 ? stackalloc char[maxWordLength]
                 : new char[maxWordLength]; // fallback if too big for stackalloc
 
             // Use ArrayPool for reusable buffer
             var pool = ArrayPool<char>.Shared;
-            char[] keyBuffer = pool.Rent(maxWordLength);
+            var keyBuffer = pool.Rent(maxWordLength);
 
             try
             {
                 while (i < textLen)
                 {
-                    ReadOnlySpan<char> remaining = span.Slice(i);
-                    int tryMaxLen = Math.Min(maxWordLength, remaining.Length);
+                    var remaining = span.Slice(i);
+                    var tryMaxLen = Math.Min(maxWordLength, remaining.Length);
 
                     ReadOnlySpan<char> bestMatchSpan = default;
                     string bestMatch = null;
 
-                    for (int length = tryMaxLen; length > 0; --length)
+                    for (var length = tryMaxLen; length > 0; --length)
                     {
                         var wordSpan = remaining.Slice(0, length);
                         wordSpan.CopyTo(buffer);
@@ -170,7 +161,7 @@ namespace OpenccNet
                             buffer.Slice(0, length).CopyTo(keyBuffer);
                             var key = new string(keyBuffer, 0, length);
 
-                            if (dictObj.Data.TryGetValue(key, out string match))
+                            if (dictObj.Data.TryGetValue(key, out var match))
                             {
                                 bestMatch = match;
                                 bestMatchSpan = wordSpan;
@@ -211,115 +202,156 @@ namespace OpenccNet
                 return "";
             }
 
-            var refs = new DictRefs(new List<DictWithMaxLength>
+            var round1List = new List<DictWithMaxLength>
             {
                 Dictionary.st_phrases,
                 Dictionary.st_characters
-            });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "s") : output;
+            };
+
+            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+
+            var refs = new DictRefs(round1List);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
+
 
         public string T2S(string inputText, bool punctuation = false)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
+            if (string.IsNullOrEmpty(inputText))
+            {
+                _lastError = "Input text is empty";
+                return "";
+            }
+
+            var round1List = new List<DictWithMaxLength>
             {
                 Dictionary.ts_phrases,
                 Dictionary.ts_characters
-            });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "t") : output;
+            };
+
+            if (punctuation) round1List.Add(Dictionary.ts_punctuations);
+
+            var refs = new DictRefs(round1List);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
 
         public string S2Tw(string inputText, bool punctuation = false)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
+            var round1List = new List<DictWithMaxLength>
             {
                 Dictionary.st_phrases,
                 Dictionary.st_characters
-            }).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_variants
-            });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "s") : output;
+            };
+
+            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+
+            var refs = new DictRefs(round1List)
+                .WithRound2(new List<DictWithMaxLength>
+                {
+                    Dictionary.tw_variants
+                });
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
 
         public string Tw2S(string inputText, bool punctuation = false)
         {
+            var round2List = new List<DictWithMaxLength>
+            {
+                Dictionary.ts_phrases,
+                Dictionary.ts_characters
+            };
+
+            if (punctuation) round2List.Add(Dictionary.ts_punctuations);
+
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
                 Dictionary.tw_variants_rev_phrases,
                 Dictionary.tw_variants_rev
-            }).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.ts_phrases,
-                Dictionary.ts_characters
-            });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "t") : output;
+            }).WithRound2(round2List);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
 
         public string S2Twp(string inputText, bool punctuation = false)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
+            var round1List = new List<DictWithMaxLength>
             {
                 Dictionary.st_phrases,
                 Dictionary.st_characters
-            }).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_phrases
-            }).WithRound3(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_variants
-            });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "s") : output;
+            };
+
+            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+
+            var refs = new DictRefs(round1List)
+                .WithRound2(new List<DictWithMaxLength>
+                {
+                    Dictionary.tw_phrases
+                }).WithRound3(new List<DictWithMaxLength>
+                {
+                    Dictionary.tw_variants
+                });
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
 
         public string Tw2Sp(string inputText, bool punctuation = false)
         {
+            var round2List = new List<DictWithMaxLength>
+            {
+                Dictionary.ts_phrases,
+                Dictionary.ts_characters
+            };
+
+            if (punctuation) round2List.Add(Dictionary.ts_punctuations);
+
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
                 Dictionary.tw_phrases_rev,
                 Dictionary.tw_variants_rev_phrases,
                 Dictionary.tw_variants_rev
-            }).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.ts_phrases,
-                Dictionary.ts_characters
-            });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "t") : output;
+            }).WithRound2(round2List);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
 
         public string S2Hk(string inputText, bool punctuation = false)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
+            var round1List = new List<DictWithMaxLength>
             {
                 Dictionary.st_phrases,
                 Dictionary.st_characters
-            }).WithRound2(new List<DictWithMaxLength>
+            };
+
+            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+
+            var refs = new DictRefs(round1List).WithRound2(new List<DictWithMaxLength>
             {
                 Dictionary.hk_variants
             });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "s") : output;
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
 
         public string Hk2S(string inputText, bool punctuation = false)
         {
+            var round2List = new List<DictWithMaxLength>
+            {
+                Dictionary.ts_phrases,
+                Dictionary.ts_characters
+            };
+
+            if (punctuation) round2List.Add(Dictionary.ts_punctuations);
+
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
                 Dictionary.hk_variants_rev_phrases,
                 Dictionary.hk_variants_rev
-            }).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.ts_phrases,
-                Dictionary.ts_characters
-            });
-            string output = refs.ApplySegmentReplace(inputText, SegmentReplace);
-            return punctuation ? ConvertPunctuation(output, "t") : output;
+            }).WithRound2(round2List);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
         }
 
         public string T2Tw(string inputText)
@@ -473,102 +505,63 @@ namespace OpenccNet
 
         public int ZhoCheck(string inputText)
         {
-            if (string.IsNullOrEmpty(inputText))
-            {
-                return 0;
-            }
+            if (string.IsNullOrEmpty(inputText)) return 0;
 
-            string stripped = StripRegex.Replace(inputText, "");
-            int maxChars = FindMaxUtf8Length(stripped, 200);
-            string stripText = stripped.Substring(0, maxChars);
+            var stripped = StripRegex.Replace(inputText, "");
+            var maxChars = FindMaxUtf8Length(stripped, 200);
+            var stripText = stripped.Substring(0, maxChars);
 
-            if (stripText != Ts(stripText))
-            {
-                return 1;
-            }
-            else if (stripText != St(stripText))
-            {
-                return 2;
-            }
-            else
-            {
-                return 0;
-            }
+            if (stripText != Ts(stripText)) return 1;
+
+            if (stripText != St(stripText)) return 2;
+
+            return 0;
         }
 
         // private static string ConvertPunctuation(string inputText, string config)
         // {
-        //     Dictionary<char, char> s2T = new Dictionary<char, char>
-        //     {
-        //         { '“', '「' },
-        //         { '”', '」' },
-        //         { '‘', '『' },
-        //         { '’', '』' }
-        //     };
+        //     if (string.IsNullOrEmpty(inputText))
+        //         return inputText;
         //
+        //     // Static mappings
+        //     var s2 = "“”‘’".AsSpan(); // Source: Simplified punctuation
+        //     var t2 = "「」『』".AsSpan(); // Target: Traditional punctuation
+        //
+        //     ReadOnlySpan<char> from, to;
         //     if (config.StartsWith("s"))
         //     {
-        //         string pattern = "[" + string.Concat(s2T.Keys.Select(c => Regex.Escape(c.ToString()))) + "]";
-        //         return Regex.Replace(inputText, pattern, m => s2T[m.Value[0]].ToString());
+        //         from = s2;
+        //         to = t2;
         //     }
         //     else
         //     {
-        //         Dictionary<char, char> t2S = s2T.ToDictionary(k => k.Value, v => v.Key);
-        //         string pattern = "[" + string.Concat(t2S.Keys.Select(c => Regex.Escape(c.ToString()))) + "]";
-        //         return Regex.Replace(inputText, pattern, m => t2S[m.Value[0]].ToString());
+        //         from = t2;
+        //         to = s2;
         //     }
+        //
+        //     var result = new StringBuilder(inputText.Length);
+        //     foreach (var c in inputText)
+        //     {
+        //         var idx = from.IndexOf(c);
+        //         if (idx >= 0)
+        //             result.Append(to[idx]);
+        //         else
+        //             result.Append(c);
+        //     }
+        //
+        //     return result.ToString();
         // }
-        private static string ConvertPunctuation(string inputText, string config)
-        {
-            if (string.IsNullOrEmpty(inputText))
-                return inputText;
-
-            // Static mappings
-            var s2 = "“”‘’".AsSpan(); // Source: Simplified punctuation
-            var t2 = "「」『』".AsSpan(); // Target: Traditional punctuation
-
-            ReadOnlySpan<char> from, to;
-            if (config.StartsWith("s"))
-            {
-                from = s2;
-                to = t2;
-            }
-            else
-            {
-                from = t2;
-                to = s2;
-            }
-
-            var result = new StringBuilder(inputText.Length);
-            foreach (char c in inputText)
-            {
-                int idx = from.IndexOf(c);
-                if (idx >= 0)
-                    result.Append(to[idx]);
-                else
-                    result.Append(c);
-            }
-
-            return result.ToString();
-        }
-
 
         private static int FindMaxUtf8Length(string s, int maxByteCount)
         {
-            byte[] encoded = Encoding.UTF8.GetBytes(s);
-            if (encoded.Length <= maxByteCount)
-            {
-                return s.Length;
-            }
+            var encoded = Encoding.UTF8.GetBytes(s);
+            if (encoded.Length <= maxByteCount) return s.Length;
 
-            int byteCount = maxByteCount;
-            while (byteCount > 0 && (encoded[byteCount - 1] & 0b11000000) == 0b10000000)
-            {
-                byteCount--;
-            }
+            var byteCount = maxByteCount;
+            while (byteCount > 0 && (encoded[byteCount - 1] & 0b11000000) == 0b10000000) byteCount--;
 
             // Adjust for potential partial character at the end
-            string partialString = Encoding.UTF8.GetString(encoded, 0, byteCount);
+            var partialString = Encoding.UTF8.GetString(encoded, 0, byteCount);
             return partialString.Length;
         }
 
@@ -577,36 +570,30 @@ namespace OpenccNet
             if (string.IsNullOrEmpty(input))
                 return new List<string>();
 
-            int length = input.Length;
+            var length = input.Length;
             var partitionResults = new ConcurrentBag<List<KeyValuePair<int, string>>>();
 
             Parallel.ForEach(Partitioner.Create(0, length, minChunkSize), range =>
             {
-                int start = range.Item1;
-                int end = range.Item2;
+                var start = range.Item1;
+                var end = range.Item2;
                 var localResults = new List<KeyValuePair<int, string>>();
-                int currentStart = start;
+                var currentStart = start;
 
-                for (int i = start; i < end; i++)
-                {
+                for (var i = start; i < end; i++)
                     if (Delimiters.Contains(input[i]))
                     {
-                        int chunkLength = i - currentStart + 1;
+                        var chunkLength = i - currentStart + 1;
                         if (chunkLength > 0)
-                        {
                             localResults.Add(new KeyValuePair<int, string>(
                                 currentStart, input.Substring(currentStart, chunkLength)));
-                        }
 
                         currentStart = i + 1;
                     }
-                }
 
                 if (currentStart < end)
-                {
                     localResults.Add(new KeyValuePair<int, string>(
                         currentStart, input.Substring(currentStart, end - currentStart)));
-                }
 
                 partitionResults.Add(localResults);
             });

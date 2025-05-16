@@ -11,7 +11,7 @@ namespace DictionaryLib
     public class DictWithMaxLength
     {
         public ConcurrentDictionary<string, string> Data { get; set; } = new ConcurrentDictionary<string, string>();
-        public int MaxLength { get; set; } = 0;
+        public int MaxLength { get; set; }
     }
 
     public class DictionaryMaxlength
@@ -32,6 +32,8 @@ namespace DictionaryLib
         public DictWithMaxLength jps_phrases { get; set; } = new DictWithMaxLength();
         public DictWithMaxLength jp_variants { get; set; } = new DictWithMaxLength();
         public DictWithMaxLength jp_variants_rev { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength st_punctuations { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength ts_punctuations { get; set; } = new DictWithMaxLength();
 
         public static DictionaryMaxlength New()
         {
@@ -117,6 +119,8 @@ namespace DictionaryLib
             instance.jps_phrases = LoadFile(Path.Combine(baseDir, "JPShinjitaiPhrases.txt"));
             instance.jp_variants = LoadFile(Path.Combine(baseDir, "JPVariants.txt"));
             instance.jp_variants_rev = LoadFile(Path.Combine(baseDir, "JPVariantsRev.txt"));
+            instance.st_punctuations = LoadFile(Path.Combine(baseDir, "STPunctuations.txt"));
+            instance.ts_punctuations = LoadFile(Path.Combine(baseDir, "TSPunctuations.txt"));
 
             return instance;
         }
@@ -124,18 +128,14 @@ namespace DictionaryLib
         private static DictWithMaxLength LoadFile(string path)
         {
             var dict = new ConcurrentDictionary<string, string>();
-            int maxLength = 1;
+            var maxLength = 1;
 
-            if (!File.Exists(path))
-            {
-                throw new FileNotFoundException($"Dictionary file not found: {path}");
-                // return new DictWithMaxLength
-                // {
-                //     Data = dict,
-                //     MaxLength = maxLength
-                // };
-            }
-
+            if (!File.Exists(path)) throw new FileNotFoundException($"Dictionary file not found: {path}");
+            // return new DictWithMaxLength
+            // {
+            //     Data = dict,
+            //     MaxLength = maxLength
+            // };
             foreach (var line in File.ReadAllLines(path))
             {
                 var trimmed = line.Trim();
@@ -150,7 +150,7 @@ namespace DictionaryLib
                     // Use SetItem to return a new dictionary
                     // dict = dict.SetItem(key, value);
                     // int keyLength = new StringInfo(key).LengthInTextElements;
-                    int keyLength = key.Length;
+                    var keyLength = key.Length;
                     maxLength = Math.Max(maxLength, keyLength);
                 }
             }
@@ -188,7 +188,7 @@ namespace DictionaryLib
             // var jsonBytes = Encoding.UTF8.GetBytes(json);
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(this);
 
-            using (var options = new CompressionOptions(compressionLevel: 19))
+            using (var options = new CompressionOptions(19))
             using (var compressor = new Compressor(options))
             {
                 var compressed = compressor.Wrap(jsonBytes);
