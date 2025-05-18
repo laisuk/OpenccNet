@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\OpenccNet\DictionaryLib\DictionaryLib.csproj"/>
+      <ProjectReference Include="..\OpenccNet\OpenccNet.csproj" />
     </ItemGroup>
 
 </Project>

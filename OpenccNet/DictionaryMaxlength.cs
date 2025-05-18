@@ -6,7 +6,7 @@ using System.Text.Json;
 using PeterO.Cbor;
 using ZstdNet;
 
-namespace DictionaryLib
+namespace OpenccNet
 {
     public class DictWithMaxLength
     {

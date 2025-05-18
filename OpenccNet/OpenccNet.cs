@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using DictionaryLib;
 
 namespace OpenccNet
 {
@@ -202,13 +201,18 @@ namespace OpenccNet
                 return "";
             }
 
-            var round1List = new List<DictWithMaxLength>
-            {
-                Dictionary.st_phrases,
-                Dictionary.st_characters
-            };
-
-            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+            var round1List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters,
+                    Dictionary.st_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters
+                };
 
             var refs = new DictRefs(round1List);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
@@ -218,19 +222,18 @@ namespace OpenccNet
 
         public string T2S(string inputText, bool punctuation = false)
         {
-            if (string.IsNullOrEmpty(inputText))
-            {
-                _lastError = "Input text is empty";
-                return "";
-            }
-
-            var round1List = new List<DictWithMaxLength>
-            {
-                Dictionary.ts_phrases,
-                Dictionary.ts_characters
-            };
-
-            if (punctuation) round1List.Add(Dictionary.ts_punctuations);
+            var round1List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters,
+                    Dictionary.ts_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters
+                };
 
             var refs = new DictRefs(round1List);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
@@ -239,13 +242,18 @@ namespace OpenccNet
 
         public string S2Tw(string inputText, bool punctuation = false)
         {
-            var round1List = new List<DictWithMaxLength>
-            {
-                Dictionary.st_phrases,
-                Dictionary.st_characters
-            };
-
-            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+            var round1List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters,
+                    Dictionary.st_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters
+                };
 
             var refs = new DictRefs(round1List)
                 .WithRound2(new List<DictWithMaxLength>
@@ -258,13 +266,18 @@ namespace OpenccNet
 
         public string Tw2S(string inputText, bool punctuation = false)
         {
-            var round2List = new List<DictWithMaxLength>
-            {
-                Dictionary.ts_phrases,
-                Dictionary.ts_characters
-            };
-
-            if (punctuation) round2List.Add(Dictionary.ts_punctuations);
+            var round2List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters,
+                    Dictionary.ts_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters
+                };
 
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
@@ -277,13 +290,18 @@ namespace OpenccNet
 
         public string S2Twp(string inputText, bool punctuation = false)
         {
-            var round1List = new List<DictWithMaxLength>
-            {
-                Dictionary.st_phrases,
-                Dictionary.st_characters
-            };
-
-            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+            var round1List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters,
+                    Dictionary.st_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters
+                };
 
             var refs = new DictRefs(round1List)
                 .WithRound2(new List<DictWithMaxLength>
@@ -299,13 +317,18 @@ namespace OpenccNet
 
         public string Tw2Sp(string inputText, bool punctuation = false)
         {
-            var round2List = new List<DictWithMaxLength>
-            {
-                Dictionary.ts_phrases,
-                Dictionary.ts_characters
-            };
-
-            if (punctuation) round2List.Add(Dictionary.ts_punctuations);
+            var round2List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters,
+                    Dictionary.ts_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters
+                };
 
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
@@ -319,13 +342,18 @@ namespace OpenccNet
 
         public string S2Hk(string inputText, bool punctuation = false)
         {
-            var round1List = new List<DictWithMaxLength>
-            {
-                Dictionary.st_phrases,
-                Dictionary.st_characters
-            };
-
-            if (punctuation) round1List.Add(Dictionary.st_punctuations);
+            var round1List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters,
+                    Dictionary.st_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.st_phrases,
+                    Dictionary.st_characters
+                };
 
             var refs = new DictRefs(round1List).WithRound2(new List<DictWithMaxLength>
             {
@@ -337,13 +365,18 @@ namespace OpenccNet
 
         public string Hk2S(string inputText, bool punctuation = false)
         {
-            var round2List = new List<DictWithMaxLength>
-            {
-                Dictionary.ts_phrases,
-                Dictionary.ts_characters
-            };
-
-            if (punctuation) round2List.Add(Dictionary.ts_punctuations);
+            var round2List = punctuation
+                ? new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters,
+                    Dictionary.ts_punctuations
+                }
+                : new List<DictWithMaxLength>
+                {
+                    Dictionary.ts_phrases,
+                    Dictionary.ts_characters
+                };
 
             var refs = new DictRefs(new List<DictWithMaxLength>
             {

@@ -1,7 +1,8 @@
 ﻿using System.Text.Json;
-using DictionaryLib;
+using OpenccNet;
 
-namespace DictionaryLibTests;
+namespace OpenccNetTests;
+
 
 [TestClass]
 public class DictionaryMaxlengthTests

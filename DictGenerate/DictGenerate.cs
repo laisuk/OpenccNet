@@ -1,5 +1,5 @@
 ﻿using System.CommandLine;
-using DictionaryLib;
+using OpenccNet;
 
 namespace DictGenerate;
 
