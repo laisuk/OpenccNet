@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Text;
 using System.Text.Json;
 using PeterO.Cbor;
-using ZstdNet;
+using ZstdSharp;
 
 namespace OpenccNet
 {
@@ -40,6 +39,25 @@ namespace OpenccNet
             return FromZstd();
         }
 
+        public static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
+        {
+            try
+            {
+                var baseDir = AppContext.BaseDirectory;
+                var fullPath = Path.Combine(baseDir, relativePath);
+
+                using (var inputStream = File.OpenRead(fullPath))
+                using (var decompressionStream = new DecompressionStream(inputStream))
+                {
+                    return JsonSerializer.Deserialize<DictionaryMaxlength>(decompressionStream);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to load dictionary from Zstd.", ex);
+            }
+        }
+
         public static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")
         {
             try
@@ -56,31 +74,6 @@ namespace OpenccNet
             catch (Exception ex)
             {
                 throw new InvalidOperationException("Failed to load dictionary from JSON.", ex);
-            }
-        }
-
-        public static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
-        {
-            try
-            {
-                var baseDir = AppContext.BaseDirectory;
-                var fullPath = Path.Combine(baseDir, relativePath);
-
-                if (!File.Exists(fullPath))
-                    throw new FileNotFoundException($"Zstd dictionary file not found: {fullPath}");
-
-                var compressed = File.ReadAllBytes(fullPath);
-
-                using (var decompressor = new Decompressor())
-                {
-                    var jsonBytes = decompressor.Unwrap(compressed);
-                    var json = Encoding.UTF8.GetString(jsonBytes);
-                    return JsonSerializer.Deserialize<DictionaryMaxlength>(json);
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Failed to load dictionary from Zstd.", ex);
             }
         }
 
@@ -188,11 +181,11 @@ namespace OpenccNet
             // var jsonBytes = Encoding.UTF8.GetBytes(json);
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(this);
 
-            using (var options = new CompressionOptions(19))
-            using (var compressor = new Compressor(options))
+            // using (var options = new CompressionOptions(19))
+            using (var compressor = new Compressor(19))
             {
                 var compressed = compressor.Wrap(jsonBytes);
-                File.WriteAllBytes(path, compressed);
+                File.WriteAllBytes(path, compressed.ToArray());
             }
         }
 
@@ -203,8 +196,7 @@ namespace OpenccNet
             using (var decompressor = new Decompressor())
             {
                 var jsonBytes = decompressor.Unwrap(compressed);
-                var json = Encoding.UTF8.GetString(jsonBytes);
-                return JsonSerializer.Deserialize<DictionaryMaxlength>(json);
+                return JsonSerializer.Deserialize<DictionaryMaxlength>(jsonBytes);
             }
         }
     }
