@@ -509,7 +509,6 @@ namespace OpenccNet
                     case "t2jp":
                         return T2Jp(inputText);
                     default:
-                        _lastError = $"Invalid conversion config requested: {Config}";
                         return inputText; // Return the original input
                 }
             }
