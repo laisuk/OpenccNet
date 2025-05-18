@@ -94,26 +94,27 @@ namespace OpenccNet
         public static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts")
         {
             var baseDir = Path.Combine(AppContext.BaseDirectory, relativeBaseDir);
-            var instance = new DictionaryMaxlength();
-
-            instance.st_characters = LoadFile(Path.Combine(baseDir, "STCharacters.txt"));
-            instance.st_phrases = LoadFile(Path.Combine(baseDir, "STPhrases.txt"));
-            instance.ts_characters = LoadFile(Path.Combine(baseDir, "TSCharacters.txt"));
-            instance.ts_phrases = LoadFile(Path.Combine(baseDir, "TSPhrases.txt"));
-            instance.tw_phrases = LoadFile(Path.Combine(baseDir, "TWPhrases.txt"));
-            instance.tw_phrases_rev = LoadFile(Path.Combine(baseDir, "TWPhrasesRev.txt"));
-            instance.tw_variants = LoadFile(Path.Combine(baseDir, "TWVariants.txt"));
-            instance.tw_variants_rev = LoadFile(Path.Combine(baseDir, "TWVariantsRev.txt"));
-            instance.tw_variants_rev_phrases = LoadFile(Path.Combine(baseDir, "TWVariantsRevPhrases.txt"));
-            instance.hk_variants = LoadFile(Path.Combine(baseDir, "HKVariants.txt"));
-            instance.hk_variants_rev = LoadFile(Path.Combine(baseDir, "HKVariantsRev.txt"));
-            instance.hk_variants_rev_phrases = LoadFile(Path.Combine(baseDir, "HKVariantsRevPhrases.txt"));
-            instance.jps_characters = LoadFile(Path.Combine(baseDir, "JPShinjitaiCharacters.txt"));
-            instance.jps_phrases = LoadFile(Path.Combine(baseDir, "JPShinjitaiPhrases.txt"));
-            instance.jp_variants = LoadFile(Path.Combine(baseDir, "JPVariants.txt"));
-            instance.jp_variants_rev = LoadFile(Path.Combine(baseDir, "JPVariantsRev.txt"));
-            instance.st_punctuations = LoadFile(Path.Combine(baseDir, "STPunctuations.txt"));
-            instance.ts_punctuations = LoadFile(Path.Combine(baseDir, "TSPunctuations.txt"));
+            var instance = new DictionaryMaxlength
+            {
+                st_characters = LoadFile(Path.Combine(baseDir, "STCharacters.txt")),
+                st_phrases = LoadFile(Path.Combine(baseDir, "STPhrases.txt")),
+                ts_characters = LoadFile(Path.Combine(baseDir, "TSCharacters.txt")),
+                ts_phrases = LoadFile(Path.Combine(baseDir, "TSPhrases.txt")),
+                tw_phrases = LoadFile(Path.Combine(baseDir, "TWPhrases.txt")),
+                tw_phrases_rev = LoadFile(Path.Combine(baseDir, "TWPhrasesRev.txt")),
+                tw_variants = LoadFile(Path.Combine(baseDir, "TWVariants.txt")),
+                tw_variants_rev = LoadFile(Path.Combine(baseDir, "TWVariantsRev.txt")),
+                tw_variants_rev_phrases = LoadFile(Path.Combine(baseDir, "TWVariantsRevPhrases.txt")),
+                hk_variants = LoadFile(Path.Combine(baseDir, "HKVariants.txt")),
+                hk_variants_rev = LoadFile(Path.Combine(baseDir, "HKVariantsRev.txt")),
+                hk_variants_rev_phrases = LoadFile(Path.Combine(baseDir, "HKVariantsRevPhrases.txt")),
+                jps_characters = LoadFile(Path.Combine(baseDir, "JPShinjitaiCharacters.txt")),
+                jps_phrases = LoadFile(Path.Combine(baseDir, "JPShinjitaiPhrases.txt")),
+                jp_variants = LoadFile(Path.Combine(baseDir, "JPVariants.txt")),
+                jp_variants_rev = LoadFile(Path.Combine(baseDir, "JPVariantsRev.txt")),
+                st_punctuations = LoadFile(Path.Combine(baseDir, "STPunctuations.txt")),
+                ts_punctuations = LoadFile(Path.Combine(baseDir, "TSPunctuations.txt"))
+            };
 
             return instance;
         }
