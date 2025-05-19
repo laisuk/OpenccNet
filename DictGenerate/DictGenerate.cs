@@ -42,18 +42,18 @@ public static class DictGenerate
 
             Console.WriteLine($"{Blue}Generating dictionary from '{baseDir}'...{Reset}");
 
-            var dict = DictionaryMaxlength.FromDicts(baseDir);
+            // var dict = DictionaryLib.FromDicts(baseDir);
 
             switch (format)
             {
                 case "zstd":
-                    dict.SaveCompressed(outputFile);
+                    DictionaryLib.SaveCompressed(outputFile);
                     break;
                 case "cbor":
-                    dict.SaveCbor(outputFile);
+                    DictionaryLib.SaveCbor(outputFile);
                     break;
                 case "json":
-                    dict.SerializeToJson(outputFile);
+                    DictionaryLib.SerializeToJson(outputFile);
                     break;
             }
 

@@ -120,8 +120,8 @@ public class OpenccNetTests
     public void S2T_WithPunctuation()
     {
         var opencc = new Opencc("s2t");
-        var simplifiedWithPunctuation = "你好“世界”！";
-        var expectedTraditionalWithPunctuation = "你好「世界」！";
+        var simplifiedWithPunctuation = "你好“世界”！“龙马精神”";
+        var expectedTraditionalWithPunctuation = "你好「世界」！「龍馬精神」";
         var actualTraditionalWithPunctuation = opencc.S2T(simplifiedWithPunctuation, true);
         Assert.AreEqual(expectedTraditionalWithPunctuation, actualTraditionalWithPunctuation);
     }
@@ -142,7 +142,7 @@ public class OpenccNetTests
         var opencc = new Opencc(); // Default config is "s2t"
         var simplifiedChar = "发";
         var expectedTraditionalChar = "發";
-        var actualTraditionalChar = opencc.St(simplifiedChar);
+        var actualTraditionalChar = Opencc.St(simplifiedChar);
         Assert.AreEqual(expectedTraditionalChar, actualTraditionalChar);
     }
 
@@ -152,7 +152,7 @@ public class OpenccNetTests
         var opencc = new Opencc(); // Default config is "s2t"
         var traditionalChar = "發";
         var expectedSimplifiedChar = "发";
-        var actualSimplifiedChar = opencc.Ts(traditionalChar);
+        var actualSimplifiedChar = Opencc.Ts(traditionalChar);
         Assert.AreEqual(expectedSimplifiedChar, actualSimplifiedChar);
     }
 
@@ -161,7 +161,7 @@ public class OpenccNetTests
     {
         var opencc = new Opencc();
         var simplifiedText = "这是一个简体中文文本。";
-        Assert.AreEqual(2, opencc.ZhoCheck(simplifiedText));
+        Assert.AreEqual(2, Opencc.ZhoCheck(simplifiedText));
     }
 
     [TestMethod]
@@ -169,7 +169,7 @@ public class OpenccNetTests
     {
         var opencc = new Opencc();
         var traditionalText = "這是一個繁體中文文本。";
-        Assert.AreEqual(1, opencc.ZhoCheck(traditionalText));
+        Assert.AreEqual(1, Opencc.ZhoCheck(traditionalText));
     }
 
     [TestMethod]
@@ -177,7 +177,7 @@ public class OpenccNetTests
     {
         var opencc = new Opencc();
         var neutralText = "This is some English text.";
-        Assert.AreEqual(0, opencc.ZhoCheck(neutralText));
+        Assert.AreEqual(0, Opencc.ZhoCheck(neutralText));
     }
 
     [TestMethod]
@@ -185,6 +185,6 @@ public class OpenccNetTests
     {
         var opencc = new Opencc();
         var emptyText = "";
-        Assert.AreEqual(0, opencc.ZhoCheck(emptyText));
+        Assert.AreEqual(0, Opencc.ZhoCheck(emptyText));
     }
 }

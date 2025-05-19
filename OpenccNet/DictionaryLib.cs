@@ -9,6 +9,8 @@ namespace OpenccNet
 {
     public class DictWithMaxLength
     {
+        // For CBOR, use Dictinary<string, strong>:
+        // public Dictionary<string, string> Data { get; set; } = new Dictionary<string, string>();
         public ConcurrentDictionary<string, string> Data { get; set; } = new ConcurrentDictionary<string, string>();
         public int MaxLength { get; set; }
     }
@@ -33,7 +35,10 @@ namespace OpenccNet
         public DictWithMaxLength jp_variants_rev { get; set; } = new DictWithMaxLength();
         public DictWithMaxLength st_punctuations { get; set; } = new DictWithMaxLength();
         public DictWithMaxLength ts_punctuations { get; set; } = new DictWithMaxLength();
+    }
 
+    public static class DictionaryLib
+    {
         public static DictionaryMaxlength New()
         {
             return FromZstd();
@@ -77,9 +82,9 @@ namespace OpenccNet
             }
         }
 
-        public void SerializeToJson(string path)
+        public static void SerializeToJson(string path)
         {
-            File.WriteAllText(path, JsonSerializer.Serialize(this,
+            File.WriteAllText(path, JsonSerializer.Serialize(FromDicts(),
                 new JsonSerializerOptions
                 {
                     WriteIndented = true
@@ -121,6 +126,7 @@ namespace OpenccNet
 
         private static DictWithMaxLength LoadFile(string path)
         {
+            // var dict = new Dictionary<string, string>();
             var dict = new ConcurrentDictionary<string, string>();
             var maxLength = 1;
 
@@ -156,31 +162,36 @@ namespace OpenccNet
             };
         }
 
-        public void SaveCbor(string path)
+        public static void SaveCbor(string path)
         {
-            var cbor = CBORObject.FromObject(this);
+            var cbor = CBORObject.FromObject(FromDicts());
             File.WriteAllBytes(path, cbor.EncodeToBytes());
         }
 
         public static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")
+
         {
             var baseDir = AppContext.BaseDirectory;
+
             var fullPath = Path.Combine(baseDir, relativePath);
+
             var bytes = File.ReadAllBytes(fullPath);
-            var cbor = CBORObject.DecodeFromBytes(bytes);
+
+            var cbor = CBORObject.DecodeFromBytes(bytes, CBOREncodeOptions.Default);
+
             return cbor.ToObject<DictionaryMaxlength>();
         }
 
-        public byte[] ToCborBytes()
+        public static byte[] ToCborBytes()
         {
-            return CBORObject.FromObject(this).EncodeToBytes();
+            return CBORObject.FromObject(FromDicts()).EncodeToBytes();
         }
 
-        public void SaveCompressed(string path)
+        public static void SaveCompressed(string path)
         {
             // var json = JsonSerializer.Serialize(this);
             // var jsonBytes = Encoding.UTF8.GetBytes(json);
-            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(this);
+            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(FromDicts());
 
             // using (var options = new CompressionOptions(19))
             using (var compressor = new Compressor(19))
