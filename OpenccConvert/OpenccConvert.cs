@@ -1,6 +1,6 @@
-﻿using System.Text;
-using CommandLine;
-using OpenccNet;
+﻿using System.CommandLine;
+using System.Text;
+using OpenccNet; // Assuming OpenccNet is still a valid dependency
 
 namespace OpenccConvert;
 
@@ -8,22 +8,104 @@ internal static class OpenccConvert
 {
     private static readonly object ConsoleLock = new();
 
-    private static int Main(string[] args)
+    private static async Task<int> Main(string[] args)
     {
         // Register the CodePages encoding provider at application startup to enable using single and double byte encodings.
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-        // Set to UTF-8 explicitly
+        // Set to UTF-8 explicitly for console input/output.
+        // Note: System.CommandLine generally handles encoding well, but explicit setting for console can be useful.
         Console.OutputEncoding = Encoding.UTF8;
         Console.InputEncoding = Encoding.UTF8;
 
-        return Parser.Default.ParseArguments<Options>(args)
-            .MapResult(RunOptionsAndReturnExitCode, _ => 1);
+        // Define options
+        var inputFileOption = new Option<string?>(
+            new[] { "-i", "--input" },
+            description: "Read original text from file <input>."
+        );
+
+        var outputFileOption = new Option<string?>(
+            new[] { "-o", "--output" },
+            description: "Write converted text to file <output>."
+        );
+
+        var configOption = new Option<string>(
+            new[] { "-c", "--config" },
+            description: "Conversion configuration: [s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp]"
+        )
+        {
+            IsRequired = true // Mark as required
+        };
+
+        // You could add validation for config values if needed:
+        configOption.AddValidator(result =>
+        {
+            var validConfigs = new HashSet<string>
+                { "s2t", "s2tw", "s2twp", "s2hk", "t2s", "tw2s", "tw2sp", "hk2s", "jp2t", "t2jp" };
+            if (!validConfigs.Contains(result.GetValueForOption(configOption)!))
+            {
+                result.ErrorMessage =
+                    $"Invalid config '{result.GetValueForOption(configOption)}'. Valid options are: {string.Join(", ", validConfigs)}";
+            }
+        });
+
+        var punctOption = new Option<bool>(
+            new[] { "-p", "--punct" },
+            getDefaultValue: () => false, // Default value
+            description: "Punctuation conversion: True|False"
+        );
+
+        var inputEncodingOption = new Option<string>(
+            name: "--in-enc",
+            getDefaultValue: () => "UTF-8", // Default value
+            description: "Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]"
+        );
+
+        var outputEncodingOption = new Option<string>(
+            name: "--out-enc",
+            getDefaultValue: () => "UTF-8", // Default value
+            description: "Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]"
+        );
+
+        // Create a root command
+        var rootCommand = new RootCommand("OpenCC Converter for command-line text conversion.")
+        {
+            inputFileOption,
+            outputFileOption,
+            configOption,
+            punctOption,
+            inputEncodingOption,
+            outputEncodingOption
+        };
+
+        // Set the handler for the root command
+        rootCommand.SetHandler(async (context) =>
+        {
+            var inputFile = context.ParseResult.GetValueForOption(inputFileOption);
+            var outputFile = context.ParseResult.GetValueForOption(outputFileOption);
+            var config = context.ParseResult.GetValueForOption(configOption)!; // Config is required, so can use !
+            var punct = context.ParseResult.GetValueForOption(punctOption);
+            var inputEncoding = context.ParseResult.GetValueForOption(inputEncodingOption)!;
+            var outputEncoding = context.ParseResult.GetValueForOption(outputEncodingOption)!;
+
+            int exitCode =
+                await RunConversionAsync(inputFile, outputFile, config, punct, inputEncoding, outputEncoding);
+            context.ExitCode = exitCode;
+        });
+
+        // Invoke the command line parser
+        return await rootCommand.InvokeAsync(args);
     }
 
-    private static int RunOptionsAndReturnExitCode(Options opts)
+    private static async Task<int> RunConversionAsync(
+        string? inputFile,
+        string? outputFile,
+        string config,
+        bool punct,
+        string inputEncoding,
+        string outputEncoding)
     {
-        if (string.IsNullOrEmpty(opts.Config))
+        if (string.IsNullOrEmpty(config))
         {
             lock (ConsoleLock)
             {
@@ -33,69 +115,69 @@ internal static class OpenccConvert
             return 1;
         }
 
-        var inputStr = ReadInput(opts.InputFile, opts.InputEncoding);
-        var opencc = new Opencc(opts.Config);
-        var outputStr = opencc.Convert(inputStr, opts.Punct);
-        WriteOutput(opts.OutputFile, outputStr, opts.OutputEncoding);
-
-        var inFrom = opts.InputFile ?? "<stdin>";
-        var outTo = opts.OutputFile ?? "<stdout>";
-        lock (ConsoleLock)
+        try
         {
-            Console.Error.WriteLine($"Conversion completed ({opts.Config}): {inFrom} -> {outTo}");
-        }
+            var inputStr = await ReadInputAsync(inputFile, inputEncoding);
+            var opencc = new Opencc(config); // OpenccNet library instance
+            var outputStr = opencc.Convert(inputStr, punct);
+            await WriteOutputAsync(outputFile, outputStr, outputEncoding);
 
-        return 0;
+            var inFrom = inputFile ?? "<stdin>";
+            var outTo = outputFile ?? "<stdout>";
+            lock (ConsoleLock)
+            {
+                Console.Error.WriteLine($"Conversion completed ({config}): {inFrom} -> {outTo}");
+            }
+
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            lock (ConsoleLock)
+            {
+                Console.Error.WriteLine($"Error during conversion: {ex.Message}");
+            }
+
+            return 1;
+        }
     }
 
-    private static string ReadInput(string? inputFile, string inputEncoding)
+    private static async Task<string> ReadInputAsync(string? inputFile, string inputEncoding)
     {
-        if (inputFile != null) return File.ReadAllText(inputFile, Encoding.GetEncoding(inputEncoding));
+        if (inputFile != null)
+        {
+            return await File.ReadAllTextAsync(inputFile, Encoding.GetEncoding(inputEncoding));
+        }
+
         lock (ConsoleLock)
         {
-            Console.Error.WriteLine("Input text to convert, <ctrl-z> or <ctrl-d> to summit：");
+            Console.Error.WriteLine(
+                "Input text to convert, <Ctrl+Z> (Windows) or <Ctrl+D> (Unix) then Enter to submit:");
         }
 
         using var reader = new StreamReader(Console.OpenStandardInput(), Encoding.GetEncoding(inputEncoding));
-        return reader.ReadToEnd();
+        return await reader.ReadToEndAsync();
     }
 
-    private static void WriteOutput(string? outputFile, string outputStr, string outputEncoding)
+    private static async Task WriteOutputAsync(string? outputFile, string outputStr, string outputEncoding)
     {
         var encoding = outputEncoding.Equals("utf-8", StringComparison.InvariantCultureIgnoreCase)
             ? new UTF8Encoding(false) // false = no BOM
             : Encoding.GetEncoding(outputEncoding);
 
         if (outputFile != null)
-            File.WriteAllText(outputFile, outputStr, encoding);
+        {
+            await File.WriteAllTextAsync(outputFile, outputStr, encoding);
+        }
         else
+        {
             lock (ConsoleLock)
             {
-                Console.Error.Write(outputStr);
+                // For console output, use Console.Write/WriteLine directly.
+                // It's generally UTF-8 by default in modern .NET console apps,
+                // but we explicitly set it earlier for consistency.
+                Console.Error.Write(outputStr); // Writing to Error stream as per original code for stdout
             }
-    }
-
-    private class Options
-    {
-        [Option('i', "input", Required = false, HelpText = "Read original text from <file>.")]
-        public string? InputFile { get; } = null;
-
-        [Option('o', "output", Required = false, HelpText = "Write converted text to <file>.")]
-        public string? OutputFile { get; } = null;
-
-        [Option('c', "config", Required = true,
-            HelpText = "Conversion configuration: [s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp]")]
-        public string Config { get; } = string.Empty;
-
-        [Option('p', "punct", Default = false, HelpText = "Punctuation conversion: True/False")]
-        public bool Punct { get; } = false;
-
-        [Option("in-enc", Default = "UTF-8",
-            HelpText = "Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]")]
-        public string InputEncoding { get; } = "UTF-8";
-
-        [Option("out-enc", Default = "UTF-8",
-            HelpText = "Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]")]
-        public string OutputEncoding { get; } = "UTF-8";
+        }
     }
 }

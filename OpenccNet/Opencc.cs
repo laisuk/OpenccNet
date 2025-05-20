@@ -61,6 +61,7 @@ namespace OpenccNet
 
         private string _config;
         private string _lastError;
+        private static DictionaryMaxlength Dictionary { get; set; }
 
         private readonly List<DictWithMaxLength> _round1StPunct;
         private readonly List<DictWithMaxLength> _round1St;
@@ -126,8 +127,6 @@ namespace OpenccNet
                 }
             }
         }
-
-        private static DictionaryMaxlength Dictionary { get; set; } = new DictionaryMaxlength();
 
         public string GetLastError()
         {
