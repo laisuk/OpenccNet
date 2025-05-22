@@ -28,8 +28,10 @@ public class OpenccNetTests
     [TestMethod]
     public void S2TWP_SimpleConversion()
     {
-        var opencc = new Opencc();
-        opencc.Config = "s2twp";
+        var opencc = new Opencc
+        {
+            Config = "s2twp"
+        };
         var simplified = "软件";
         var expectedTaiwan = "軟體";
         var actualTaiwan = opencc.S2Twp(simplified);
@@ -139,7 +141,6 @@ public class OpenccNetTests
     [TestMethod]
     public void ST_SimpleConversion()
     {
-        var opencc = new Opencc(); // Default config is "s2t"
         var simplifiedChar = "发";
         var expectedTraditionalChar = "發";
         var actualTraditionalChar = Opencc.St(simplifiedChar);
@@ -149,7 +150,6 @@ public class OpenccNetTests
     [TestMethod]
     public void TS_SimpleConversion()
     {
-        var opencc = new Opencc(); // Default config is "s2t"
         var traditionalChar = "發";
         var expectedSimplifiedChar = "发";
         var actualSimplifiedChar = Opencc.Ts(traditionalChar);
@@ -159,7 +159,6 @@ public class OpenccNetTests
     [TestMethod]
     public void ZhoCheck_SimplifiedText()
     {
-        var opencc = new Opencc();
         var simplifiedText = "这是一个简体中文文本。";
         Assert.AreEqual(2, Opencc.ZhoCheck(simplifiedText));
     }
@@ -167,7 +166,6 @@ public class OpenccNetTests
     [TestMethod]
     public void ZhoCheck_TraditionalText()
     {
-        var opencc = new Opencc();
         var traditionalText = "這是一個繁體中文文本。";
         Assert.AreEqual(1, Opencc.ZhoCheck(traditionalText));
     }
@@ -175,7 +173,6 @@ public class OpenccNetTests
     [TestMethod]
     public void ZhoCheck_NeutralText()
     {
-        var opencc = new Opencc();
         var neutralText = "This is some English text.";
         Assert.AreEqual(0, Opencc.ZhoCheck(neutralText));
     }
@@ -183,7 +180,6 @@ public class OpenccNetTests
     [TestMethod]
     public void ZhoCheck_EmptyText()
     {
-        var opencc = new Opencc();
         var emptyText = "";
         Assert.AreEqual(0, Opencc.ZhoCheck(emptyText));
     }
