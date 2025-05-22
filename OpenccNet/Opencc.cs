@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -68,10 +67,10 @@ namespace OpenccNet
         private static readonly List<DictWithMaxLength> RoundTs;
 
         static Opencc()
-        {            
+        {
             Dictionary = DictionaryLib.New();
             // Dictionary = DictionaryLib.FromDicts();
-            
+
             RoundStPunct = new List<DictWithMaxLength>
             {
                 Dictionary.st_phrases,
@@ -100,7 +99,7 @@ namespace OpenccNet
         {
             Config = config; // Calls the setter with validation logic           
         }
-        
+
         private static DictionaryMaxlength Dictionary { get; set; }
 
         public string Config
@@ -127,17 +126,52 @@ namespace OpenccNet
             return _lastError;
         }
 
+        // private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries)
+        // {
+        //     var maxWordLength = dictionaries.Count == 0
+        //         ? 1
+        //         : dictionaries.Max(d => d.MaxLength);
+        //
+        //     var splitChunks = SplitStringInclusivePar(text); // Pass delimiters
+        //
+        //     var results = new string[splitChunks.Count];
+        //     Parallel.ForEach(Enumerable.Range(0, splitChunks.Count),
+        //         i => { results[i] = ConvertBy(splitChunks[i], dictionaries, maxWordLength); });
+        //
+        //     return string.Concat(results);
+        // }
+        // And then modify SegmentReplace to use these ranges
         private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries)
         {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
             var maxWordLength = dictionaries.Count == 0
                 ? 1
                 : dictionaries.Max(d => d.MaxLength);
 
-            var splitChunks = SplitStringInclusivePar(text); // Pass delimiters
+            // 1. Get split points sequentially (low allocation)
+            var splitRanges = GetSplitRanges(text);
 
-            var results = new string[splitChunks.Count];
-            Parallel.ForEach(Enumerable.Range(0, splitChunks.Count),
-                i => { results[i] = ConvertBy(splitChunks[i], dictionaries, maxWordLength); });
+            switch (splitRanges.Count)
+            {
+                // If there are no ranges (e.g., empty string or no delimiters)
+                case 0 when !string.IsNullOrEmpty(text):
+                    // Treat the whole text as one chunk if no delimiters
+                    splitRanges.Add(Tuple.Create(0, text.Length));
+                    break;
+                case 0 when string.IsNullOrEmpty(text):
+                    return string.Empty; // Handle empty input
+            }
+
+            var results = new string[splitRanges.Count];
+
+            // 2. Parallel process each identified range
+            Parallel.ForEach(Enumerable.Range(0, splitRanges.Count),
+                i =>
+                {
+                    var range = splitRanges[i];
+                    var segment = text.Substring(range.Item1, range.Item2 - range.Item1); // Substring here, once per segment
+                    results[i] = ConvertBy(segment, dictionaries, maxWordLength);
+                });
 
             return string.Concat(results);
         }
@@ -178,19 +212,16 @@ namespace OpenccNet
                         var wordSpan = remaining.Slice(0, length);
                         wordSpan.CopyTo(buffer);
 
-                        foreach (var dictObj in dictionaries)
+                        foreach (var dictObj in dictionaries) // Removed .Where since we're checking length inside
                         {
-                            if (dictObj.MaxLength < length) continue;
-
+                            if (dictObj.MaxLength < length) continue; // Check MaxLength here
                             buffer.Slice(0, length).CopyTo(keyBuffer);
                             var key = new string(keyBuffer, 0, length);
 
-                            if (dictObj.Data.TryGetValue(key, out var match))
-                            {
-                                bestMatch = match;
-                                bestMatchSpan = wordSpan;
-                                break;
-                            }
+                            if (!dictObj.Data.TryGetValue(key, out var match)) continue;
+                            bestMatch = match;
+                            bestMatchSpan = wordSpan;
+                            break;
                         }
 
                         if (bestMatch != null)
@@ -242,7 +273,7 @@ namespace OpenccNet
                 _lastError = "Input text is empty";
                 return "";
             }
-            
+
             var round1List = punctuation
                 ? RoundTsPunct
                 : RoundTs;
@@ -549,45 +580,76 @@ namespace OpenccNet
             return partialString.Length;
         }
 
-        private static List<string> SplitStringInclusivePar(string input, int minChunkSize = 4096)
+        // private static List<string> SplitStringInclusivePar(string input, int minChunkSize = 4096)
+        // {
+        //     if (string.IsNullOrEmpty(input))
+        //         return new List<string>();
+        //
+        //     var length = input.Length;
+        //     var partitionResults = new ConcurrentBag<List<KeyValuePair<int, string>>>();
+        //
+        //     Parallel.ForEach(Partitioner.Create(0, length, minChunkSize), range =>
+        //     {
+        //         var start = range.Item1;
+        //         var end = range.Item2;
+        //         var localResults = new List<KeyValuePair<int, string>>();
+        //         var currentStart = start;
+        //
+        //         for (var i = start; i < end; i++)
+        //             if (Delimiters.Contains(input[i]))
+        //             {
+        //                 var chunkLength = i - currentStart + 1;
+        //                 if (chunkLength > 0)
+        //                     localResults.Add(new KeyValuePair<int, string>(
+        //                         currentStart, input.Substring(currentStart, chunkLength)));
+        //
+        //                 currentStart = i + 1;
+        //             }
+        //
+        //         if (currentStart < end)
+        //             localResults.Add(new KeyValuePair<int, string>(
+        //                 currentStart, input.Substring(currentStart, end - currentStart)));
+        //
+        //         partitionResults.Add(localResults);
+        //     });
+        //
+        //     // Sort and flatten in one go
+        //     return partitionResults
+        //         .SelectMany(x => x)
+        //         .OrderBy(pair => pair.Key)
+        //         .Select(pair => pair.Value)
+        //         .ToList();
+        // }
+        //
+        private static List<Tuple<int, int>> GetSplitRanges(string input)
         {
             if (string.IsNullOrEmpty(input))
-                return new List<string>();
+                return new List<Tuple<int, int>>();
 
+            var ranges = new List<Tuple<int, int>>();
+            var currentStart = 0;
             var length = input.Length;
-            var partitionResults = new ConcurrentBag<List<KeyValuePair<int, string>>>();
 
-            Parallel.ForEach(Partitioner.Create(0, length, minChunkSize), range =>
+            for (var i = 0; i < length; i++)
             {
-                var start = range.Item1;
-                var end = range.Item2;
-                var localResults = new List<KeyValuePair<int, string>>();
-                var currentStart = start;
+                if (!Delimiters.Contains(input[i])) continue;
+                // Include the delimiter in the chunk
+                var chunkLength = i - currentStart + 1;
+                if (chunkLength > 0)
+                {
+                    ranges.Add(Tuple.Create(currentStart, currentStart + chunkLength));
+                }
+                currentStart = i + 1;
+            }
 
-                for (var i = start; i < end; i++)
-                    if (Delimiters.Contains(input[i]))
-                    {
-                        var chunkLength = i - currentStart + 1;
-                        if (chunkLength > 0)
-                            localResults.Add(new KeyValuePair<int, string>(
-                                currentStart, input.Substring(currentStart, chunkLength)));
+            // Add the last chunk if any
+            if (currentStart < length)
+            {
+                ranges.Add(Tuple.Create(currentStart, length));
+            }
 
-                        currentStart = i + 1;
-                    }
-
-                if (currentStart < end)
-                    localResults.Add(new KeyValuePair<int, string>(
-                        currentStart, input.Substring(currentStart, end - currentStart)));
-
-                partitionResults.Add(localResults);
-            });
-
-            // Sort and flatten in one go
-            return partitionResults
-                .SelectMany(x => x)
-                .OrderBy(pair => pair.Key)
-                .Select(pair => pair.Value)
-                .ToList();
+            return ranges;
         }
+
     }
 }
