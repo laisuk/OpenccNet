@@ -20,17 +20,17 @@ internal static class OpenccConvert
 
         // Define options
         var inputFileOption = new Option<string?>(
-            new[] { "-i", "--input" },
+            ["-i", "--input"],
             description: "Read original text from file <input>."
         );
 
         var outputFileOption = new Option<string?>(
-            new[] { "-o", "--output" },
+            ["-o", "--output"],
             description: "Write converted text to file <output>."
         );
 
         var configOption = new Option<string>(
-            new[] { "-c", "--config" },
+            ["-c", "--config"],
             description: "Conversion configuration: [s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp]"
         )
         {
@@ -50,7 +50,7 @@ internal static class OpenccConvert
         });
 
         var punctOption = new Option<bool>(
-            new[] { "-p", "--punct" },
+            ["-p", "--punct"],
             getDefaultValue: () => false, // Default value
             description: "Punctuation conversion: True|False"
         );

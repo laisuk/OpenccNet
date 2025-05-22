@@ -2,7 +2,7 @@
   "profiles": {
     "OpenccConvert": {
       "commandName": "Project",
-      "commandLineArgs": "-c s2t"
+      "commandLineArgs": "-c s2t -p true"
     }
   }
 }

@@ -11,18 +11,18 @@ public static class DictGenerate
     private static int Main(string[] args)
     {
         var formatOption = new Option<string>(
-            new[] { "-f", "--format" },
+            ["-f", "--format"],
             () => "zstd",
             "Dictionary format: [zstd|cbor|json]"
         ).FromAmong("zstd", "cbor", "json");
 
         var outputOption = new Option<string>(
-            new[] { "-o", "--output" },
+            ["-o", "--output"],
             "Output filename. Default: dictionary_maxlength.<ext>"
         );
 
         var baseDirOption = new Option<string>(
-            new[] { "-b", "--base-dir" },
+            ["-b", "--base-dir"],
             () => "dicts",
             "Base directory containing source dictionary files"
         );

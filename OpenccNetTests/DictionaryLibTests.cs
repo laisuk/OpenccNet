@@ -23,14 +23,22 @@ public class DictionaryLibTests
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Data.Count > 0 || dict.ts_characters.Data.Count > 0);
     }
-    
-    // [TestMethod]
-    // public void TestFromCbor()
-    // {
-    //     var dict = DictionaryLib.FromCbor();
-    //     Assert.IsNotNull(dict);
-    //     Assert.IsTrue(dict.st_characters.Data.Count > 0 || dict.ts_characters.Data.Count > 0);
-    // }
+
+    [TestMethod]
+    public void TestFromJson()
+    {
+        var dict = DictionaryLib.FromJson();
+        Assert.IsNotNull(dict);
+        Assert.IsTrue(dict.st_characters.Data.Count > 0 || dict.ts_characters.Data.Count > 0);
+    }
+
+    [TestMethod]
+    public void TestFromCbor()
+    {
+        var dict = DictionaryLib.FromCbor();
+        Assert.IsNotNull(dict);
+        Assert.IsTrue(dict.st_characters.Data.Count > 0 || dict.ts_characters.Data.Count > 0);
+    }
 
     [TestMethod]
     public void TestSerialization()

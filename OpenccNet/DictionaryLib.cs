@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using PeterO.Cbor;
@@ -9,9 +9,9 @@ namespace OpenccNet
 {
     public class DictWithMaxLength
     {
-        // For CBOR, use Dictinary<string, strong>:
-        // public Dictionary<string, string> Data { get; set; } = new Dictionary<string, string>();
-        public ConcurrentDictionary<string, string> Data { get; set; } = new ConcurrentDictionary<string, string>();
+        // For CBOR, use Dictionary<string, strong>:
+         public Dictionary<string, string> Data { get; set; } = new Dictionary<string, string>();
+        //public ConcurrentDictionary<string, string> Data { get; set; } = new ConcurrentDictionary<string, string>();
         public int MaxLength { get; set; }
     }
 
@@ -44,7 +44,7 @@ namespace OpenccNet
             return FromZstd();
         }
 
-        public static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
+        private static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
         {
             try
             {
@@ -126,8 +126,8 @@ namespace OpenccNet
 
         private static DictWithMaxLength LoadFile(string path)
         {
-            // var dict = new Dictionary<string, string>();
-            var dict = new ConcurrentDictionary<string, string>();
+             var dict = new Dictionary<string, string>();
+            //var dict = new ConcurrentDictionary<string, string>();
             var maxLength = 1;
 
             if (!File.Exists(path)) throw new FileNotFoundException($"Dictionary file not found: {path}");
