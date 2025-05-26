@@ -8,23 +8,46 @@ using ZstdSharp;
 
 namespace OpenccNet
 {
+    /// <summary>
+    /// Represents a dictionary with string keys and values, and tracks the maximum key length.
+    /// Used for efficient word/phrase lookup in OpenCC conversion.
+    /// </summary>
     public class DictWithMaxLength
     {
+        /// <summary>
+        /// The mapping of keys to values for conversion.
+        /// </summary>
         public Dictionary<string, string> Data { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
+        /// <summary>
+        /// The maximum length of any key in the dictionary.
+        /// Used for optimizing longest-match lookups.
+        /// </summary>
         public int MaxLength { get; set; }
 
-        // Optimized lookup method
+        /// <summary>
+        /// Attempts to get the value associated with the specified key.
+        /// Aggressively inlined for performance.
+        /// </summary>
+        /// <param name="key">The key to locate.</param>
+        /// <param name="value">The value associated with the key, if found.</param>
+        /// <returns>True if the key was found; otherwise, false.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetValue(string key, out string value)
         {
             return Data.TryGetValue(key, out value);
         }
 
-        // For statistics and optimization
+        /// <summary>
+        /// Gets the number of entries in the dictionary.
+        /// </summary>
         public int Count => Data.Count;
     }
 
+    /// <summary>
+    /// Holds all conversion dictionaries for different OpenCC conversion types.
+    /// Each property represents a specific conversion mapping.
+    /// </summary>
     public class DictionaryMaxlength
     {
         public DictWithMaxLength st_characters { get; set; } = new DictWithMaxLength();
@@ -47,12 +70,22 @@ namespace OpenccNet
         public DictWithMaxLength ts_punctuations { get; set; } = new DictWithMaxLength();
     }
 
+    /// <summary>
+    /// Provides methods to load, save, and cache OpenCC conversion dictionaries
+    /// in various formats (JSON, CBOR, Zstd-compressed).
+    /// </summary>
     public static class DictionaryLib
     {
-        // Cache for loaded dictionaries to avoid reloading
+        // Lock object for thread-safe caching
         private static readonly object LockObject = new object();
+
+        // Cached instance of the loaded dictionary to avoid repeated disk I/O
         private static DictionaryMaxlength _cachedDictionary;
 
+        /// <summary>
+        /// Loads and caches the dictionary from a Zstd-compressed file.
+        /// Returns the cached instance on subsequent calls.
+        /// </summary>
         public static DictionaryMaxlength New()
         {
             if (_cachedDictionary == null)
@@ -69,6 +102,11 @@ namespace OpenccNet
             return _cachedDictionary;
         }
 
+        /// <summary>
+        /// Loads the dictionary from a Zstd-compressed JSON file.
+        /// </summary>
+        /// <param name="relativePath">Relative path to the Zstd file.</param>
+        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
         private static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
         {
             try
@@ -88,6 +126,11 @@ namespace OpenccNet
             }
         }
 
+        /// <summary>
+        /// Loads the dictionary from a JSON file.
+        /// </summary>
+        /// <param name="relativePath">Relative path to the JSON file.</param>
+        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
         public static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")
         {
             try
@@ -107,6 +150,10 @@ namespace OpenccNet
             }
         }
 
+        /// <summary>
+        /// Serializes the current dictionary (from text files) to a JSON file.
+        /// </summary>
+        /// <param name="path">The output file path.</param>
         public static void SerializeToJson(string path)
         {
             File.WriteAllText(path, JsonSerializer.Serialize(FromDicts(),
@@ -116,11 +163,21 @@ namespace OpenccNet
                 }));
         }
 
+        /// <summary>
+        /// Loads the dictionary from a JSON file at the specified path.
+        /// </summary>
+        /// <param name="path">The path to the JSON file.</param>
+        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
         public static DictionaryMaxlength DeserializedFromJson(string path)
         {
             return FromJson(path);
         }
 
+        /// <summary>
+        /// Loads all dictionary files from the specified directory and constructs a <see cref="DictionaryMaxlength"/> instance.
+        /// </summary>
+        /// <param name="relativeBaseDir">Relative directory containing dictionary text files.</param>
+        /// <returns>A fully populated <see cref="DictionaryMaxlength"/> instance.</returns>
         public static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts")
         {
             var baseDir = Path.Combine(AppContext.BaseDirectory, relativeBaseDir);
@@ -149,6 +206,12 @@ namespace OpenccNet
             return instance;
         }
 
+        /// <summary>
+        /// Loads a dictionary from a text file, extracting key-value pairs and tracking the maximum key length.
+        /// Each line should be tab-separated: key[TAB]value.
+        /// </summary>
+        /// <param name="path">The path to the dictionary text file.</param>
+        /// <returns>A <see cref="DictWithMaxLength"/> instance with loaded data.</returns>
         private static DictWithMaxLength LoadFile(string path)
         {
             var dict = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -205,10 +268,6 @@ namespace OpenccNet
                     }
                 }
                 // Optional: Handle lines that do not contain a tab separator if needed
-                // else
-                // {
-                //     // Log a warning or throw an error for malformed lines
-                // }
             }
 
             return new DictWithMaxLength
@@ -218,31 +277,43 @@ namespace OpenccNet
             };
         }
 
+        /// <summary>
+        /// Serializes the dictionary to CBOR format and saves it to a file.
+        /// </summary>
+        /// <param name="path">The output file path.</param>
         public static void SaveCbor(string path)
         {
             var cbor = CBORObject.FromObject(FromDicts());
             File.WriteAllBytes(path, cbor.EncodeToBytes());
         }
 
+        /// <summary>
+        /// Loads the dictionary from a CBOR file.
+        /// </summary>
+        /// <param name="relativePath">Relative path to the CBOR file.</param>
+        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
         public static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")
-
         {
             var baseDir = AppContext.BaseDirectory;
-
             var fullPath = Path.Combine(baseDir, relativePath);
-
             var bytes = File.ReadAllBytes(fullPath);
-
             var cbor = CBORObject.DecodeFromBytes(bytes, CBOREncodeOptions.Default);
-
             return cbor.ToObject<DictionaryMaxlength>();
         }
 
+        /// <summary>
+        /// Serializes the dictionary to CBOR format and returns the bytes.
+        /// </summary>
+        /// <returns>CBOR-encoded byte array.</returns>
         public static byte[] ToCborBytes()
         {
             return CBORObject.FromObject(FromDicts()).EncodeToBytes();
         }
 
+        /// <summary>
+        /// Serializes the dictionary to JSON, compresses it with Zstd, and saves to a file.
+        /// </summary>
+        /// <param name="path">The output file path.</param>
         public static void SaveCompressed(string path)
         {
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(FromDicts());
@@ -254,6 +325,11 @@ namespace OpenccNet
             }
         }
 
+        /// <summary>
+        /// Loads the dictionary from a Zstd-compressed JSON file.
+        /// </summary>
+        /// <param name="path">The path to the compressed file.</param>
+        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
         public static DictionaryMaxlength LoadCompressed(string path)
         {
             var compressed = File.ReadAllBytes(path);
