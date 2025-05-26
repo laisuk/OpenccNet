@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using PeterO.Cbor;
 using ZstdSharp;
@@ -9,10 +10,19 @@ namespace OpenccNet
 {
     public class DictWithMaxLength
     {
-        // For CBOR, use Dictionary<string, strong>:
-         public Dictionary<string, string> Data { get; set; } = new Dictionary<string, string>();
-        //public ConcurrentDictionary<string, string> Data { get; set; } = new ConcurrentDictionary<string, string>();
+        public Dictionary<string, string> Data { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+
         public int MaxLength { get; set; }
+
+        // Optimized lookup method
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGetValue(string key, out string value)
+        {
+            return Data.TryGetValue(key, out value);
+        }
+
+        // For statistics and optimization
+        public int Count => Data.Count;
     }
 
     public class DictionaryMaxlength
@@ -39,9 +49,29 @@ namespace OpenccNet
 
     public static class DictionaryLib
     {
+        // public static DictionaryMaxlength New()
+        // {
+        //     return FromZstd();
+        // }
+
+        // Cache for loaded dictionaries to avoid reloading
+        private static readonly object LockObject = new object();
+        private static DictionaryMaxlength _cachedDictionary;
+
         public static DictionaryMaxlength New()
         {
-            return FromZstd();
+            if (_cachedDictionary == null)
+            {
+                lock (LockObject)
+                {
+                    if (_cachedDictionary == null)
+                    {
+                        _cachedDictionary = FromZstd();
+                    }
+                }
+            }
+
+            return _cachedDictionary;
         }
 
         private static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
@@ -126,33 +156,64 @@ namespace OpenccNet
 
         private static DictWithMaxLength LoadFile(string path)
         {
-             var dict = new Dictionary<string, string>();
-            //var dict = new ConcurrentDictionary<string, string>();
+            var dict = new Dictionary<string, string>(StringComparer.Ordinal);
             var maxLength = 1;
 
             if (!File.Exists(path)) throw new FileNotFoundException($"Dictionary file not found: {path}");
-            // return new DictWithMaxLength
-            // {
-            //     Data = dict,
-            //     MaxLength = maxLength
-            // };
-            foreach (var line in File.ReadAllLines(path))
-            {
-                var trimmed = line.Trim();
-                if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#")) continue;
 
-                var parts = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 2)
+            foreach (var line in File.ReadLines(path))
+            {
+                ReadOnlySpan<char> lineSpan = line.AsSpan().Trim();
+
+                // Skip empty lines, whitespace-only lines, or comment lines
+                if (lineSpan.IsEmpty || lineSpan.IsWhiteSpace() || (lineSpan.Length > 0 && lineSpan[0] == '#'))
                 {
-                    var key = parts[0];
-                    var value = parts[1];
-                    dict[key] = value;
-                    // Use SetItem to return a new dictionary
-                    // dict = dict.SetItem(key, value);
-                    // int keyLength = new StringInfo(key).LengthInTextElements;
-                    var keyLength = key.Length;
-                    maxLength = Math.Max(maxLength, keyLength);
+                    continue;
                 }
+
+                // Find the index of the first tab character
+                int tabIndex = lineSpan.IndexOf('\t');
+
+                if (tabIndex != -1)
+                {
+                    ReadOnlySpan<char> keySpan = lineSpan.Slice(0, tabIndex);
+                    ReadOnlySpan<char> valueFullSpan = lineSpan.Slice(tabIndex + 1);
+
+                    // Find the index of the first space in the value part
+                    int firstSpaceIndex = valueFullSpan.IndexOf(' ');
+
+                    ReadOnlySpan<char> valueSpan;
+                    if (firstSpaceIndex != -1)
+                    {
+                        // If a space is found, take only the part before the first space
+                        valueSpan = valueFullSpan.Slice(0, firstSpaceIndex);
+                    }
+                    else
+                    {
+                        // If no space, the entire valueFullSpan is the desired value
+                        valueSpan = valueFullSpan;
+                    }
+
+                    // Trim any leading/trailing whitespace from the key and the extracted value part
+                    keySpan = keySpan.Trim();
+                    valueSpan = valueSpan.Trim();
+
+                    // Convert ReadOnlySpan<char> to string ONLY when storing in the dictionary
+                    var key = keySpan.ToString();
+                    var value = valueSpan.ToString();
+
+                    // Only add if both key and value are non-empty after trimming
+                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
+                    {
+                        dict[key] = value;
+                        maxLength = Math.Max(maxLength, key.Length);
+                    }
+                }
+                // Optional: Handle lines that do not contain a tab separator if needed
+                // else
+                // {
+                //     // Log a warning or throw an error for malformed lines
+                // }
             }
 
             return new DictWithMaxLength
@@ -189,11 +250,8 @@ namespace OpenccNet
 
         public static void SaveCompressed(string path)
         {
-            // var json = JsonSerializer.Serialize(this);
-            // var jsonBytes = Encoding.UTF8.GetBytes(json);
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(FromDicts());
 
-            // using (var options = new CompressionOptions(19))
             using (var compressor = new Compressor(19))
             {
                 var compressed = compressor.Wrap(jsonBytes);
