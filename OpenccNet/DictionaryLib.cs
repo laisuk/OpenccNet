@@ -49,11 +49,6 @@ namespace OpenccNet
 
     public static class DictionaryLib
     {
-        // public static DictionaryMaxlength New()
-        // {
-        //     return FromZstd();
-        // }
-
         // Cache for loaded dictionaries to avoid reloading
         private static readonly object LockObject = new object();
         private static DictionaryMaxlength _cachedDictionary;
