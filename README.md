@@ -1,4 +1,4 @@
-# OpenccNetLib
+# OpenccNet
 
 **OpenccNetLib** is a high-performance .NET Standard 2.0 library for Chinese text conversion, supporting Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. It is inspired by [OpenCC](https://github.com/BYVoid/OpenCC) and optimized for speed and memory efficiency in .NET environments.
 
@@ -184,5 +184,5 @@ Options:
 
 ---
 
-**OpenccNetLib** is not affiliated with the original OpenCC project, but aims to provide a compatible and high-performance solution for .NET developers.
+**OpenccNet** is not affiliated with the original OpenCC project, but aims to provide a compatible and high-performance solution for .NET developers.
 
