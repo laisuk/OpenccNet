@@ -80,7 +80,8 @@ opencc.S2T("汉字");
 // Simplified to Traditional opencc.T2S("漢字");      
 // Traditional to Simplified opencc.S2Tw("汉字");     
 // Simplified to Taiwan Traditional opencc.T2Jp("漢字");     
-// Traditional to Japanese Kanji // ...and more
+// Traditional to Japanese Kanji
+// ...and more
 ```
 
 ### Error Handling
