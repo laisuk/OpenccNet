@@ -10,6 +10,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
         <PackageReference Include="MSTest" Version="3.9.1" />
+        <PackageReference Include="System.Memory" Version="4.6.3" />
     </ItemGroup>
 
     <ItemGroup>
@@ -17,7 +18,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OpenccNet\OpenccNet.csproj"/>
+        <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj" />
     </ItemGroup>
 
 </Project>

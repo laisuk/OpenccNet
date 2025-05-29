@@ -6,7 +6,7 @@ using System.Text.Json;
 using PeterO.Cbor;
 using ZstdSharp;
 
-namespace OpenccNet
+namespace OpenccNetLib
 {
     /// <summary>
     /// Represents a dictionary with string keys and values, and tracks the maximum key length.

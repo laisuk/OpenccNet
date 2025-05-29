@@ -1,4 +1,4 @@
-﻿using OpenccNet;
+﻿using OpenccNetLib;
 
 namespace OpenccNetTests;
 

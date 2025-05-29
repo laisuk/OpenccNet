@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\OpenccNet\OpenccNet.csproj" />
+      <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿using System.CommandLine;
 using System.Text;
-using OpenccNet; // Assuming OpenccNet is still a valid dependency
+using OpenccNetLib; // Assuming OpenccNetLib is still a valid dependency
 
 namespace OpenccConvert;
 
@@ -118,7 +118,7 @@ internal static class OpenccConvert
         try
         {
             var inputStr = await ReadInputAsync(inputFile, inputEncoding);
-            var opencc = new Opencc(config); // OpenccNet library instance
+            var opencc = new Opencc(config); // OpenccNetLib library instance
             var outputStr = opencc.Convert(inputStr, punct);
             await WriteOutputAsync(outputFile, outputStr, outputEncoding);
 

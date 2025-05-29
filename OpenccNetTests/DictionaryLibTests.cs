@@ -1,5 +1,5 @@
 ﻿using System.Text.Json;
-using OpenccNet;
+using OpenccNetLib;
 
 namespace OpenccNetTests;
 

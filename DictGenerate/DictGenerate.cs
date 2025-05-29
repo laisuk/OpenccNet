@@ -1,5 +1,5 @@
 ﻿using System.CommandLine;
-using OpenccNet;
+using OpenccNetLib;
 
 namespace DictGenerate;
 

@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
 
     <!-- Package Information for NuGet -->
-    <PackageId>OpenccNet</PackageId>
+    <PackageId>OpenccNetLib</PackageId>
     <Version>1.0.0</Version>
     <Authors>laisuk</Authors>
     <Description>OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese</Description>
@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="PeterO.Cbor" Version="4.5.5" />
+    <PackageReference Include="System.Memory" Version="4.6.3" />
     <PackageReference Include="System.Text.Json" Version="8.0.5"/>
     <PackageReference Include="ZstdSharp.Port" Version="0.8.5" />
   </ItemGroup>

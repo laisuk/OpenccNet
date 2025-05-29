@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OpenccNet
+namespace OpenccNetLib
 {
     /// <summary>
     /// Helper class for managing multiple rounds of dictionary references for multi-stage text conversion.
