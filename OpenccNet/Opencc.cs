@@ -294,7 +294,7 @@ namespace OpenccNet
                         }
                     }
 
-                FoundMatch:
+                    FoundMatch:
                     if (bestMatch != null)
                     {
                         resultBuilder.Append(bestMatch);
@@ -646,10 +646,10 @@ namespace OpenccNet
 
         /// <summary>
         /// Checks if the input text is Simplified, Traditional, or neither.
-        /// Returns 2 if Simplified, 1 if Traditional, 0 otherwise.
+        /// Returns 1 if Traditional, 2 if Simplified, 0 otherwise.
         /// </summary>
         /// <param name="inputText">The input text to check.</param>
-        /// <returns>2 for Simplified, 1 for Traditional, 0 for neither.</returns>
+        /// <returns>1 for Traditional, 2 for Simplified, 0 for neither.</returns>
         public static int ZhoCheck(string inputText)
         {
             if (string.IsNullOrEmpty(inputText)) return 0;
