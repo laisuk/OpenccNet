@@ -22,7 +22,7 @@
 	- `dicts\*.*` Others dictionary files for different configurations.
  
 ```bash
-dotnet add package OpenccNet
+dotnet add package OpenccNetLib --version 1.0.0
 ```
 
 Or, clone and include the source files in your project.
@@ -32,7 +32,7 @@ Or, clone and include the source files in your project.
 ### Basic Example
 
 ```csharp
-using OpenccNet;
+using OpenccNetLib;
 var opencc = new Opencc("s2t"); // Simplified to Traditional 
 string traditional = opencc.Convert("汉字转换测试"); 
 Console.WriteLine(traditional);
@@ -74,7 +74,7 @@ Console.WriteLine(result);
 You can also use direct methods for specific conversions:
 
 ```csharp
-using OpenccNet;
+using OpenccNetLib;
 var opencc = new Opencc();
 opencc.S2T("汉字");      
 // Simplified to Traditional opencc.T2S("漢字");      
@@ -97,7 +97,7 @@ Console.WriteLine(error); // Output the last error message
 Detect if a string is Simplified, Traditional, or neither:
 
 ```csharp
-using OpenccNet;
+using OpenccNetLib;
 int result = Opencc.ZhoCheck("汉字"); // Returns 2 for Simplified, 1 for Traditional, 0 for neither
 Console.WriteLine(result); // Output: 2 (for Simplified)
 ```
