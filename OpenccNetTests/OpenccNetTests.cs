@@ -183,4 +183,14 @@ public class OpenccNetTests
         var emptyText = "";
         Assert.AreEqual(0, Opencc.ZhoCheck(emptyText));
     }
+    
+    [TestMethod]
+    public void UseCustomDictionary()
+    {
+        Opencc.UseCustomDictionary(DictionaryLib.FromDicts());
+        var opencc = new Opencc("s2t");
+        const string sText = "美丽汉字";
+        const string tText = "美麗漢字";
+        Assert.AreEqual(tText, opencc.Convert(sText));
+    }
 }

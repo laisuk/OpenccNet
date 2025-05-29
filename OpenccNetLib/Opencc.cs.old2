@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
@@ -94,148 +94,57 @@ namespace OpenccNetLib
         private string _config;
         private string _lastError;
 
-        // --- START Lazy<T> Implementation ---
-
-        // Use Lazy<T> for the dictionary and derived lists
-        // Initialize these in the static constructor.
-        private static Lazy<DictionaryMaxlength> _lazyDictionary;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundStPunct;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundSt;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundTsPunct;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundTs;
-
-        // Static constructor to initialize the Lazy<T> instances.
-        // This runs once, automatically and thread-safely, when the Opencc class is first accessed.
-        static Opencc()
-        {
-            InitializeLazyLoaders(DictionaryLib.New()); // Initialize with the default dictionary
-        }
-
-        /// <summary>
-        /// Gets the loaded dictionary set for all conversion types.
-        /// This property will lazily load the default dictionary if no custom one has been set.
-        /// </summary>
-        private static DictionaryMaxlength Dictionary => _lazyDictionary.Value;
-
-        /// <summary>
-        /// Helper method to create the Lazy<T/> instances for the dictionary and its derived lists.
-        /// This is used both for default loading and when a custom dictionary is provided.
-        /// </summary>
-        /// <param name="initialDictionary">The dictionary instance to use for initialization.</param>
-        private static void InitializeLazyLoaders(DictionaryMaxlength initialDictionary)
-        {
-            // The factory method for _lazyDictionary.
-            // This ensures that the dictionary is set up, and then the derived lists are configured based on it.
-            _lazyDictionary = new Lazy<DictionaryMaxlength>(() => initialDictionary, LazyThreadSafetyMode.ExecutionAndPublication); // Ensures thread safety for the Lazy<T> itself
-
-            // Initialize Lazy<T> instances for the round lists.
-            // Their factory methods will access the _lazyDictionary.Value, ensuring it's loaded.
-            _lazyRoundStPunct = new Lazy<List<DictWithMaxLength>>(() => CreateRoundStPunctList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-            _lazyRoundSt = new Lazy<List<DictWithMaxLength>>(() => CreateRoundStList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-            _lazyRoundTsPunct = new Lazy<List<DictWithMaxLength>>(() => CreateRoundTsPunctList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-            _lazyRoundTs = new Lazy<List<DictWithMaxLength>>(() => CreateRoundTsList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-        }
-
-        // Helper methods for creating the specific round lists from a given DictionaryMaxlength instance.
-        private static List<DictWithMaxLength> CreateRoundStPunctList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.st_phrases,
-                dictionary.st_characters,
-                dictionary.st_punctuations
-            };
-        }
-
-        private static List<DictWithMaxLength> CreateRoundStList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.st_phrases,
-                dictionary.st_characters
-            };
-        }
-
-        private static List<DictWithMaxLength> CreateRoundTsPunctList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.ts_phrases,
-                dictionary.ts_characters,
-                dictionary.ts_punctuations
-            };
-        }
-
-        private static List<DictWithMaxLength> CreateRoundTsList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.ts_phrases,
-                dictionary.ts_characters
-            };
-        }
-
-        // === Public Static Methods for Custom Dictionary Loading (Optional for Users) ===
-
-        /// <summary>
-        /// Overrides the default Opencc dictionary with a custom DictionaryMaxlength instance.
-        /// This method should be called once at application startup, if a custom dictionary is desired.
-        /// </summary>
-        /// <param name="customDictionary">The custom dictionary instance.</param>
-        public static void UseCustomDictionary(DictionaryMaxlength customDictionary)
-        {
-            if (customDictionary == null)
-            {
-                throw new ArgumentNullException(nameof(customDictionary), "Custom dictionary cannot be null.");
-            }
-
-            // Re-initialize the Lazy<T> instances to point to the new custom dictionary.
-            // This effectively "resets" the lazy loading for the custom dictionary.
-            InitializeLazyLoaders(customDictionary);
-        }
-
-        /// <summary>
-        /// Overrides the default Opencc dictionary by loading it from a specified path.
-        /// This method should be called once at application startup, if custom dictionary is desired.
-        /// </summary>
-        /// <param name="dictionaryPath">The path to the dictionary file(s).</param>
-        public static void UseDictionaryFromPath(string dictionaryPath)
-        {
-            UseCustomDictionary(DictionaryLib.FromDicts(dictionaryPath));
-        }
-
-        /// <summary>
-        /// Overrides the default Opencc dictionary by loading it from a JSON string.
-        /// This method should be called once at application startup, if custom dictionary is desired.
-        /// </summary>
-        /// <param name="jsonString">The JSON string representing the dictionary.</param>
-        public static void UseDictionaryFromJson(string jsonString)
-        {
-            UseCustomDictionary(DictionaryLib.FromJson(jsonString));
-        }
-
-        // --- END Lazy<T> Implementation ---
+        // Cached lists of dictionaries for each conversion round.
+        private static readonly List<DictWithMaxLength> RoundStPunct;
+        private static readonly List<DictWithMaxLength> RoundSt;
+        private static readonly List<DictWithMaxLength> RoundTsPunct;
+        private static readonly List<DictWithMaxLength> RoundTs;
 
         // Thread-local StringBuilder for efficient string concatenation.
         private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
             new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
 
+        static Opencc()
+        {
+            Dictionary = DictionaryLib.New();
+
+            RoundStPunct = new List<DictWithMaxLength>
+            {
+                Dictionary.st_phrases,
+                Dictionary.st_characters,
+                Dictionary.st_punctuations
+            };
+            RoundSt = new List<DictWithMaxLength>
+            {
+                Dictionary.st_phrases,
+                Dictionary.st_characters
+            };
+            RoundTsPunct = new List<DictWithMaxLength>
+            {
+                Dictionary.ts_phrases,
+                Dictionary.ts_characters,
+                Dictionary.ts_punctuations
+            };
+            RoundTs = new List<DictWithMaxLength>
+            {
+                Dictionary.ts_phrases,
+                Dictionary.ts_characters
+            };
+        }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Opencc"/> class with the specified configuration.
-        /// This constructor ensures the global dictionary and its associated lists are initialized.
         /// </summary>
         /// <param name="config">The conversion configuration (e.g., "s2t", "t2s").</param>
         public Opencc(string config = null)
         {
-            Config = config;
-            // Accessing the Dictionary property's Value ensures all Lazy<T> instances
-            // (for the dictionary and all round lists) are initialized once, lazily, and thread-safely.
-            var _ = Dictionary;
+            Config = config; // Calls the setter with validation logic
         }
+
+        /// <summary>
+        /// Gets the loaded dictionary set for all conversion types.
+        /// </summary>
+        private static DictionaryMaxlength Dictionary { get; set; }
 
         /// <summary>
         /// Gets or sets the current conversion configuration.
@@ -420,7 +329,7 @@ namespace OpenccNetLib
                 return string.Empty;
             }
 
-            var round1List = punctuation ? _lazyRoundStPunct.Value : _lazyRoundSt.Value;
+            var round1List = punctuation ? RoundStPunct : RoundSt;
             var refs = new DictRefs(round1List);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
@@ -439,7 +348,7 @@ namespace OpenccNetLib
                 return string.Empty;
             }
 
-            var round1List = punctuation ? _lazyRoundTsPunct.Value : _lazyRoundTs.Value;
+            var round1List = punctuation ? RoundTsPunct : RoundTs;
             var refs = new DictRefs(round1List);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
@@ -450,8 +359,8 @@ namespace OpenccNetLib
         public string S2Tw(string inputText, bool punctuation = false)
         {
             var round1List = punctuation
-                ? _lazyRoundStPunct.Value
-                : _lazyRoundSt.Value;
+                ? RoundStPunct
+                : RoundSt;
 
             var refs = new DictRefs(round1List)
                 .WithRound2(new List<DictWithMaxLength>
@@ -468,8 +377,8 @@ namespace OpenccNetLib
         public string Tw2S(string inputText, bool punctuation = false)
         {
             var round2List = punctuation
-                ? _lazyRoundTsPunct.Value
-                : _lazyRoundTs.Value;
+                ? RoundTsPunct
+                : RoundTs;
 
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
@@ -486,8 +395,8 @@ namespace OpenccNetLib
         public string S2Twp(string inputText, bool punctuation = false)
         {
             var round1List = punctuation
-                ? _lazyRoundStPunct.Value
-                : _lazyRoundSt.Value;
+                ? RoundStPunct
+                : RoundSt;
 
             var refs = new DictRefs(round1List)
                 .WithRound2(new List<DictWithMaxLength>
@@ -507,8 +416,8 @@ namespace OpenccNetLib
         public string Tw2Sp(string inputText, bool punctuation = false)
         {
             var round2List = punctuation
-                ? _lazyRoundTsPunct.Value
-                : _lazyRoundTs.Value;
+                ? RoundTsPunct
+                : RoundTs;
 
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
@@ -526,8 +435,8 @@ namespace OpenccNetLib
         public string S2Hk(string inputText, bool punctuation = false)
         {
             var round1List = punctuation
-                ? _lazyRoundStPunct.Value
-                : _lazyRoundSt.Value;
+                ? RoundStPunct
+                : RoundSt;
 
             var refs = new DictRefs(round1List).WithRound2(new List<DictWithMaxLength>
             {
@@ -543,8 +452,8 @@ namespace OpenccNetLib
         public string Hk2S(string inputText, bool punctuation = false)
         {
             var round2List = punctuation
-                ? _lazyRoundTsPunct.Value
-                : _lazyRoundTs.Value;
+                ? RoundTsPunct
+                : RoundTs;
 
             var refs = new DictRefs(new List<DictWithMaxLength>
             {
