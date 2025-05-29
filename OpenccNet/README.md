@@ -136,14 +136,6 @@ Console.WriteLine(result); // Output: 2 (for Simplified)
 - Dictionaries are loaded and cached on first use.
 - Data files are expected in the `dicts/` directory (see `DictionaryLib` for details).
 
-## License
-
-[MIT](LICENSE)
-
----
-
-**OpenccNet** is not affiliated with the original OpenCC project, but aims to provide a compatible and high-performance solution for .NET developers.
-
 ## Add-On Tools
 
 ### OpenccConvert
@@ -184,3 +176,12 @@ Options:
   -?, -h, --help                 Show help and usage information
   
 ```
+
+## License
+
+[MIT](LICENSE)
+
+---
+
+**OpenccNet** is not affiliated with the original OpenCC project, but aims to provide a compatible and high-performance solution for .NET developers.
+
