@@ -17,6 +17,7 @@
     <!-- Optional but recommended -->
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Title>OpenccNet Library</Title>
   </PropertyGroup>
 
   <ItemGroup>
