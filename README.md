@@ -180,7 +180,7 @@ Options:
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE.txt)
 
 ---
 
