@@ -103,6 +103,18 @@ int result = Opencc.ZhoCheck("汉字"); // Returns 2 for Simplified, 1 for Tradi
 Console.WriteLine(result); // Output: 2 (for Simplified)
 ```
 
+### Using Custom Dictionary
+
+Library default to use zstd compressed dictionary Lexicon, this can be changed to custom dictionary (JSON, CBOR or "baseDir/*.txt")before instantiate Opencc() :
+
+```csharp
+using OpenccNetLib;
+Opencc.UseCustomDictionary(DictionaryLib.FromDicts()) // Init only onece, dicts from baseDir "./dicts/"
+var opencc = new Opencc("s2t"); // Simplified to Traditional 
+string traditional = opencc.Convert("汉字转换测试"); 
+Console.WriteLine(traditional); // Output: 漢字轉換測試
+```
+
 ## Performance
 
 - Uses static dictionary caching and thread-local buffers for high throughput.
