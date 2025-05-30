@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -126,7 +127,9 @@ namespace OpenccNetLib
         {
             // The factory method for _lazyDictionary.
             // This ensures that the dictionary is set up, and then the derived lists are configured based on it.
-            _lazyDictionary = new Lazy<DictionaryMaxlength>(() => initialDictionary, LazyThreadSafetyMode.ExecutionAndPublication); // Ensures thread safety for the Lazy<T> itself
+            _lazyDictionary =
+                new Lazy<DictionaryMaxlength>(() => initialDictionary,
+                    LazyThreadSafetyMode.ExecutionAndPublication); // Ensures thread safety for the Lazy<T> itself
 
             // Initialize Lazy<T> instances for the round lists.
             // Their factory methods will access the _lazyDictionary.Value, ensuring it's loaded.
@@ -202,10 +205,10 @@ namespace OpenccNetLib
         /// Overrides the default Opencc dictionary by loading it from a specified path.
         /// This method should be called once at application startup, if custom dictionary is desired.
         /// </summary>
-        /// <param name="dictionaryPath">The path to the dictionary file(s).</param>
-        public static void UseDictionaryFromPath(string dictionaryPath)
+        /// <param name="dictionaryRelativePath">The path to the dictionary file(s).</param>
+        public static void UseDictionaryFromPath(string dictionaryRelativePath)
         {
-            UseCustomDictionary(DictionaryLib.FromDicts(dictionaryPath));
+            UseCustomDictionary(DictionaryLib.FromDicts(dictionaryRelativePath));
         }
 
         /// <summary>
@@ -213,9 +216,9 @@ namespace OpenccNetLib
         /// This method should be called once at application startup, if custom dictionary is desired.
         /// </summary>
         /// <param name="jsonString">The JSON string representing the dictionary.</param>
-        public static void UseDictionaryFromJson(string jsonString)
+        public static void UseDictionaryFromJsonString(string jsonString)
         {
-            UseCustomDictionary(DictionaryLib.FromJson(jsonString));
+            UseCustomDictionary(JsonSerializer.Deserialize<DictionaryMaxlength>(jsonString));
         }
 
         // --- END Lazy<T> Implementation ---
@@ -318,9 +321,16 @@ namespace OpenccNetLib
                     var segment = text.Substring(start, end - start);
                     results[i] = ConvertBy(segment, dictionaries, maxWordLength);
                 }
+
+                return string.Concat(results);
             }
 
-            return string.Concat(results);
+            var builder = StringBuilderCache.Value;
+            builder.Clear();
+            foreach (var s in results)
+                builder.Append(s);
+
+            return builder.ToString();
         }
 
         /// <summary>

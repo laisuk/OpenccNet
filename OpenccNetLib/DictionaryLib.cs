@@ -276,17 +276,7 @@ namespace OpenccNetLib
                 MaxLength = maxLength
             };
         }
-
-        /// <summary>
-        /// Serializes the dictionary to CBOR format and saves it to a file.
-        /// </summary>
-        /// <param name="path">The output file path.</param>
-        public static void SaveCbor(string path)
-        {
-            var cbor = CBORObject.FromObject(FromDicts());
-            File.WriteAllBytes(path, cbor.EncodeToBytes());
-        }
-
+        
         /// <summary>
         /// Loads the dictionary from a CBOR file.
         /// </summary>
@@ -299,6 +289,16 @@ namespace OpenccNetLib
             var bytes = File.ReadAllBytes(fullPath);
             var cbor = CBORObject.DecodeFromBytes(bytes, CBOREncodeOptions.Default);
             return cbor.ToObject<DictionaryMaxlength>();
+        }
+
+        /// <summary>
+        /// Serializes the dictionary to CBOR format and saves it to a file.
+        /// </summary>
+        /// <param name="path">The output file path.</param>
+        public static void SaveCbor(string path)
+        {
+            var cbor = CBORObject.FromObject(FromDicts());
+            File.WriteAllBytes(path, cbor.EncodeToBytes());
         }
 
         /// <summary>
