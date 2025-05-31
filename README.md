@@ -1,6 +1,14 @@
 # OpenccNet
 
-**OpenccNetLib** is a high-performance .NET Standard 2.0 library for Chinese text conversion, supporting Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. It is inspired by [OpenCC](https://github.com/BYVoid/OpenCC) and optimized for speed and memory efficiency in .NET environments.
+[![NuGet](https://img.shields.io/nuget/v/OpenccNetLib.svg)](https://www.nuget.org/packages/OpenccNetLib/)
+[![License](https://img.shields.io/github/license/laisuk/OpenccNet.svg)](https://github.com/laisuk/OpenccNet/blob/main/LICENSE)
+
+**OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. Built with inspiration from [OpenCC](https://github.com/BYVoid/OpenCC), this library is designed to integrate seamlessly into modern .NET projects with a focus on performance and minimal memory usage.
+## Table of Contents
+- [Installation](#installation)
+- [Usage](#usage)
+- [Dictionary Files](#dictionary-files)
+- [License](#license)
 
 ## Features
 
@@ -20,7 +28,9 @@
 - Add required dependencies of dictionary files to library root.
 	- `dicts\dictionary_maxlength.zstd` Default dictionary file.
 	- `dicts\*.*` Others dictionary files for different configurations.
- 
+
+Install via NuGet:
+
 ```bash
 dotnet add package OpenccNetLib
 ```
@@ -103,10 +113,25 @@ int result = Opencc.ZhoCheck("汉字"); // Returns 2 for Simplified, 1 for Tradi
 Console.WriteLine(result); // Output: 2 (for Simplified)
 ```
 
+## Dictionary Files
+
+Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`:
+
+```xml
+<ItemGroup>
+  <None Update="dicts\dictionary_maxlength.cbor">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>true</Pack>
+    <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.cbor</PackagePath>
+  </None>
+  <!-- Repeat for other dictionary files -->
+</ItemGroup>
+```
+
 ### Using Custom Dictionary
 
-Library default to use zstd compressed dictionary Lexicon, this can be changed to custom dictionary (JSON, CBOR or "baseDir/*.txt")before instantiate Opencc() :
-
+Library default to use zstd compressed dictionary Lexicon. 
+It can be changed to use custom dictionary (JSON, CBOR or "baseDir/*.txt") prior to instantiate Opencc() :
 ```csharp
 using OpenccNetLib;
 Opencc.UseCustomDictionary(DictionaryLib.FromDicts()) // Init only onece, dicts from baseDir "./dicts/"
@@ -192,7 +217,7 @@ Options:
 
 ## License
 
-[MIT](LICENSE.txt)
+This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
 
 ---
 
