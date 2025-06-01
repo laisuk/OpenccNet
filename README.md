@@ -24,7 +24,7 @@
 
 ## Installation
 
-- Add the library to your project via NuGet (if available) or reference the source code directly.
+- Add the library to your project via NuGet or reference the source code directly.
 - Add required dependencies of dictionary files to library root.
 	- `dicts\dictionary_maxlength.zstd` Default dictionary file.
 	- `dicts\*.*` Others dictionary files for different configurations.
@@ -77,6 +77,17 @@ var opencc = new Opencc("s2t");
 string result = opencc.Convert("“汉字”转换。", punctuation: true);
 Console.WriteLine(result);
 // Output: 「漢字」轉換。
+```
+
+### Example: Switching Config Dynamically
+
+```csharp
+var opencc = new Opencc("s2t"); 
+string result = opencc.Convert("动态切换转换方式");
+Console.WriteLine(result);  // Output: 動態切換轉換方式
+opencc.Config = "t2s";
+result = opencc.Convert("動態切換轉換方式");
+Console.WriteLine(result);  // Output: 动态切换转换方式
 ```
 
 ### Direct API Methods
