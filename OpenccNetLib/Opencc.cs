@@ -263,6 +263,15 @@ namespace OpenccNetLib
         }
 
         /// <summary>
+        /// Set Config value of current Opencc instance, revert to "s2t" if invalid config given.
+        /// <param name="config">The config value to set.</param>
+        /// </summary>
+        public void SetConfig(string config)
+        {
+            Config = config;
+        }
+        
+        /// <summary>
         /// Gets the last error message, if any, from the most recent operation.
         /// </summary>
         public string GetLastError()

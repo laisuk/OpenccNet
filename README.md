@@ -4,10 +4,13 @@
 [![License](https://img.shields.io/github/license/laisuk/OpenccNet.svg)](https://github.com/laisuk/OpenccNet/blob/main/LICENSE)
 
 **OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. Built with inspiration from [OpenCC](https://github.com/BYVoid/OpenCC), this library is designed to integrate seamlessly into modern .NET projects with a focus on performance and minimal memory usage.
+
 ## Table of Contents
 - [Installation](#installation)
 - [Usage](#usage)
+- [API Reference](#api-reference)
 - [Dictionary Files](#dictionary-files)
+- [Add-On Tools](#add-on-tools)
 - [License](#license)
 
 ## Features
@@ -155,6 +158,23 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 
 - Uses static dictionary caching and thread-local buffers for high throughput.
 - Suitable for batch and parallel processing scenarios.
+
+## Benchmarks
+
+```
+BenchmarkDotNet v0.15.0, Windows 11 (10.0.26100.4061/24H2/2024Update/HudsonValley).NET SDK 9.0.300
+[Host]     : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
+Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
+```
+
+| Size	   | s2t Time (ms)	 | s2tw Time (ms)	 | s2twp Time (ms)	 | s2t Memory (MB)	 | s2tw Memory (MB)	 | s2twp Memory (MB) |
+|:--------|---------------:|----------------:|-----------------:|-----------------:|------------------:|------------------:|
+| 100     |        0.0107	 |         0.0131	 |          0.0205	 |          0.0218	 |           0.0265	 |            0.0429 |
+| 1,000   |         0.169	 |          0.201	 |           0.334	 |           0.235	 |            0.276	 |             0.452 |
+| 10,000  |         0.495	 |          0.744	 |            1.17	 |             2.1	 |              2.5	 |               4.1 |
+| 100,000 |          10.3	 |           15.3	 |            22.9	 |            22.4	 |             26.6	 |              44.1 |
+
+![Benchmarks Image](OpenccNetLib/Images/BenchmarksData.jpg)
 
 ## API Reference
 
