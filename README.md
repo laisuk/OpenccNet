@@ -256,5 +256,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) f
 
 ---
 
-**OpenccNet** is not affiliated with the original OpenCC project, but aims to provide a compatible and high-performance solution for .NET developers.
+**OpenccNet** is not affiliated with the original **OpenCC** project, but aims to provide a compatible and high-performance solution for .NET developers.
 
