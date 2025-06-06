@@ -1,6 +1,17 @@
-﻿# OpenccNet
+# OpenccNet
 
-**OpenccNet** is a high-performance .NET Standard 2.0 library for Chinese text conversion, supporting Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. It is inspired by [OpenCC](https://github.com/BYVoid/OpenCC) and optimized for speed and memory efficiency in .NET environments.
+[![NuGet](https://img.shields.io/nuget/v/OpenccNetLib.svg)](https://www.nuget.org/packages/OpenccNetLib/)
+[![License](https://img.shields.io/github/license/laisuk/OpenccNet.svg)](https://github.com/laisuk/OpenccNet/blob/main/LICENSE)
+
+**OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. Built with inspiration from [OpenCC](https://github.com/BYVoid/OpenCC), this library is designed to integrate seamlessly into modern .NET projects with a focus on performance and minimal memory usage.
+
+## Table of Contents
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Dictionary Files](#dictionary-files)
+- [Add-On Tools](#add-on-tools)
+- [License](#license)
 
 ## Features
 
@@ -16,13 +27,15 @@
 
 ## Installation
 
-- Add the library to your project via NuGet (if available) or reference the source code directly.
+- Add the library to your project via NuGet or reference the source code directly.
 - Add required dependencies of dictionary files to library root.
 	- `dicts\dictionary_maxlength.zstd` Default dictionary file.
 	- `dicts\*.*` Others dictionary files for different configurations.
- 
+
+Install via NuGet:
+
 ```bash
-dotnet add package OpenccNetLib --version 1.0.0
+dotnet add package OpenccNetLib
 ```
 
 Or, clone and include the source files in your project.
@@ -69,6 +82,17 @@ Console.WriteLine(result);
 // Output: 「漢字」轉換。
 ```
 
+### Example: Switching Config Dynamically
+
+```csharp
+var opencc = new Opencc("s2t"); 
+string result = opencc.Convert("动态切换转换方式");
+Console.WriteLine(result);  // Output: 動態切換轉換方式
+opencc.Config = "t2s";
+result = opencc.Convert("動態切換轉換方式");
+Console.WriteLine(result);  // Output: 动态切换转换方式
+```
+
 ### Direct API Methods
 
 You can also use direct methods for specific conversions:
@@ -80,7 +104,8 @@ opencc.S2T("汉字");
 // Simplified to Traditional opencc.T2S("漢字");      
 // Traditional to Simplified opencc.S2Tw("汉字");     
 // Simplified to Taiwan Traditional opencc.T2Jp("漢字");     
-// Traditional to Japanese Kanji // ...and more
+// Traditional to Japanese Kanji
+// ...and more
 ```
 
 ### Error Handling
@@ -102,6 +127,21 @@ int result = Opencc.ZhoCheck("汉字"); // Returns 2 for Simplified, 1 for Tradi
 Console.WriteLine(result); // Output: 2 (for Simplified)
 ```
 
+## Dictionary Files
+
+Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`:
+
+```xml
+<ItemGroup>
+  <None Update="dicts\dictionary_maxlength.cbor">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Pack>true</Pack>
+    <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.cbor</PackagePath>
+  </None>
+  <!-- Repeat for other dictionary files -->
+</ItemGroup>
+```
+
 ### Using Custom Dictionary
 
 Library default to use zstd compressed dictionary Lexicon. 
@@ -114,11 +154,27 @@ string traditional = opencc.Convert("汉字转换测试");
 Console.WriteLine(traditional); // Output: 漢字轉換測試
 ```
 
-
 ## Performance
 
 - Uses static dictionary caching and thread-local buffers for high throughput.
 - Suitable for batch and parallel processing scenarios.
+
+## Benchmarks
+
+```
+BenchmarkDotNet v0.15.0, Windows 11 (10.0.26100.4061/24H2/2024Update/HudsonValley).NET SDK 9.0.300
+[Host]     : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
+Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
+```
+
+| Size	   | s2t Time (ms)	 | s2tw Time (ms)	 | s2twp Time (ms)	 | s2t Memory (MB)	 | s2tw Memory (MB)	 | s2twp Memory (MB) |
+|:--------|---------------:|----------------:|-----------------:|-----------------:|------------------:|------------------:|
+| 100     |        0.0107	 |         0.0131	 |          0.0205	 |          0.0218	 |           0.0265	 |            0.0429 |
+| 1,000   |         0.169	 |          0.201	 |           0.334	 |           0.235	 |            0.276	 |             0.452 |
+| 10,000  |         0.495	 |          0.744	 |            1.17	 |             2.1	 |              2.5	 |               4.1 |
+| 100,000 |          10.3	 |           15.3	 |            22.9	 |            22.4	 |             26.6	 |              44.1 |
+
+![Benchmarks Image](Images/BenchmarksData.jpg)
 
 ## API Reference
 
@@ -190,15 +246,15 @@ Options:
   
 ```
 
-## License
-
-[MIT](LICENSE)
-
 ## Project That Use OpenccNetLib
 
-- [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for OpenccNetLib, providing a user-friendly interface for Chinese text conversion.
+- [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for `OpenccNetLib`, providing a user-friendly interface for Chinese text conversion.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
 
 ---
 
-**OpenccNet** is not affiliated with the original **OpenCC** project, but aims to provide a compatible and high-performance solution for .NET developers.
+**OpenccNet** is not affiliated with the original OpenCC project, but aims to provide a compatible and high-performance solution for .NET developers.
 
