@@ -246,13 +246,13 @@ Options:
   
 ```
 
+## Project That Use OpenccNetLib
+
+- [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for `OpenccNetLib`, providing a user-friendly interface for Chinese text conversion.
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
-
-## Project That Use OpenccNetLib
-
-- [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for OpenccNetLib, providing a user-friendly interface for Chinese text conversion.
 
 ---
 
