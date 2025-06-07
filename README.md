@@ -207,14 +207,30 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 
 ## Add-On Tools
 
-### OpenccConvert
+### OpenccNet dictgen
 
 ```
 Description:
-  OpenCC Converter for command-line text conversion.
+  Generate OpenccNetLib dictionary files.
 
 Usage:
-  OpenccConvert [options]
+  OpenccNet dictgen [options]
+
+Options:
+  -f, --format <cbor|json|zstd>  Dictionary format: [zstd|cbor|json] [default: zstd]
+  -o, --output <output>          Output filename. Default: dictionary_maxlength.<ext>
+  -b, --base-dir <base-dir>      Base directory containing source dictionary files [default: dicts]
+  -?, -h, --help                 Show help and usage information
+```
+
+### OpenccNet convert
+
+```
+Description:
+  Convert text using OpenccNetLib configurations.
+
+Usage:
+  OpenccNet convert [options]
 
 Options:
   -i, --input <input>               Read original text from file <input>.
@@ -223,27 +239,7 @@ Options:
   -p, --punct                       Punctuation conversion: True|False [default: False]
   --in-enc <in-enc>                 Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
   --out-enc <out-enc>               Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
-  --version                         Show version information
   -?, -h, --help                    Show help and usage information
-  
-```
-
-### DictGenerate
-
-```
-Description:
-  Dictionary Generator CLI Tool
-
-Usage:
-  DictGenerate [options]
-
-Options:
-  -f, --format <cbor|json|zstd>  Dictionary format: [zstd|cbor|json] [default: zstd]
-  -o, --output <output>          Output filename. Default: dictionary_maxlength.<ext>
-  -b, --base-dir <base-dir>      Base directory containing source dictionary files [default: dicts]
-  --version                      Show version information
-  -?, -h, --help                 Show help and usage information
-  
 ```
 
 ## Project That Use OpenccNetLib
