@@ -363,3 +363,11 @@ MigrationBackup/
 FodyWeavers.xsd
 /DictGenerate/DictGenerate.csproj
 /OpenccConvert/OpenccConvert.csproj
+/DictGenerate/DictGenerate.cs
+/DictGenerate/LICENSE
+/DictGenerate/README.md
+/OpenccConvert/Properties/launchSettings.json
+/OpenccConvert/LICENSE
+/OpenccConvert/OpenccConvert.cs
+/OpenccConvert/OpenccConvert.cs.bak
+/OpenccConvert/README.md
