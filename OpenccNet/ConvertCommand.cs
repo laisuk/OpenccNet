@@ -1,24 +1,30 @@
 ﻿using System.CommandLine;
 using System.Text;
-using OpenccNetLib; // Assuming OpenccNetLib is still a valid dependency
+using OpenccNetLib;
 
-namespace OpenccConvert;
+namespace OpenccNet;
 
-internal static class OpenccConvert
+internal static class ConvertCommand
 {
-    private static readonly object ConsoleLock = new();
-
-    private static async Task<int> Main(string[] args)
+    private const string Blue = "\u001b[1;34m";
+    private const string Reset = "\u001b[0m";
+    private static readonly object ConsoleLock = new(); // For thread-safe console writing
+    // Supported configuration names for conversion directions.
+    private static readonly HashSet<string> ConfigList = new(StringComparer.Ordinal)
     {
-        // Register the CodePages encoding provider at application startup to enable using single and double byte encodings.
+        "s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s", "t2tw", "tw2t", "t2twp", "tw2tp",
+        "t2hk", "hk2t", "t2jp", "jp2t"
+    };
+    
+    internal static Command CreateCommand()
+    {
+        // --- Global Setup for Console Encoding ---
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-
-        // Set to UTF-8 explicitly for console input/output.
-        // Note: System.CommandLine generally handles encoding well, but explicit setting for console can be useful.
         Console.OutputEncoding = Encoding.UTF8;
         Console.InputEncoding = Encoding.UTF8;
+        // ------------------------------------------
 
-        // Define options
+        // Define options for the convert command
         var inputFileOption = new Option<string?>(
             ["-i", "--input"],
             description: "Read original text from file <input>."
@@ -37,15 +43,13 @@ internal static class OpenccConvert
             IsRequired = true // Mark as required
         };
 
-        // You could add validation for config values if needed:
+        // Add validation for config values
         configOption.AddValidator(result =>
         {
-            var validConfigs = new HashSet<string>
-                { "s2t", "s2tw", "s2twp", "s2hk", "t2s", "tw2s", "tw2sp", "hk2s", "jp2t", "t2jp" };
-            if (!validConfigs.Contains(result.GetValueForOption(configOption)!))
+            if (result.GetValueForOption(configOption) is { } configValue && !ConfigList.Contains(configValue))
             {
                 result.ErrorMessage =
-                    $"Invalid config '{result.GetValueForOption(configOption)}'. Valid options are: {string.Join(", ", validConfigs)}";
+                    $"Invalid config '{configValue}'. Valid options are: {string.Join(", ", ConfigList)}";
             }
         });
 
@@ -67,8 +71,7 @@ internal static class OpenccConvert
             description: "Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]"
         );
 
-        // Create a root command
-        var rootCommand = new RootCommand("OpenCC Converter for command-line text conversion.")
+        var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
         {
             inputFileOption,
             outputFileOption,
@@ -78,8 +81,8 @@ internal static class OpenccConvert
             outputEncodingOption
         };
 
-        // Set the handler for the root command
-        rootCommand.SetHandler(async (context) =>
+        // Set the handler for the convert command
+        convertCommand.SetHandler(async (context) =>
         {
             var inputFile = context.ParseResult.GetValueForOption(inputFileOption);
             var outputFile = context.ParseResult.GetValueForOption(outputFileOption);
@@ -88,13 +91,12 @@ internal static class OpenccConvert
             var inputEncoding = context.ParseResult.GetValueForOption(inputEncodingOption)!;
             var outputEncoding = context.ParseResult.GetValueForOption(outputEncodingOption)!;
 
-            int exitCode =
+            var exitCode =
                 await RunConversionAsync(inputFile, outputFile, config, punct, inputEncoding, outputEncoding);
             context.ExitCode = exitCode;
         });
 
-        // Invoke the command line parser
-        return await rootCommand.InvokeAsync(args);
+        return convertCommand;
     }
 
     private static async Task<int> RunConversionAsync(
@@ -109,7 +111,7 @@ internal static class OpenccConvert
         {
             lock (ConsoleLock)
             {
-                Console.Error.WriteLine("Please set conversion configuration.");
+                Console.Error.WriteLine("Error: Conversion configuration is required.");
             }
 
             return 1;
@@ -118,7 +120,8 @@ internal static class OpenccConvert
         try
         {
             var inputStr = await ReadInputAsync(inputFile, inputEncoding);
-            var opencc = new Opencc(config); // OpenccNetLib library instance
+            // Assuming OpenccNetLib provides a way to initialize Opencc with a config string
+            var opencc = new Opencc(config);
             var outputStr = opencc.Convert(inputStr, punct);
             await WriteOutputAsync(outputFile, outputStr, outputEncoding);
 
@@ -176,8 +179,10 @@ internal static class OpenccConvert
                 // For console output, use Console.Write/WriteLine directly.
                 // It's generally UTF-8 by default in modern .NET console apps,
                 // but we explicitly set it earlier for consistency.
-                Console.Out.WriteLine(outputStr); // Writing to Error stream as per original code for stdout
+                // Changed from Console.Error.Write to Console.Out.Write for primary output
+                Console.Out.WriteLine(outputStr);
             }
         }
     }
+
 }
