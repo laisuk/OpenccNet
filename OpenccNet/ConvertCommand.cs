@@ -8,14 +8,16 @@ internal static class ConvertCommand
 {
     private const string Blue = "\u001b[1;34m";
     private const string Reset = "\u001b[0m";
+
     private static readonly object ConsoleLock = new(); // For thread-safe console writing
+
     // Supported configuration names for conversion directions.
     private static readonly HashSet<string> ConfigList = new(StringComparer.Ordinal)
     {
         "s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s", "t2tw", "tw2t", "t2twp", "tw2tp",
         "t2hk", "hk2t", "t2jp", "jp2t"
     };
-    
+
     internal static Command CreateCommand()
     {
         // --- Global Setup for Console Encoding ---
@@ -164,9 +166,22 @@ internal static class ConvertCommand
 
     private static async Task WriteOutputAsync(string? outputFile, string outputStr, string outputEncoding)
     {
-        var encoding = outputEncoding.Equals("utf-8", StringComparison.InvariantCultureIgnoreCase)
-            ? new UTF8Encoding(false) // false = no BOM
-            : Encoding.GetEncoding(outputEncoding);
+        // Normalize outputEncoding to lowercase for easier comparison
+        var normalizedOutputEncoding = outputEncoding.ToLowerInvariant();
+
+        var encoding = normalizedOutputEncoding switch
+        {
+            "utf-8" => new UTF8Encoding(false) // No BOM
+            ,
+            "utf-16le" or "unicode" => // "Unicode" often maps to UTF-16LE in .NET
+                new UnicodeEncoding(false, false) // false for bigEndian, false for emitBOM
+            ,
+            "utf-16be" => new UnicodeEncoding(true, false) // true for bigEndian, false for emitBOM
+            ,
+            "utf-32" => new UTF32Encoding(false, false) // false for bigEndian, false for emitBOM
+            ,
+            _ => Encoding.GetEncoding(outputEncoding)
+        };
 
         if (outputFile != null)
         {
@@ -177,12 +192,8 @@ internal static class ConvertCommand
             lock (ConsoleLock)
             {
                 // For console output, use Console.Write/WriteLine directly.
-                // It's generally UTF-8 by default in modern .NET console apps,
-                // but we explicitly set it earlier for consistency.
-                // Changed from Console.Error.Write to Console.Out.Write for primary output
                 Console.Out.WriteLine(outputStr);
             }
         }
     }
-
 }
