@@ -146,6 +146,7 @@ public class OpenccNetTests
         Assert.AreEqual("動態切換轉換方式", result);
         // opencc.Config = "t2s";
         opencc.SetConfig("t2s");
+        Assert.AreEqual("t2s", opencc.GetConfig());
         result = opencc.Convert("動態切換轉換方式");
         Assert.AreEqual("动态切换转换方式", result);   
     }

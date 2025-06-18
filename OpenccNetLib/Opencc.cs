@@ -216,6 +216,14 @@ namespace OpenccNetLib
         }
         
         /// <summary>
+        /// Get Config value of current Opencc instance.
+        /// </summary>
+        public string GetConfig()
+        {
+            return Config;
+        }
+        
+        /// <summary>
         /// Gets the last error message, if any, from the most recent operation.
         /// </summary>
         public string GetLastError()
