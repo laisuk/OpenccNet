@@ -1,7 +1,7 @@
 # OpenccNet
 
 [![NuGet](https://img.shields.io/nuget/v/OpenccNetLib.svg)](https://www.nuget.org/packages/OpenccNetLib/)
-![NuGet Downloads](https://img.shields.io/nuget/dt/OpenccNetLib.svg?label=downloads&color=blue)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/OpenccNetLib.svg?label=downloads&color=blue)](https://www.nuget.org/packages/OpenccNetLib/)
 [![License](https://img.shields.io/github/license/laisuk/OpenccNet.svg)](https://github.com/laisuk/OpenccNet/blob/main/LICENSE)
 
 **OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. Built with inspiration from [OpenCC](https://github.com/BYVoid/OpenCC), this library is designed to integrate seamlessly into modern .NET projects with a focus on performance and minimal memory usage.
@@ -134,10 +134,10 @@ Ensure the necessary dictionary files are included in your project. Add the foll
 
 ```xml
 <ItemGroup>
-  <None Update="dicts\dictionary_maxlength.cbor">
+  <None Update="dicts\dictionary_maxlength.zstd">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     <Pack>true</Pack>
-    <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.cbor</PackagePath>
+    <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
   </None>
   <!-- Repeat for other dictionary files -->
 </ItemGroup>
@@ -197,6 +197,21 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 
 - `string GetLastError()`  
   Get the last error message.
+
+- `string Config { get; set; }`  
+  Gets or sets the current OpenCC config. Invalid configs fall back to "s2t" and update the error message.
+
+- `void SetConfig(string config)`  
+  Sets the current config. Falls back to "s2t" if invalid.
+
+- `string GetConfig()`  
+  Returns the current config value.
+
+- `static bool IsValidConfig(string config)`  
+  Checks whether the given config string is supported.
+
+- `static IReadOnlyCollection<string> GetSupportedConfigs()`  
+  Returns the list of valid OpenCC config names.
 
 - `static int ZhoCheck(string inputText)`  
   Detect if text is Simplified, Traditional, or neither.

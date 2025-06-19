@@ -193,7 +193,7 @@ namespace OpenccNetLib
             set
             {
                 var lower = value?.ToLowerInvariant();
-                if (ConfigList.Contains(lower))
+                if (IsValidConfig(lower))
                 {
                     _config = lower;
                     _lastError = null;
@@ -207,22 +207,43 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Set Config value of current Opencc instance, revert to "s2t" if invalid config given.
-        /// <param name="config">The config value to set.</param>
+        /// Sets the configuration value for the current OpenCC instance.
+        /// If the provided config is invalid, it reverts to the default "s2t".
         /// </summary>
+        /// <param name="config">The configuration name to set (e.g., "s2t", "t2s").</param>
         public void SetConfig(string config)
         {
-            Config = config;
+            Config = IsValidConfig(config) ? config : "s2t";
         }
-        
+
         /// <summary>
-        /// Get Config value of current Opencc instance.
+        /// Gets the current configuration value of this OpenCC instance.
         /// </summary>
+        /// <returns>The configuration name currently in use.</returns>
         public string GetConfig()
         {
             return Config;
         }
-        
+
+        /// <summary>
+        /// Gets a read-only collection of all supported configuration names.
+        /// </summary>
+        /// <returns>A collection of valid configuration identifiers.</returns>
+        public static IReadOnlyCollection<string> GetSupportedConfigs()
+        {
+            return ConfigList;
+        }
+
+        /// <summary>
+        /// Checks whether the provided configuration name is valid.
+        /// </summary>
+        /// <param name="config">The configuration name to validate.</param>
+        /// <returns><c>true</c> if the configuration is supported; otherwise, <c>false</c>.</returns>
+        public static bool IsValidConfig(string config)
+        {
+            return ConfigList.Contains(config);
+        }
+
         /// <summary>
         /// Gets the last error message, if any, from the most recent operation.
         /// </summary>

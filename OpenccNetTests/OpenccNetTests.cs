@@ -206,4 +206,11 @@ public class OpenccNetTests
         const string tText = "美麗漢字";
         Assert.AreEqual(tText, opencc.Convert(sText));
     }
+    
+    [TestMethod]
+    public void ValidConfigTest()
+    {
+        var config = Opencc.GetSupportedConfigs().Last();
+        Assert.IsTrue(Opencc.IsValidConfig(config));
+    }
 }
