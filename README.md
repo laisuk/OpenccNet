@@ -130,7 +130,8 @@ Console.WriteLine(result); // Output: 2 (for Simplified)
 
 ## Dictionary Files
 
-Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`:
+Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`.  
+In most case, it is auto-set when package added from `Nuget`:
 
 ```xml
 <ItemGroup>
