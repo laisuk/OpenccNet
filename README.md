@@ -175,7 +175,7 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 | 10,000  |         0.495	 |          0.744	 |            1.17	 |             2.1	 |              2.5	 |               4.1 |
 | 100,000 |          10.3	 |           15.3	 |            22.9	 |            22.4	 |             26.6	 |              44.1 |
 
-![Benchmarks Image](OpenccNetLib/Images/BenchmarksData.jpg)
+![Benchmarks Image](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/BenchmarksData.jpg)
 
 ## API Reference
 
