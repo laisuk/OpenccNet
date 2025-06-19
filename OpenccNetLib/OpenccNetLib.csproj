@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.0.0</Version>
+        <Version>1.0.1</Version>
         <Authors>laisuk</Authors>
         <Description>OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese</Description>
         <PackageTags>opencc;chinese;conversion;traditional;simplified</PackageTags>
@@ -17,6 +17,7 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>OpenccNet Library</Title>
+        <PackageReleaseNotes>Add functions to get, set and validate conversion Config.</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>
