@@ -19,9 +19,9 @@
 - Fast, multi-stage conversion using static dictionary caching
 - Supports:
   - Simplified ↔ Traditional Chinese
-  - Taiwan ↔ Simplified/Traditional
-  - Hong Kong ↔ Simplified/Traditional
-  - Japanese Kanji ↔ Traditional
+  - Traditional (Taiwan) ↔ Simplified/Traditional
+  - Traditional (Hong Kong) ↔ Simplified/Traditional
+  - Japanese Kanji Shinjitai ↔ Traditional Kyojitai
 - Optional punctuation conversion
 - Thread-safe and suitable for parallel processing
 - .NET Standard 2.0 compatible
@@ -55,24 +55,24 @@ Console.WriteLine(traditional);
 
 ### Supported Configurations
 
-| Config   | Description                                 |
-|----------|---------------------------------------------|
-| s2t      | Simplified → Traditional                    |
-| t2s      | Traditional → Simplified                    |
-| s2tw     | Simplified → Traditional (Taiwan)           |
-| tw2s     | Traditional (Taiwan) → Simplified           |
-| s2twp    | Simplified → Traditional (Taiwan, phrases)  |
-| tw2sp    | Traditional (Taiwan, phrases) → Simplified  |
-| s2hk     | Simplified → Traditional (Hong Kong)        |
-| hk2s     | Traditional (Hong Kong) → Simplified        |
-| t2tw     | Traditional → Traditional (Taiwan)          |
-| tw2t     | Traditional (Taiwan) → Traditional          |
-| t2twp    | Traditional → Traditional (Taiwan, phrases) |
-| tw2tp    | Traditional (Taiwan, phrases) → Traditional |
-| t2hk     | Traditional → Traditional (Hong Kong)       |
-| hk2t     | Traditional (Hong Kong) → Traditional       |
-| t2jp     | Traditional → Japanese Kanji                |
-| jp2t     | Japanese Kanji → Traditional                |
+| Config   | Description                                     |
+|----------|-------------------------------------------------|
+| s2t      | Simplified → Traditional                        |
+| t2s      | Traditional → Simplified                        |
+| s2tw     | Simplified → Traditional (Taiwan)               |
+| tw2s     | Traditional (Taiwan) → Simplified               |
+| s2twp    | Simplified → Traditional (Taiwan, phrases)      |
+| tw2sp    | Traditional (Taiwan, phrases) → Simplified      |
+| s2hk     | Simplified → Traditional (Hong Kong)            |
+| hk2s     | Traditional (Hong Kong) → Simplified            |
+| t2tw     | Traditional → Traditional (Taiwan)              |
+| tw2t     | Traditional (Taiwan) → Traditional              |
+| t2twp    | Traditional → Traditional (Taiwan, phrases)     |
+| tw2tp    | Traditional (Taiwan, phrases) → Traditional     |
+| t2hk     | Traditional → Traditional (Hong Kong)           |
+| hk2t     | Traditional (Hong Kong) → Traditional           |
+| t2jp     | Traditional Kyojitao → Japanese Kanji Shinjitai |
+| jp2t     | Japanese Kanji Shinjitai → Traditional Kyojitai |
 
 ### Example: Convert with Punctuation
 
@@ -89,7 +89,7 @@ Console.WriteLine(result);
 var opencc = new Opencc("s2t"); 
 string result = opencc.Convert("动态切换转换方式");
 Console.WriteLine(result);  // Output: 動態切換轉換方式
-opencc.Config = "t2s";
+opencc.Config = "t2s";  // or opencc.SetConfig("t2s");
 result = opencc.Convert("動態切換轉換方式");
 Console.WriteLine(result);  // Output: 动态切换转换方式
 ```
@@ -145,8 +145,8 @@ Ensure the necessary dictionary files are included in your project. Add the foll
 
 ### Using Custom Dictionary
 
-Library default to use zstd compressed dictionary Lexicon. 
-It can be changed to use custom dictionary (JSON, CBOR or "baseDir/*.txt") prior to instantiate Opencc() :
+Library default is zstd compressed dictionary Lexicon. 
+It can be changed to custom dictionary (`JSON`, `CBOR` or `"baseDir/*.txt"`) prior to instantiate `Opencc()`:
 ```csharp
 using OpenccNetLib;
 Opencc.UseCustomDictionary(DictionaryLib.FromDicts()) // Init only onece, dicts from baseDir "./dicts/"
@@ -223,7 +223,7 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 
 ## Add-On Tools
 
-### OpenccNet dictgen
+### `OpenccNet dictgen`
 
 ```
 Description:
@@ -239,7 +239,7 @@ Options:
   -?, -h, --help                 Show help and usage information
 ```
 
-### OpenccNet convert
+### `OpenccNet convert`
 
 ```
 Description:
