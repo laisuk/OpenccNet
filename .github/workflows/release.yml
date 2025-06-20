@@ -10,7 +10,9 @@ permissions:
 
 jobs:
   build:
+    name: Build and Release ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
         include:
@@ -25,35 +27,48 @@ jobs:
             ext: tar.gz
 
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup .NET
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x'
+          dotnet-version: 8.0.x
 
-      - name: Publish ${{ matrix.rid }}
+      - name: Publish
         run: |
           dotnet publish OpenccNet/OpenccNet.csproj \
             --configuration Release \
             --runtime ${{ matrix.rid }} \
-            --self-contained false \
-            --output publish-${{ matrix.rid }}
+            --output publish/ \
+            --no-self-contained
 
-      - name: Archive release
+      - name: Rename and Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          cd publish-${{ matrix.rid }}
-          if [ "${{ matrix.ext }}" == "zip" ]; then
-            7z a ../OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.${{ matrix.ext }} *
-          else
-            tar -czvf ../OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.${{ matrix.ext }} *
-          fi
+          $tag = "${{ github.ref_name }}"
+          $folder = "OpenccNet-$tag-${{ matrix.rid }}"
+          Rename-Item -Path publish -NewName $folder
+          Compress-Archive -Path "$folder\*" -DestinationPath "$folder.zip"
 
-      - name: Upload release assets
+      - name: Rename and Zip (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          tag="${{ github.ref_name }}"
+          folder="OpenccNet-$tag-${{ matrix.rid }}"
+          mv publish "$folder"
+          zip -r "$folder.zip" "$folder"
+
+      - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.${{ matrix.ext }}
+          tag_name: ${{ github.ref_name }}
+          files: OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.zip
+          overwrite: true
+          skip_if_release_exists: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
