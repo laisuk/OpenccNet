@@ -69,7 +69,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.zip
-          overwrite: true
-          skip_if_release_exists: false
+          # overwrite: true  # Not supported by softprops/action-gh-release
+          # skip_if_release_exists: false  # Ignored by this action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
