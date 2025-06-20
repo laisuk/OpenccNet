@@ -1,7 +1,9 @@
 # OpenccNet
 
 [![NuGet](https://img.shields.io/nuget/v/OpenccNetLib.svg)](https://www.nuget.org/packages/OpenccNetLib/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/OpenccNetLib.svg?label=downloads&color=blue)](https://www.nuget.org/packages/OpenccNetLib/)
 [![License](https://img.shields.io/github/license/laisuk/OpenccNet.svg)](https://github.com/laisuk/OpenccNet/blob/main/LICENSE)
+[![Release](https://github.com/laisuk/OpenccNet/actions/workflows/release.yml/badge.svg)](https://github.com/laisuk/OpenccNet/actions/workflows/release.yml)
 
 **OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. Built with inspiration from [OpenCC](https://github.com/BYVoid/OpenCC), this library is designed to integrate seamlessly into modern .NET projects with a focus on performance and minimal memory usage.
 
@@ -18,9 +20,9 @@
 - Fast, multi-stage conversion using static dictionary caching
 - Supports:
   - Simplified ↔ Traditional Chinese
-  - Taiwan ↔ Simplified/Traditional
-  - Hong Kong ↔ Simplified/Traditional
-  - Japanese Kanji ↔ Traditional
+  - Traditional (Taiwan) ↔ Simplified/Traditional
+  - Traditional (Hong Kong) ↔ Simplified/Traditional
+  - Japanese Kanji Shinjitai ↔ Traditional Kyojitai
 - Optional punctuation conversion
 - Thread-safe and suitable for parallel processing
 - .NET Standard 2.0 compatible
@@ -54,24 +56,24 @@ Console.WriteLine(traditional);
 
 ### Supported Configurations
 
-| Config   | Description                                 |
-|----------|---------------------------------------------|
-| s2t      | Simplified → Traditional                    |
-| t2s      | Traditional → Simplified                    |
-| s2tw     | Simplified → Traditional (Taiwan)           |
-| tw2s     | Traditional (Taiwan) → Simplified           |
-| s2twp    | Simplified → Traditional (Taiwan, phrases)  |
-| tw2sp    | Traditional (Taiwan, phrases) → Simplified  |
-| s2hk     | Simplified → Traditional (Hong Kong)        |
-| hk2s     | Traditional (Hong Kong) → Simplified        |
-| t2tw     | Traditional → Traditional (Taiwan)          |
-| tw2t     | Traditional (Taiwan) → Traditional          |
-| t2twp    | Traditional → Traditional (Taiwan, phrases) |
-| tw2tp    | Traditional (Taiwan, phrases) → Traditional |
-| t2hk     | Traditional → Traditional (Hong Kong)       |
-| hk2t     | Traditional (Hong Kong) → Traditional       |
-| t2jp     | Traditional → Japanese Kanji                |
-| jp2t     | Japanese Kanji → Traditional                |
+| Config   | Description                                     |
+|----------|-------------------------------------------------|
+| s2t      | Simplified → Traditional                        |
+| t2s      | Traditional → Simplified                        |
+| s2tw     | Simplified → Traditional (Taiwan)               |
+| tw2s     | Traditional (Taiwan) → Simplified               |
+| s2twp    | Simplified → Traditional (Taiwan, phrases)      |
+| tw2sp    | Traditional (Taiwan, phrases) → Simplified      |
+| s2hk     | Simplified → Traditional (Hong Kong)            |
+| hk2s     | Traditional (Hong Kong) → Simplified            |
+| t2tw     | Traditional → Traditional (Taiwan)              |
+| tw2t     | Traditional (Taiwan) → Traditional              |
+| t2twp    | Traditional → Traditional (Taiwan, phrases)     |
+| tw2tp    | Traditional (Taiwan, phrases) → Traditional     |
+| t2hk     | Traditional → Traditional (Hong Kong)           |
+| hk2t     | Traditional (Hong Kong) → Traditional           |
+| t2jp     | Traditional Kyojitao → Japanese Kanji Shinjitai |
+| jp2t     | Japanese Kanji Shinjitai → Traditional Kyojitai |
 
 ### Example: Convert with Punctuation
 
@@ -88,7 +90,7 @@ Console.WriteLine(result);
 var opencc = new Opencc("s2t"); 
 string result = opencc.Convert("动态切换转换方式");
 Console.WriteLine(result);  // Output: 動態切換轉換方式
-opencc.Config = "t2s";
+opencc.Config = "t2s";  // or opencc.SetConfig("t2s");
 result = opencc.Convert("動態切換轉換方式");
 Console.WriteLine(result);  // Output: 动态切换转换方式
 ```
@@ -129,14 +131,15 @@ Console.WriteLine(result); // Output: 2 (for Simplified)
 
 ## Dictionary Files
 
-Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`:
+Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`.  
+In most case, it is auto-set when package added from `Nuget`:
 
 ```xml
 <ItemGroup>
-  <None Update="dicts\dictionary_maxlength.cbor">
+  <None Update="dicts\dictionary_maxlength.zstd">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     <Pack>true</Pack>
-    <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.cbor</PackagePath>
+    <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
   </None>
   <!-- Repeat for other dictionary files -->
 </ItemGroup>
@@ -144,8 +147,8 @@ Ensure the necessary dictionary files are included in your project. Add the foll
 
 ### Using Custom Dictionary
 
-Library default to use zstd compressed dictionary Lexicon. 
-It can be changed to use custom dictionary (JSON, CBOR or "baseDir/*.txt") prior to instantiate Opencc() :
+Library default is zstd compressed dictionary Lexicon. 
+It can be changed to custom dictionary (`JSON`, `CBOR` or `"baseDir/*.txt"`) prior to instantiate `Opencc()`:
 ```csharp
 using OpenccNetLib;
 Opencc.UseCustomDictionary(DictionaryLib.FromDicts()) // Init only onece, dicts from baseDir "./dicts/"
@@ -174,7 +177,7 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 | 10,000  |         0.495	 |          0.744	 |            1.17	 |             2.1	 |              2.5	 |               4.1 |
 | 100,000 |          10.3	 |           15.3	 |            22.9	 |            22.4	 |             26.6	 |              44.1 |
 
-![Benchmarks Image](Images/BenchmarksData.jpg)
+![Benchmarks Image](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/BenchmarksData.jpg)
 
 ## API Reference
 
@@ -197,6 +200,21 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 - `string GetLastError()`  
   Get the last error message.
 
+- `string Config { get; set; }`  
+  Gets or sets the current OpenCC config. Invalid configs fall back to "s2t" and update the error message.
+
+- `void SetConfig(string config)`  
+  Sets the current config. Falls back to "s2t" if invalid.
+
+- `string GetConfig()`  
+  Returns the current config value.
+
+- `static bool IsValidConfig(string config)`  
+  Checks whether the given config string is supported.
+
+- `static IReadOnlyCollection<string> GetSupportedConfigs()`  
+  Returns the list of valid OpenCC config names.
+
 - `static int ZhoCheck(string inputText)`  
   Detect if text is Simplified, Traditional, or neither.
 
@@ -207,14 +225,30 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 
 ## Add-On Tools
 
-### OpenccConvert
+### `OpenccNet dictgen`
 
 ```
 Description:
-  OpenCC Converter for command-line text conversion.
+  Generate OpenccNetLib dictionary files.
 
 Usage:
-  OpenccConvert [options]
+  OpenccNet dictgen [options]
+
+Options:
+  -f, --format <cbor|json|zstd>  Dictionary format: [zstd|cbor|json] [default: zstd]
+  -o, --output <output>          Output filename. Default: dictionary_maxlength.<ext>
+  -b, --base-dir <base-dir>      Base directory containing source dictionary files [default: dicts]
+  -?, -h, --help                 Show help and usage information
+```
+
+### `OpenccNet convert`
+
+```
+Description:
+  Convert text using OpenccNetLib configurations.
+
+Usage:
+  OpenccNet convert [options]
 
 Options:
   -i, --input <input>               Read original text from file <input>.
@@ -223,27 +257,7 @@ Options:
   -p, --punct                       Punctuation conversion: True|False [default: False]
   --in-enc <in-enc>                 Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
   --out-enc <out-enc>               Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
-  --version                         Show version information
   -?, -h, --help                    Show help and usage information
-  
-```
-
-### DictGenerate
-
-```
-Description:
-  Dictionary Generator CLI Tool
-
-Usage:
-  DictGenerate [options]
-
-Options:
-  -f, --format <cbor|json|zstd>  Dictionary format: [zstd|cbor|json] [default: zstd]
-  -o, --output <output>          Output filename. Default: dictionary_maxlength.<ext>
-  -b, --base-dir <base-dir>      Base directory containing source dictionary files [default: dicts]
-  --version                      Show version information
-  -?, -h, --help                 Show help and usage information
-  
 ```
 
 ## Project That Use OpenccNetLib
@@ -256,5 +270,5 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) f
 
 ---
 
-**OpenccNet** is not affiliated with the original OpenCC project, but aims to provide a compatible and high-performance solution for .NET developers.
+**OpenccNet** is not affiliated with the original **OpenCC** project, but aims to provide a compatible and high-performance solution for .NET developers.
 

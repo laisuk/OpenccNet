@@ -7,10 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenccNetLib", "OpenccNetLi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenccNetTests", "OpenccNetTests\OpenccNetTests.csproj", "{E3A074FB-7C75-40AA-9DED-3B5370928266}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenccConvert", "OpenccConvert\OpenccConvert.csproj", "{D10DC4F8-8309-438D-841C-130A1C8FB6E5}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictGenerate", "DictGenerate\DictGenerate.csproj", "{E08896BB-3EF8-41E3-AA26-29BEB9554D41}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenccNet", "OpenccNet\OpenccNet.csproj", "{C6E2DED8-B73E-482F-89B0-C0703B64BF97}"
 EndProject
 Global
@@ -27,14 +23,6 @@ Global
 		{E3A074FB-7C75-40AA-9DED-3B5370928266}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3A074FB-7C75-40AA-9DED-3B5370928266}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3A074FB-7C75-40AA-9DED-3B5370928266}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D10DC4F8-8309-438D-841C-130A1C8FB6E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D10DC4F8-8309-438D-841C-130A1C8FB6E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D10DC4F8-8309-438D-841C-130A1C8FB6E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D10DC4F8-8309-438D-841C-130A1C8FB6E5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E08896BB-3EF8-41E3-AA26-29BEB9554D41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E08896BB-3EF8-41E3-AA26-29BEB9554D41}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E08896BB-3EF8-41E3-AA26-29BEB9554D41}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E08896BB-3EF8-41E3-AA26-29BEB9554D41}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C6E2DED8-B73E-482F-89B0-C0703B64BF97}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C6E2DED8-B73E-482F-89B0-C0703B64BF97}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C6E2DED8-B73E-482F-89B0-C0703B64BF97}.Release|Any CPU.ActiveCfg = Release|Any CPU
