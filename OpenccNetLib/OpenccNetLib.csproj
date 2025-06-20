@@ -18,6 +18,8 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>Add functions to get, set and validate conversion Config.</PackageReleaseNotes>
+        <AssemblyVersion>1.0.1.0</AssemblyVersion>
+        <FileVersion>1.0.1.0</FileVersion>
     </PropertyGroup>
 
     <ItemGroup>
