@@ -38,7 +38,13 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Publish
-        run: dotnet publish OpenccNet/OpenccNet.csproj --configuration Release --runtime ${{ matrix.rid }} --output publish/ --no-self-contained
+        shell: bash
+        run: |
+          dotnet publish OpenccNet/OpenccNet.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --output publish/ \
+            --no-self-contained
 
       - name: Rename and Zip (Windows)
         if: runner.os == 'Windows'
