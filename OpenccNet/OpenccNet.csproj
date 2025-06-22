@@ -5,19 +5,29 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <Version>1.0.0</Version>
-        <AssemblyVersion>1.0.1.0</AssemblyVersion>
-        <FileVersion>1.0.1.0</FileVersion>
-        <InformationalVersion>1.0.1</InformationalVersion>
+
+        <Version>1.0.2</Version>  <!-- NuGet + Tool version -->
+        <AssemblyVersion>1.0.2.0</AssemblyVersion>
+        <FileVersion>1.0.2.0</FileVersion>
+        <InformationalVersion>1.0.2</InformationalVersion>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+
+        <!-- Tool-specific properties -->
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>openccnet</ToolCommandName>
+        <PackageId>openccnet.cli</PackageId>
+        <Authors>Laisuk Lai</Authors>
+        <Description>Convert text and Office files using OpenCC with CLI support.</Description>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1"/>
+        <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj"/>
+        <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj" />
     </ItemGroup>
 
 </Project>
+
