@@ -117,8 +117,9 @@ internal static class ConvertCommand
         var autoExtOption = new Option<bool>(
             "--auto-ext",
             getDefaultValue: () => true,
-            description: "Automatically append correct Office document extension to output file if missing (e.g., .docx, .xlsx).\n" +
-                         "Default: true. To disable, use: --auto-ext:false"
+            description:
+            "Automatically append correct Office document extension to output file if missing (e.g., .docx, .xlsx).\n" +
+            "Default: true. To disable, use: --auto-ext:false"
         );
 
         var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
