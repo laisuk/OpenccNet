@@ -117,7 +117,6 @@ public static class OfficeDocModel
                                 "epub" => match.Groups[1].Value + marker,
                                 _ => match.Groups[1].Value + marker + match.Groups[3].Value
                             };
-
                         });
                     }
                 }
@@ -149,7 +148,10 @@ public static class OfficeDocModel
             // Create the new ZIP archive with the converted files
             if (File.Exists(outputPath)) File.Delete(outputPath);
             if (format == "epub")
-                CreateEpubZipWithSpec(tempDir, outputPath);
+            {
+                var (zipSuccess, zipMessage) = CreateEpubZipWithSpec(tempDir, outputPath);
+                if (!zipSuccess) return (false, zipMessage);
+            }
             else
                 ZipFile.CreateFromDirectory(tempDir, outputPath, CompressionLevel.Optimal, false);
 
@@ -167,33 +169,54 @@ public static class OfficeDocModel
         }
     }
 
-    private static void CreateEpubZipWithSpec(string sourceDir, string outputPath)
+    /// <summary>
+    /// Creates a valid EPUB-compliant ZIP archive from the specified source directory.
+    /// Ensures the <c>mimetype</c> file is the first entry and uncompressed,
+    /// as required by the EPUB specification.
+    /// </summary>
+    /// <param name="sourceDir">The temporary directory containing EPUB unpacked contents.</param>
+    /// <param name="outputPath">The full path of the output EPUB file to be created.</param>
+    /// <returns>Tuple indicating success and an informative message.</returns>
+    private static (bool Success, string Message) CreateEpubZipWithSpec(string sourceDir, string outputPath)
     {
         var mimePath = Path.Combine(sourceDir, "mimetype");
 
-        using var fs = new FileStream(outputPath, FileMode.Create);
-        using var archive = new ZipArchive(fs, ZipArchiveMode.Create);
-
-        // 1. Add mimetype first, uncompressed
-        if (File.Exists(mimePath))
+        try
         {
-            var mimeEntry = archive.CreateEntry("mimetype", CompressionLevel.NoCompression);
-            using var entryStream = mimeEntry.Open();
-            using var fileStream = File.OpenRead(mimePath);
-            fileStream.CopyTo(entryStream);
+            using var fs = new FileStream(outputPath, FileMode.Create);
+            using var archive = new ZipArchive(fs, ZipArchiveMode.Create);
+
+            // 1. Add mimetype first, uncompressed
+            if (File.Exists(mimePath))
+            {
+                var mimeEntry = archive.CreateEntry("mimetype", CompressionLevel.NoCompression);
+                using var entryStream = mimeEntry.Open();
+                using var fileStream = File.OpenRead(mimePath);
+                fileStream.CopyTo(entryStream);
+            }
+            else
+            {
+                return (false, "❌ 'mimetype' file is missing. EPUB requires this as the first entry.");
+            }
+
+            // 2. Add the rest (recursively)
+            foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+            {
+                if (Path.GetFullPath(file) == Path.GetFullPath(mimePath))
+                    continue;
+
+                var entryPath = Path.GetRelativePath(sourceDir, file).Replace('\\', '/');
+                var entry = archive.CreateEntry(entryPath, CompressionLevel.Optimal);
+                using var entryStream = entry.Open();
+                using var fileStream = File.OpenRead(file);
+                fileStream.CopyTo(entryStream);
+            }
+
+            return (true, "✅ EPUB archive created successfully.");
         }
-
-        // 2. Add the rest (recursively)
-        foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories))
+        catch (Exception ex)
         {
-            if (Path.GetFullPath(file) == Path.GetFullPath(mimePath))
-                continue;
-
-            var entryPath = Path.GetRelativePath(sourceDir, file).Replace('\\', '/');
-            var entry = archive.CreateEntry(entryPath, CompressionLevel.Optimal);
-            using var entryStream = entry.Open();
-            using var fileStream = File.OpenRead(file);
-            fileStream.CopyTo(entryStream);
+            return (false, $"❌ Failed to create EPUB: {ex.Message}");
         }
     }
 }
