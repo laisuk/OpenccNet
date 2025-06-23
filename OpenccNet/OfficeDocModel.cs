@@ -95,8 +95,9 @@ public static class OfficeDocModel
                         "docx" => @"(w:eastAsia=""|w:ascii=""|w:hAnsi=""|w:cs="")(.*?)("")",
                         "xlsx" => @"(val="")(.*?)("")",
                         "pptx" => @"(typeface="")(.*?)("")",
-                        // 🆕 Handle odt, ods, odp
-                        "odt" or "ods" or "odp" => @"((style:name|svg:font-family)=[""'])([^""']+)([""'])",
+                        // 🆕 Improved regex for odt/ods/odp – avoids converting Chinese font names
+                        "odt" or "ods" or "odp" =>
+                            @"((?:style:font-name(?:-asian|-complex)?|svg:font-family|style:name)=[""'])([^""']+)([""'])",
                         "epub" => @"(font-family\s*:\s*)([^;""']+)",
                         _ => null
                     };
@@ -105,15 +106,13 @@ public static class OfficeDocModel
                     {
                         xmlContent = Regex.Replace(xmlContent, pattern, match =>
                         {
-                            var originalFont = format is "odt" or "ods" or "odp"
-                                ? match.Groups[3].Value
-                                : match.Groups[2].Value;
-                            var marker = $"FONT_{fontCounter++}";
+                            string originalFont = match.Groups[2].Value;
+                            var marker = $"__F_O_N_T_{fontCounter++}__";
                             fontMap[marker] = originalFont;
 
                             return format switch
                             {
-                                "odt" or "ods" or "odp" => match.Groups[1].Value + marker + match.Groups[4].Value,
+                                "odt" or "ods" or "odp" => match.Groups[1].Value + marker + match.Groups[3].Value,
                                 "epub" => match.Groups[1].Value + marker,
                                 _ => match.Groups[1].Value + marker + match.Groups[3].Value
                             };
