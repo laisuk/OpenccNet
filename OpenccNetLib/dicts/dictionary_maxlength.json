@@ -53084,10 +53084,21 @@
       "\u9F9A\u80DC": "\u9F94\u52DD",
       "\u9F9F\u535C": "\u9F9C\u535C",
       "\u9F9F\u9274": "\u9F9C\u9451",
-      "\u7801\u5934": "\u78BC\u982D"
+      "\u7801\u5934": "\u78BC\u982D",
+      "\u51E0\u5341\u53EA": "\u5E7E\u5341\u96BB",
+      "\u51E0\u767E\u53EA": "\u5E7E\u767E\u96BB",
+      "\u51E0\u5343\u53EA": "\u5E7E\u5343\u96BB",
+      "\u51E0\u4E07\u53EA": "\u5E7E\u842C\u96BB",
+      "\u5343\u4E07\u53EA": "\u5343\u842C\u96BB",
+      "\u4E07\u4E07\u53EA": "\u842C\u842C\u96BB",
+      "\u4EBF\u4E07\u53EA": "\u5104\u842C\u96BB",
+      "\u65E0\u6570\u53EA": "\u7121\u6578\u96BB",
+      "\u6570\u53EA": "\u6578\u96BB",
+      "\u6570\u5343\u53EA": "\u6578\u5343\u96BB",
+      "\u6570\u4E07\u53EA": "\u6578\u842C\u96BB"
     },
     "MaxLength": 16,
-    "Count": 49097
+    "Count": 49108
   },
   "ts_characters": {
     "Data": {
