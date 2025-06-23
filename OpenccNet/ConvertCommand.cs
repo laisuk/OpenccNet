@@ -21,7 +21,7 @@ internal static class ConvertCommand
     // Supported Office file formats for Office documents conversion.
     private static readonly HashSet<string> OfficeFormats = new(StringComparer.OrdinalIgnoreCase)
     {
-        "docx", "xlsx", "pptx", "odt", "ods", "odp"
+        "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
     };
 
     internal static Command CreateCommand()
@@ -82,12 +82,12 @@ internal static class ConvertCommand
         var officeOption = new Option<bool>(
             "--office",
             getDefaultValue: () => false,
-            description: "Convert Office documents (.docx | .xlsx | .pptx | .odt | .ods | .odp)"
+            description: "Convert Office documents (.docx | .xlsx | .pptx | .odt | .ods | .odp | .epub)"
         );
 
         var formatOption = new Option<string?>(
             "--format",
-            description: "Force Office document format: docx | xlsx | pptx | odt | ods | odp"
+            description: "Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub"
         );
 
         formatOption.AddValidator(result =>
@@ -218,7 +218,7 @@ internal static class ConvertCommand
                 {
                     await Console.Error.WriteLineAsync($"❌ Invalid Office file extension: {fileExt}");
                     await Console.Error.WriteLineAsync(
-                        $"   Valid extensions: .docx | .xlsx | .pptx | .odt | .ods | .odp");
+                        $"   Valid extensions: .docx | .xlsx | .pptx | .odt | .ods | .odp | epub");
                     return 1;
                 }
 
