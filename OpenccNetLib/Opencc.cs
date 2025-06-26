@@ -26,7 +26,7 @@ namespace OpenccNetLib
 
         // Regex for stripping non-Chinese and non-symbol characters.
         private static readonly Regex StripRegex = new Regex(
-            @"[!-/:-@\[-`{-~\t\n\v\f\r 0-9A-Za-z_]",
+            @"[!-/:-@\[-`{-~\t\n\v\f\r 0-9A-Za-z_着著]",
             RegexOptions.Compiled);
 
         // Supported configuration names for conversion directions.
