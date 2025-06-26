@@ -19,6 +19,7 @@
         <Authors>Laisuk Lai</Authors>
         <Description>Convert text and Office files using OpenCC with CLI support.</Description>
         <PackageOutputPath>./nupkg</PackageOutputPath>
+        <ApplicationIcon>assets\openccnet.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>
