@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -258,12 +257,11 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="text">The input text to convert.</param>
         /// <param name="dictionaries">The list of dictionaries to use for conversion.</param>
+        /// <param name="maxWordLength">Maximum word length for dictionaries</param>
         /// <returns>The converted text.</returns>
-        private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries)
+        private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries, int maxWordLength)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
-
-            var maxWordLength = dictionaries.Count == 0 ? 1 : dictionaries.Max(d => d.MaxLength);
 
             // Use span-based splitting for better performance
             var splitRanges = GetSplitRangesSpan(text.AsSpan());
@@ -739,7 +737,7 @@ namespace OpenccNetLib
 
             var stripped = StripRegex.Replace(inputText, "");
             var maxChars = FindMaxUtf8Length(stripped, 200);
-            var stripText = maxChars < stripped.Length ? stripped.Substring(0, maxChars) : stripped;
+            var stripText = stripped.Substring(0, maxChars);
 
             var tsConverted = Ts(stripText);
             if (stripText != tsConverted) return 1;
@@ -750,6 +748,9 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Finds the maximum substring length that fits within the specified UTF-8 byte count.
+        /// Ensures truncation does not split multibyte characters.
+        /// Returns the number of characters that can be safely included
+        /// within a UTF-8 byte slice of `maxByteCount`.
         /// </summary>
         /// <param name="s">The input string.</param>
         /// <param name="maxByteCount">The maximum allowed byte count.</param>
