@@ -180,7 +180,7 @@ namespace OpenccNetLib
             Config = config;
             // Accessing the Dictionary property's Value ensures all Lazy<T> instances
             // (for the dictionary and all round lists) are initialized once, lazily, and thread-safely.
-            var _ = Dictionary;
+            // var _ = Dictionary;
         }
 
         /// <summary>
