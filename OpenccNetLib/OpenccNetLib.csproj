@@ -18,10 +18,10 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>[1.0.2] – 2025-07-06
-Changed
-Optimized dictionary cache.
-Optimized Chinese text code detection.
-Dictionary candidates minor fix.</PackageReleaseNotes>
+Changed:
+- Optimized dictionary cache.
+- Optimized Chinese text code detection.
+- Dictionary candidates minor fix.</PackageReleaseNotes>
         <AssemblyVersion>1.0.2.0</AssemblyVersion>
         <FileVersion>1.0.2.0</FileVersion>
     </PropertyGroup>

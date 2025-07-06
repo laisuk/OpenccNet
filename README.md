@@ -12,7 +12,7 @@
 - [Usage](#usage)
 - [API Reference](#api-reference)
 - [Dictionary Files](#dictionary-files)
-- [Add-On Tools](#add-on-tools)
+- [Add-On Tools](#add-on-tools-separated-from-openccnetlib)
 - [License](#license)
 
 ## Features
@@ -223,7 +223,7 @@ Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
 - Dictionaries are loaded and cached on first use.
 - Data files are expected in the `dicts/` directory (see `DictionaryLib` for details).
 
-## Add-On Tools
+## Add-On Tools (Separated from OpenccNetLib)
 
 ### `OpenccNet dictgen`
 
