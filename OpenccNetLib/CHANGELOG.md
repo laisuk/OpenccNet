@@ -8,9 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [1.0.2] – 2025-07-06
 ### Changed
-- Optimized dictionary cache.
-- Optimized Chinese text code detection.
-- Dictionary candidates minor fix.
+- Optimized dictionary segment replacement using thread-local `StringBuilder` caching.
+- Improved memory efficiency using `ArrayPool<char>` for dictionary key generation.
+- Enhanced Chinese text code detection with better UTF-8 range heuristics.
+- Minor fix in dictionary candidate evaluation logic.
+- Improved parallel segment conversion threshold for better scalability.
 
 ---
 
