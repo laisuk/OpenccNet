@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.0.2] – 2025-07-06
+### Changed
+- Optimized dictionary cache.
+- Optimized Chinese text code detection.
+- Dictionary candidates minor fix.
+
+---
+
 ## [1.0.1] – 2025-06-20
 ### Added
 - Add functions to `get`, `set` and `validate` conversion Config.

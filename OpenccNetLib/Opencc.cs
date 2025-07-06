@@ -736,6 +736,7 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(inputText)) return 0;
 
             var stripped = StripRegex.Replace(inputText, "");
+            stripped = stripped.Length > 200 ? stripped.Substring(0, 200) : stripped;
             var maxChars = FindMaxUtf8Length(stripped, 200);
             var stripText = stripped.Substring(0, maxChars);
 
