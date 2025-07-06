@@ -257,6 +257,12 @@ Options:
   -p, --punct                       Punctuation conversion: True|False [default: False]
   --in-enc <in-enc>                 Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
   --out-enc <out-enc>               Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
+  --office                          Convert Office documents (.docx | .xlsx | .pptx | .odt | .ods | .odp | .epub) [default: False]
+  --format <format>                 Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
+  --keep-font                       Preserve original font names in Office documents during conversion.
+                                    Default: true. To disable, use: --keep-font:false [default: True]
+  --auto-ext                        Automatically append correct Office document extension to output file if missing (e.g., .docx, .xlsx).
+                                    Default: true. To disable, use: --auto-ext:false [default: True]
   -?, -h, --help                    Show help and usage information
 ```
 
