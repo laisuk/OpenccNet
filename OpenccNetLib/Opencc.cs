@@ -55,6 +55,12 @@ namespace OpenccNetLib
             Warmup();
         }
 
+        /// <summary>
+        /// Initializes the static Lazy&lt;T&gt; fields for the Opencc class and preloads the default dictionary and round lists.
+        /// This method is called once by the static constructor to ensure that the default dictionary and its associated
+        /// conversion lists are loaded and ready for use. It also preloads the round list values to minimize lazy initialization
+        /// overhead during the first conversion operation.
+        /// </summary>
         private static void Warmup()
         {
             var dict = DictionaryLib.New(); // default config
