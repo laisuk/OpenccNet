@@ -8,12 +8,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [1.0.2] – 2025-07-07
 ### Changed
-- Optimized dictionary segment replacement using thread-local `StringBuilder` caching.
-- Improved memory efficiency using `ArrayPool<char>` for dictionary key generation.
-- Enhanced Chinese text code detection with better UTF-8 range heuristics.
-- Minor fix in dictionary candidate evaluation logic.
-- Improved parallel segment conversion threshold for better scalability.
-- Pre-warmup for commonly use dictionaries. 
+- Optimized dictionary segment replacement using thread-local StringBuilder caching.
+- Improved memory efficiency by using ArrayPool<char> for dictionary key generation.
+- Enhanced Chinese text code detection with refined UTF-8 byte-range heuristics.
+- Fixed a minor issue in dictionary candidate evaluation logic.
+- Tuned the parallel segment conversion threshold for better scalability on multi-core systems.
+- Added a warm-up pipeline to eliminate lazy-loading overhead during the first conversion.
+- Preloaded roundlist caches for faster and more consistent conversion performance.
+- Improved CLI and GUI responsiveness by reducing first-call latency.
 
 ---
 

@@ -162,22 +162,29 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - Uses static dictionary caching and thread-local buffers for high throughput.
 - Suitable for batch and parallel processing scenarios.
 
-## Benchmarks
+### 📊 Benchmark Results – OpenccNetLib 1.0.2
 
-```
-BenchmarkDotNet v0.15.0, Windows 11 (10.0.26100.4061/24H2/2024Update/HudsonValley).NET SDK 9.0.300
-[Host]     : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
-Job-TNXPUN : .NET 9.0.5 (9.0.525.21509), X64 RyuJIT AVX2
-```
+> BenchmarkDotNet v0.15.0 · .NET 9.0.6 · Windows 11 · RyuJIT AVX2  
+> Test: `BM_Convert_Sized` · Warmup + 3 Iterations
 
-| Size	   | s2t Time (ms)	 | s2tw Time (ms)	 | s2twp Time (ms)	 | s2t Memory (MB)	 | s2tw Memory (MB)	 | s2twp Memory (MB) |
-|:--------|---------------:|----------------:|-----------------:|-----------------:|------------------:|------------------:|
-| 100     |        0.0107	 |         0.0131	 |          0.0205	 |          0.0218	 |           0.0265	 |            0.0429 |
-| 1,000   |         0.169	 |          0.201	 |           0.334	 |           0.235	 |            0.276	 |             0.452 |
-| 10,000  |         0.495	 |          0.744	 |            1.17	 |             2.1	 |              2.5	 |               4.1 |
-| 100,000 |          10.3	 |           15.3	 |            22.9	 |            22.4	 |             26.6	 |              44.1 |
+| Input Size |      Mean Time | Gen0 (per 1k ops) |   Gen1 |    Gen2 | Allocated Memory |
+|------------|---------------:|------------------:|-------:|--------:|-----------------:|
+| 100        |       10.82 µs |              2.03 |      – |       – |         20.87 KB |
+| 1,000      |      173.75 µs |             21.97 |   0.73 |       – |        225.80 KB |
+| 10,000     |      496.15 µs |            194.34 |  53.71 |       – |          1.98 MB |
+| 100,000    |        9.95 ms |           2203.13 | 593.75 |   187.5 |         21.47 MB |
+| 1,000,000  |       88.75 ms |         22,333.33 |  6,000 | 1,500.0 |        221.77 MB |
 
-![Benchmarks Image](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/BenchmarksData.jpg)
+### ⏱ Relative Performance Chart
+
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_combined_chart.png)
+
+### ✅ Highlights
+
+- Roundlist and dictionary preloading eliminates lazy overhead.
+- Warm startup is fast, even for large inputs.
+- Memory usage and GC pressure scale predictably.
+- CLI and GUI now feel instant for most users.
 
 ## API Reference
 

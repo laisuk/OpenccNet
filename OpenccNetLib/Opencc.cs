@@ -52,7 +52,21 @@ namespace OpenccNetLib
         // This runs once, automatically and thread-safely, when the Opencc class is first accessed.
         static Opencc()
         {
-            InitializeLazyLoaders(DictionaryLib.New()); // Initialize with the default dictionary
+            Warmup();
+        }
+
+        private static void Warmup()
+        {
+            var dict = DictionaryLib.New(); // default config
+            InitializeLazyLoaders(dict); // Initialize with the default dictionary
+
+            // Preload round list values
+            _ = _lazyRoundSt.Value;
+            _ = _lazyRoundStPunct.Value;
+            _ = _lazyRoundTs.Value;
+            _ = _lazyRoundTsPunct.Value;
+
+            // _ = new Opencc("s2t").Convert(" ");
         }
 
         /// <summary>
@@ -182,10 +196,10 @@ namespace OpenccNetLib
             // (for the dictionary and all round lists) are initialized once, lazily, and thread-safely.
             // _ = Dictionary;
             // Preload commonly used round dictionaries to avoid lazy hit later
-            _ = _lazyRoundSt.Value;
-            _ = _lazyRoundStPunct.Value;
-            _ = _lazyRoundTs.Value;
-            _ = _lazyRoundTsPunct.Value;
+            // _ = _lazyRoundSt.Value;
+            // _ = _lazyRoundStPunct.Value;
+            // _ = _lazyRoundTs.Value;
+            // _ = _lazyRoundTsPunct.Value;
         }
 
         /// <summary>
