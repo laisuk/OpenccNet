@@ -180,7 +180,12 @@ namespace OpenccNetLib
             Config = config;
             // Accessing the Dictionary property's Value ensures all Lazy<T> instances
             // (for the dictionary and all round lists) are initialized once, lazily, and thread-safely.
-            // var _ = Dictionary;
+            // _ = Dictionary;
+            // Preload commonly used round dictionaries to avoid lazy hit later
+            _ = _lazyRoundSt.Value;
+            _ = _lazyRoundStPunct.Value;
+            _ = _lazyRoundTs.Value;
+            _ = _lazyRoundTsPunct.Value;
         }
 
         /// <summary>
@@ -277,28 +282,28 @@ namespace OpenccNetLib
             // Optimize for small number of segments
             if (splitRanges.Count == 1)
             {
-                return ConvertBy(text, dictionaries, maxWordLength);
+                return ConvertBy(text.AsSpan(), dictionaries, maxWordLength);
             }
 
             var results = new string[splitRanges.Count];
 
             // Use parallel processing only for larger workloads
-            if (splitRanges.Count > 4 && text.Length > 1000)
+            if (splitRanges.Count > 8 && text.Length > 2000)
             {
                 Parallel.For(0, splitRanges.Count, i =>
                 {
                     var (start, end) = splitRanges[i];
-                    var segment = text.Substring(start, end - start);
+                    var segment = text.AsSpan(start, end - start);
                     results[i] = ConvertBy(segment, dictionaries, maxWordLength);
                 });
             }
             else
             {
                 // Sequential processing for smaller workloads
-                for (int i = 0; i < splitRanges.Count; i++)
+                for (var i = 0; i < splitRanges.Count; i++)
                 {
                     var (start, end) = splitRanges[i];
-                    var segment = text.Substring(start, end - start);
+                    var segment = text.AsSpan(start, end - start);
                     results[i] = ConvertBy(segment, dictionaries, maxWordLength);
                 }
 
@@ -316,27 +321,29 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts a string using the provided dictionaries, matching the longest possible key at each position.
         /// </summary>
-        /// <param name="text">The input text segment.</param>
+        /// <param name="textSpan">The input text segment.</param>
         /// <param name="dictionaries">The dictionaries to use for lookup.</param>
         /// <param name="maxWordLength">The maximum key length to consider.</param>
         /// <returns>The converted string segment.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string ConvertBy(string text, List<DictWithMaxLength> dictionaries, int maxWordLength)
+        private static string ConvertBy(ReadOnlySpan<char> textSpan, List<DictWithMaxLength> dictionaries,
+            int maxWordLength)
         {
-            if (string.IsNullOrEmpty(text))
-                return text;
-
-            // Quick check for single delimiter
-            if (text.Length == 1 && Delimiters.Contains(text[0]))
-                return text;
+            switch (textSpan.Length)
+            {
+                case 0:
+                    return string.Empty;
+                // Quick check for single delimiter
+                case 1 when Delimiters.Contains(textSpan[0]):
+                    return textSpan.ToString();
+            }
 
             // Use thread-local StringBuilder
             var resultBuilder = StringBuilderCache.Value;
             resultBuilder.Clear();
-            resultBuilder.EnsureCapacity(text.Length * 2);
+            resultBuilder.EnsureCapacity(textSpan.Length * 2);
 
-            var span = text.AsSpan();
-            var textLen = span.Length;
+            var textLen = textSpan.Length;
             var i = 0;
 
             // Use ArrayPool for better memory management
@@ -346,7 +353,7 @@ namespace OpenccNetLib
             {
                 while (i < textLen)
                 {
-                    var remaining = span.Slice(i);
+                    var remaining = textSpan.Slice(i);
                     var tryMaxLen = Math.Min(maxWordLength, remaining.Length);
 
                     string bestMatch = null;
@@ -366,12 +373,10 @@ namespace OpenccNetLib
                             wordSpan.CopyTo(keyBuffer.AsSpan());
                             var key = new string(keyBuffer, 0, length);
 
-                            if (dictObj.Data.TryGetValue(key, out var match))
-                            {
-                                bestMatch = match;
-                                bestMatchLength = length;
-                                goto FoundMatch; // Break out of both loops
-                            }
+                            if (!dictObj.Data.TryGetValue(key, out var match)) continue;
+                            bestMatch = match;
+                            bestMatchLength = length;
+                            goto FoundMatch; // Break out of both loops
                         }
                     }
 
@@ -383,7 +388,7 @@ namespace OpenccNetLib
                     }
                     else
                     {
-                        resultBuilder.Append(span[i]);
+                        resultBuilder.Append(textSpan[i]);
                         i++;
                     }
                 }
@@ -713,7 +718,7 @@ namespace OpenccNetLib
         public static string St(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.st_characters };
-            return ConvertBy(inputText, dictRefs, 1);
+            return ConvertBy(inputText.AsSpan(), dictRefs, 1);
         }
 
         /// <summary>
@@ -722,7 +727,7 @@ namespace OpenccNetLib
         public static string Ts(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.ts_characters };
-            return ConvertBy(inputText, dictRefs, 1);
+            return ConvertBy(inputText.AsSpan(), dictRefs, 1);
         }
 
         /// <summary>
