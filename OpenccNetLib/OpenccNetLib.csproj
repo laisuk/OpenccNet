@@ -18,13 +18,19 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.0.2
-High-performance .NET Standard library for OpenCC-style Chinese conversion using dictionary-based segment replacement.
+High-performance .NET Standard library for OpenCC-style Chinese conversion, featuring dictionary-based segment replacement and optimized for both CLI and GUI use.
+
 What's New in 1.0.2:
-- Improved performance using thread-local StringBuilder caching
-- Reduced memory allocation with ArrayPool&lt;char&gt;
+- Improved performance with thread-local StringBuilder caching
+- Reduced memory usage via ArrayPool&lt;char&gt; for dictionary keys
 - Adaptive parallelization for large text inputs
-- Internal refactoring for GC efficiency
-Compatible with .NET Standard 2.0+</PackageReleaseNotes>
+- Preloaded dictionary roundlists for faster first-time conversion
+- Enhanced UTF-8 range heuristics for Chinese code detection
+- Internal refactoring for GC and allocation efficiency
+
+Compatible with .NET Standard 2.0+
+        </PackageReleaseNotes>
+
         <AssemblyVersion>1.0.2.0</AssemblyVersion>
         <FileVersion>1.0.2.0</FileVersion>
     </PropertyGroup>
