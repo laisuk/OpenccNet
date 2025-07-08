@@ -161,17 +161,6 @@ internal static class ConvertCommand
         bool keepFont,
         bool autoExt)
     {
-        if (string.IsNullOrEmpty(config))
-        {
-            lock (ConsoleLock)
-            {
-                Console.Error.WriteLine("Error: Conversion configuration is required.");
-                Console.Error.WriteLine($"Valid values are: {string.Join(", ", ConfigList)}");
-            }
-
-            return 1;
-        }
-
         if (office)
         {
             if (string.IsNullOrEmpty(inputFile) && string.IsNullOrEmpty(outputFile))
@@ -179,10 +168,10 @@ internal static class ConvertCommand
                 await Console.Error.WriteLineAsync("❌ Input and output files are missing.");
                 return 1;
             }
-
-            if (string.IsNullOrEmpty(inputFile))
+            
+            if (string.IsNullOrEmpty(inputFile) || !File.Exists(inputFile))
             {
-                await Console.Error.WriteLineAsync("❌ Input file is missing.");
+                await Console.Error.WriteLineAsync("❌ Input file is missing or does not exist.");
                 return 1;
             }
 
@@ -238,7 +227,7 @@ internal static class ConvertCommand
 
                 var status = success
                     ? message + $"\n📁 Output saved to: {Path.GetFullPath(outputFile)}"
-                    : $"❌ Conversion failed: {message}";
+                    : $"❌ Office document conversion failed: {message}";
                 await Console.Error.WriteLineAsync(status);
 
                 return success ? 0 : 1;
