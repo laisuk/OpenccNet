@@ -58,21 +58,24 @@ namespace OpenccNetLib
         /// <summary>
         /// Initializes the static Lazy&lt;T&gt; fields for the Opencc class and preloads the default dictionary and round lists.
         /// This method is called once by the static constructor to ensure that the default dictionary and its associated
-        /// conversion lists are loaded and ready for use. It also preloads the round list values to minimize lazy initialization
+        /// conversion lists are loaded and ready for use. It also preloads round list values to minimize lazy initialization
         /// overhead during the first conversion operation.
         /// </summary>
         private static void Warmup()
         {
-            var dict = DictionaryLib.New(); // default config
-            InitializeLazyLoaders(dict); // Initialize with the default dictionary
+            var dict = DictionaryLib.New(); // Load default config
+            InitializeLazyLoaders(dict);    // Initialize with the default dictionary
 
-            // Preload round list values
+            // Preload round list values to avoid Lazy<T> cost during first access
             _ = _lazyRoundSt.Value;
             _ = _lazyRoundStPunct.Value;
             _ = _lazyRoundTs.Value;
             _ = _lazyRoundTsPunct.Value;
 
-            // _ = new Opencc("s2t").Convert(" ");
+            // Warm up JIT + Tiered PGO for segment replacement logic,
+            // and potentially pre-spin the ThreadPool if parallel thresholds are met.
+            // Uncomment to enable conversion warmup.
+            // _ = new Opencc("s2t").Convert("预热文本");
         }
 
         /// <summary>
@@ -201,11 +204,6 @@ namespace OpenccNetLib
             // Accessing the Dictionary property's Value ensures all Lazy<T> instances
             // (for the dictionary and all round lists) are initialized once, lazily, and thread-safely.
             // _ = Dictionary;
-            // Preload commonly used round dictionaries to avoid lazy hit later
-            // _ = _lazyRoundSt.Value;
-            // _ = _lazyRoundStPunct.Value;
-            // _ = _lazyRoundTs.Value;
-            // _ = _lazyRoundTsPunct.Value;
         }
 
         /// <summary>
@@ -429,12 +427,6 @@ namespace OpenccNetLib
         /// <returns>The converted text.</returns>
         public string S2T(string inputText, bool punctuation = false)
         {
-            if (string.IsNullOrEmpty(inputText))
-            {
-                _lastError = "Input text is empty";
-                return string.Empty;
-            }
-
             var round1List = punctuation ? _lazyRoundStPunct.Value : _lazyRoundSt.Value;
             var refs = new DictRefs(round1List);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
@@ -448,12 +440,6 @@ namespace OpenccNetLib
         /// <returns>The converted text.</returns>
         public string T2S(string inputText, bool punctuation = false)
         {
-            if (string.IsNullOrEmpty(inputText))
-            {
-                _lastError = "Input text is empty";
-                return string.Empty;
-            }
-
             var round1List = punctuation ? _lazyRoundTsPunct.Value : _lazyRoundTs.Value;
             var refs = new DictRefs(round1List);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
@@ -685,6 +671,12 @@ namespace OpenccNetLib
         /// <returns>The converted text, or the original input if the config is invalid.</returns>
         public string Convert(string inputText, bool punctuation = false)
         {
+            if (string.IsNullOrEmpty(inputText))
+            {
+                _lastError = "Input text is empty";
+                return string.Empty;
+            }
+            
             try
             {
                 switch (Config)

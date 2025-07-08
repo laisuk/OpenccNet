@@ -6,7 +6,10 @@
         <PackageId>OpenccNetLib</PackageId>
         <Version>1.0.2</Version>
         <Authors>laisuk</Authors>
-        <Description>OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese</Description>
+        <Description>
+            OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
+            Supports high-performance dictionary-based segment replacement with support for both CLI and GUI tools.
+        </Description>
         <PackageTags>opencc;chinese;conversion;traditional;simplified</PackageTags>
         <RepositoryUrl>https://github.com/laisuk/OpenccNet</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -33,6 +36,7 @@ Compatible with .NET Standard 2.0+
 
         <AssemblyVersion>1.0.2.0</AssemblyVersion>
         <FileVersion>1.0.2.0</FileVersion>
+        <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
@@ -42,9 +46,14 @@ Compatible with .NET Standard 2.0+
         <PackageReference Include="ZstdSharp.Port" Version="0.8.5"/>
     </ItemGroup>
 
+    <!-- Include icon file in package -->
+    <ItemGroup>
+        <None Include="Images/icon.png" Pack="true" PackagePath="/" />
+    </ItemGroup>
+    
     <!-- Include README in package -->
     <ItemGroup>
-        <None Include="../README.md" Pack="true" PackagePath="\"/>
+        <None Include="../README.md" Pack="true" PackagePath="/" />
     </ItemGroup>
 
     <!-- Dictionary files - included in package and copied to output -->
