@@ -10,22 +10,31 @@ internal static class DictGenCommand
 
     internal static Command CreateCommand()
     {
-        var formatOption = new Option<string>(
-            ["-f", "--format"],
-            () => "zstd",
-            "Dictionary format: [zstd|cbor|json]"
-        ).FromAmong("zstd", "cbor", "json");
+        var formatOption = new Option<string>("--format", "-f")
+        {
+            DefaultValueFactory = _ => "zstd",
+            Description = "Dictionary format: zstd|cbor|json",
+        };
 
-        var outputOption = new Option<string>(
-            ["-o", "--output"],
-            "Output filename. Default: dictionary_maxlength.<ext>"
-        );
+        formatOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>().ToLowerInvariant();
+            if (value is not ("zstd" or "cbor" or "json"))
+            {
+                result.AddError("Format must be one of: zstd, cbor, json.");
+            }
+        });
 
-        var baseDirOption = new Option<string>(
-            ["-b", "--base-dir"],
-            () => "dicts",
-            "Base directory containing source dictionary files"
-        );
+        var outputOption = new Option<string>("--output", "-o")
+        {
+            Description = "Output filename. Default: dictionary_maxlength.<ext>"
+        };
+
+        var baseDirOption = new Option<string>("--base-dir", "-b")
+        {
+            DefaultValueFactory = _ => "dicts",
+            Description = "Base directory containing source dictionary files"
+        };
 
         var dictGenCommand = new Command("dictgen", $"{Blue}Generate OpenccNetLib dictionary files.{Reset}")
         {
@@ -34,19 +43,18 @@ internal static class DictGenCommand
             baseDirOption
         };
 
-        dictGenCommand.SetHandler((format, output, baseDir) =>
+        dictGenCommand.SetAction(pr =>
         {
-            // Determine output filename
+            var format = pr.GetValue(formatOption)!;
+            var output = pr.GetValue(outputOption);
+            var baseDir = pr.GetValue(baseDirOption)!;
+
             var defaultOutput = $"dictionary_maxlength.{format}";
             var outputFile = string.IsNullOrWhiteSpace(output) ? defaultOutput : output;
 
             Console.WriteLine($"{Blue}Generating dictionary from '{baseDir}'...{Reset}");
 
-            // Assuming DictionaryLib needs to be initialized or loaded before saving
-            // You'll need to ensure OpenccNetLib provides a way to load the dictionary data.
-            // var dict = DictionaryLib.FromDicts(baseDir);
-
-            switch (format)
+            switch (format.ToLowerInvariant())
             {
                 case "zstd":
                     DictionaryLib.SaveCompressed(outputFile);
@@ -57,10 +65,14 @@ internal static class DictGenCommand
                 case "json":
                     DictionaryLib.SerializeToJson(outputFile);
                     break;
+                default:
+                    Console.Error.WriteLine($"❌ Unknown format: {format}");
+                    return 1;
             }
 
             Console.WriteLine($"{Blue}Dictionary saved as '{outputFile}' in {format.ToUpper()} format.{Reset}");
-        }, formatOption, outputOption, baseDirOption);
+            return 0;
+        });
 
         return dictGenCommand;
     }

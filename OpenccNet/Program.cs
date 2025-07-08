@@ -13,18 +13,16 @@ public static class Program
             new RootCommand(
                 $"{Blue}OpenccNet: A CLI tool for OpenccNetLib dictionary generation and Open Chinese text conversion.{Reset}")
             {
-                // You can add global options here if any, but none from original code
+                // Add any global options here if needed
             };
 
-        // --- Add DictGen Subcommand ---
-        var dictGenCommand = DictGenCommand.CreateCommand();
-        rootCommand.AddCommand(dictGenCommand);
+        // Add subcommands
+        rootCommand.Subcommands.Add(DictGenCommand.CreateCommand());
+        rootCommand.Subcommands.Add(ConvertCommand.CreateCommand());
 
-        // --- Add Convert Subcommand ---
-        var convertCommand = ConvertCommand.CreateCommand();
-        rootCommand.AddCommand(convertCommand);
+        // System.CommandLine beta 5 config wrapper
+        var config = new CommandLineConfiguration(rootCommand);
 
-        // Invoke the command line parser
-        return await rootCommand.InvokeAsync(args);
+        return await config.InvokeAsync(args);
     }
 }

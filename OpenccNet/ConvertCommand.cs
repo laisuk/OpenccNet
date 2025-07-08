@@ -24,103 +24,94 @@ internal static class ConvertCommand
         "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
     };
 
+    // Only the changes around CreateCommand() are shown. All RunConversionAsync etc. remain unchanged
+
     internal static Command CreateCommand()
     {
-        // --- Global Setup for Console Encoding ---
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         Console.OutputEncoding = Encoding.UTF8;
         Console.InputEncoding = Encoding.UTF8;
-        // ------------------------------------------
 
-        // Define options for the convert command
-        var inputFileOption = new Option<string?>(
-            ["-i", "--input"],
-            description: "Read original text from file <input>."
-        );
-
-        var outputFileOption = new Option<string?>(
-            ["-o", "--output"],
-            description: "Write converted text to file <output>."
-        );
-
-        var configOption = new Option<string>(
-            ["-c", "--config"],
-            description: "Conversion configuration: [s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp]"
-        )
+        var inputFileOption = new Option<string?>("--input", "-i")
         {
-            IsRequired = true // Mark as required
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Read original text from file <input>"
         };
 
-        // Add validation for config values
-        configOption.AddValidator(result =>
+        var outputFileOption = new Option<string?>("--output", "-o")
         {
-            if (result.GetValueForOption(configOption) is { } configValue && !ConfigList.Contains(configValue))
+            Arity = ArgumentArity.ZeroOrOne,
+            Description = "Write original text to file <output>"
+        };
+
+        var configOption = new Option<string>("--config", "-c")
+        {
+            Required = true,
+            Description = "Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp"
+        };
+
+        configOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>();
+            if (!string.IsNullOrEmpty(value) && !ConfigList.Contains(value))
             {
-                result.ErrorMessage =
-                    $"Invalid config '{configValue}'. Valid options are: {string.Join(", ", ConfigList)}";
+                result.AddError($"Invalid config '{value}'. Valid options: {string.Join(", ", ConfigList)}");
             }
         });
 
-        var punctOption = new Option<bool>(
-            ["-p", "--punct"],
-            getDefaultValue: () => false, // Default value
-            description: "Punctuation conversion: True|False"
-        );
-
-        var inputEncodingOption = new Option<string>(
-            name: "--in-enc",
-            getDefaultValue: () => "UTF-8", // Default value
-            description: "Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]"
-        );
-
-        var outputEncodingOption = new Option<string>(
-            name: "--out-enc",
-            getDefaultValue: () => "UTF-8", // Default value
-            description: "Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS]"
-        );
-
-        var officeOption = new Option<bool>(
-            "--office",
-            getDefaultValue: () => false,
-            description: "Convert Office documents (.docx | .xlsx | .pptx | .odt | .ods | .odp | .epub)"
-        );
-
-        var formatOption = new Option<string?>(
-            "--format",
-            description: "Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub"
-        );
-
-        formatOption.AddValidator(result =>
+        var punctOption = new Option<bool>("--punct", "-p")
         {
-            var formatValue = result.GetValueForOption(formatOption);
-            var officeValue = result.GetValueForOption(officeOption);
+            DefaultValueFactory = _ => false,
+            Description = "Punctuation conversion."
+        };
 
-            if (string.IsNullOrEmpty(formatValue)) return;
-            if (!officeValue)
-            {
-                result.ErrorMessage = "--format can only be used together with --office.";
-            }
-            else if (!OfficeFormats.Contains(formatValue))
-            {
-                result.ErrorMessage =
-                    $"Invalid format '{formatValue}'. Valid options are: {string.Join(" | ", OfficeFormats)}";
-            }
+        var inputEncodingOption = new Option<string>("--in-enc")
+        {
+            DefaultValueFactory = _ => "UTF-8",
+            Description = "Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]"
+        };
+
+        var outputEncodingOption = new Option<string>("--out-enc")
+        {
+            DefaultValueFactory = _ => "UTF-8",
+            Description = "Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]"
+        };
+
+        var officeOption = new Option<bool>("--office")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Convert Office documents (.docx | .xlsx | .pptx | .odt | .ods | .odp | .epub) [default: False]"
+        };
+
+        var formatOption = new Option<string?>("--format")
+        {
+            Description = "Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub"
+        };
+
+        formatOption.Validators.Add(result =>
+        {
+            var format = result.GetValueOrDefault<string>();
+            var office = result.Parent!.GetValue(officeOption);
+
+            if (string.IsNullOrEmpty(format)) return;
+            if (!office)
+                result.AddError("--format can only be used with --office.");
+            else if (!OfficeFormats.Contains(format))
+                result.AddError($"Invalid format '{format}'. Valid: {string.Join(" | ", OfficeFormats)})");
         });
 
-        var keepFontOption = new Option<bool>(
-            "--keep-font",
-            getDefaultValue: () => true,
-            description: "Preserve original font names in Office documents during conversion.\n" +
-                         "Default: true. To disable, use: --keep-font:false"
-        );
+        var keepFontOption = new Option<bool>("--keep-font")
+        {
+            DefaultValueFactory = _ => true,
+            Description = "Preserve font names in Office documents [default: true]. Use --keep-font:false to disable."
+        };
 
-        var autoExtOption = new Option<bool>(
-            "--auto-ext",
-            getDefaultValue: () => true,
-            description:
-            "Automatically append correct Office document extension to output file if missing (e.g., .docx, .xlsx).\n" +
-            "Default: true. To disable, use: --auto-ext:false"
-        );
+        var autoExtOption = new Option<bool>("--auto-ext")
+        {
+            DefaultValueFactory = _ => true,
+            Description =
+                "Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable."
+        };
 
         var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
         {
@@ -136,24 +127,23 @@ internal static class ConvertCommand
             autoExtOption
         };
 
-        // Set the handler for the convert command
-        convertCommand.SetHandler(async (context) =>
+        convertCommand.SetAction(async (pr, _) =>
         {
-            var inputFile = context.ParseResult.GetValueForOption(inputFileOption);
-            var outputFile = context.ParseResult.GetValueForOption(outputFileOption);
-            var config = context.ParseResult.GetValueForOption(configOption)!; // Config is required, so can use !
-            var punct = context.ParseResult.GetValueForOption(punctOption);
-            var inputEncoding = context.ParseResult.GetValueForOption(inputEncodingOption)!;
-            var outputEncoding = context.ParseResult.GetValueForOption(outputEncodingOption)!;
-            var office = context.ParseResult.GetValueForOption(officeOption);
-            var format = context.ParseResult.GetValueForOption(formatOption);
-            var keepFont = context.ParseResult.GetValueForOption(keepFontOption);
-            var autoExt = context.ParseResult.GetValueForOption(autoExtOption);
+            var inputFile = pr.GetValue(inputFileOption);
+            var outputFile = pr.GetValue(outputFileOption);
+            var config = pr.GetValue(configOption)!;
+            var punct = pr.GetValue(punctOption);
+            var inputEnc = pr.GetValue(inputEncodingOption)!;
+            var outputEnc = pr.GetValue(outputEncodingOption)!;
+            var office = pr.GetValue(officeOption);
+            var format = pr.GetValue(formatOption);
+            var keepFont = pr.GetValue(keepFontOption);
+            var autoExt = pr.GetValue(autoExtOption);
 
-            var exitCode =
-                await RunConversionAsync(inputFile, outputFile, config, punct, inputEncoding, outputEncoding, office,
-                    format, keepFont, autoExt);
-            context.ExitCode = exitCode;
+            return await RunConversionAsync(
+                inputFile, outputFile, config, punct, inputEnc, outputEnc,
+                office, format, keepFont, autoExt
+            );
         });
 
         return convertCommand;

@@ -6,13 +6,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [1.0.2] – 2025-07-00
+## [1.0.2] – 2025-07-08
 ### Added
-- Add functions to `get`, `set` and `validate` conversion Config.
-- Add Office-style structured formats conversion.
+- Added support for getting, setting, and validating OpenCC conversion configurations.
+- Added structured document conversion for Office-style formats (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.epub`).
+- Added `--format`, `--keep-font`, and `--auto-ext` options to `convert` command.
 
 ### Changed
 - Optimized dictionary
+- Migrated CLI to `System.CommandLine` beta 5 for long-term stability and API consistency.
+- Refactored option declaration and handler wiring to follow new beta 5 conventions.
+- Improved CLI argument validation and user feedback consistency.
 
 ---
 

@@ -14,12 +14,7 @@
 
 ## 📦 Installation
 
-> Coming soon via NuGet
-
-```bash
-# Planned:
-dotnet tool install --global OpenccNet.Cli
-```
+Extract and run OpenccNet executable file.
 
 ## 🔧 Usage
 
