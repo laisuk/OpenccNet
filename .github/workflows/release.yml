@@ -45,8 +45,8 @@ jobs:
             --runtime ${{ matrix.rid }} \
             --output publish/ \
             --no-self-contained \
-            /p:PublishSingleFile=true \
-            /p:PublishReadyToRun=true
+            -p:PublishSingleFile=true \
+            -p:PublishReadyToRun=true
 
       - name: Rename and Zip (Windows)
         if: runner.os == 'Windows'
