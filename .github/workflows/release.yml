@@ -37,14 +37,17 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Publish
+      - name: Publish (Framework-dependent, Single File, R2R)
         shell: bash
         run: |
           dotnet publish OpenccNet/OpenccNet.csproj \
             --configuration Release \
             --runtime ${{ matrix.rid }} \
             --output publish/ \
-            --no-self-contained
+            --no-self-contained \
+            /p:PublishSingleFile=true \
+            /p:PublishReadyToRun=true \
+            /p:IncludeNativeLibrariesForSelfExtract=true
 
       - name: Rename and Zip (Windows)
         if: runner.os == 'Windows'
