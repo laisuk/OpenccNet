@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
-## [1.0.2] – 2025-07-09
+## [1.0.2] – 2025-07-10
 ### Added
 - Added support for getting, setting, and validating OpenCC conversion configurations.
 - Added structured document conversion for Office-style formats (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.epub`).
