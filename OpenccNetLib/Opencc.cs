@@ -16,12 +16,63 @@ namespace OpenccNetLib
     /// </summary>
     public class Opencc
     {
-        // Delimiter characters used for segmenting input text.
-        private static readonly char[] DelimiterArray =
-            " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{}|~＝、。﹁﹂—－（）《》〈〉？！…／＼︒︑︔︓︿﹀︹︺︙︐［﹇］﹈︕︖︰︳︴︽︾︵︶｛︷｝︸﹃﹄【︻】︼　～．，；："
-                .ToCharArray();
+        /// <summary>
+        /// Delimiter modes for segmenting text.
+        /// </summary>
+        private enum DelimiterMode
+        {
+            /// <summary>
+            /// Minimal mode: uses only newline characters ('\n') as delimiters.
+            /// Fastest, suitable for large text blocks (e.g. EPUB files) where fine segmentation isn't needed.
+            /// </summary>
+            Minimal,
 
-        private static readonly HashSet<char> Delimiters = new HashSet<char>(DelimiterArray);
+            /// <summary>
+            /// Normal mode: uses a small set of common punctuation (e.g. ， 。 ！ ？ and '\n') for balanced segmentation.
+            /// Suitable for general-purpose usage.
+            /// </summary>
+            Normal,
+
+            /// <summary>
+            /// Full mode: uses an extensive set of delimiters including punctuation, whitespace, brackets, and symbols.
+            /// Most accurate for text like articles, emails, and web content.
+            /// </summary>
+            Full
+        }
+
+        /// <summary>
+        /// Default delimiters used for segmenting input text based on <see cref="DelimiterMode.Full"/>.
+        /// This set includes spaces, punctuation marks, brackets, and other common symbols for accurate word segmentation.
+        /// For <see cref="DelimiterMode.Minimal"/>, only newline characters are used.
+        /// </summary>
+        private static readonly HashSet<char> Delimiters = GetDelimiters(DelimiterMode.Full);
+
+
+        /// <summary>
+        /// Returns the set of delimiters based on the specified <see cref="DelimiterMode"/>.
+        /// </summary>
+        /// <param name="mode">The delimiter mode that determines which characters are used as split points.</param>
+        /// <returns>A <see cref="HashSet{Char}"/> containing delimiter characters for the selected mode.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if an unknown mode is passed.</exception>
+        private static HashSet<char> GetDelimiters(DelimiterMode mode)
+        {
+            switch (mode)
+            {
+                case DelimiterMode.Minimal:
+                    return new HashSet<char>("\n".ToCharArray());
+
+                case DelimiterMode.Normal:
+                    return new HashSet<char>("，。！？\n".ToCharArray());
+
+                case DelimiterMode.Full:
+                    return new HashSet<char>(
+                        " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{}|~＝、。﹁﹂—－（）《》〈〉？！…／＼︒︑︔︓︿﹀︹︺︙︐［﹇］﹈︕︖︰︳︴︽︾︵︶｛︷｝︸﹃﹄【︻】︼　～．，；："
+                            .ToCharArray());
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown delimiter mode");
+            }
+        }
 
         // Regex for stripping non-Chinese and non-symbol characters.
         private static readonly Regex StripRegex = new Regex(
@@ -64,7 +115,7 @@ namespace OpenccNetLib
         private static void Warmup()
         {
             var dict = DictionaryLib.New(); // Load default config
-            InitializeLazyLoaders(dict);    // Initialize with the default dictionary
+            InitializeLazyLoaders(dict); // Initialize with the default dictionary
 
             // Preload round list values to avoid Lazy<T> cost during first access
             _ = _lazyRoundSt.Value;
@@ -287,7 +338,7 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
             // Use span-based splitting for better performance
-            var splitRanges = GetSplitRangesSpan(text.AsSpan());
+            var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
 
             if (splitRanges.Count == 0)
             {
@@ -306,7 +357,7 @@ namespace OpenccNetLib
             var results = new string[splitRanges.Count];
 
             // Use parallel processing only for larger workloads
-            if (splitRanges.Count > 8 && text.Length > 2000)
+            if (splitRanges.Count > 16 && text.Length > 2000)
             {
                 Parallel.For(0, splitRanges.Count, i =>
                 {
@@ -676,7 +727,7 @@ namespace OpenccNetLib
                 _lastError = "Input text is empty";
                 return string.Empty;
             }
-            
+
             try
             {
                 switch (Config)
@@ -793,24 +844,47 @@ namespace OpenccNetLib
         /// Splits the input span into ranges based on delimiter characters.
         /// </summary>
         /// <param name="input">The input character span.</param>
+        /// <param name="inclusive">
+        /// If true, each segment includes the delimiter (e.g. "你好，").
+        /// If false (default), each segment excludes the delimiter and delimiters are returned as their own segment.
+        /// </param>
+        /// <param name="mode">
+        /// Specifies the delimiter mode used for segmentation. Default is <see cref="DelimiterMode.Full"/>.
+        /// - <see cref="DelimiterMode.Full"/>: Uses a comprehensive set of punctuation and symbols for precise segmentation.
+        /// - <see cref="DelimiterMode.Minimal"/>: Uses only line breaks (e.g. '\n') for coarse segmentation.
+        /// </param>
         /// <returns>A list of (start, end) index tuples for each segment.</returns>
-        private static List<(int start, int end)> GetSplitRangesSpan(ReadOnlySpan<char> input)
+        private static List<(int start, int end)> GetSplitRangesSpan(ReadOnlySpan<char> input,
+            bool inclusive = false, DelimiterMode mode = DelimiterMode.Full)
         {
-            if (input.IsEmpty)
-                return new List<(int, int)>();
-
+            var delimiters = GetDelimiters(mode);
             var ranges = new List<(int, int)>();
+            if (input.IsEmpty)
+                return ranges;
+
             var currentStart = 0;
             var length = input.Length;
 
             for (var i = 0; i < length; i++)
             {
-                if (!Delimiters.Contains(input[i])) continue;
+                if (!delimiters.Contains(input[i])) continue;
 
-                var chunkLength = i - currentStart + 1;
-                if (chunkLength > 0)
+                if (inclusive)
                 {
-                    ranges.Add((currentStart, currentStart + chunkLength));
+                    var chunkLength = i - currentStart + 1;
+                    if (chunkLength > 0)
+                    {
+                        ranges.Add((currentStart, currentStart + chunkLength));
+                    }
+                }
+                else
+                {
+                    if (i > currentStart)
+                    {
+                        ranges.Add((currentStart, i)); // Before delimiter
+                    }
+
+                    ranges.Add((i, i + 1)); // Delimiter itself
                 }
 
                 currentStart = i + 1;
