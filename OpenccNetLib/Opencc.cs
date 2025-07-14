@@ -18,6 +18,7 @@ namespace OpenccNetLib
     {
         /// <summary>
         /// Delimiter modes for segmenting text.
+        /// Internal use only – <see cref="Full"/> is always used in public APIs.
         /// </summary>
         private enum DelimiterMode
         {
@@ -49,12 +50,11 @@ namespace OpenccNetLib
 
 
         /// <summary>
-        /// Returns the set of delimiters based on the specified <see cref="DelimiterMode"/>.
+        /// Returns the set of delimiters for internal segmentation logic.
+        /// Only <see cref="DelimiterMode.Full"/> is used in public-facing behavior.
         /// </summary>
-        /// <param name="mode">The delimiter mode that determines which characters are used as split points.</param>
-        /// <returns>A <see cref="HashSet{Char}"/> containing delimiter characters for the selected mode.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown if an unknown mode is passed.</exception>
         private static HashSet<char> GetDelimiters(DelimiterMode mode)
+
         {
             switch (mode)
             {
