@@ -38,7 +38,7 @@ Compatible with .NET Standard 2.0+
         <PackageReference Include="PeterO.Cbor" Version="4.5.5"/>
         <PackageReference Include="System.Memory" Version="4.6.3"/>
         <PackageReference Include="System.Text.Json" Version="8.0.5"/>
-        <PackageReference Include="ZstdSharp.Port" Version="0.8.5"/>
+        <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
     </ItemGroup>
 
     <!-- Include icon file in package -->

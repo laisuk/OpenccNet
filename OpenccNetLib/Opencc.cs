@@ -235,7 +235,8 @@ namespace OpenccNetLib
                 switch (config)
                 {
                     case OpenccConfig.S2T:
-                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        // baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases,  d.st_characters };
                         if (punctuation) baseRound1.Add(d.st_punctuations);
                         refs = new DictRefs(baseRound1);
                         break;
@@ -308,9 +309,6 @@ namespace OpenccNetLib
         public Opencc(string config = null)
         {
             Config = config;
-            // Accessing the Dictionary property's Value ensures all Lazy<T> instances
-            // (for the dictionary and all round lists) are initialized once, lazily, and thread-safely.
-            // _ = Dictionary;
         }
 
         /// <summary>
