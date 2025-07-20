@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -94,10 +95,6 @@ namespace OpenccNetLib
         // Use Lazy<T> for the dictionary and derived lists
         // Initialize these in the static constructor.
         private static Lazy<DictionaryMaxlength> _lazyDictionary;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundStPunct;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundSt;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundTsPunct;
-        private static Lazy<List<DictWithMaxLength>> _lazyRoundTs;
 
         // Static constructor to initialize the Lazy<T> instances.
         // This runs once, automatically and thread-safely, when the Opencc class is first accessed.
@@ -116,12 +113,6 @@ namespace OpenccNetLib
         {
             var dict = DictionaryLib.New(); // Load default config
             InitializeLazyLoaders(dict); // Initialize with the default dictionary
-
-            // Preload round list values to avoid Lazy<T> cost during first access
-            _ = _lazyRoundSt.Value;
-            _ = _lazyRoundStPunct.Value;
-            _ = _lazyRoundTs.Value;
-            _ = _lazyRoundTsPunct.Value;
 
             // Warm up JIT + Tiered PGO for segment replacement logic,
             // and potentially pre-spin the ThreadPool if parallel thresholds are met.
@@ -147,56 +138,6 @@ namespace OpenccNetLib
             _lazyDictionary =
                 new Lazy<DictionaryMaxlength>(() => initialDictionary,
                     LazyThreadSafetyMode.ExecutionAndPublication); // Ensures thread safety for the Lazy<T> itself
-
-            // Initialize Lazy<T> instances for the round lists.
-            // Their factory methods will access the _lazyDictionary.Value, ensuring it's loaded.
-            _lazyRoundStPunct = new Lazy<List<DictWithMaxLength>>(() => CreateRoundStPunctList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-            _lazyRoundSt = new Lazy<List<DictWithMaxLength>>(() => CreateRoundStList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-            _lazyRoundTsPunct = new Lazy<List<DictWithMaxLength>>(() => CreateRoundTsPunctList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-            _lazyRoundTs = new Lazy<List<DictWithMaxLength>>(() => CreateRoundTsList(_lazyDictionary.Value),
-                LazyThreadSafetyMode.ExecutionAndPublication);
-        }
-
-        // Helper methods for creating the specific round lists from a given DictionaryMaxlength instance.
-        private static List<DictWithMaxLength> CreateRoundStPunctList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.st_phrases,
-                dictionary.st_characters,
-                dictionary.st_punctuations
-            };
-        }
-
-        private static List<DictWithMaxLength> CreateRoundStList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.st_phrases,
-                dictionary.st_characters
-            };
-        }
-
-        private static List<DictWithMaxLength> CreateRoundTsPunctList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.ts_phrases,
-                dictionary.ts_characters,
-                dictionary.ts_punctuations
-            };
-        }
-
-        private static List<DictWithMaxLength> CreateRoundTsList(DictionaryMaxlength dictionary)
-        {
-            return new List<DictWithMaxLength>
-            {
-                dictionary.ts_phrases,
-                dictionary.ts_characters
-            };
         }
 
         // === Public Static Methods for Custom Dictionary Loading (Optional for Users) ===
@@ -243,6 +184,105 @@ namespace OpenccNetLib
         // Thread-local StringBuilder for efficient string concatenation.
         private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
             new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
+
+        private readonly ConcurrentDictionary<string, DictRefs> _configCache =
+            new ConcurrentDictionary<string, DictRefs>();
+
+        private DictRefs GetDictRefs(string key, bool punctuation)
+        {
+            // Clearer: key_punct includes dictionary-based punctuation
+            var cacheKey = punctuation ? key + "_punct" : key;
+
+            return _configCache.GetOrAdd(cacheKey, k =>
+            {
+                var d = _lazyDictionary.Value;
+                List<DictWithMaxLength> baseRound1;
+                List<DictWithMaxLength> round2;
+                DictRefs refs = null;
+
+                switch (key)
+                {
+                    case "s2t":
+                    {
+                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation)
+                            baseRound1.Add(d.st_punctuations);
+                        refs = new DictRefs(baseRound1);
+                        break;
+                    }
+                    case "t2s":
+                    {
+                        baseRound1 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
+                        if (punctuation)
+                            baseRound1.Add(d.ts_punctuations);
+                        refs = new DictRefs(baseRound1);
+                        break;
+                    }
+                    case "s2tw":
+                    {
+                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation)
+                            baseRound1.Add(d.st_punctuations);
+                        refs = new DictRefs(baseRound1)
+                            .WithRound2(new List<DictWithMaxLength> { d.tw_variants });
+                        break;
+                    }
+                    case "tw2s":
+                    {
+                        round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
+                        if (punctuation)
+                            round2.Add(d.ts_punctuations);
+                        refs = new DictRefs(
+                                new List<DictWithMaxLength> { d.tw_variants_rev_phrases, d.tw_variants_rev })
+                            .WithRound2(round2);
+                        break;
+                    }
+                    case "s2twp":
+                    {
+                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation)
+                            baseRound1.Add(d.st_punctuations);
+                        refs = new DictRefs(baseRound1)
+                            .WithRound2(new List<DictWithMaxLength> { d.tw_phrases })
+                            .WithRound3(new List<DictWithMaxLength> { d.tw_variants });
+                        break;
+                    }
+                    case "tw2sp":
+                    {
+                        round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
+                        if (punctuation)
+                            round2.Add(d.ts_punctuations);
+                        refs = new DictRefs(new List<DictWithMaxLength>
+                            {
+                                d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev
+                            })
+                            .WithRound2(round2);
+                        break;
+                    }
+                    case "s2hk":
+                    {
+                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation)
+                            baseRound1.Add(d.st_punctuations);
+                        refs = new DictRefs(baseRound1)
+                            .WithRound2(new List<DictWithMaxLength> { d.hk_variants });
+                        break;
+                    }
+                    case "hk2s":
+                    {
+                        round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
+                        if (punctuation)
+                            round2.Add(d.ts_punctuations);
+                        refs = new DictRefs(
+                                new List<DictWithMaxLength> { d.hk_variants_rev_phrases, d.hk_variants_rev })
+                            .WithRound2(round2);
+                        break;
+                    }
+                }
+
+                return refs;
+            });
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Opencc"/> class with the specified configuration.
@@ -375,16 +415,9 @@ namespace OpenccNetLib
                     var segment = text.AsSpan(start, end - start);
                     results[i] = ConvertBy(segment, dictionaries, maxWordLength);
                 }
-
-                return string.Concat(results);
             }
 
-            var builder = StringBuilderCache.Value;
-            builder.Clear();
-            foreach (var s in results)
-                builder.Append(s);
-
-            return builder.ToString();
+            return string.Concat(results);
         }
 
         /// <summary>
@@ -478,8 +511,9 @@ namespace OpenccNetLib
         /// <returns>The converted text.</returns>
         public string S2T(string inputText, bool punctuation = false)
         {
-            var round1List = punctuation ? _lazyRoundStPunct.Value : _lazyRoundSt.Value;
-            var refs = new DictRefs(round1List);
+            // var round1List = punctuation ? _lazyRoundStPunct.Value : _lazyRoundSt.Value;
+            // var refs = new DictRefs(round1List);
+            var refs = GetDictRefs("s2t", punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -491,8 +525,9 @@ namespace OpenccNetLib
         /// <returns>The converted text.</returns>
         public string T2S(string inputText, bool punctuation = false)
         {
-            var round1List = punctuation ? _lazyRoundTsPunct.Value : _lazyRoundTs.Value;
-            var refs = new DictRefs(round1List);
+            // var round1List = punctuation ? _lazyRoundTsPunct.Value : _lazyRoundTs.Value;
+            // var refs = new DictRefs(round1List);
+            var refs = GetDictRefs("t2s", punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -501,15 +536,16 @@ namespace OpenccNetLib
         /// </summary>
         public string S2Tw(string inputText, bool punctuation = false)
         {
-            var round1List = punctuation
-                ? _lazyRoundStPunct.Value
-                : _lazyRoundSt.Value;
-
-            var refs = new DictRefs(round1List)
-                .WithRound2(new List<DictWithMaxLength>
-                {
-                    Dictionary.tw_variants
-                });
+            // var round1List = punctuation
+            //     ? _lazyRoundStPunct.Value
+            //     : _lazyRoundSt.Value;
+            //
+            // var refs = new DictRefs(round1List)
+            //     .WithRound2(new List<DictWithMaxLength>
+            //     {
+            //         Dictionary.tw_variants
+            //     });
+            var refs = GetDictRefs("s2tw", punctuation);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
             return output;
         }
@@ -519,15 +555,16 @@ namespace OpenccNetLib
         /// </summary>
         public string Tw2S(string inputText, bool punctuation = false)
         {
-            var round2List = punctuation
-                ? _lazyRoundTsPunct.Value
-                : _lazyRoundTs.Value;
-
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_variants_rev_phrases,
-                Dictionary.tw_variants_rev
-            }).WithRound2(round2List);
+            // var round2List = punctuation
+            //     ? _lazyRoundTsPunct.Value
+            //     : _lazyRoundTs.Value;
+            //
+            // var refs = new DictRefs(new List<DictWithMaxLength>
+            // {
+            //     Dictionary.tw_variants_rev_phrases,
+            //     Dictionary.tw_variants_rev
+            // }).WithRound2(round2List);
+            var refs = GetDictRefs("tw2s", punctuation);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
             return output;
         }
@@ -537,18 +574,19 @@ namespace OpenccNetLib
         /// </summary>
         public string S2Twp(string inputText, bool punctuation = false)
         {
-            var round1List = punctuation
-                ? _lazyRoundStPunct.Value
-                : _lazyRoundSt.Value;
-
-            var refs = new DictRefs(round1List)
-                .WithRound2(new List<DictWithMaxLength>
-                {
-                    Dictionary.tw_phrases
-                }).WithRound3(new List<DictWithMaxLength>
-                {
-                    Dictionary.tw_variants
-                });
+            // var round1List = punctuation
+            //     ? _lazyRoundStPunct.Value
+            //     : _lazyRoundSt.Value;
+            //
+            // var refs = new DictRefs(round1List)
+            //     .WithRound2(new List<DictWithMaxLength>
+            //     {
+            //         Dictionary.tw_phrases
+            //     }).WithRound3(new List<DictWithMaxLength>
+            //     {
+            //         Dictionary.tw_variants
+            //     });
+            var refs = GetDictRefs("s2twp", punctuation);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
             return output;
         }
@@ -558,16 +596,17 @@ namespace OpenccNetLib
         /// </summary>
         public string Tw2Sp(string inputText, bool punctuation = false)
         {
-            var round2List = punctuation
-                ? _lazyRoundTsPunct.Value
-                : _lazyRoundTs.Value;
-
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_phrases_rev,
-                Dictionary.tw_variants_rev_phrases,
-                Dictionary.tw_variants_rev
-            }).WithRound2(round2List);
+            // var round2List = punctuation
+            //     ? _lazyRoundTsPunct.Value
+            //     : _lazyRoundTs.Value;
+            //
+            // var refs = new DictRefs(new List<DictWithMaxLength>
+            // {
+            //     Dictionary.tw_phrases_rev,
+            //     Dictionary.tw_variants_rev_phrases,
+            //     Dictionary.tw_variants_rev
+            // }).WithRound2(round2List);
+            var refs = GetDictRefs("tw2sp", punctuation);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
             return output;
         }
@@ -577,14 +616,15 @@ namespace OpenccNetLib
         /// </summary>
         public string S2Hk(string inputText, bool punctuation = false)
         {
-            var round1List = punctuation
-                ? _lazyRoundStPunct.Value
-                : _lazyRoundSt.Value;
-
-            var refs = new DictRefs(round1List).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.hk_variants
-            });
+            // var round1List = punctuation
+            //     ? _lazyRoundStPunct.Value
+            //     : _lazyRoundSt.Value;
+            //
+            // var refs = new DictRefs(round1List).WithRound2(new List<DictWithMaxLength>
+            // {
+            //     Dictionary.hk_variants
+            // });
+            var refs = GetDictRefs("s2hk", punctuation);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
             return output;
         }
@@ -594,15 +634,16 @@ namespace OpenccNetLib
         /// </summary>
         public string Hk2S(string inputText, bool punctuation = false)
         {
-            var round2List = punctuation
-                ? _lazyRoundTsPunct.Value
-                : _lazyRoundTs.Value;
-
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.hk_variants_rev_phrases,
-                Dictionary.hk_variants_rev
-            }).WithRound2(round2List);
+            // var round2List = punctuation
+            //     ? _lazyRoundTsPunct.Value
+            //     : _lazyRoundTs.Value;
+            //
+            // var refs = new DictRefs(new List<DictWithMaxLength>
+            // {
+            //     Dictionary.hk_variants_rev_phrases,
+            //     Dictionary.hk_variants_rev
+            // }).WithRound2(round2List);
+            var refs = GetDictRefs("hk2s", punctuation);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
             return output;
         }
