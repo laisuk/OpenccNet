@@ -70,7 +70,6 @@ namespace OpenccNetLib
         /// Only <see cref="DelimiterMode.Full"/> is used in public-facing behavior.
         /// </summary>
         private static HashSet<char> GetDelimiters(DelimiterMode mode)
-
         {
             switch (mode)
             {
@@ -236,7 +235,7 @@ namespace OpenccNetLib
                 {
                     case OpenccConfig.S2T:
                         // baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases,  d.st_characters };
+                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
                         if (punctuation) baseRound1.Add(d.st_punctuations);
                         refs = new DictRefs(baseRound1);
                         break;
@@ -842,48 +841,51 @@ namespace OpenccNetLib
         /// If true, each segment includes the delimiter (e.g. "你好，").
         /// If false (default), each segment excludes the delimiter and delimiters are returned as their own segment.
         /// </param>
-        /// <param name="mode">
-        /// Specifies the delimiter mode used for segmentation. Default is <see cref="DelimiterMode.Full"/>.
-        /// - <see cref="DelimiterMode.Full"/>: Uses a comprehensive set of punctuation and symbols for precise segmentation.
-        /// - <see cref="DelimiterMode.Minimal"/>: Uses only line breaks (e.g. '\n') for coarse segmentation.
-        /// </param>
         /// <returns>A list of (start, end) index tuples for each segment.</returns>
-        private static List<(int start, int end)> GetSplitRangesSpan(ReadOnlySpan<char> input,
-            bool inclusive = false, DelimiterMode mode = DelimiterMode.Full)
+        private static List<(int start, int end)> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
         {
-            var delimiters = GetDelimiters(mode);
-            var ranges = new List<(int, int)>();
+            var length = input.Length;
+
             if (input.IsEmpty)
-                return ranges;
+                return new List<(int, int)>();
+
+            // Pre-size based on estimate (assume ~10% delimiters for better initial capacity)
+            var estimatedCapacity = Math.Max(8, length / 10);
+            var ranges = new List<(int, int)>(estimatedCapacity);
 
             var currentStart = 0;
-            var length = input.Length;
+
+            // Use spans for delimiter lookup if Delimiters is a collection
 
             for (var i = 0; i < length; i++)
             {
-                if (!delimiters.Contains(input[i])) continue;
+                if (!Delimiters.Contains(input[i]))
+                    continue;
 
                 if (inclusive)
                 {
-                    var chunkLength = i - currentStart + 1;
-                    if (chunkLength > 0)
+                    // Include delimiter in current segment
+                    if (i >= currentStart) // Simplified condition
                     {
-                        ranges.Add((currentStart, currentStart + chunkLength));
+                        ranges.Add((currentStart, i + 1));
                     }
                 }
                 else
                 {
+                    // Add segment before delimiter (if any)
                     if (i > currentStart)
                     {
-                        ranges.Add((currentStart, i)); // Before delimiter
+                        ranges.Add((currentStart, i));
                     }
 
-                    ranges.Add((i, i + 1)); // Delimiter itself
+                    // Add delimiter as separate segment
+                    ranges.Add((i, i + 1));
                 }
 
                 currentStart = i + 1;
             }
 
+            // Add remaining segment if any
             if (currentStart < length)
             {
                 ranges.Add((currentStart, length));
