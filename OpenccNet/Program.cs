@@ -11,7 +11,7 @@ public static class Program
     {
         var rootCommand =
             new RootCommand(
-                $"{Blue}OpenccNet: A CLI tool for OpenccNetLib dictionary generation and Open Chinese text conversion.{Reset}")
+                $"{Blue}OpenccNet – Convert Chinese text or Office documents using OpenccNetLib configurations and generate dictionaries.{Reset}")
             {
                 // Add any global options here if needed
             };
@@ -19,6 +19,7 @@ public static class Program
         // Add subcommands
         rootCommand.Subcommands.Add(DictGenCommand.CreateCommand());
         rootCommand.Subcommands.Add(ConvertCommand.CreateCommand());
+        rootCommand.Subcommands.Add(OfficeCommand.CreateCommand());
 
         // System.CommandLine beta 5 config wrapper
         var config = new CommandLineConfiguration(rootCommand);

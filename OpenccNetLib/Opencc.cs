@@ -389,7 +389,7 @@ namespace OpenccNetLib
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
-            var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true);
+            var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
 
             if (splitRanges.Count == 0)
             {

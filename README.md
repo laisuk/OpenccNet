@@ -5,9 +5,13 @@
 [![License](https://img.shields.io/github/license/laisuk/OpenccNet.svg)](https://github.com/laisuk/OpenccNet/blob/main/LICENSE)
 [![Release](https://github.com/laisuk/OpenccNet/actions/workflows/release.yml/badge.svg)](https://github.com/laisuk/OpenccNet/actions/workflows/release.yml)
 
-**OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. Built with inspiration from [OpenCC](https://github.com/BYVoid/OpenCC), this library is designed to integrate seamlessly into modern .NET projects with a focus on performance and minimal memory usage.
+**OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔
+Traditional, Taiwan, Hong Kong, and Japanese Kanji variants. Built with inspiration
+from [OpenCC](https://github.com/BYVoid/OpenCC), this library is designed to integrate seamlessly into modern .NET
+projects with a focus on performance and minimal memory usage.
 
 ## Table of Contents
+
 - [Installation](#installation)
 - [Usage](#usage)
 - [API Reference](#api-reference)
@@ -19,10 +23,10 @@
 
 - Fast, multi-stage conversion using static dictionary caching
 - Supports:
-  - Simplified ↔ Traditional Chinese
-  - Traditional (Taiwan) ↔ Simplified/Traditional
-  - Traditional (Hong Kong) ↔ Simplified/Traditional
-  - Japanese Kanji Shinjitai ↔ Traditional Kyojitai
+    - Simplified ↔ Traditional Chinese
+    - Traditional (Taiwan) ↔ Simplified/Traditional
+    - Traditional (Hong Kong) ↔ Simplified/Traditional
+    - Japanese Kanji Shinjitai ↔ Traditional Kyojitai
 - Optional punctuation conversion
 - Thread-safe and suitable for parallel processing
 - .NET Standard 2.0 compatible
@@ -31,8 +35,8 @@
 
 - Add the library to your project via NuGet or reference the source code directly.
 - Add required dependencies of dictionary files to library root.
-	- `dicts\dictionary_maxlength.zstd` Default dictionary file.
-	- `dicts\*.*` Others dictionary files for different configurations.
+    - `dicts\dictionary_maxlength.zstd` Default dictionary file.
+    - `dicts\*.*` Others dictionary files for different configurations.
 
 Install via NuGet:
 
@@ -56,24 +60,24 @@ Console.WriteLine(traditional);
 
 ### Supported Configurations
 
-| Config   | Description                                     |
-|----------|-------------------------------------------------|
-| s2t      | Simplified → Traditional                        |
-| t2s      | Traditional → Simplified                        |
-| s2tw     | Simplified → Traditional (Taiwan)               |
-| tw2s     | Traditional (Taiwan) → Simplified               |
-| s2twp    | Simplified → Traditional (Taiwan, phrases)      |
-| tw2sp    | Traditional (Taiwan, phrases) → Simplified      |
-| s2hk     | Simplified → Traditional (Hong Kong)            |
-| hk2s     | Traditional (Hong Kong) → Simplified            |
-| t2tw     | Traditional → Traditional (Taiwan)              |
-| tw2t     | Traditional (Taiwan) → Traditional              |
-| t2twp    | Traditional → Traditional (Taiwan, phrases)     |
-| tw2tp    | Traditional (Taiwan, phrases) → Traditional     |
-| t2hk     | Traditional → Traditional (Hong Kong)           |
-| hk2t     | Traditional (Hong Kong) → Traditional           |
-| t2jp     | Traditional Kyojitao → Japanese Kanji Shinjitai |
-| jp2t     | Japanese Kanji Shinjitai → Traditional Kyojitai |
+| Config | Description                                     |
+|--------|-------------------------------------------------|
+| s2t    | Simplified → Traditional                        |
+| t2s    | Traditional → Simplified                        |
+| s2tw   | Simplified → Traditional (Taiwan)               |
+| tw2s   | Traditional (Taiwan) → Simplified               |
+| s2twp  | Simplified → Traditional (Taiwan, phrases)      |
+| tw2sp  | Traditional (Taiwan, phrases) → Simplified      |
+| s2hk   | Simplified → Traditional (Hong Kong)            |
+| hk2s   | Traditional (Hong Kong) → Simplified            |
+| t2tw   | Traditional → Traditional (Taiwan)              |
+| tw2t   | Traditional (Taiwan) → Traditional              |
+| t2twp  | Traditional → Traditional (Taiwan, phrases)     |
+| tw2tp  | Traditional (Taiwan, phrases) → Traditional     |
+| t2hk   | Traditional → Traditional (Hong Kong)           |
+| hk2t   | Traditional (Hong Kong) → Traditional           |
+| t2jp   | Traditional Kyojitao → Japanese Kanji Shinjitai |
+| jp2t   | Japanese Kanji Shinjitai → Traditional Kyojitai |
 
 ### Example: Convert with Punctuation
 
@@ -135,20 +139,22 @@ Ensure the necessary dictionary files are included in your project. Add the foll
 In most case, it is auto-set when package added from `Nuget`:
 
 ```xml
+
 <ItemGroup>
-  <None Update="dicts\dictionary_maxlength.zstd">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    <Pack>true</Pack>
-    <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
-  </None>
-  <!-- Repeat for other dictionary files -->
+    <None Update="dicts\dictionary_maxlength.zstd">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Pack>true</Pack>
+        <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
+    </None>
+    <!-- Repeat for other dictionary files -->
 </ItemGroup>
 ```
 
 ### Using Custom Dictionary
 
-Library default is zstd compressed dictionary Lexicon. 
+Library default is zstd compressed dictionary Lexicon.
 It can be changed to custom dictionary (`JSON`, `CBOR` or `"baseDir/*.txt"`) prior to instantiate `Opencc()`:
+
 ```csharp
 using OpenccNetLib;
 Opencc.UseCustomDictionary(DictionaryLib.FromDicts()) // Init only onece, dicts from baseDir "./dicts/"
@@ -186,9 +192,9 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - 🔁 Parallel processing kicks in for large workloads (≥16 segments, ≥2000 chars) to utilize multi-core efficiency.
 - 📉 Memory usage scales linearly with input size — from 21 KB to 225 MB — no spikes.
 - 🧠 GC pressure remains stable and predictable, even at 1M characters:
-  - Gen0: ~21K collections,
-  - Gen1: ~5.6K,
-  - Gen2: ~1K — all expected and manageable.
+    - Gen0: ~21K collections,
+    - Gen1: ~5.6K,
+    - Gen2: ~1K — all expected and manageable.
 - ⚡ Warm startup is fast, ideal for both CLI batch conversion and interactive GUI usage.
 - ✨ OpenccNetLib 1.0.3 is now production-ready for large-scale Chinese text conversion.
 
@@ -266,24 +272,39 @@ Usage:
   OpenccNet convert [options]
 
 Options:
-  -i, --input <input>               Read original text from file <input>.
-  -o, --output <output>             Write converted text to file <output>.
-  -c, --config <config> (REQUIRED)  Conversion configuration: [s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp]
-  -p, --punct                       Punctuation conversion: True|False [default: False]
-  --in-enc <in-enc>                 Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
-  --out-enc <out-enc>               Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
-  --office                          Convert Office documents (.docx | .xlsx | .pptx | .odt | .ods | .odp | .epub) [default: False]
-  --format <format>                 Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
-  --keep-font                       Preserve original font names in Office documents during conversion.
-                                    Default: true. To disable, use: --keep-font:false [default: True]
-  --auto-ext                        Automatically append correct Office document extension to output file if missing (e.g., .docx, .xlsx).
-                                    Default: true. To disable, use: --auto-ext:false [default: True]
-  -?, -h, --help                    Show help and usage information
+  -i, --input              Read original text from file <input>
+  -o, --output             Write original text to file <output>
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -p, --punct              Punctuation conversion. [default: False]
+  --in-enc                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
+  --out-enc                Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
+  -?, -h, --help           Show help and usage information
+```
+
+### `OpenccNet office`
+
+```
+Description:
+  Convert Office documents or Epub using OpenccNetLib.
+
+Usage:
+  OpenccNet office [options]
+
+Options:
+  -i, --input              Input Office document <input>
+  -o, --output             Output Office document <output>
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -p, --punct              Enable punctuation conversion. [default: False]
+  --format                 Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
+  --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]
+  --auto-ext               Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable. [default: True]
+  -?, -h, --help           Show help and usage information
 ```
 
 ## Project That Use OpenccNetLib
 
-- [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for `OpenccNetLib`, providing a user-friendly interface for Chinese text conversion.
+- [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for `OpenccNetLib`, providing a
+  user-friendly interface for Chinese text conversion.
 
 ## License
 
@@ -291,5 +312,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) f
 
 ---
 
-**OpenccNet** is not affiliated with the original **OpenCC** project, but aims to provide a compatible and high-performance solution for .NET developers.
+**OpenccNet** is not affiliated with the original **OpenCC** project, but aims to provide a compatible and
+high-performance solution for .NET developers.
 
