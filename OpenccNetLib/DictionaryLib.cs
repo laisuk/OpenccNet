@@ -37,7 +37,7 @@ namespace OpenccNetLib
         {
             return Data.TryGetValue(key, out value);
         }
-
+        
         /// <summary>
         /// Gets the number of entries in the dictionary.
         /// </summary>
@@ -76,30 +76,13 @@ namespace OpenccNetLib
     /// </summary>
     public static class DictionaryLib
     {
-        // Lock object for thread-safe caching
-        private static readonly object LockObject = new object();
-
-        // Cached instance of the loaded dictionary to avoid repeated disk I/O
-        private static DictionaryMaxlength _cachedDictionary;
-
         /// <summary>
-        /// Loads and caches the dictionary from a Zstd-compressed file.
-        /// Returns the cached instance on subsequent calls.
+        /// Loads the dictionary from a Zstd-compressed file.
+        /// Always returns a new instance.
         /// </summary>
         public static DictionaryMaxlength New()
         {
-            if (_cachedDictionary == null)
-            {
-                lock (LockObject)
-                {
-                    if (_cachedDictionary == null)
-                    {
-                        _cachedDictionary = FromZstd();
-                    }
-                }
-            }
-
-            return _cachedDictionary;
+            return FromZstd();
         }
 
         /// <summary>
@@ -276,7 +259,7 @@ namespace OpenccNetLib
                 MaxLength = maxLength
             };
         }
-        
+
         /// <summary>
         /// Loads the dictionary from a CBOR file.
         /// </summary>

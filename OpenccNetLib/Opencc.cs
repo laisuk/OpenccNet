@@ -472,7 +472,7 @@ namespace OpenccNetLib
                     var tryMaxLen = Math.Min(maxWordLength, remaining.Length);
 
                     string bestMatch = null;
-                    int bestMatchLength = 0;
+                    var bestMatchLength = 0;
 
                     // Optimize dictionary lookup order
                     for (var length = tryMaxLen; length > 0; --length)
