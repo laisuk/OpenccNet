@@ -7,7 +7,17 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.0.3] - 2025-07-20
+## [1.0.3] - 2025-07-25
+
+### Performance
+
+- ✨ **Segment replacement now uses preallocated `StringBuilder`**, replacing `string.Concat()` across the board.
+- ✨ **Inclusive splitting strategy** improves dictionary lookup efficiency by reducing redundant calls.
+- ✨ **Parallel processing enabled for large inputs** (≥16 segments and ≥2000 chars) — boosting conversion speed by up to **20%**.
+- ♻️ GC pressure scales linearly with input — verified with BenchmarkDotNet.
+- 📈 Benchmarks confirm consistent performance:
+    - 1M characters converted in **~88 ms** with **~225 MB** allocation
+    - Outperforms v1.0.2 by ~3–5% on large workloads
 
 ### Changed
 
@@ -21,7 +31,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 - Removed legacy `Lazy<RoundList>` and static config-based dispatch logic in favor of centralized `DictRefs` cache.
 
-### Performance
+### Performance (Earlier)
 
 - Conversion throughput improved significantly thanks to caching of parsed `DictRefs`.
 - Benchmarks show **stable linear scaling** across all input sizes with minimal jitter.
