@@ -177,7 +177,7 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_combined_chart.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmarks103.png)
 
 ### ✅ Highlights
 
