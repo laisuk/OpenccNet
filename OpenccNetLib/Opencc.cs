@@ -210,7 +210,6 @@ namespace OpenccNetLib
         private readonly ConcurrentDictionary<string, DictRefs> _configCache =
             new ConcurrentDictionary<string, DictRefs>();
 
-
         /// <summary>
         /// Retrieves or creates a <see cref="DictRefs"/> instance based on the specified OpenCC configuration
         /// and punctuation setting.
