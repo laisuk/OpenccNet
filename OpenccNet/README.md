@@ -33,13 +33,13 @@ OpenccNet convert -c s2t -i input.txt -o output.txt
 #### Convert Office document (docx → Traditional)
 
 ```bash
-OpenccNet convert -c s2t -i file.docx --office --format docx -p
+OpenccNet office -c s2t -i file.docx --format docx -p
 ```
 
 #### Convert EPUB file with font preservation
 
 ```bash
-OpenccNet convert -c s2t -i book.epub --office --format epub --keep-font:false
+OpenccNet office -c s2t -i book.epub --format epub --keep-font:false
 ```
 
 #### Use stdin/stdout
@@ -104,18 +104,19 @@ MIT License. See [LICENSE](LICENSE) for details.
 ```bash
 OpenccNet --help
 Description:
-  OpenccNet: A CLI tool for OpenccNetLib dictionary generation and Open Chinese text conversion.
+  OpenccNet – Convert Chinese text or Office documents using OpenccNetLib configurations and generate dictionaries.
 
 Usage:
   OpenccNet [command] [options]
 
 Options:
-  --version       Show version information
   -?, -h, --help  Show help and usage information
+  --version       Show version information
 
 Commands:
   dictgen  Generate OpenccNetLib dictionary files.
   convert  Convert text using OpenccNetLib configurations.
+  office   Convert Office documents or Epub using OpenccNetLib.
 ```
 
 ```bash
@@ -142,19 +143,30 @@ Usage:
   OpenccNet convert [options]
 
 Options:
-  -i, --input <input>               Read original text from file <input>.
-  -o, --output <output>             Write converted text to file <output>.
-  -c, --config <config> (REQUIRED)  Conversion configuration: [s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp]
-  -p, --punct                       Punctuation conversion: True|False [default: False]
-  --in-enc <in-enc>                 Encoding for input: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
-  --out-enc <out-enc>               Encoding for output: [UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS] [default: UTF-8]
-  --office                          Convert Office documents (.docx | .xlsx | .pptx | .odt | .ods | .odp | .epub)
-                                    [default: False]
-  --format <format>                 Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
-  --keep-font                       Preserve original font names in Office documents during conversion.
-                                    Default: true. To disable, use: --keep-font:false [default: True]
-  --auto-ext                        Automatically append correct Office document extension to output file if missing
-                                    (e.g., .docx, .xlsx).
-                                    Default: true. To disable, use: --auto-ext:false [default: True]
-  -?, -h, --help                    Show help and usage information
+  -i, --input              Read original text from file <input>
+  -o, --output             Write original text to file <output>
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -p, --punct              Punctuation conversion. [default: False]
+  --in-enc                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
+  --out-enc                Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
+  -?, -h, --help           Show help and usage information
+```
+
+```bash
+OpenccNet office --help  
+Description:
+  Convert Office documents or Epub using OpenccNetLib.
+
+Usage:
+  OpenccNet office [options]
+
+Options:
+  -i, --input              Input Office document <input>
+  -o, --output             Output Office document <output>
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -p, --punct              Enable punctuation conversion. [default: False]
+  -f, --format             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
+  --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]
+  --auto-ext               Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable. [default: True]
+  -?, -h, --help           Show help and usage information
 ```

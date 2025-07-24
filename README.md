@@ -295,7 +295,7 @@ Options:
   -o, --output             Output Office document <output>
   -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
   -p, --punct              Enable punctuation conversion. [default: False]
-  --format                 Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
+  -f, --format             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]
   --auto-ext               Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable. [default: True]
   -?, -h, --help           Show help and usage information

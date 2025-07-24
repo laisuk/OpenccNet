@@ -8,7 +8,7 @@ internal static class OfficeCommand
 {
     private const string Blue = "\u001b[1;34m";
     private const string Reset = "\u001b[0m";
-    
+
     private static readonly HashSet<string> ConfigList = new(StringComparer.Ordinal)
     {
         "s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s", "t2tw", "tw2t", "t2twp", "tw2tp",
@@ -59,7 +59,7 @@ internal static class OfficeCommand
             Description = "Enable punctuation conversion."
         };
 
-        var formatOption = new Option<string?>("--format")
+        var formatOption = new Option<string?>("--format", "-f")
         {
             Description = "Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub"
         };
@@ -103,7 +103,7 @@ internal static class OfficeCommand
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
             {
-                await Console.Error.WriteLineAsync("❌ Input file does not exist.");
+                await Console.Error.WriteLineAsync("❌  Input file does not exist.");
                 return 1;
             }
 
@@ -111,7 +111,7 @@ internal static class OfficeCommand
             if (!OfficeFormats.Contains(resolvedFormat))
             {
                 await Console.Error.WriteLineAsync(
-                    $"❌ Unsupported file format. Supported: {string.Join(", ", OfficeFormats)}");
+                    $"❌  Unsupported file format. Supported: {string.Join(", ", OfficeFormats)}");
                 return 1;
             }
 
@@ -135,14 +135,14 @@ internal static class OfficeCommand
                 );
 
                 var status = success
-                    ? $"✅ {message}\n📁 Output: {Path.GetFullPath(resolvedOutput)}"
-                    : $"❌ Office document conversion failed: {message}";
+                    ? $" {message}\n📁  Output: {Path.GetFullPath(resolvedOutput)}"
+                    : $"❌  Office document conversion failed: {message}";
                 await Console.Error.WriteLineAsync(status);
                 return success ? 0 : 1;
             }
             catch (Exception ex)
             {
-                await Console.Error.WriteLineAsync($"❌ Exception: {ex.Message}");
+                await Console.Error.WriteLineAsync($"❌  Exception: {ex.Message}");
                 return 1;
             }
         });

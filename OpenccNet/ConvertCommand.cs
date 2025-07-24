@@ -129,13 +129,24 @@ internal static class ConvertCommand
         }
     }
 
-    private static async Task<string> ReadInputAsync(string? inputFile, string encodingName)
+    private static async Task<string> ReadInputAsync(string? inputFile, string inputEncoding)
     {
-        var encoding = Encoding.GetEncoding(encodingName);
-        return inputFile != null
-            ? await File.ReadAllTextAsync(inputFile, encoding)
-            : await new StreamReader(Console.OpenStandardInput(), encoding).ReadToEndAsync();
+        if (inputFile != null)
+        {
+            return await File.ReadAllTextAsync(inputFile, Encoding.GetEncoding(inputEncoding));
+        }
+
+        lock (ConsoleLock)
+        {
+            Console.Error.WriteLine(
+                "Input text to convert, <Ctrl+Z> (Windows) or <Ctrl+D> (Unix) then Enter to submit:");
+        }
+
+        var encoding = Encoding.GetEncoding(inputEncoding);
+        using var reader = new StreamReader(Console.OpenStandardInput(), encoding);
+        return await reader.ReadToEndAsync();
     }
+
 
     private static async Task WriteOutputAsync(string? outputFile, string content, string encodingName)
     {
