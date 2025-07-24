@@ -234,7 +234,6 @@ namespace OpenccNetLib
                 switch (config)
                 {
                     case OpenccConfig.S2T:
-                        // baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
                         baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
                         if (punctuation) baseRound1.Add(d.st_punctuations);
                         refs = new DictRefs(baseRound1);
@@ -390,8 +389,7 @@ namespace OpenccNetLib
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
-            // Use span-based splitting for better performance
-            var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
+            var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true);
 
             if (splitRanges.Count == 0)
             {
@@ -401,7 +399,7 @@ namespace OpenccNetLib
                     return string.Empty;
             }
 
-            // Optimize for small number of segments
+            // Shortcut for single segment
             if (splitRanges.Count == 1)
             {
                 return ConvertBy(text.AsSpan(), dictionaries, maxWordLength);
@@ -409,7 +407,6 @@ namespace OpenccNetLib
 
             var results = new string[splitRanges.Count];
 
-            // Use parallel processing only for larger workloads
             if (splitRanges.Count > 16 && text.Length > 2000)
             {
                 Parallel.For(0, splitRanges.Count, i =>
@@ -421,7 +418,6 @@ namespace OpenccNetLib
             }
             else
             {
-                // Sequential processing for smaller workloads
                 for (var i = 0; i < splitRanges.Count; i++)
                 {
                     var (start, end) = splitRanges[i];
@@ -430,7 +426,12 @@ namespace OpenccNetLib
                 }
             }
 
-            return string.Concat(results);
+            // Always use StringBuilder with pre-capacity
+            var sb = new StringBuilder((int)(text.Length * 1.1));
+            foreach (var s in results)
+                sb.Append(s);
+
+            return sb.ToString();
         }
 
         /// <summary>
@@ -856,7 +857,6 @@ namespace OpenccNetLib
             var currentStart = 0;
 
             // Use spans for delimiter lookup if Delimiters is a collection
-
             for (var i = 0; i < length; i++)
             {
                 if (!Delimiters.Contains(input[i]))
