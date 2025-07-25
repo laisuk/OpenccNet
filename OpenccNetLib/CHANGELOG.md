@@ -26,6 +26,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 - Replaced raw string keys with strongly typed `OpenCCConfig` enum for better safety and clarity.
 - Punctuation-based dictionary inclusion is now determined by a `bool punctuation` flag and handled directly in round 1
   or 2 as appropriate.
+- CLI tool - Changed `OpenccNet convert --office` to subcommand `OpenccNet office`
 
 ### Removed
 
