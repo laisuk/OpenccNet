@@ -16,7 +16,7 @@ projects with a focus on performance and minimal memory usage.
 - [Usage](#usage)
 - [API Reference](#api-reference)
 - [Dictionary Files](#dictionary-files)
-- [Add-On Tools](#add-on-tools-separated-from-openccnetlib)
+- [Add-On Tools](#add-on-cli-tools-separated-from-openccnetlib)
 - [License](#license)
 
 ## Features
@@ -26,7 +26,7 @@ projects with a focus on performance and minimal memory usage.
     - Simplified ↔ Traditional Chinese
     - Traditional (Taiwan) ↔ Simplified/Traditional
     - Traditional (Hong Kong) ↔ Simplified/Traditional
-    - Japanese Kanji Shinjitai ↔ Traditional Kyojitai
+    - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
 - Optional punctuation conversion
 - Thread-safe and suitable for parallel processing
 - .NET Standard 2.0 compatible
@@ -76,8 +76,8 @@ Console.WriteLine(traditional);
 | tw2tp  | Traditional (Taiwan, phrases) → Traditional     |
 | t2hk   | Traditional → Traditional (Hong Kong)           |
 | hk2t   | Traditional (Hong Kong) → Traditional           |
-| t2jp   | Traditional Kyojitao → Japanese Kanji Shinjitai |
-| jp2t   | Japanese Kanji Shinjitai → Traditional Kyojitai |
+| t2jp   | Traditional Kyujitai → Japanese Kanji Shinjitai |
+| jp2t   | Japanese Kanji Shinjitai → Traditional Kyujitai |
 
 ### Example: Convert with Punctuation
 
@@ -189,7 +189,7 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 
 - ✅ Preallocated StringBuilder delivers consistent performance across all input sizes.
 - 🚀 Inclusive splitting ensures fewer ConvertBy() calls, improving throughput.
-- 🔁 Parallel processing kicks in for large workloads (≥16 segments, ≥2000 chars) to utilize multi-core efficiency.
+- 🔁 Parallel processing kicks in for large workloads (≥16 segments, ≥2000 chars) to utilize multicore efficiency.
 - 📉 Memory usage scales linearly with input size — from 21 KB to 225 MB — no spikes.
 - 🧠 GC pressure remains stable and predictable, even at 1M characters:
     - Gen0: ~21K collections,
@@ -244,7 +244,7 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - Dictionaries are loaded and cached on first use.
 - Data files are expected in the `dicts/` directory (see `DictionaryLib` for details).
 
-## Add-On Tools (Separated from OpenccNetLib)
+## Add-On CLI Tools (Separated from OpenccNetLib)
 
 ### `OpenccNet dictgen`
 
