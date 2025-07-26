@@ -227,40 +227,58 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 
 ### `Opencc` Class
 
+#### 🔧 Constructor
+
 - `Opencc(string config = null)`  
   Create a new converter with the specified configuration.
 
+#### 🔁 Conversion Methods
+
 - `string Convert(string inputText, bool punctuation = false)`  
-  Convert text according to the current config.
+  Convert text according to the current config and punctuation mode.
 
-- `string S2T(string inputText, bool punctuation = false)`  
-  Simplified → Traditional
+- `string S2T(string inputText, bool punctuation = false)`
+- `string T2S(string inputText, bool punctuation = false)`
+- `string S2Tw(string inputText, bool punctuation = false)`
+- `string Tw2S(string inputText, bool punctuation = false)`
+- `string S2Twp(string inputText, bool punctuation = false)`
+- `string Tw2Sp(string inputText, bool punctuation = false)`
+- `string S2Hk(string inputText, bool punctuation = false)`
+- `string Hk2S(string inputText, bool punctuation = false)`
+- `string T2Tw(string inputText)`
+- `string T2Twp(string inputText)`
+- `string Tw2T(string inputText)`
+- `string Tw2Tp(string inputText)`
+- `string T2Hk(string inputText)`
+- `string Hk2T(string inputText)`
+- `string T2Jp(string inputText)`
+- `string Jp2T(string inputText)`
 
-- `string T2S(string inputText, bool punctuation = false)`  
-  Traditional → Simplified
-
-- ... (see source for all conversion methods)
-
-- `string GetLastError()`  
-  Get the last error message.
+#### ⚙️ Configuration
 
 - `string Config { get; set; }`  
-  Gets or sets the current OpenCC config. Invalid configs fall back to "s2t" and update the error message.
-
+  Gets or sets the current config string. Invalid configs fallback to "`s2t`" and update error status.
 - `void SetConfig(string config)`  
-  Sets the current config. Falls back to "s2t" if invalid.
-
+  Set the config using a string (e.g., "`tw2sp`"). Falls back to "`s2t`" if invalid.
+- `void SetConfig(OpenccConfig configEnum)`  
+  Set the config using a strongly typed OpenccConfig enum. Recommended for safety and IDE support.
 - `string GetConfig()`  
-  Returns the current config value.
+  Returns the current config string (e.g., "`s2tw`").
+- `string GetLastError()`  
+  Returns the most recent error message, if any, from config setting.
+
+#### 📋 Validation and Helpers
 
 - `static bool IsValidConfig(string config)`  
-  Checks whether the given config string is supported.
-
+  Checks whether the given string is a valid config name.
 - `static IReadOnlyCollection<string> GetSupportedConfigs()`  
-  Returns the list of valid OpenCC config names.
-
+  Returns the list of all supported config names as strings.
+- `static bool TryParseConfig(string config, out OpenccConfig result)`  
+  Converts a valid config string to the corresponding `OpenccConfig` enum. Returns `false` if invalid.
 - `static int ZhoCheck(string inputText)`  
-  Detect if text is Simplified, Traditional, or neither.
+  Detects whether the input is likely Simplified Chinese (`2`), Traditional Chinese (`1`), or neither (`0`).
+
+---
 
 ## Dictionary Data
 
