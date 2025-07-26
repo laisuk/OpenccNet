@@ -17,6 +17,24 @@ namespace OpenccNetLib
     /// </summary>
     public class Opencc
     {
+        // Regex for stripping non-Chinese and non-symbol characters.
+        private static readonly Regex StripRegex = new Regex(
+            @"[!-/:-@\[-`{-~\t\n\v\f\r 0-9A-Za-z_著]",
+            RegexOptions.Compiled);
+
+        // Supported configuration names for conversion directions.
+        private static readonly HashSet<string> ConfigList = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s", "t2tw", "tw2t", "t2twp", "tw2tp",
+            "t2hk", "hk2t", "t2jp", "jp2t"
+        };
+
+        // Thread-local StringBuilder for efficient string concatenation.
+        private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
+            new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
+
+        #region Config Enum Region
+
         /// <summary>
         /// Enum representing supported OpenCC configuration keys.
         /// </summary>
@@ -147,6 +165,10 @@ namespace OpenccNetLib
             }
         }
 
+        #endregion
+
+        #region Delimiters Region
+
         /// <summary>
         /// Delimiter modes for segmenting text.
         /// Internal use only – <see cref="Full"/> is always used in public APIs.
@@ -204,20 +226,9 @@ namespace OpenccNetLib
             }
         }
 
-        // Regex for stripping non-Chinese and non-symbol characters.
-        private static readonly Regex StripRegex = new Regex(
-            @"[!-/:-@\[-`{-~\t\n\v\f\r 0-9A-Za-z_著]",
-            RegexOptions.Compiled);
+        #endregion
 
-        // Supported configuration names for conversion directions.
-        private static readonly HashSet<string> ConfigList = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s", "t2tw", "tw2t", "t2twp", "tw2tp",
-            "t2hk", "hk2t", "t2jp", "jp2t"
-        };
-
-        private string _config;
-        private string _lastError;
+        #region Lazy Static Region
 
         // --- START Lazy<T> Implementation ---
 
@@ -310,9 +321,9 @@ namespace OpenccNetLib
 
         // --- END Lazy<T> Implementation ---
 
-        // Thread-local StringBuilder for efficient string concatenation.
-        private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
-            new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
+        #endregion
+
+        #region DictRefs Region
 
         /// <summary>
         /// Caches compiled <see cref="DictRefs"/> instances keyed by <see cref="OpenccConfig"/> and punctuation flag.
@@ -468,6 +479,11 @@ namespace OpenccNetLib
             });
         }
 
+        #endregion
+
+        private string _config;
+        private string _lastError;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Opencc"/> class with the specified configuration.
         /// This constructor ensures the global dictionary and its associated lists are initialized.
@@ -519,7 +535,6 @@ namespace OpenccNetLib
         {
             Config = ConfigEnumToString(configEnum);
         }
-
 
         /// <summary>
         /// Gets the current configuration value of this OpenCC instance.
