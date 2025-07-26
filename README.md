@@ -91,13 +91,36 @@ Console.WriteLine(result);
 ### Example: Switching Config Dynamically
 
 ```csharp
-var opencc = new Opencc("s2t"); 
+using OpenccNetLib;
+
+var opencc = new Opencc("s2t");
+
+// Initial conversion
 string result = opencc.Convert("动态切换转换方式");
 Console.WriteLine(result);  // Output: 動態切換轉換方式
-opencc.Config = "t2s";  // or opencc.SetConfig("t2s");
+
+// Switch config using string
+opencc.Config = "t2s";  // Also valid: opencc.SetConfig("t2s")
 result = opencc.Convert("動態切換轉換方式");
 Console.WriteLine(result);  // Output: 动态切换转换方式
+
+// Switch config using enum (recommended for safety and autocomplete)
+opencc.SetConfig(OpenccConfig.S2T);
+result = opencc.Convert("动态切换转换方式");
+Console.WriteLine(result);  // Output: 動態切換轉換方式
+
+// Invalid config falls back to "s2t"
+opencc.Config = "invalid_config";
+Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: invalid_config. Using default 's2t'.
 ```
+
+#### 💡 Tips
+
+- Use `OpenccConfig` enum for compile-time safety and IntelliSense support.
+- Use `GetLastError()` to check if fallback occurred due to an invalid config.
+- You can also validate config strings with `Opencc.IsValidConfig("t2tw")`.
+
+---
 
 ### Direct API Methods
 

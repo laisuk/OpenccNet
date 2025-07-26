@@ -2,88 +2,74 @@
 
 All notable changes to this project will be documented in this file.
 
-This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and uses
-the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
+This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.0.3] - 2025-07-25
-
-### Performance
-
-- ✨ **Segment replacement now uses preallocated `StringBuilder`**, replacing `string.Concat()` across the board.
-- ✨ **Inclusive splitting strategy** improves dictionary lookup efficiency by reducing redundant calls.
-- ✨ **Parallel processing enabled for large inputs** (≥16 segments and ≥2000 chars) — boosting conversion speed by up to **20%**.
-- ♻️ GC pressure scales linearly with input — verified with BenchmarkDotNet.
-- 📈 Benchmarks confirm consistent performance:
-    - 1M characters converted in **~88 ms** with **~225 MB** allocation
-    - Outperforms v1.0.2 by ~3–5% on large workloads
+## [1.0.3] - 2025-07-26
 
 ### Changed
 
-- Refactored `GetDictRefs()` to use `ConcurrentDictionary<string, DictRefs>` for on-demand caching of dictionary
-  reference sequences.
-- Replaced raw string keys with strongly typed `OpenCCConfig` enum for better safety and clarity.
-- Punctuation-based dictionary inclusion is now determined by a `bool punctuation` flag and handled directly in round 1
-  or 2 as appropriate.
-- CLI tool - Changed `OpenccNet convert --office` to subcommand `OpenccNet office`
+#### OpenccNetLib v1.0.3
 
-### Removed
+A major performance-focused and developer-experience update for the OpenCC-based Chinese text conversion library.
 
-- Removed legacy `Lazy<RoundList>` and static config-based dispatch logic in favor of centralized `DictRefs` cache.
+✅ **Highlights**:
 
-### Performance (Earlier)
+- 🧵 New parallel segment processing engine for large-scale text conversion
+- ⚡ Optimized `StringBuilder` usage with smart preallocation (up to 20% faster in benchmarks)
+- ➗ Inclusive splitting improves dictionary lookup performance with fewer overhead calls
+- 🧠 Memory allocation and GC pressure now scale linearly and predictably
+- 🔁 Unified string joining logic — no more `string.Concat` bottlenecks
+- 🔥 Consistently fast warm and cold starts in both CLI and GUI environments
 
-- Conversion throughput improved significantly thanks to caching of parsed `DictRefs`.
-- Benchmarks show **stable linear scaling** across all input sizes with minimal jitter.
+🔧 **API Enhancements**:
 
-#### 🧪 Benchmark Summary (BM_Convert_Sized)
+- Added `SetConfig(OpenccConfig)` enum-based overload for safer, IntelliSense-friendly config switching
+- Added `TryParseConfig(string, out OpenccConfig)` for converting from string to typed enum
+- Existing public `Config` property preserved for backward compatibility (validated with fallback and `GetLastError()`)
+- Improved internal `GetDictRefs()` logic with structured round grouping
 
-| Size      | Mean      | StdDev   | Allocated |
-|-----------|-----------|----------|-----------|
-| 100       | 11.22 µs  | 0.034 µs | 22.88 KB  |
-| 1,000     | 175.01 µs | 0.48 µs  | 227.83 KB |
-| 10,000    | 509.09 µs | 16.10 µs | 1.94 MB   |
-| 100,000   | 9.74 ms   | 0.40 ms  | 21.47 MB  |
-| 1,000,000 | 89.26 ms  | 2.96 ms  | 221.78 MB |
+📦 Compatible with **.NET Standard 2.0+**
 
-> 💡 Throughput holds consistently with predictable memory allocation and no major GC overhead until 1M input size. Gen2
-> activity only appears at very large scale, indicating efficient memory reuse.
+🧪 Benchmark Results:
+
+- 1M character input processed in ~88 ms with 225 MB allocated — ~3% faster than v1.0.2
+
+🔗 Project: https://github.com/laisuk/OpenccNet
 
 ---
 
-## [1.0.2] – 2025-07-07
+## [1.0.2] - 2025-07-08
+
+### OpenccNetLib v1.0.2
+
+High-performance .NET Standard library for OpenCC-style Chinese conversion, featuring dictionary-based segment
+replacement and optimized for both CLI and GUI use.
+
+### What's New in 1.0.2:
+
+- Improved performance with thread-local `StringBuilder` caching
+- Reduced memory usage via `ArrayPool<char>` for dictionary keys
+- Adaptive parallelization for large text inputs
+- Preloaded dictionary roundlists for faster first-time conversion
+- Enhanced UTF-8 range heuristics for Chinese code detection
+- Internal refactoring for GC and allocation efficiency
+
+📦 Compatible with .NET Standard 2.0+
+
+---
+
+## [1.0.1] - 2025-06-18
 
 ### Changed
 
-- Optimized dictionary segment replacement using thread-local StringBuilder caching.
-- Improved memory efficiency by using ArrayPool<char> for dictionary key generation.
-- Enhanced Chinese text code detection with refined UTF-8 byte-range heuristics.
-- Fixed a minor issue in dictionary candidate evaluation logic.
-- Tuned the parallel segment conversion threshold for better scalability on multi-core systems.
-- Added a warm-up pipeline to eliminate lazy-loading overhead during the first conversion.
-- Preloaded roundlist caches for faster and more consistent conversion performance.
-- Improved CLI and GUI responsiveness by reducing first-call latency.
+- Added functions to get, set, and validate conversion `Config`
 
 ---
 
-## [1.0.1] – 2025-06-20
+## [1.0.0] - 2025-05-25
 
 ### Added
 
-- Add functions to `get`, `set` and `validate` conversion Config.
-
----
-
-## [1.0.0] – 2025-06-02
-
-### Added
-
-- Initial release of `OpenccNetLib` on Nuget.
-    - A fast and efficient .NET library for converting Chinese text.  
-      Offering support for `Simplified ↔ Traditional, Taiwan, Hong Kong, and Japanese Kanji variants`.  
-      Built with inspiration from `OpenCC`, this library is designed to integrate seamlessly into modern .NET projects  
-      with a focus on `performance and minimal memory usage`.
-- Supported standard OpenCC configs:
-    - `s2t`, `s2tw`, `s2twp`, `s2hk`, `t2s`, `tw2s`, `tw2sp`, `hk2s`, `jp2t`, `t2jp`
-- Support using `custom dictionary`.
+- First official release of `OpenccNetLib` to NuGet

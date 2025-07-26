@@ -34864,6 +34864,8 @@
       "\u6A21\u8868": "\u6A21\u8868",
       "\u6A21\u91CC\u897F\u65AF": "\u6A21\u91CC\u897F\u65AF",
       "\u6A21\u91CC\u897F\u65AF\u5171\u548C\u56FD": "\u6A21\u91CC\u897F\u65AF\u5171\u548C\u570B",
+      "\u6A21\u68F1": "\u6A21\u7A1C",
+      "\u6A21\u68F1\u4E24\u53EF": "\u6A21\u7A1C\u5169\u53EF",
       "\u6A2A\u4E86\u5FC3": "\u6A6B\u4E86\u5FC3",
       "\u6A2A\u51B2": "\u6A6B\u885D",
       "\u6A2A\u51B2\u76F4\u649E": "\u6A6B\u885D\u76F4\u649E",
@@ -53182,7 +53184,7 @@
       "\u6570\u4E07\u53EA": "\u6578\u842C\u96BB"
     },
     "MaxLength": 16,
-    "Count": 49192
+    "Count": 49194
   },
   "ts_characters": {
     "Data": {

@@ -20,7 +20,7 @@ namespace OpenccNetLib
         /// <summary>
         /// Enum representing supported OpenCC configuration keys.
         /// </summary>
-        private enum OpenccConfig
+        public enum OpenccConfig
         {
             S2T,
             T2S,
@@ -29,7 +29,122 @@ namespace OpenccNetLib
             S2Twp,
             Tw2Sp,
             S2Hk,
-            Hk2S
+            Hk2S,
+            T2Tw,
+            T2Twp,
+            Tw2T,
+            Tw2Tp,
+            T2Hk,
+            Hk2T,
+            T2Jp,
+            Jp2T
+        }
+
+        /// <summary>
+        /// Converts the specified <see cref="OpenccConfig"/> enum value to its corresponding string representation.
+        /// </summary>
+        /// <param name="configEnum">The enum value representing the desired OpenCC configuration.</param>
+        /// <returns>
+        /// A lowercase string representing the configuration (e.g., "s2t", "t2s").
+        /// If the input is not recognized, defaults to "s2t".
+        /// </returns>
+        private static string ConfigEnumToString(OpenccConfig configEnum)
+        {
+            switch (configEnum)
+            {
+                case OpenccConfig.S2T: return "s2t";
+                case OpenccConfig.T2S: return "t2s";
+                case OpenccConfig.S2Tw: return "s2tw";
+                case OpenccConfig.Tw2S: return "tw2s";
+                case OpenccConfig.S2Twp: return "s2twp";
+                case OpenccConfig.Tw2Sp: return "tw2sp";
+                case OpenccConfig.S2Hk: return "s2hk";
+                case OpenccConfig.Hk2S: return "hk2s";
+                case OpenccConfig.T2Tw: return "t2tw";
+                case OpenccConfig.T2Twp: return "t2twp";
+                case OpenccConfig.Tw2T: return "tw2t";
+                case OpenccConfig.Tw2Tp: return "tw2tp";
+                case OpenccConfig.T2Hk: return "t2hk";
+                case OpenccConfig.Hk2T: return "hk2t";
+                case OpenccConfig.T2Jp: return "t2jp";
+                case OpenccConfig.Jp2T: return "jp2t";
+                default: return "s2t";
+            }
+        }
+
+        /// <summary>
+        /// Attempts to parse a configuration string into an <see cref="OpenccConfig"/> enum value.
+        /// </summary>
+        /// <param name="config">The configuration string to parse (e.g., "s2t", "tw2sp").</param>
+        /// <param name="result">
+        /// When this method returns, contains the <see cref="OpenccConfig"/> value equivalent to the input string,
+        /// if the conversion succeeded, or the default value if the conversion failed.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> if the input string was successfully parsed into an <see cref="OpenccConfig"/>; otherwise, <c>false</c>.
+        /// </returns>
+        public static bool TryParseConfig(string config, out OpenccConfig result)
+        {
+            if (config == null)
+            {
+                result = default;
+                return false;
+            }
+
+            switch (config.ToLowerInvariant())
+            {
+                case "s2t":
+                    result = OpenccConfig.S2T;
+                    return true;
+                case "t2s":
+                    result = OpenccConfig.T2S;
+                    return true;
+                case "s2tw":
+                    result = OpenccConfig.S2Tw;
+                    return true;
+                case "tw2s":
+                    result = OpenccConfig.Tw2S;
+                    return true;
+                case "s2twp":
+                    result = OpenccConfig.S2Twp;
+                    return true;
+                case "tw2sp":
+                    result = OpenccConfig.Tw2Sp;
+                    return true;
+                case "s2hk":
+                    result = OpenccConfig.S2Hk;
+                    return true;
+                case "hk2s":
+                    result = OpenccConfig.Hk2S;
+                    return true;
+                case "t2tw":
+                    result = OpenccConfig.T2Tw;
+                    return true;
+                case "t2twp":
+                    result = OpenccConfig.T2Twp;
+                    return true;
+                case "tw2t":
+                    result = OpenccConfig.Tw2T;
+                    return true;
+                case "tw2tp":
+                    result = OpenccConfig.Tw2Tp;
+                    return true;
+                case "t2hk":
+                    result = OpenccConfig.T2Hk;
+                    return true;
+                case "hk2t":
+                    result = OpenccConfig.Hk2T;
+                    return true;
+                case "t2jp":
+                    result = OpenccConfig.T2Jp;
+                    return true;
+                case "jp2t":
+                    result = OpenccConfig.Jp2T;
+                    return true;
+                default:
+                    result = default;
+                    return false;
+            }
         }
 
         /// <summary>
@@ -226,68 +341,123 @@ namespace OpenccNetLib
             return _configCache.GetOrAdd(cacheKey, _ =>
             {
                 var d = _lazyDictionary.Value;
-                List<DictWithMaxLength> baseRound1;
+                List<DictWithMaxLength> round1;
                 List<DictWithMaxLength> round2;
                 DictRefs refs;
 
                 switch (config)
                 {
                     case OpenccConfig.S2T:
-                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) baseRound1.Add(d.st_punctuations);
-                        refs = new DictRefs(baseRound1);
+                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation) round1.Add(d.st_punctuations);
+                        refs = new DictRefs(round1);
                         break;
 
                     case OpenccConfig.T2S:
-                        baseRound1 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                        if (punctuation) baseRound1.Add(d.ts_punctuations);
-                        refs = new DictRefs(baseRound1);
+                        round1 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
+                        if (punctuation) round1.Add(d.ts_punctuations);
+                        refs = new DictRefs(round1);
                         break;
 
                     case OpenccConfig.S2Tw:
-                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) baseRound1.Add(d.st_punctuations);
-                        refs = new DictRefs(baseRound1)
-                            .WithRound2(new List<DictWithMaxLength> { d.tw_variants });
+                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation) round1.Add(d.st_punctuations);
+                        round2 = new List<DictWithMaxLength> { d.tw_variants };
+                        refs = new DictRefs(round1)
+                            .WithRound2(round2);
                         break;
 
                     case OpenccConfig.Tw2S:
+                        round1 = new List<DictWithMaxLength>
+                            { d.tw_variants_rev_phrases, d.tw_variants_rev };
                         round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
                         if (punctuation) round2.Add(d.ts_punctuations);
-                        refs = new DictRefs(new List<DictWithMaxLength>
-                                { d.tw_variants_rev_phrases, d.tw_variants_rev })
+                        refs = new DictRefs(round1)
                             .WithRound2(round2);
                         break;
 
                     case OpenccConfig.S2Twp:
-                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) baseRound1.Add(d.st_punctuations);
-                        refs = new DictRefs(baseRound1)
-                            .WithRound2(new List<DictWithMaxLength> { d.tw_phrases })
-                            .WithRound3(new List<DictWithMaxLength> { d.tw_variants });
+                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation) round1.Add(d.st_punctuations);
+                        round2 = new List<DictWithMaxLength> { d.tw_phrases };
+                        var round3 = new List<DictWithMaxLength> { d.tw_variants };
+                        refs = new DictRefs(round1)
+                            .WithRound2(round2)
+                            .WithRound3(round3);
                         break;
 
                     case OpenccConfig.Tw2Sp:
+                        round1 = new List<DictWithMaxLength>
+                            { d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev };
                         round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
                         if (punctuation) round2.Add(d.ts_punctuations);
-                        refs = new DictRefs(new List<DictWithMaxLength>
-                                { d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev })
+                        refs = new DictRefs(round1)
                             .WithRound2(round2);
                         break;
 
                     case OpenccConfig.S2Hk:
-                        baseRound1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) baseRound1.Add(d.st_punctuations);
-                        refs = new DictRefs(baseRound1)
-                            .WithRound2(new List<DictWithMaxLength> { d.hk_variants });
+                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
+                        if (punctuation) round1.Add(d.st_punctuations);
+                        round2 = new List<DictWithMaxLength> { d.hk_variants };
+                        refs = new DictRefs(round1)
+                            .WithRound2(round2);
                         break;
 
                     case OpenccConfig.Hk2S:
+                        round1 = new List<DictWithMaxLength>
+                            { d.hk_variants_rev_phrases, d.hk_variants_rev };
                         round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
                         if (punctuation) round2.Add(d.ts_punctuations);
-                        refs = new DictRefs(new List<DictWithMaxLength>
-                                { d.hk_variants_rev_phrases, d.hk_variants_rev })
+                        refs = new DictRefs(round1)
                             .WithRound2(round2);
+                        break;
+
+                    case OpenccConfig.T2Tw:
+                        round1 = new List<DictWithMaxLength> { d.tw_variants };
+                        refs = new DictRefs(round1);
+                        break;
+
+                    case OpenccConfig.T2Twp:
+                        round1 = new List<DictWithMaxLength> { d.tw_phrases };
+                        round2 = new List<DictWithMaxLength> { d.tw_variants };
+                        refs = new DictRefs(round1)
+                            .WithRound2(round2);
+                        break;
+
+                    case OpenccConfig.Tw2T:
+                        round1 = new List<DictWithMaxLength>
+                            { d.tw_variants_rev_phrases, d.tw_variants_rev };
+                        refs = new DictRefs(round1);
+                        break;
+
+                    case OpenccConfig.Tw2Tp:
+                        round1 = new List<DictWithMaxLength>
+                            { d.tw_variants_rev_phrases, d.tw_variants_rev };
+                        round2 = new List<DictWithMaxLength> { d.tw_phrases_rev };
+                        refs = new DictRefs(round1)
+                            .WithRound2(round2);
+                        break;
+
+                    case OpenccConfig.T2Hk:
+                        round1 = new List<DictWithMaxLength> { d.hk_variants };
+                        refs = new DictRefs(round1);
+                        break;
+
+                    case OpenccConfig.Hk2T:
+                        round1 = new List<DictWithMaxLength>
+                            { d.hk_variants_rev_phrases, d.hk_variants_rev };
+                        refs = new DictRefs(round1);
+                        break;
+
+                    case OpenccConfig.T2Jp:
+                        round1 = new List<DictWithMaxLength> { d.jp_variants };
+                        refs = new DictRefs(round1);
+                        break;
+
+                    case OpenccConfig.Jp2T:
+                        round1 = new List<DictWithMaxLength>
+                            { d.jps_phrases, d.jps_characters, d.jp_variants_rev };
+                        refs = new DictRefs(round1);
                         break;
 
                     default:
@@ -310,6 +480,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Gets or sets the current conversion configuration.
+        /// If an invalid configuration is assigned, it falls back to "s2t" and records the error.
         /// </summary>
         public string Config
         {
@@ -325,7 +496,7 @@ namespace OpenccNetLib
                 else
                 {
                     _config = "s2t";
-                    _lastError = $"Invalid config provided: {value}. Using default 's2t'.";
+                    _lastError = $"Invalid config provided: \"{value}\". Using default 's2t'.";
                 }
             }
         }
@@ -339,6 +510,16 @@ namespace OpenccNetLib
         {
             Config = IsValidConfig(config) ? config : "s2t";
         }
+
+        /// <summary>
+        /// Sets the configuration using the <see cref="OpenccConfig"/> enum.
+        /// </summary>
+        /// <param name="configEnum">The OpenCC configuration enum value.</param>
+        public void SetConfig(OpenccConfig configEnum)
+        {
+            Config = ConfigEnumToString(configEnum);
+        }
+
 
         /// <summary>
         /// Gets the current configuration value of this OpenCC instance.
@@ -605,10 +786,7 @@ namespace OpenccNetLib
         /// </summary>
         public string T2Tw(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_variants
-            });
+            var refs = GetDictRefs(OpenccConfig.T2Tw, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -617,13 +795,7 @@ namespace OpenccNetLib
         /// </summary>
         public string T2Twp(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_phrases
-            }).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_variants
-            });
+            var refs = GetDictRefs(OpenccConfig.T2Twp, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -632,11 +804,7 @@ namespace OpenccNetLib
         /// </summary>
         public string Tw2T(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_variants_rev_phrases,
-                Dictionary.tw_variants_rev
-            });
+            var refs = GetDictRefs(OpenccConfig.Tw2T, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -645,14 +813,7 @@ namespace OpenccNetLib
         /// </summary>
         public string Tw2Tp(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_variants_rev_phrases,
-                Dictionary.tw_variants_rev
-            }).WithRound2(new List<DictWithMaxLength>
-            {
-                Dictionary.tw_phrases_rev
-            });
+            var refs = GetDictRefs(OpenccConfig.Tw2Tp, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -661,10 +822,7 @@ namespace OpenccNetLib
         /// </summary>
         public string T2Hk(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.hk_variants
-            });
+            var refs = GetDictRefs(OpenccConfig.T2Hk, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -673,11 +831,7 @@ namespace OpenccNetLib
         /// </summary>
         public string Hk2T(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.hk_variants_rev_phrases,
-                Dictionary.hk_variants_rev
-            });
+            var refs = GetDictRefs(OpenccConfig.Hk2T, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -686,10 +840,7 @@ namespace OpenccNetLib
         /// </summary>
         public string T2Jp(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.jp_variants
-            });
+            var refs = GetDictRefs(OpenccConfig.T2Jp, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
@@ -698,12 +849,7 @@ namespace OpenccNetLib
         /// </summary>
         public string Jp2T(string inputText)
         {
-            var refs = new DictRefs(new List<DictWithMaxLength>
-            {
-                Dictionary.jps_phrases,
-                Dictionary.jps_characters,
-                Dictionary.jp_variants_rev
-            });
+            var refs = GetDictRefs(OpenccConfig.Jp2T, false);
             return refs.ApplySegmentReplace(inputText, SegmentReplace);
         }
 
