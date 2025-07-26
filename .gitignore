@@ -366,3 +366,12 @@ OpenccConvert/
 # IDE
 .idea/
 .vscode/
+
+# Backup files
+*.bak
+*.old
+*~        # Common backup from editors (like file.txt~)
+*.tmp     # Temporary files
+*.swp     # Vim swap files
+*.swo     # Older Vim temp files
+
