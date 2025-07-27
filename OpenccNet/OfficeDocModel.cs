@@ -59,6 +59,7 @@ public static class OfficeDocModel
                     ? Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories)
                         .Where(f =>
                             f.EndsWith(".xhtml", StringComparison.OrdinalIgnoreCase) ||
+                            f.EndsWith(".html", StringComparison.OrdinalIgnoreCase) ||
                             f.EndsWith(".opf", StringComparison.OrdinalIgnoreCase) ||
                             f.EndsWith(".ncx", StringComparison.OrdinalIgnoreCase))
                         .Select(f => Path.GetRelativePath(tempDir, f))
