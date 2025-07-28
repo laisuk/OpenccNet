@@ -9,8 +9,13 @@ namespace OpenccNet;
 /// Provides functionality to convert Office document formats (.docx, .xlsx, .pptx, .odt, .ods, .odp)
 /// using the Opencc converter with optional font name preservation.
 /// </summary>
-public static class OfficeDocModel
+public static class OfficeConverter
 {
+    public static readonly HashSet<string> OfficeFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
+    };
+
     /// <summary>
     /// Converts an Office document by applying OpenCC conversion on specific XML parts.
     /// Optionally preserves original font names to prevent them from being altered.
@@ -27,7 +32,7 @@ public static class OfficeDocModel
         string outputPath,
         string format,
         Opencc converter,
-        bool punctuation,
+        bool punctuation = false,
         bool keepFont = false)
     {
         // Create a temporary working directory

@@ -15,11 +15,6 @@ internal static class OfficeCommand
         "t2hk", "hk2t", "t2jp", "jp2t"
     };
 
-    private static readonly HashSet<string> OfficeFormats = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
-    };
-
     internal static Command CreateCommand()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -68,8 +63,9 @@ internal static class OfficeCommand
         {
             var format = result.GetValueOrDefault<string>();
 
-            if (!string.IsNullOrWhiteSpace(format) && !OfficeFormats.Contains(format))
-                result.AddError($"Invalid format '{format}'. Valid: {string.Join(" | ", OfficeFormats)})");
+            if (!string.IsNullOrWhiteSpace(format) && !OfficeConverter.OfficeFormats.Contains(format))
+                result.AddError(
+                    $"Invalid format '{format}'. Valid: {string.Join(" | ", OfficeConverter.OfficeFormats)})");
         });
 
         var keepFontOption = new Option<bool>("--keep-font")
@@ -108,10 +104,10 @@ internal static class OfficeCommand
             }
 
             var resolvedFormat = format ?? Path.GetExtension(input).TrimStart('.').ToLowerInvariant();
-            if (!OfficeFormats.Contains(resolvedFormat))
+            if (!OfficeConverter.OfficeFormats.Contains(resolvedFormat))
             {
                 await Console.Error.WriteLineAsync(
-                    $"❌  Unsupported file format. Supported: {string.Join(", ", OfficeFormats)}");
+                    $"❌  Unsupported file format. Supported: {string.Join(", ", OfficeConverter.OfficeFormats)}");
                 return 1;
             }
 
@@ -130,9 +126,17 @@ internal static class OfficeCommand
 
             try
             {
-                var (success, message) = await OfficeDocModel.ConvertOfficeDocAsync(
-                    input, resolvedOutput, resolvedFormat, new Opencc(config), punct, keepFont
-                );
+                // var (success, message) = await OfficeConverter.ConvertOfficeDocAsync(
+                //     input, resolvedOutput, resolvedFormat, new Opencc(config), punct, keepFont
+                // );
+                var (success, message) = await new OfficeConverterBuilder()
+                    .SetInput(input)
+                    .SetOutput(resolvedOutput)
+                    .SetFormat(resolvedFormat)
+                    .UseConverter(new Opencc(config))
+                    .WithPunctuation(punct)
+                    .KeepFontNames(keepFont)
+                    .ConvertAsync();
 
                 var status = success
                     ? $" {message}\n📁  Output: {Path.GetFullPath(resolvedOutput)}"

@@ -3,7 +3,7 @@ using OpenccNetLib;
 
 namespace OpenccNet;
 
-internal static class DictGenCommand
+internal static class DictgenCommand
 {
     private const string Blue = "\u001b[1;34m";
     private const string Reset = "\u001b[0m";

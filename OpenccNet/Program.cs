@@ -17,7 +17,7 @@ public static class Program
             };
 
         // Add subcommands
-        rootCommand.Subcommands.Add(DictGenCommand.CreateCommand());
+        rootCommand.Subcommands.Add(DictgenCommand.CreateCommand());
         rootCommand.Subcommands.Add(ConvertCommand.CreateCommand());
         rootCommand.Subcommands.Add(OfficeCommand.CreateCommand());
 
