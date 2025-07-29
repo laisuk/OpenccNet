@@ -15,7 +15,7 @@ projects with a focus on performance and minimal memory usage.
 - [Installation](#installation)
 - [Usage](#usage)
 - [API Reference](#api-reference)
-- [Add-On Tools](#add-on-cli-tools-separated-from-openccnetlib)
+- [Add-On CLI Tools](#add-on-cli-tools-separated-from-openccnetlib)
 - [License](#license)
 
 ## Features
