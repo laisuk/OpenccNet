@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.0.3] - 2025-07-29
+### Added
+- Add builder factory for OfficeConverter
+- Add `IsValidOfficeFormat()` validation method
+- Add support for old Epub format that uses HTML conversion
+
+---
+
 ## [1.0.2] – 2025-07-10
 ### Added
 - Added support for getting, setting, and validating OpenCC conversion configurations.

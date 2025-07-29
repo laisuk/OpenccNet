@@ -15,6 +15,22 @@ public static class OfficeConverter
     {
         "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
     };
+    
+    /// <summary>
+    /// Determines whether the given file format is a supported Office or EPUB document format.
+    /// </summary>
+    /// <param name="format">
+    /// The file format string to validate (e.g., "docx", "xlsx", "epub").
+    /// The comparison is case-insensitive.
+    /// </param>
+    /// <returns>
+    /// <c>true</c> if the format is one of the supported values ("docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"); 
+    /// otherwise, <c>false</c>.
+    /// </returns>
+    public static bool IsValidOfficeFormat(string? format)
+    {
+        return !string.IsNullOrWhiteSpace(format) && OfficeFormats.Contains(format);
+    }
 
     /// <summary>
     /// Converts an Office document by applying OpenCC conversion on specific XML parts.

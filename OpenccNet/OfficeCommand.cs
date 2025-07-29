@@ -104,7 +104,7 @@ internal static class OfficeCommand
             }
 
             var resolvedFormat = format ?? Path.GetExtension(input).TrimStart('.').ToLowerInvariant();
-            if (!OfficeConverter.OfficeFormats.Contains(resolvedFormat))
+            if (!OfficeConverter.IsValidOfficeFormat(resolvedFormat))
             {
                 await Console.Error.WriteLineAsync(
                     $"❌  Unsupported file format. Supported: {string.Join(", ", OfficeConverter.OfficeFormats)}");
@@ -126,17 +126,15 @@ internal static class OfficeCommand
 
             try
             {
-                // var (success, message) = await OfficeConverter.ConvertOfficeDocAsync(
-                //     input, resolvedOutput, resolvedFormat, new Opencc(config), punct, keepFont
-                // );
-                var (success, message) = await new OfficeConverterBuilder()
+                var builder = new OfficeConverterBuilder()
                     .SetInput(input)
                     .SetOutput(resolvedOutput)
                     .SetFormat(resolvedFormat)
                     .UseConverter(new Opencc(config))
                     .WithPunctuation(punct)
-                    .KeepFontNames(keepFont)
-                    .ConvertAsync();
+                    .KeepFontNames(keepFont);
+
+                var (success, message) = await builder.ConvertAsync();
 
                 var status = success
                     ? $" {message}\n📁  Output: {Path.GetFullPath(resolvedOutput)}"
