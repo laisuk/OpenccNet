@@ -17,9 +17,9 @@
         <ToolCommandName>openccnet</ToolCommandName>
         <PackageId>openccnet.cli</PackageId>
         <Authors>Laisuk Lai</Authors>
-        <Description>Convert text and Office files using OpenCC with CLI support.</Description>
+        <Description>Convert text and Office files using OpenccNetLib with CLI support.</Description>
         <PackageOutputPath>./nupkg</PackageOutputPath>
-        <ApplicationIcon>assets\openccnet.ico</ApplicationIcon>
+        <ApplicationIcon>assets\icon.ico</ApplicationIcon>
     </PropertyGroup>
 
     <ItemGroup>

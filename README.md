@@ -15,7 +15,6 @@ projects with a focus on performance and minimal memory usage.
 - [Installation](#installation)
 - [Usage](#usage)
 - [API Reference](#api-reference)
-- [Dictionary Files](#dictionary-files)
 - [Add-On Tools](#add-on-cli-tools-separated-from-openccnetlib)
 - [License](#license)
 
@@ -154,23 +153,6 @@ Detect if a string is Simplified, Traditional, or neither:
 using OpenccNetLib;
 int result = Opencc.ZhoCheck("汉字"); // Returns 2 for Simplified, 1 for Traditional, 0 for neither
 Console.WriteLine(result); // Output: 2 (for Simplified)
-```
-
-## Dictionary Files
-
-Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`.  
-In most case, it is auto-set when package added from `Nuget`:
-
-```xml
-
-<ItemGroup>
-    <None Update="dicts\dictionary_maxlength.zstd">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <Pack>true</Pack>
-        <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
-    </None>
-    <!-- Repeat for other dictionary files -->
-</ItemGroup>
 ```
 
 ### Using Custom Dictionary
