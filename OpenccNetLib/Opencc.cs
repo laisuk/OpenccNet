@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -935,7 +936,8 @@ namespace OpenccNetLib
         public static string St(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.st_characters };
-            return ConvertBy(inputText.AsSpan(), dictRefs, 1);
+            return
+                ConvertBy(inputText.AsSpan(), dictRefs, 2); // maxLength for surrogate pairs and non-BMP character is 2
         }
 
         /// <summary>
@@ -944,7 +946,8 @@ namespace OpenccNetLib
         public static string Ts(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.ts_characters };
-            return ConvertBy(inputText.AsSpan(), dictRefs, 1);
+            return
+                ConvertBy(inputText.AsSpan(), dictRefs, 2); // maxLength for surrogate pairs and non-BMP character is 2
         }
 
         /// <summary>
@@ -958,40 +961,17 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(inputText)) return 0;
 
             var stripped = StripRegex.Replace(inputText, "");
-            stripped = stripped.Substring(0, Math.Min(stripped.Length, 100));
-            var maxChars = FindMaxUtf8Length(stripped, 200);
-            var stripText = stripped.Substring(0, maxChars);
+            if (string.IsNullOrEmpty(stripped)) return 0;
 
-            var tsConverted = Ts(stripText);
-            if (stripText != tsConverted) return 1;
+            var stringInfo = new StringInfo(stripped);
+            var lengthInElements = Math.Min(stringInfo.LengthInTextElements, 100);
+            var safeText = stringInfo.SubstringByTextElements(0, lengthInElements);
 
-            var stConverted = St(stripText);
-            return stripText != stConverted ? 2 : 0;
-        }
+            var tsConverted = Ts(safeText);
+            if (safeText != tsConverted) return 1;
 
-        /// <summary>
-        /// Finds the maximum substring length that fits within the specified UTF-8 byte count.
-        /// Ensures truncation does not split multibyte characters.
-        /// Returns the number of characters that can be safely included
-        /// within a UTF-8 byte slice of `maxByteCount`.
-        /// </summary>
-        /// <param name="s">The input string.</param>
-        /// <param name="maxByteCount">The maximum allowed byte count.</param>
-        /// <returns>The maximum substring length that fits.</returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int FindMaxUtf8Length(string s, int maxByteCount)
-        {
-            if (string.IsNullOrEmpty(s)) return 0;
-
-            var encoded = Encoding.UTF8.GetBytes(s);
-            if (encoded.Length <= maxByteCount) return s.Length;
-
-            var byteCount = maxByteCount;
-            while (byteCount > 0 && (encoded[byteCount - 1] & 0b11000000) == 0b10000000)
-                byteCount--;
-
-            var partialString = Encoding.UTF8.GetString(encoded, 0, byteCount);
-            return partialString.Length;
+            var stConverted = St(safeText);
+            return safeText != stConverted ? 2 : 0;
         }
 
         /// <summary>

@@ -6,6 +6,19 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.4-preview] - 2025-08-05
+
+### Changed
+
+- Upgraded dependency: **OpenccNetLib** to `v1.0.4-preview`
+
+### Fixed
+
+- `zhoCheck()` now correctly handles **non-BMP (non-Basic Multilingual Plane)** characters, including surrogate pairs and emoji.
+- `OfficeDocConvert()` now includes a **safe ZIP extraction check** to prevent path traversal (Zip Slip) attacks when unpacking Office/EPUB files.
+
+---
+
 ## [1.0.3] - 2025-07-29
 
 ### Changed

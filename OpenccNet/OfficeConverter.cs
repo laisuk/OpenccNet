@@ -15,7 +15,7 @@ public static class OfficeConverter
     {
         "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub"
     };
-    
+
     /// <summary>
     /// Determines whether the given file format is a supported Office or EPUB document format.
     /// </summary>
@@ -57,7 +57,11 @@ public static class OfficeConverter
         try
         {
             // Extract the input Office archive into the temp folder
-            ZipFile.ExtractToDirectory(inputPath, tempDir);
+            // ZipFile.ExtractToDirectory(inputPath, tempDir);
+            // Safe extraction
+            var (ok, error) = ExtractZipSafely(inputPath, tempDir);
+            if (!ok)
+                return (false, $"Failed to extract input file: {error}");
 
             // Identify target XML files for each Office format
             var targetXmlPaths = format switch
@@ -238,6 +242,31 @@ public static class OfficeConverter
         catch (Exception ex)
         {
             return (false, $"❌ Failed to create EPUB: {ex.Message}");
+        }
+    }
+
+    private static (bool Success, string Error) ExtractZipSafely(string zipPath, string extractDir)
+    {
+        try
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+            foreach (var entry in archive.Entries)
+            {
+                if (string.IsNullOrEmpty(entry.Name)) continue; // Skip folders
+
+                var destPath = Path.GetFullPath(Path.Combine(extractDir, entry.FullName));
+                if (!destPath.StartsWith(Path.GetFullPath(extractDir), StringComparison.Ordinal))
+                    return (false, $"Unsafe path detected in ZIP entry: {entry.FullName}");
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                entry.ExtractToFile(destPath, overwrite: true);
+            }
+
+            return (true, "");
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
         }
     }
 }
