@@ -212,7 +212,7 @@ namespace OpenccNetLib
             switch (mode)
             {
                 case DelimiterMode.Minimal:
-                    return new HashSet<char>("\n".ToCharArray());
+                    return new HashSet<char>("\r\n".ToCharArray());
 
                 case DelimiterMode.Normal:
                     return new HashSet<char>("，。！？\n".ToCharArray());
@@ -482,6 +482,8 @@ namespace OpenccNetLib
 
         #endregion
 
+        #region Opencc Contructor and Public Fields Region
+
         private string _config;
         private string _lastError;
 
@@ -573,6 +575,10 @@ namespace OpenccNetLib
             return _lastError;
         }
 
+        #endregion
+
+        #region Core Convertion Region
+
         /// <summary>
         /// Performs segment replacement using the provided dictionaries.
         /// Splits the input text by delimiters and applies dictionary-based conversion to each segment.
@@ -623,9 +629,13 @@ namespace OpenccNetLib
             }
 
             // Always use StringBuilder with pre-capacity
-            var sb = new StringBuilder((int)(text.Length * 1.1));
-            foreach (var s in results)
-                sb.Append(s);
+            var totalLen = 0;
+            for (var i = 0; i < results.Length; i++)
+                totalLen += results[i]?.Length ?? 0;
+
+            var sb = new StringBuilder(totalLen);
+            for (var i = 0; i < results.Length; i++)
+                sb.Append(results[i]);
 
             return sb.ToString();
         }
@@ -645,12 +655,10 @@ namespace OpenccNetLib
             {
                 case 0:
                     return string.Empty;
-                // Quick check for single delimiter
                 case 1 when Delimiters.Contains(textSpan[0]):
                     return textSpan.ToString();
             }
 
-            // Use thread-local StringBuilder
             var resultBuilder = StringBuilderCache.Value;
             resultBuilder.Clear();
             resultBuilder.EnsureCapacity(textSpan.Length * 2);
@@ -658,7 +666,7 @@ namespace OpenccNetLib
             var textLen = textSpan.Length;
             var i = 0;
 
-            // Use ArrayPool for better memory management
+            // pool once per call
             var keyBuffer = ArrayPool<char>.Shared.Rent(maxWordLength);
 
             try
@@ -671,24 +679,25 @@ namespace OpenccNetLib
                     string bestMatch = null;
                     var bestMatchLength = 0;
 
-                    // Optimize dictionary lookup order
+                    // EDIT A: copy ONCE at the max candidate length
+                    remaining.Slice(0, tryMaxLen).CopyTo(keyBuffer.AsSpan());
+
+                    // Longest-first search
                     for (var length = tryMaxLen; length > 0; --length)
                     {
-                        var wordSpan = remaining.Slice(0, length);
+                        // EDIT B: NO per-length CopyTo; reuse the buffer
+                        // (new string will read only [0, length])
+                        var key = new string(keyBuffer, 0, length);
 
-                        // Check each dictionary
                         foreach (var dictObj in dictionaries)
                         {
                             if (dictObj.MaxLength < length) continue;
 
-                            // Copy to buffer and create string key
-                            wordSpan.CopyTo(keyBuffer.AsSpan());
-                            var key = new string(keyBuffer, 0, length);
-
                             if (!dictObj.Data.TryGetValue(key, out var match)) continue;
+
                             bestMatch = match;
                             bestMatchLength = length;
-                            goto FoundMatch; // Break out of both loops
+                            goto FoundMatch; // exit both loops
                         }
                     }
 
@@ -707,11 +716,76 @@ namespace OpenccNetLib
             }
             finally
             {
-                ArrayPool<char>.Shared.Return(keyBuffer);
+                // returning without clearing avoids needless zeroing cost
+                ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
             }
 
             return resultBuilder.ToString();
         }
+
+        /// <summary>
+        /// Splits the input span into ranges based on delimiter characters.
+        /// </summary>
+        /// <param name="input">The input character span.</param>
+        /// <param name="inclusive">
+        /// If true, each segment includes the delimiter (e.g. "你好，").
+        /// If false (default), each segment excludes the delimiter and delimiters are returned as their own segment.
+        /// </param>
+        /// <returns>A list of (start, end) index tuples for each segment.</returns>
+        private static List<(int start, int end)> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
+        {
+            var length = input.Length;
+
+            if (input.IsEmpty)
+                return new List<(int, int)>();
+
+            // Pre-size based on estimate (assume ~10% delimiters for better initial capacity)
+            var estimatedCapacity = Math.Max(8, length / 10);
+            var ranges = new List<(int, int)>(estimatedCapacity);
+
+            var currentStart = 0;
+
+            // Use spans for delimiter lookup if Delimiters is a collection
+            for (var i = 0; i < length; i++)
+            {
+                if (!Delimiters.Contains(input[i]))
+                    continue;
+
+                if (inclusive)
+                {
+                    // Include delimiter in current segment
+                    if (i >= currentStart) // Simplified condition
+                    {
+                        ranges.Add((currentStart, i + 1));
+                    }
+                }
+                else
+                {
+                    // Add segment before delimiter (if any)
+                    if (i > currentStart)
+                    {
+                        ranges.Add((currentStart, i));
+                    }
+
+                    // Add delimiter as separate segment
+                    ranges.Add((i, i + 1));
+                }
+
+                currentStart = i + 1;
+            }
+
+            // Add remaining segment if any
+            if (currentStart < length)
+            {
+                ranges.Add((currentStart, length));
+            }
+
+            return ranges;
+        }
+
+        #endregion
+
+        #region Direct API and General Conversion Region
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.
@@ -930,6 +1004,10 @@ namespace OpenccNetLib
             }
         }
 
+        #endregion
+
+        #region zh-Hant / zh-Hans Detection Region
+
         /// <summary>
         /// Converts Simplified Chinese characters to Traditional Chinese (single character only).
         /// </summary>
@@ -974,64 +1052,6 @@ namespace OpenccNetLib
             return safeText != stConverted ? 2 : 0;
         }
 
-        /// <summary>
-        /// Splits the input span into ranges based on delimiter characters.
-        /// </summary>
-        /// <param name="input">The input character span.</param>
-        /// <param name="inclusive">
-        /// If true, each segment includes the delimiter (e.g. "你好，").
-        /// If false (default), each segment excludes the delimiter and delimiters are returned as their own segment.
-        /// </param>
-        /// <returns>A list of (start, end) index tuples for each segment.</returns>
-        private static List<(int start, int end)> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
-        {
-            var length = input.Length;
-
-            if (input.IsEmpty)
-                return new List<(int, int)>();
-
-            // Pre-size based on estimate (assume ~10% delimiters for better initial capacity)
-            var estimatedCapacity = Math.Max(8, length / 10);
-            var ranges = new List<(int, int)>(estimatedCapacity);
-
-            var currentStart = 0;
-
-            // Use spans for delimiter lookup if Delimiters is a collection
-            for (var i = 0; i < length; i++)
-            {
-                if (!Delimiters.Contains(input[i]))
-                    continue;
-
-                if (inclusive)
-                {
-                    // Include delimiter in current segment
-                    if (i >= currentStart) // Simplified condition
-                    {
-                        ranges.Add((currentStart, i + 1));
-                    }
-                }
-                else
-                {
-                    // Add segment before delimiter (if any)
-                    if (i > currentStart)
-                    {
-                        ranges.Add((currentStart, i));
-                    }
-
-                    // Add delimiter as separate segment
-                    ranges.Add((i, i + 1));
-                }
-
-                currentStart = i + 1;
-            }
-
-            // Add remaining segment if any
-            if (currentStart < length)
-            {
-                ranges.Add((currentStart, length));
-            }
-
-            return ranges;
-        }
+        #endregion
     }
 }

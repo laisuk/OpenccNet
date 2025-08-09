@@ -37,7 +37,7 @@ namespace OpenccNetLib
         {
             return Data.TryGetValue(key, out value);
         }
-        
+
         /// <summary>
         /// Gets the number of entries in the dictionary.
         /// </summary>
@@ -215,41 +215,33 @@ namespace OpenccNetLib
                 // Find the index of the first tab character
                 int tabIndex = lineSpan.IndexOf('\t');
 
-                if (tabIndex != -1)
-                {
-                    ReadOnlySpan<char> keySpan = lineSpan.Slice(0, tabIndex);
-                    ReadOnlySpan<char> valueFullSpan = lineSpan.Slice(tabIndex + 1);
+                if (tabIndex == -1) continue;
+                ReadOnlySpan<char> keySpan = lineSpan.Slice(0, tabIndex);
+                ReadOnlySpan<char> valueFullSpan = lineSpan.Slice(tabIndex + 1);
 
-                    // Find the index of the first space in the value part
-                    int firstSpaceIndex = valueFullSpan.IndexOf(' ');
+                // Find the index of the first space in the value part
+                int firstSpaceIndex = valueFullSpan.IndexOf(' ');
 
-                    ReadOnlySpan<char> valueSpan;
-                    if (firstSpaceIndex != -1)
-                    {
-                        // If a space is found, take only the part before the first space
-                        valueSpan = valueFullSpan.Slice(0, firstSpaceIndex);
-                    }
-                    else
-                    {
-                        // If no space, the entire valueFullSpan is the desired value
-                        valueSpan = valueFullSpan;
-                    }
+                ReadOnlySpan<char> valueSpan;
+                // If a space is found, take only the part before the first space
+                valueSpan = firstSpaceIndex != -1
+                    ? valueFullSpan.Slice(0, firstSpaceIndex)
+                    :
+                    // If no space, the entire valueFullSpan is the desired value
+                    valueFullSpan;
 
-                    // Trim any leading/trailing whitespace from the key and the extracted value part
-                    keySpan = keySpan.Trim();
-                    valueSpan = valueSpan.Trim();
+                // Trim any leading/trailing whitespace from the key and the extracted value part
+                keySpan = keySpan.Trim();
+                valueSpan = valueSpan.Trim();
 
-                    // Convert ReadOnlySpan<char> to string ONLY when storing in the dictionary
-                    var key = keySpan.ToString();
-                    var value = valueSpan.ToString();
+                // Convert ReadOnlySpan<char> to string ONLY when storing in the dictionary
+                var key = keySpan.ToString();
+                var value = valueSpan.ToString();
 
-                    // Only add if both key and value are non-empty after trimming
-                    if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(value))
-                    {
-                        dict[key] = value;
-                        maxLength = Math.Max(maxLength, key.Length);
-                    }
-                }
+                // Only add if both key and value are non-empty after trimming
+                if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value)) continue;
+                dict[key] = value;
+                maxLength = Math.Max(maxLength, key.Length);
                 // Optional: Handle lines that do not contain a tab separator if needed
             }
 
