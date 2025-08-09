@@ -72,8 +72,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.${{ matrix.ext }}
           prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ contains(github.ref_name, '-') && 'false' || 'true' }}
           generate_release_notes: true
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
