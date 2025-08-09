@@ -55,23 +55,25 @@ jobs:
           $tag = "${{ github.ref_name }}"
           $folder = "OpenccNet-$tag-${{ matrix.rid }}"
           Rename-Item -Path publish -NewName $folder
-          Compress-Archive -Path "$folder\*" -DestinationPath "$folder.zip"
+          Compress-Archive -Path "$folder\*" -DestinationPath "$folder.${{ matrix.ext }}"
 
-      - name: Rename and Zip (Linux/macOS)
+      - name: Rename and Tar (Linux/macOS)
         if: runner.os != 'Windows'
         shell: bash
         run: |
           tag="${{ github.ref_name }}"
           folder="OpenccNet-$tag-${{ matrix.rid }}"
           mv publish "$folder"
-          zip -r "$folder.zip" "$folder"
+          tar -czf "$folder.${{ matrix.ext }}" "$folder"
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.zip
-          # overwrite: true  # Not supported by softprops/action-gh-release
-          # skip_if_release_exists: false  # Ignored by this action
+          files: OpenccNet-${{ github.ref_name }}-${{ matrix.rid }}.${{ matrix.ext }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
