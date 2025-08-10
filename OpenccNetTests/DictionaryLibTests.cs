@@ -21,7 +21,7 @@ public class DictionaryLibTests
     {
         var dict = DictionaryLib.FromDicts();
         Assert.IsNotNull(dict);
-        Assert.IsTrue(dict.st_characters.Data.Count > 0 || dict.ts_characters.Data.Count > 0);
+        Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
     }
 
     [TestMethod]
@@ -29,7 +29,7 @@ public class DictionaryLibTests
     {
         var dict = DictionaryLib.FromJson();
         Assert.IsNotNull(dict);
-        Assert.IsTrue(dict.st_characters.Data.Count > 0 || dict.ts_characters.Data.Count > 0);
+        Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
     }
 
     [TestMethod]
@@ -37,7 +37,7 @@ public class DictionaryLibTests
     {
         var dict = DictionaryLib.FromCbor();
         Assert.IsNotNull(dict);
-        Assert.IsTrue(dict.st_characters.Data.Count > 0 || dict.ts_characters.Data.Count > 0);
+        Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
     }
 
     [TestMethod]
@@ -51,7 +51,7 @@ public class DictionaryLibTests
 
         var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
         Assert.IsNotNull(loaded);
-        Assert.AreEqual(dict.ts_characters.Data.Count, loaded.ts_characters.Data.Count);
+        Assert.AreEqual(dict.ts_characters.Dict.Count, loaded.ts_characters.Dict.Count);
     }
 
 

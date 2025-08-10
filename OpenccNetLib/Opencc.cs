@@ -674,6 +674,67 @@ namespace OpenccNetLib
                 while (i < textLen)
                 {
                     var remaining = textSpan.Slice(i);
+
+                    // --- Start Char Index check begins ---
+
+                    var c0 = remaining[0];
+
+                    // per-position cap (no global array)
+                    ushort cap = 0;
+                    var lenMaskAll = 0UL; // union of available lengths
+                    for (var di = 0; di < dictionaries.Count; di++)
+                    {
+                        var d = dictionaries[di];
+                        var v = d.GetStarterCap(c0);
+                        if (v > cap) cap = v;
+                        lenMaskAll |= d.FirstCharLenMask64[c0];
+                    }
+
+
+                    // single text-element step (1 for BMP, 2 for non-BMP)
+                    var step = (char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1]))
+                        ? 2
+                        : 1;
+
+                    // no dict has entries starting with this UTF-16 unit → emit one text element
+                    if (cap == 0)
+                    {
+                        // netstandard2.0-safe append (no span overload)
+                        resultBuilder.Append(c0);
+                        if (step == 2)
+                            // surrogate pair
+                            resultBuilder.Append(remaining[1]);
+
+                        i += step;
+                        continue;
+                    }
+
+                    // --- Single-grapheme fast path using existing dicts (no SingleCharMap) ---
+                    // Try exactly 'step' (1 for BMP, 2 for non-BMP) if any dict has that length for this starter.
+                    if ((lenMaskAll & (1UL << (step - 1))) != 0)
+                    {
+                        // Prepare only the needed units (no full copy)
+                        keyBuffer[0] = c0;
+                        if (step == 2) keyBuffer[1] = remaining[1];
+
+                        // Allocate the key ONCE (length == 1 or 2)
+                        var keyStep = new string(keyBuffer, 0, step);
+
+                        // Probe dicts for this exact length
+                        for (var di = 0; di < dictionaries.Count; di++)
+                        {
+                            var d = dictionaries[di];
+                            if (d.MaxLength < step) continue;
+
+                            if (!d.Dict.TryGetValue(keyStep, out var repl)) continue;
+                            resultBuilder.Append(repl);
+                            i += step;
+                            goto ContinueOuter; // next position
+                        }
+                    }
+
+                    // ---- Start Char Index check end ---
+                    
                     var tryMaxLen = Math.Min(maxWordLength, remaining.Length);
 
                     string bestMatch = null;
@@ -682,22 +743,25 @@ namespace OpenccNetLib
                     // EDIT A: copy ONCE at the max candidate length
                     remaining.Slice(0, tryMaxLen).CopyTo(keyBuffer.AsSpan());
 
-                    // Longest-first search
+                    // longest-first search, but **skip impossible lengths**
                     for (var length = tryMaxLen; length > 0; --length)
                     {
+                        if (length <= 64 && ((lenMaskAll >> (length - 1)) & 1UL) == 0UL)
+                            continue; // nobody has this length for this starter
+
                         // EDIT B: NO per-length CopyTo; reuse the buffer
                         // (new string will read only [0, length])
                         var key = new string(keyBuffer, 0, length);
 
-                        foreach (var dictObj in dictionaries)
+                        for (int di = 0; di < dictionaries.Count; di++)
                         {
-                            if (dictObj.MaxLength < length) continue;
-
-                            if (!dictObj.Data.TryGetValue(key, out var match)) continue;
+                            var d = dictionaries[di];
+                            if (d.MaxLength < length) continue;
+                            if (!d.Dict.TryGetValue(key, out var match)) continue;
 
                             bestMatch = match;
                             bestMatchLength = length;
-                            goto FoundMatch; // exit both loops
+                            goto FoundMatch;
                         }
                     }
 
@@ -709,9 +773,19 @@ namespace OpenccNetLib
                     }
                     else
                     {
+                        // (Re)compute to be 100% safe
+                        step = (char.IsHighSurrogate(textSpan[i]) &&
+                                    i + 1 < textSpan.Length &&
+                                    char.IsLowSurrogate(textSpan[i + 1])) ? 2 : 1;
+
                         resultBuilder.Append(textSpan[i]);
-                        i++;
+                        if (step == 2)
+                            resultBuilder.Append(textSpan[i + 1]);
+
+                        i += step;
                     }
+
+                    ContinueOuter: ;
                 }
             }
             finally

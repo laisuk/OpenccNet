@@ -6,16 +6,47 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.0.4-preview] - 2025-08-05
+## [1.0.4-preview] — 2025-08-10
 
-### Changed
+### 🚀 Performance
 
-- Upgraded dependency: **OpenccNetLib** to `v1.0.4-preview`
+- Massive throughput & allocation reductions in `ConvertBy()` compared to 1.0.3:
+    - 100 chars: **10.79 µs → 2.51 µs** (**4.30× faster**), **21.20 KB → 5.08 KB** (**−76%**)
+    - 1,000 chars: **169.58 µs → 44.25 µs** (**3.83×**), **229.43 KB → 68.32 KB** (**−70%**)
+    - 10,000 chars: **472.20 µs → 282.25 µs** (**1.67×**), **1.99 MB → 659.89 KB** (**−67.6%**)
+    - 100,000 chars: **8.57 ms → 6.19 ms** (**1.38×**), **21.72 MB → ~6.80 MB** (**−68.7%**)
+    - 1,000,000 chars: **88.61 ms → 56.29 ms** (**1.57×**), **225.30 MB → ~68.4 MB** (**−69.7%**)
 
-### Fixed
+### ✨ Highlights
 
-- `zhoCheck()` now correctly handles **non-BMP (non-Basic Multilingual Plane)** characters, including surrogate pairs and emoji.
-- `OfficeDocConvert()` now includes a **safe ZIP extraction check** to prevent path traversal (Zip Slip) attacks when unpacking Office/EPUB files.
+- **Non-BMP aware**: indexing & lookup now handle astral characters (surrogate pairs, emoji) correctly.
+- **Starter caps**: O(1) per-starter **UTF-16 cap array** + **64‑bit length bitmap** to skip impossible probe lengths.
+- **Single‑grapheme fast path**: probes 1‑ or 2‑unit keys first (covers `st_characters` / `ts_characters`) with at most
+  one tiny allocation.
+- **.NET Standard 2.0 safe**: surrogate‑aware emit path (no `Append(ReadOnlySpan<char>)`).
+
+### 🛠 Changed
+
+- Upgraded dependency: **OpenccNetLib** → `v1.0.4-preview`.
+- Dictionary index now persists a sparse **`StarterCapTextElem`** (`Dictionary<string, byte>`, key = first text element)
+  and hydrates runtime arrays on load.
+
+### 🧰 Fixed
+
+- `zhoCheck()` correctly handles **non‑BMP** characters.
+- `OfficeDocConvert()` adds **Zip Slip** protection for safe extraction of Office/EPUB archives.
+
+### 🔄 Compatibility
+
+- **No breaking API changes.**
+- Existing serialized dictionaries still work; if `StarterCapTextElem` is missing it is derived from `Dict` at build
+  time.
+- `MaxLength` remains in **UTF‑16 units**.
+
+### 📈 Benchmark Notes
+
+- BenchmarkDotNet 0.15.2, .NET 9.0.8, Windows 11, X64 RyuJIT AVX2.
+- IterationCount=10, WarmupCount=1.
 
 ---
 
