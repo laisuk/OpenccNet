@@ -37,7 +37,7 @@ namespace OpenccNetLib
         ///   <see cref="Dict"/> is populated, it is derived once from <see cref="Dict"/> using text-element boundaries.
         /// - Runtime matching remains in UTF-16 units; this map exists to serialize a stable, Unicode-friendly cap.
         /// </remarks>
-        public Dictionary<string, byte> StarterCapTextElem { get; set; } = new Dictionary<string, byte>(512);
+        private Dictionary<string, byte> StarterCapTextElem { get; } = new Dictionary<string, byte>(512);
 
         /// <summary>
         /// Runtime-only per-starter cap (UTF-16 units). Index by the first UTF-16 code unit; 0 means “no entries”.
@@ -48,7 +48,7 @@ namespace OpenccNetLib
         /// - Not serialized. Zero-initialized and built once; safe for O(1) lookups in hot paths.
         /// </remarks>
         [JsonIgnore]
-        public ushort[] FirstCharMaxLenUtf16Arr { get; } = new ushort[char.MaxValue + 1];
+        private ushort[] FirstCharMaxLenUtf16Arr { get; } = new ushort[char.MaxValue + 1];
 
         /// <summary>
         /// Runtime-only per-starter length bitmap (1..64). Bit <c>(n−1)</c> set ⇢ a key of length <c>n</c> exists for this starter.
@@ -61,7 +61,7 @@ namespace OpenccNetLib
         /// - Not serialized. O(1) read per position; complements <see cref="FirstCharMaxLenUtf16Arr"/>.
         /// </remarks>
         [JsonIgnore]
-        public ulong[] FirstCharLenMask64 { get; } = new ulong[char.MaxValue + 1];
+        private ulong[] FirstCharLenMask64 { get; } = new ulong[char.MaxValue + 1];
 
         /// <summary>
         /// Indicates whether the runtime starter indexes have been built.
@@ -207,6 +207,7 @@ namespace OpenccNetLib
     /// Holds all conversion dictionaries for different OpenCC conversion types.
     /// Each property represents a specific conversion mapping.
     /// </summary>
+    // ReSharper disable InconsistentNaming
     public class DictionaryMaxlength
     {
         public DictWithMaxLength st_characters { get; set; } = new DictWithMaxLength();
@@ -228,6 +229,7 @@ namespace OpenccNetLib
         public DictWithMaxLength st_punctuations { get; set; } = new DictWithMaxLength();
         public DictWithMaxLength ts_punctuations { get; set; } = new DictWithMaxLength();
     }
+    // ReSharper restore InconsistentNaming
 
     /// <summary>
     /// Provides methods to load, save, and cache OpenCC conversion dictionaries
@@ -373,22 +375,22 @@ namespace OpenccNetLib
                 }
 
                 // Find the index of the first tab character
-                int tabIndex = lineSpan.IndexOf('\t');
+                var tabIndex = lineSpan.IndexOf('\t');
 
                 if (tabIndex == -1) continue;
                 ReadOnlySpan<char> keySpan = lineSpan.Slice(0, tabIndex);
                 ReadOnlySpan<char> valueFullSpan = lineSpan.Slice(tabIndex + 1);
 
                 // Find the index of the first space in the value part
-                int firstSpaceIndex = valueFullSpan.IndexOf(' ');
+                var firstSpaceIndex = valueFullSpan.IndexOf(' ');
 
-                ReadOnlySpan<char> valueSpan;
-                // If a space is found, take only the part before the first space
-                valueSpan = firstSpaceIndex != -1
-                    ? valueFullSpan.Slice(0, firstSpaceIndex)
-                    :
-                    // If no space, the entire valueFullSpan is the desired value
-                    valueFullSpan;
+                var valueSpan =
+                    // If a space is found, take only the part before the first space
+                    firstSpaceIndex != -1
+                        ? valueFullSpan.Slice(0, firstSpaceIndex)
+                        :
+                        // If no space, the entire valueFullSpan is the desired value
+                        valueFullSpan;
 
                 // Trim any leading/trailing whitespace from the key and the extracted value part
                 keySpan = keySpan.Trim();

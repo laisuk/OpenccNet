@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -324,167 +323,10 @@ namespace OpenccNetLib
 
         #endregion
 
-        #region DictRefs Region
-
-        /// <summary>
-        /// Caches compiled <see cref="DictRefs"/> instances keyed by <see cref="OpenccConfig"/> and punctuation flag.
-        /// </summary>
-        /// <remarks>
-        /// The cache key is constructed from the <see cref="OpenccConfig"/> enum name (e.g., <c>S2T</c>, <c>T2S</c>).
-        /// If the <c>punctuation</c> flag is <c>true</c>, the suffix <c>_punct</c> is appended to the key.
-        /// This allows the cache to distinguish between punctuation-aware and non-punctuation versions of each configuration.
-        /// </remarks>
-        private readonly ConcurrentDictionary<string, DictRefs> _configCache =
-            new ConcurrentDictionary<string, DictRefs>();
-
-        /// <summary>
-        /// Retrieves or creates a <see cref="DictRefs"/> instance based on the specified OpenCC configuration
-        /// and punctuation setting.
-        /// </summary>
-        /// <param name="config">The OpenCC configuration enum value.</param>
-        /// <param name="punctuation">
-        /// If <c>true</c>, includes punctuation dictionary in round 1 or 2 as appropriate.
-        /// </param>
-        /// <returns>A cached or newly constructed <see cref="DictRefs"/> instance.</returns>
-        private DictRefs GetDictRefs(OpenccConfig config, bool punctuation)
-        {
-            var cacheKey = config + (punctuation ? "_punct" : "");
-
-            return _configCache.GetOrAdd(cacheKey, _ =>
-            {
-                var d = _lazyDictionary.Value;
-                List<DictWithMaxLength> round1;
-                List<DictWithMaxLength> round2;
-                DictRefs refs;
-
-                switch (config)
-                {
-                    case OpenccConfig.S2T:
-                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) round1.Add(d.st_punctuations);
-                        refs = new DictRefs(round1);
-                        break;
-
-                    case OpenccConfig.T2S:
-                        round1 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                        if (punctuation) round1.Add(d.ts_punctuations);
-                        refs = new DictRefs(round1);
-                        break;
-
-                    case OpenccConfig.S2Tw:
-                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) round1.Add(d.st_punctuations);
-                        round2 = new List<DictWithMaxLength> { d.tw_variants };
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2);
-                        break;
-
-                    case OpenccConfig.Tw2S:
-                        round1 = new List<DictWithMaxLength>
-                            { d.tw_variants_rev_phrases, d.tw_variants_rev };
-                        round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                        if (punctuation) round2.Add(d.ts_punctuations);
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2);
-                        break;
-
-                    case OpenccConfig.S2Twp:
-                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) round1.Add(d.st_punctuations);
-                        round2 = new List<DictWithMaxLength> { d.tw_phrases };
-                        var round3 = new List<DictWithMaxLength> { d.tw_variants };
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2)
-                            .WithRound3(round3);
-                        break;
-
-                    case OpenccConfig.Tw2Sp:
-                        round1 = new List<DictWithMaxLength>
-                            { d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev };
-                        round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                        if (punctuation) round2.Add(d.ts_punctuations);
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2);
-                        break;
-
-                    case OpenccConfig.S2Hk:
-                        round1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                        if (punctuation) round1.Add(d.st_punctuations);
-                        round2 = new List<DictWithMaxLength> { d.hk_variants };
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2);
-                        break;
-
-                    case OpenccConfig.Hk2S:
-                        round1 = new List<DictWithMaxLength>
-                            { d.hk_variants_rev_phrases, d.hk_variants_rev };
-                        round2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                        if (punctuation) round2.Add(d.ts_punctuations);
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2);
-                        break;
-
-                    case OpenccConfig.T2Tw:
-                        round1 = new List<DictWithMaxLength> { d.tw_variants };
-                        refs = new DictRefs(round1);
-                        break;
-
-                    case OpenccConfig.T2Twp:
-                        round1 = new List<DictWithMaxLength> { d.tw_phrases };
-                        round2 = new List<DictWithMaxLength> { d.tw_variants };
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2);
-                        break;
-
-                    case OpenccConfig.Tw2T:
-                        round1 = new List<DictWithMaxLength>
-                            { d.tw_variants_rev_phrases, d.tw_variants_rev };
-                        refs = new DictRefs(round1);
-                        break;
-
-                    case OpenccConfig.Tw2Tp:
-                        round1 = new List<DictWithMaxLength>
-                            { d.tw_variants_rev_phrases, d.tw_variants_rev };
-                        round2 = new List<DictWithMaxLength> { d.tw_phrases_rev };
-                        refs = new DictRefs(round1)
-                            .WithRound2(round2);
-                        break;
-
-                    case OpenccConfig.T2Hk:
-                        round1 = new List<DictWithMaxLength> { d.hk_variants };
-                        refs = new DictRefs(round1);
-                        break;
-
-                    case OpenccConfig.Hk2T:
-                        round1 = new List<DictWithMaxLength>
-                            { d.hk_variants_rev_phrases, d.hk_variants_rev };
-                        refs = new DictRefs(round1);
-                        break;
-
-                    case OpenccConfig.T2Jp:
-                        round1 = new List<DictWithMaxLength> { d.jp_variants };
-                        refs = new DictRefs(round1);
-                        break;
-
-                    case OpenccConfig.Jp2T:
-                        round1 = new List<DictWithMaxLength>
-                            { d.jps_phrases, d.jps_characters, d.jp_variants_rev };
-                        refs = new DictRefs(round1);
-                        break;
-
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(config), config, null);
-                }
-
-                return refs;
-            });
-        }
-
-        #endregion
-
         #region Opencc Contructor and Public Fields Region
 
         private string _config;
+
         private string _lastError;
 
         /// <summary>
@@ -585,13 +427,16 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="text">The input text to convert.</param>
         /// <param name="dictionaries">The list of dictionaries to use for conversion.</param>
+        /// <param name="union"></param>
         /// <param name="maxWordLength">Maximum word length for dictionaries</param>
         /// <returns>The converted text.</returns>
-        private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries, int maxWordLength)
+        private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries, StarterUnion union,
+            int maxWordLength)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
             var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
+            // var union = StarterUnion.Build(dictionaries);
 
             if (splitRanges.Count == 0)
             {
@@ -604,7 +449,8 @@ namespace OpenccNetLib
             // Shortcut for single segment
             if (splitRanges.Count == 1)
             {
-                return ConvertBy(text.AsSpan(), dictionaries, maxWordLength);
+                // return ConvertBy(text.AsSpan(), dictionaries, maxWordLength);
+                return ConvertBy(text.AsSpan(), dictionaries, union, maxWordLength);
             }
 
             var results = new string[splitRanges.Count];
@@ -615,7 +461,8 @@ namespace OpenccNetLib
                 {
                     var (start, end) = splitRanges[i];
                     var segment = text.AsSpan(start, end - start);
-                    results[i] = ConvertBy(segment, dictionaries, maxWordLength);
+                    // results[i] = ConvertBy(segment, dictionaries, maxWordLength);
+                    results[i] = ConvertBy(segment, dictionaries, union, maxWordLength);
                 });
             }
             else
@@ -624,7 +471,8 @@ namespace OpenccNetLib
                 {
                     var (start, end) = splitRanges[i];
                     var segment = text.AsSpan(start, end - start);
-                    results[i] = ConvertBy(segment, dictionaries, maxWordLength);
+                    // results[i] = ConvertBy(segment, dictionaries, maxWordLength);
+                    results[i] = ConvertBy(segment, dictionaries, union, maxWordLength);
                 }
             }
 
@@ -645,18 +493,20 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="textSpan">The input text segment.</param>
         /// <param name="dictionaries">The dictionaries to use for lookup.</param>
+        /// <param name="union"></param>
         /// <param name="maxWordLength">The maximum key length to consider.</param>
         /// <returns>The converted string segment.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string ConvertBy(ReadOnlySpan<char> textSpan, List<DictWithMaxLength> dictionaries,
+        private static string ConvertBy(
+            ReadOnlySpan<char> textSpan,
+            List<DictWithMaxLength> dictionaries,
+            StarterUnion union,
             int maxWordLength)
         {
             switch (textSpan.Length)
             {
-                case 0:
-                    return string.Empty;
-                case 1 when Delimiters.Contains(textSpan[0]):
-                    return textSpan.ToString();
+                case 0: return string.Empty;
+                case 1 when Delimiters.Contains(textSpan[0]): return textSpan.ToString();
             }
 
             var resultBuilder = StringBuilderCache.Value;
@@ -666,7 +516,6 @@ namespace OpenccNetLib
             var textLen = textSpan.Length;
             var i = 0;
 
-            // pool once per call
             var keyBuffer = ArrayPool<char>.Shared.Rent(maxWordLength);
 
             try
@@ -674,54 +523,46 @@ namespace OpenccNetLib
                 while (i < textLen)
                 {
                     var remaining = textSpan.Slice(i);
-
-                    // --- Start Char Index check begins ---
-
                     var c0 = remaining[0];
 
-                    // per-position cap (no global array)
-                    ushort cap = 0;
-                    var lenMaskAll = 0UL; // union of available lengths
-                    for (var di = 0; di < dictionaries.Count; di++)
-                    {
-                        var d = dictionaries[di];
-                        var v = d.GetStarterCap(c0);
-                        if (v > cap) cap = v;
-                        lenMaskAll |= d.FirstCharLenMask64[c0];
-                    }
-
-
-                    // single text-element step (1 for BMP, 2 for non-BMP)
+                    // Single text-element step (BMP=1, surrogate pair=2)
                     var step = (char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1]))
                         ? 2
                         : 1;
 
-                    // no dict has entries starting with this UTF-16 unit → emit one text element
+                    // --- StarterUnion lookup (O(1)) ---
+                    union.Get(c0, out var cap, out var lenMaskAll);
+
                     if (cap == 0)
                     {
-                        // netstandard2.0-safe append (no span overload)
+                        // Emit one text element
                         resultBuilder.Append(c0);
-                        if (step == 2)
-                            // surrogate pair
-                            resultBuilder.Append(remaining[1]);
-
+                        if (step == 2) resultBuilder.Append(remaining[1]);
                         i += step;
                         continue;
                     }
 
-                    // --- Single-grapheme fast path using existing dicts (no SingleCharMap) ---
-                    // Try exactly 'step' (1 for BMP, 2 for non-BMP) if any dict has that length for this starter.
-                    if ((lenMaskAll & (1UL << (step - 1))) != 0)
+                    // Clamp by cap and input/maxWordLength
+                    var tryMaxLen = Math.Min(Math.Min(maxWordLength, remaining.Length), cap);
+
+                    // Is there any longer candidate (len >= step+1) within tryMaxLen?
+                    ulong maskUpToTry = lenMaskAll;
+                    if (tryMaxLen < 64)
                     {
-                        // Prepare only the needed units (no full copy)
+                        // keep only bits [0 .. tryMaxLen-1]
+                        maskUpToTry &= (1UL << tryMaxLen) - 1;
+                    }
+
+                    bool hasLonger = step < tryMaxLen && maskUpToTry >> step != 0;
+
+                    // Single-grapheme fast path ONLY if there is no longer candidate
+                    if (!hasLonger && (lenMaskAll & (1UL << (step - 1))) != 0)
+                    {
                         keyBuffer[0] = c0;
                         if (step == 2) keyBuffer[1] = remaining[1];
-
-                        // Allocate the key ONCE (length == 1 or 2)
                         var keyStep = new string(keyBuffer, 0, step);
 
-                        // Probe dicts for this exact length
-                        for (var di = 0; di < dictionaries.Count; di++)
+                        for (int di = 0; di < dictionaries.Count; di++)
                         {
                             var d = dictionaries[di];
                             if (d.MaxLength < step) continue;
@@ -729,31 +570,26 @@ namespace OpenccNetLib
                             if (!d.Dict.TryGetValue(keyStep, out var repl)) continue;
                             resultBuilder.Append(repl);
                             i += step;
-                            goto ContinueOuter; // next position
+                            goto ContinueOuter;
                         }
                     }
 
-                    // ---- Start Char Index check end ---
-                    
-                    var tryMaxLen = Math.Min(maxWordLength, remaining.Length);
 
+                    // General longest-first search (skip impossible lengths via mask)
                     string bestMatch = null;
                     var bestMatchLength = 0;
 
-                    // EDIT A: copy ONCE at the max candidate length
+                    // Copy once at max candidate length
                     remaining.Slice(0, tryMaxLen).CopyTo(keyBuffer.AsSpan());
 
-                    // longest-first search, but **skip impossible lengths**
                     for (var length = tryMaxLen; length > 0; --length)
                     {
                         if (length <= 64 && ((lenMaskAll >> (length - 1)) & 1UL) == 0UL)
-                            continue; // nobody has this length for this starter
+                            continue;
 
-                        // EDIT B: NO per-length CopyTo; reuse the buffer
-                        // (new string will read only [0, length])
                         var key = new string(keyBuffer, 0, length);
 
-                        for (int di = 0; di < dictionaries.Count; di++)
+                        for (var di = 0; di < dictionaries.Count; di++)
                         {
                             var d = dictionaries[di];
                             if (d.MaxLength < length) continue;
@@ -773,15 +609,15 @@ namespace OpenccNetLib
                     }
                     else
                     {
-                        // (Re)compute to be 100% safe
+                        // Emit one text element (recompute step for safety)
                         step = (char.IsHighSurrogate(textSpan[i]) &&
-                                    i + 1 < textSpan.Length &&
-                                    char.IsLowSurrogate(textSpan[i + 1])) ? 2 : 1;
+                                i + 1 < textSpan.Length &&
+                                char.IsLowSurrogate(textSpan[i + 1]))
+                            ? 2
+                            : 1;
 
                         resultBuilder.Append(textSpan[i]);
-                        if (step == 2)
-                            resultBuilder.Append(textSpan[i + 1]);
-
+                        if (step == 2) resultBuilder.Append(textSpan[i + 1]);
                         i += step;
                     }
 
@@ -790,7 +626,6 @@ namespace OpenccNetLib
             }
             finally
             {
-                // returning without clearing avoids needless zeroing cost
                 ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
             }
 
@@ -860,6 +695,29 @@ namespace OpenccNetLib
         #endregion
 
         #region Direct API and General Conversion Region
+
+        /// <summary>
+        /// Centralized cache for precomputed conversion plans.  
+        /// Each plan bundles dictionary references, union masks, and other  
+        /// runtime-optimized lookup data, keyed by configuration and punctuation mode.  
+        /// Initialized with a delegate that returns the current <see cref="DictionaryMaxlength"/> instance.
+        /// </summary>
+        private readonly ConversionPlanCache _planCache =
+            new ConversionPlanCache(() => Dictionary);
+
+        /// <summary>
+        /// Retrieves the dictionary references and lookup structures for the specified  
+        /// OpenCC configuration and punctuation handling mode.  
+        /// Results are served from <see cref="_planCache"/> to avoid rebuilding plans and  
+        /// reduce GC pressure in high-throughput conversions.
+        /// </summary>
+        /// <param name="config">The OpenCC conversion configuration (e.g., S2T, T2HK).</param>
+        /// <param name="punctuation">
+        /// True to include punctuation conversion; false to leave punctuation unchanged.
+        /// </param>
+        /// <returns>A <see cref="DictRefs"/> object containing the prepared dictionary references.</returns>
+        private DictRefs GetDictRefs(OpenccConfig config, bool punctuation)
+            => _planCache.GetPlan(config, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.
@@ -1088,8 +946,10 @@ namespace OpenccNetLib
         public static string St(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.st_characters };
-            return
-                ConvertBy(inputText.AsSpan(), dictRefs, 2); // maxLength for surrogate pairs and non-BMP character is 2
+            var union = StarterUnion.Build(dictRefs);
+            // maxLength for surrogate pairs and non-BMP character is 2
+            // return ConvertBy(inputText.AsSpan(), dictRefs, 2);
+            return ConvertBy(inputText.AsSpan(), dictRefs, union, 2);
         }
 
         /// <summary>
@@ -1098,8 +958,10 @@ namespace OpenccNetLib
         public static string Ts(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.ts_characters };
-            return
-                ConvertBy(inputText.AsSpan(), dictRefs, 2); // maxLength for surrogate pairs and non-BMP character is 2
+            var union = StarterUnion.Build(dictRefs);
+            // maxLength for surrogate pairs and non-BMP character is 2
+            // return ConvertBy(inputText.AsSpan(), dictRefs, 2);
+            return ConvertBy(inputText.AsSpan(), dictRefs, union, 2);
         }
 
         /// <summary>

@@ -6,24 +6,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.0.4-preview] — 2025-08-10
+## [1.1.0] — 2025-08-13
 
 ### 🚀 Performance
 
 - Massive throughput & allocation reductions in `ConvertBy()` compared to 1.0.3:
-    - 100 chars: **10.79 µs → 2.51 µs** (**4.30× faster**), **21.20 KB → 5.08 KB** (**−76%**)
-    - 1,000 chars: **169.58 µs → 44.25 µs** (**3.83×**), **229.43 KB → 68.32 KB** (**−70%**)
-    - 10,000 chars: **472.20 µs → 282.25 µs** (**1.67×**), **1.99 MB → 659.89 KB** (**−67.6%**)
-    - 100,000 chars: **8.57 ms → 6.19 ms** (**1.38×**), **21.72 MB → ~6.80 MB** (**−68.7%**)
-    - 1,000,000 chars: **88.61 ms → 56.29 ms** (**1.57×**), **225.30 MB → ~68.4 MB** (**−69.7%**)
+    - 100 chars: **10.79 µs → 2.51 µs** (**4.30× faster**), **21.20 KB → 5.08 KB** (**−76.0%**)
+    - 1,000 chars: **169.58 µs → 44.25 µs** (**3.83× faster**), **229.43 KB → 68.32 KB** (**−70.2%**)
+    - 10,000 chars: **472.20 µs → 282.25 µs** (**1.67× faster**), **1.99 MB → 659.89 KB** (**−67.6%**)
+    - 100,000 chars: **8.57 ms → 6.19 ms** (**1.38× faster**), **21.72 MB → ~6.80 MB** (**−68.7%**)
+    - 1,000,000 chars: **88.61 ms → 56.29 ms** (**1.57× faster**), **225.30 MB → ~68.4 MB** (**−69.7%**)
 
 ### ✨ Highlights
 
 - **Non-BMP aware**: indexing & lookup now handle astral characters (surrogate pairs, emoji) correctly.
-- **Starter caps**: O(1) per-starter **UTF-16 cap array** + **64‑bit length bitmap** to skip impossible probe lengths.
-- **Single‑grapheme fast path**: probes 1‑ or 2‑unit keys first (covers `st_characters` / `ts_characters`) with at most
+- **Starter caps**: O(1) per-starter **UTF-16 cap array** + **64-bit length bitmap** to skip impossible probe lengths.
+- **Single-grapheme fast path**: probes 1- or 2-unit keys first (covers `st_characters` / `ts_characters`) with at most
   one tiny allocation.
-- **.NET Standard 2.0 safe**: surrogate‑aware emit path (no `Append(ReadOnlySpan<char>)`).
+- **.NET Standard 2.0 safe**: surrogate-aware emit path (no `Append(ReadOnlySpan<char>)`).
 
 ### 🛠 Changed
 
@@ -33,7 +33,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### 🧰 Fixed
 
-- `zhoCheck()` correctly handles **non‑BMP** characters.
+- `zhoCheck()` correctly handles **non-BMP** characters.
 - `OfficeDocConvert()` adds **Zip Slip** protection for safe extraction of Office/EPUB archives.
 
 ### 🔄 Compatibility
@@ -41,12 +41,43 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **No breaking API changes.**
 - Existing serialized dictionaries still work; if `StarterCapTextElem` is missing it is derived from `Dict` at build
   time.
-- `MaxLength` remains in **UTF‑16 units**.
+- `MaxLength` remains in **UTF-16 units**.
 
 ### 📈 Benchmark Notes
 
 - BenchmarkDotNet 0.15.2, .NET 9.0.8, Windows 11, X64 RyuJIT AVX2.
 - IterationCount=10, WarmupCount=1.
+
+### 🧪 Technical Notes — Why the Speed Jump Was So Big
+
+This release’s performance leap comes from **multi-layered optimizations**, not just allocation trimming:
+
+1. **Lookup Layer**
+
+- Added **StarterCaps** array and **64-bit probe masks** per starter char to skip impossible lengths instantly.
+- Astral-aware indexing means surrogate pairs and emoji are matched in a single logical lookup.
+- Shared `StarterUnion` objects across plans with identical round layouts.
+
+2. **Matching Loop**
+
+- **Fast path** for the most common keys (1–2 UTF-16 units) removes almost all redundant probing for `st_characters` /
+  `ts_characters`.
+- Eliminated substring allocations during probes; everything operates directly on char spans.
+
+3. **Dictionary Plan Caching**
+
+- `ConversionPlanCache` + `RoundKey` hashing ensures a `(config, punctuation)` plan is built once and reused, instead of
+  rebuilding `DictRefs` and unions on every call.
+
+4. **Runtime Memory Behavior**
+
+- Buffer reuse and fewer intermediate collections keep memory stable.
+- GUI idle footprint dropped from ~400 MB to ~250 MB due to fewer temp allocations in repeated conversions.
+
+5. **Compatibility & Safety**
+
+- Kept `.NET Standard 2.0` surrogate-safe emit path for broad compatibility.
+- Strengthened archive handling with **Zip Slip** prevention without hurting throughput.
 
 ---
 

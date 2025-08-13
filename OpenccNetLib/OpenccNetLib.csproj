@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.0.3</Version>
+        <Version>1.1.0</Version>
         <Authors>laisuk</Authors>
         <Description>
             OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
@@ -20,36 +20,43 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>OpenccNet Library</Title>
-        <PackageReleaseNotes>OpenccNetLib v1.0.3
+        <PackageReleaseNotes>OpenccNetLib v1.1.0
 
-A major performance-focused update for the OpenCC-based Chinese text conversion library.
+A major performance release: plan/union caching, longest-match fixes, and astral-safe lookups.
+Benchmarks (BenchmarkDotNet 0.15.2, .NET 9.0.8, Win11, X64 RyuJIT AVX2; IterationCount=10, WarmupCount=1):
 
-✅ Highlights:
-- New parallel segment processing engine for large-scale text conversion
-- Optimized `StringBuilder` usage with smart preallocation (up to 20% faster in benchmarks)
-- Inclusive splitting improves dictionary lookup performance with fewer overhead calls
-- Memory allocation and GC pressure now scale linearly and predictably
-- Unified join logic for small and large inputs (no more string.Concat bottlenecks)
-- Consistently fast warm and cold starts in both CLI and GUI environments
+- 100 chars:   2.49–2.50 µs,    ~5.5 KB allocated
+- 1,000 chars: ~57.8 µs,        ~84.0 KB allocated
+- 10,000 chars: ~305.9 µs,      ~798.7 KB allocated
+- 100,000 chars: ~6.74 ms,      ~8.39 MB allocated
+- 1,000,000 chars: ~65.17 ms,   ~84.93 MB allocated
+(Compared to v1.0.3 FMM alone, typical speedups up to ~4.3× on short inputs and ~70% less allocation across sizes.)
 
-🔧 Compatible with .NET Standard 2.0+
+Highlights
+- StarterUnion per round with union + plan caching (ConversionPlanCache) → fewer big arrays, less Gen2/LOH.
+- O(1) starter caps + 64-bit length masks skip impossible probe lengths.
+- Correct longest-match behavior: single-grapheme fast path only when no longer candidate exists.
+- Surrogate-aware emit path (.NET Standard 2.0 safe) and astral-aware indexing.
+- Avalonia GUI memory stabilized (~250 MB vs. prior ~400 MB in similar workloads).
 
-Benchmark Results:
-- 1M character input processed in ~88 ms with 225 MB allocated — a 3%+ gain over v1.0.2
+Technical Notes
+- Primary cache: (config, punctuation) → DictRefs (with per-round unions).
+- Secondary cache: round layout (BaseDictId[]) → shared StarterUnion.
+- Mask+cap clamping reduces probe attempts and tiny string churn.
+- Reuse of StringBuilder + ArrayPool&lt;char&gt; further lowers GC pressure.
 
-Project:
-https://github.com/laisuk/OpenccNet
+Project: https://github.com/laisuk/OpenccNet
         </PackageReleaseNotes>
 
-        <AssemblyVersion>1.0.3.0</AssemblyVersion>
-        <FileVersion>1.0.3.0</FileVersion>
+        <AssemblyVersion>1.1.0.0</AssemblyVersion>
+        <FileVersion>1.1.0.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="PeterO.Cbor" Version="4.5.5"/>
-        <PackageReference Include="System.Memory" Version="4.6.3"/>
-        <PackageReference Include="System.Text.Json" Version="8.0.5"/>
+        <PackageReference Include="PeterO.Cbor" Version="4.5.5" />
+        <PackageReference Include="System.Memory" Version="4.6.3" />
+        <PackageReference Include="System.Text.Json" Version="8.0.5" />
         <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
     </ItemGroup>
 
@@ -57,7 +64,7 @@ https://github.com/laisuk/OpenccNet
     <ItemGroup>
         <None Include="Images/icon.png" Pack="true" PackagePath="/" />
     </ItemGroup>
-    
+
     <!-- Include README in package -->
     <ItemGroup>
         <None Include="../README.md" Pack="true" PackagePath="/" />

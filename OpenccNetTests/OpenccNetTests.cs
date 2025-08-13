@@ -14,6 +14,16 @@ public class OpenccNetTests
         var actualTraditional = opencc.S2T(simplified);
         Assert.AreEqual(expectedTraditional, actualTraditional);
     }
+    
+    [TestMethod]
+    public void S2T_SimpleConversion2()
+    {
+        var opencc = new Opencc("s2t");
+        const string simplified = "几千只";
+        const string expectedTraditional = "幾千隻";
+        var actualTraditional = opencc.S2T(simplified);
+        Assert.AreEqual(expectedTraditional, actualTraditional);
+    }
 
     [TestMethod]
     public void T2S_SimpleConversion()

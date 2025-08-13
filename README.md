@@ -173,35 +173,36 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - Uses static dictionary caching and thread-local buffers for high throughput.
 - Suitable for batch and parallel processing scenarios.
 
-### 📊 Benchmark Results – OpenccNetLib 1.0.3
+### 📊 Benchmark Results – OpenccNetLib 1.1.0
 
-> BenchmarkDotNet v0.15.2 · .NET 9.0.7 · Windows 11 · RyuJIT AVX2  
+> BenchmarkDotNet v0.15.2 · .NET 9.0.8 · Windows 11 · RyuJIT AVX2  
 > Test: `BM_Convert_Sized` · Warmup + 10 Iterations
 
-| Input Size | Mean Time | Gen0 (per 1k ops) |     Gen1 |     Gen2 | Allocated Memory |
-|------------|----------:|------------------:|---------:|---------:|-----------------:|
-| 100        |  10.79 µs |              2.08 |        – |        – |         21.20 KB |
-| 1,000      | 169.58 µs |             22.46 |     0.98 |        – |        229.43 KB |
-| 10,000     | 472.20 µs |            195.80 |    57.13 |        – |          1.99 MB |
-| 100,000    |   8.57 ms |           2218.75 |   531.25 |   218.75 |         21.72 MB |
-| 1,000,000  |  88.61 ms |         21,833.33 | 5,666.67 | 1,000.00 |        225.30 MB |
+| Input Size | Mean Time | Gen0 (per 1k ops) |   Gen1 |   Gen2 | Allocated Memory |
+|-----------:|----------:|------------------:|-------:|-------:|-----------------:|
+|        100 |   2.49 µs |             0.538 |      – |      – |          5.51 KB |
+|      1,000 |  57.81 µs |             8.179 |  0.366 |      – |         84.03 KB |
+|     10,000 | 305.89 µs |            78.613 | 22.949 |      – |        798.72 KB |
+|    100,000 |   6.74 ms |           796.875 | 257.813| 78.125 |       8,386.29 KB |
+|  1,000,000 |  65.17 ms |          7,750.00 | 2250.00| 625.00 |      84,931.47 KB |
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmarks103.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmarks110.png)
 
 ### ✅ Highlights
 
-- ✅ Preallocated StringBuilder delivers consistent performance across all input sizes.
-- 🚀 Inclusive splitting ensures fewer ConvertBy() calls, improving throughput.
-- 🔁 Parallel processing kicks in for large workloads (≥16 segments, ≥2000 chars) to utilize multicore efficiency.
-- 📉 Memory usage scales linearly with input size — from 21 KB to 225 MB — no spikes.
-- 🧠 GC pressure remains stable and predictable, even at 1M characters:
-    - Gen0: ~21K collections,
-    - Gen1: ~5.6K,
-    - Gen2: ~1K — all expected and manageable.
-- ⚡ Warm startup is fast, ideal for both CLI batch conversion and interactive GUI usage.
-- ✨ OpenccNetLib 1.0.3 is now production-ready for large-scale Chinese text conversion.
+- ✅ **Preallocated `StringBuilder`** delivers consistent performance across all input sizes, minimizing reallocations.
+- 🚀 **Inclusive splitting** reduces `ConvertBy()` calls, boosting throughput for segmented processing.
+- 🔁 **Parallel processing** automatically engages for large workloads (≥16 segments, ≥2000 chars), taking full advantage of multicore CPUs.
+- 📉 **Memory usage scales linearly** with input size — from ~5 KB to ~85 MB — with no unpredictable spikes.
+- 🧠 **GC pressure remains stable** and predictable, even at 1M characters:
+  - Gen0: ~7.7K collections
+  - Gen1: ~2.25K collections
+  - Gen2: ~625 collections  
+    All within expected and manageable ranges.
+- ⚡ **Fast warm startup**, suitable for both CLI batch conversion and responsive GUI usage.
+- ✨ **OpenccNetLib 1.1.0** is fully production-ready for high-performance, large-scale Chinese text conversion.
 
 ---
 
