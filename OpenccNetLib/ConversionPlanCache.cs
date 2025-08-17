@@ -269,7 +269,7 @@ namespace OpenccNetLib
             var ids = new ushort[dicts.Count];
             var d = _dictionaryProvider();
 
-            for (int i = 0; i < dicts.Count; i++)
+            for (var i = 0; i < dicts.Count; i++)
                 ids[i] = (ushort)MapDictToId(d, dicts[i]);
 
             var key = new RoundKey(ids);
