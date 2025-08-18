@@ -52,7 +52,7 @@ namespace OpenccNetLib
         /// <param name="dictionaryProvider">
         /// A function that returns the current <see cref="DictionaryMaxlength"/>  
         /// instance to be used when building new plans.  
-        /// Typically wraps the main <c>Dictionary</c> from the <c>Opencc</c> instance.
+        /// Typically, wraps the main <c>Dictionary</c> from the <c>Opencc</c> instance.
         /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="dictionaryProvider"/> is null.
@@ -330,9 +330,8 @@ namespace OpenccNetLib
             if (ReferenceEquals(dict, d.jp_variants)) return BaseDictId.JP_Variants;
             if (ReferenceEquals(dict, d.jps_phrases)) return BaseDictId.JPS_Phrases;
             if (ReferenceEquals(dict, d.jps_characters)) return BaseDictId.JPS_Characters;
-            if (ReferenceEquals(dict, d.jp_variants_rev)) return BaseDictId.JP_Variants_Rev;
-
-            throw new InvalidOperationException("Unknown dictionary instance (not mapped).");
+            return ReferenceEquals(dict, d.jp_variants_rev) ? BaseDictId.JP_Variants_Rev 
+                : throw new InvalidOperationException("Unknown dictionary instance (not mapped).");
         }
     }
 

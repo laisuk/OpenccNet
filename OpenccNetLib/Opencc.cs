@@ -574,7 +574,6 @@ namespace OpenccNetLib
                         }
                     }
 
-
                     // General longest-first search (skip impossible lengths via mask)
                     string bestMatch = null;
                     var bestMatchLength = 0;
