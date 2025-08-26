@@ -449,8 +449,8 @@ namespace OpenccNetLib
             // Shortcut for single segment
             if (splitRanges.Count == 1)
             {
-                // return ConvertBy(text.AsSpan(), dictionaries, maxWordLength);
-                return ConvertBy(text.AsSpan(), dictionaries, union, maxWordLength);
+                // return ConvertByUnion(text.AsSpan(), dictionaries, maxWordLength);
+                return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
             }
 
             var results = new string[splitRanges.Count];
@@ -461,8 +461,8 @@ namespace OpenccNetLib
                 {
                     var (start, end) = splitRanges[i];
                     var segment = text.AsSpan(start, end - start);
-                    // results[i] = ConvertBy(segment, dictionaries, maxWordLength);
-                    results[i] = ConvertBy(segment, dictionaries, union, maxWordLength);
+                    // results[i] = ConvertByUnion(segment, dictionaries, maxWordLength);
+                    results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
                 });
             }
             else
@@ -471,8 +471,8 @@ namespace OpenccNetLib
                 {
                     var (start, end) = splitRanges[i];
                     var segment = text.AsSpan(start, end - start);
-                    // results[i] = ConvertBy(segment, dictionaries, maxWordLength);
-                    results[i] = ConvertBy(segment, dictionaries, union, maxWordLength);
+                    // results[i] = ConvertByUnion(segment, dictionaries, maxWordLength);
+                    results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
                 }
             }
 
@@ -497,7 +497,7 @@ namespace OpenccNetLib
         /// <param name="maxWordLength">The maximum key length to consider.</param>
         /// <returns>The converted string segment.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string ConvertBy(
+        private static string ConvertByUnion(
             ReadOnlySpan<char> textSpan,
             List<DictWithMaxLength> dictionaries,
             StarterUnion union,
@@ -546,14 +546,14 @@ namespace OpenccNetLib
                     var tryMaxLen = Math.Min(Math.Min(maxWordLength, remaining.Length), cap);
 
                     // Is there any longer candidate (len >= step+1) within tryMaxLen?
-                    ulong maskUpToTry = lenMaskAll;
+                    var maskUpToTry = lenMaskAll;
                     if (tryMaxLen < 64)
                     {
                         // keep only bits [0 .. tryMaxLen-1]
                         maskUpToTry &= (1UL << tryMaxLen) - 1;
                     }
 
-                    bool hasLonger = step < tryMaxLen && maskUpToTry >> step != 0;
+                    var hasLonger = step < tryMaxLen && maskUpToTry >> step != 0;
 
                     // Single-grapheme fast path ONLY if there is no longer candidate
                     if (!hasLonger && (lenMaskAll & (1UL << (step - 1))) != 0)
@@ -626,6 +626,113 @@ namespace OpenccNetLib
             finally
             {
                 ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
+            }
+
+            return resultBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Converts a span of characters using the provided dictionaries, matching the longest possible key at each position.
+        /// </summary>
+        /// <remarks>
+        /// This method is the legacy, backward-compatible implementation of the conversion routine,
+        /// updated to accept <see cref="ReadOnlySpan{Char}"/> for improved performance and reduced
+        /// allocations. It preserves the same behavior as the original <c>ConvertBy(string,...)</c>
+        /// overload, including delimiter handling and longest-match dictionary lookup.
+        /// </remarks>
+        /// <param name="text">
+        /// The input text segment as a <see cref="ReadOnlySpan{Char}"/>.
+        /// </param>
+        /// <param name="dictionaries">
+        /// The dictionaries to use for lookup. Each dictionary is paired with its maximum supported key length.
+        /// </param>
+        /// <param name="maxWordLength">
+        /// The maximum key length to consider during matching. Longer candidates are truncated to this value.
+        /// </param>
+        /// <returns>
+        /// The converted string segment, with all possible matches replaced by their dictionary values.
+        /// If no match is found at a position, the original character is preserved.
+        /// </returns>
+        /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, List{DictWithMaxLength}, StarterUnion, int)"/>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string ConvertBy(ReadOnlySpan<char> text, List<DictWithMaxLength> dictionaries,
+            int maxWordLength)
+        {
+            if (text.IsEmpty)
+                return string.Empty;
+
+            // Fast path for single delimiter span
+            if (text.Length == 1 && Delimiters.Contains(text[0]))
+                return text.ToString();
+
+            var resultBuilder = StringBuilderCache.Value;
+            resultBuilder.Clear();
+            resultBuilder.EnsureCapacity(text.Length * 2);
+
+            var textLen = text.Length;
+            var i = 0;
+
+            // Ensure we rent at least length 1
+            var poolLen = Math.Max(1, maxWordLength);
+            var keyBuffer = ArrayPool<char>.Shared.Rent(poolLen);
+
+            try
+            {
+                while (i < textLen)
+                {
+                    var remaining = text.Slice(i);
+                    var tryMaxLen = Math.Min(maxWordLength, remaining.Length);
+
+                    string bestMatch = null;
+                    var bestMatchLength = 0;
+
+                    // Descend from longest to shortest
+                    for (var length = tryMaxLen; length > 0; --length)
+                    {
+                        // Skip allocation if no dict can possibly match this length
+                        var anyEligible = false;
+                        foreach (var d in dictionaries)
+                        {
+                            if (d.MaxLength < length) continue;
+                            anyEligible = true;
+                            break;
+                        }
+
+                        if (!anyEligible) continue;
+
+                        // Build the key once for this candidate length
+                        var wordSpan = remaining.Slice(0, length);
+                        wordSpan.CopyTo(keyBuffer.AsSpan(0, length));
+                        var key = new string(keyBuffer, 0, length);
+
+                        // Probe dictionaries
+                        foreach (var dictObj in dictionaries)
+                        {
+                            if (dictObj.MaxLength < length) continue;
+
+                            if (!dictObj.Dict.TryGetValue(key, out var match)) continue;
+                            bestMatch = match;
+                            bestMatchLength = length;
+                            goto FoundMatch;
+                        }
+                    }
+
+                    FoundMatch:
+                    if (bestMatch != null)
+                    {
+                        resultBuilder.Append(bestMatch);
+                        i += bestMatchLength;
+                    }
+                    else
+                    {
+                        resultBuilder.Append(text[i]);
+                        i++;
+                    }
+                }
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(keyBuffer);
             }
 
             return resultBuilder.ToString();
@@ -945,10 +1052,8 @@ namespace OpenccNetLib
         public static string St(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.st_characters };
-            var union = StarterUnion.Build(dictRefs);
             // maxLength for surrogate pairs and non-BMP character is 2
-            // return ConvertBy(inputText.AsSpan(), dictRefs, 2);
-            return ConvertBy(inputText.AsSpan(), dictRefs, union, 2);
+            return ConvertBy(inputText.AsSpan(), dictRefs, 2);
         }
 
         /// <summary>
@@ -957,10 +1062,8 @@ namespace OpenccNetLib
         public static string Ts(string inputText)
         {
             var dictRefs = new List<DictWithMaxLength> { Dictionary.ts_characters };
-            var union = StarterUnion.Build(dictRefs);
             // maxLength for surrogate pairs and non-BMP character is 2
-            // return ConvertBy(inputText.AsSpan(), dictRefs, 2);
-            return ConvertBy(inputText.AsSpan(), dictRefs, union, 2);
+            return ConvertBy(inputText.AsSpan(), dictRefs, 2);
         }
 
         /// <summary>
