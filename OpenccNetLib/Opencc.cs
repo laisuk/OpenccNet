@@ -1076,7 +1076,8 @@ namespace OpenccNetLib
         {
             if (string.IsNullOrEmpty(inputText)) return 0;
 
-            var stripped = StripRegex.Replace(inputText, "");
+            var scanLength = inputText.Length > 500 ? 500 : inputText.Length;
+            var stripped = StripRegex.Replace(inputText.Substring(0, scanLength), string.Empty);
             if (string.IsNullOrEmpty(stripped)) return 0;
 
             var stringInfo = new StringInfo(stripped);
