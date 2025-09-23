@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.1.0] - 2025-08-18
+
+### Changed
+
+- Update `OpenccNetLib` to v1.1.0
+
+---
+
 ## [1.0.3] - 2025-07-29
 ### Added
 - Add builder factory for OfficeConverter
