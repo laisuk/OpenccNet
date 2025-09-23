@@ -6,6 +6,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.1-beta1] - 2025-09-24
+
+### Changed
+
+- Optimized `zhoCheck()` with max char scan length
+- Update dictionaries
+
+---
+
 ## [1.1.0] — 2025-08-18
 
 ### 🚀 Performance
