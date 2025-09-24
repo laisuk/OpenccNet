@@ -3984,6 +3984,7 @@
       "\u7740": "\u8457"
     },
     "MaxLength": 2,
+    "MinLength": 1,
     "Count": 3981
   },
   "st_phrases": {
@@ -53184,6 +53185,7 @@
       "\u6570\u4E07\u53EA": "\u6578\u842C\u96BB"
     },
     "MaxLength": 16,
+    "MinLength": 2,
     "Count": 49194
   },
   "ts_characters": {
@@ -57304,6 +57306,7 @@
       "\u8457": "\u7740"
     },
     "MaxLength": 2,
+    "MinLength": 1,
     "Count": 4114
   },
   "ts_phrases": {
@@ -57626,6 +57629,7 @@
       "\u5F70\u660E\u8F03\u8457": "\u5F70\u660E\u8F83\u8457"
     },
     "MaxLength": 14,
+    "MinLength": 2,
     "Count": 316
   },
   "tw_phrases": {
@@ -58145,6 +58149,7 @@
       "\u9F20\u6A19": "\u6ED1\u9F20"
     },
     "MaxLength": 10,
+    "MinLength": 1,
     "Count": 513
   },
   "tw_phrases_rev": {
@@ -58641,6 +58646,7 @@
       "\u9EDE\u9663\u5716": "\u4F4D\u5716"
     },
     "MaxLength": 10,
+    "MinLength": 1,
     "Count": 490
   },
   "tw_variants": {
@@ -58686,6 +58692,7 @@
       "\u9F76": "\u984E"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 39
   },
   "tw_variants_rev": {
@@ -58731,6 +58738,7 @@
       "\u984E": "\u9F76"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 39
   },
   "tw_variants_rev_phrases": {
@@ -58805,6 +58813,7 @@
       "\u986F\u8457": "\u986F\u8457"
     },
     "MaxLength": 4,
+    "MinLength": 2,
     "Count": 68
   },
   "hk_variants": {
@@ -58874,6 +58883,7 @@
       "\u9C2E": "\u9C1B"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 63
   },
   "hk_variants_rev": {
@@ -58950,6 +58960,7 @@
       "\u9C1B": "\u9C2E"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 70
   },
   "hk_variants_rev_phrases": {
@@ -59112,6 +59123,7 @@
       "\u9F8D\u80C4": "\u9F8D\u80C4"
     },
     "MaxLength": 5,
+    "MinLength": 2,
     "Count": 156
   },
   "jps_characters": {
@@ -59125,6 +59137,7 @@
       "\u82B8": "\u85DD"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 7
   },
   "jps_phrases": {
@@ -59307,6 +59320,7 @@
       "\u9CE5\u89B3": "\u9CE5\u77B0"
     },
     "MaxLength": 4,
+    "MinLength": 2,
     "Count": 176
   },
   "jp_variants": {
@@ -59682,6 +59696,7 @@
       "\u9F9C": "\u4E80"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 369
   },
   "jp_variants_rev": {
@@ -60057,6 +60072,7 @@
       "\u4E80": "\u9F9C"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 369
   },
   "st_punctuations": {
@@ -60067,6 +60083,7 @@
       "\u2019": "\u300F"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 4
   },
   "ts_punctuations": {
@@ -60077,6 +60094,7 @@
       "\u300F": "\u2019"
     },
     "MaxLength": 1,
+    "MinLength": 1,
     "Count": 4
   }
 }

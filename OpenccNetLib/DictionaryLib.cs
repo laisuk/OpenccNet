@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using PeterO.Cbor;
 using ZstdSharp;
 
@@ -27,162 +25,7 @@ namespace OpenccNetLib
         /// </summary>
         public int MaxLength { get; set; }
 
-        /// <summary>
-        /// Persisted starter-cap table: first Unicode text element (grapheme) → maximum key length in UTF-16 code units.
-        /// </summary>
-        /// <remarks>
-        /// - Sparse and compact for JSON/CBOR/Zstd. Key is the first text element (e.g., "𠮷", "Á", "👨‍👩‍👧‍👦").
-        /// - Value is capped to <see cref="byte"/> (1–255).
-        /// - On <c>BuildStartCharIndexes()</c>, this map is used to hydrate runtime arrays. If empty but
-        ///   <see cref="Dict"/> is populated, it is derived once from <see cref="Dict"/> using text-element boundaries.
-        /// - Runtime matching remains in UTF-16 units; this map exists to serialize a stable, Unicode-friendly cap.
-        /// </remarks>
-        private Dictionary<string, byte> StarterCapTextElem { get; } = new Dictionary<string, byte>(512);
-
-        /// <summary>
-        /// Runtime-only per-starter cap (UTF-16 units). Index by the first UTF-16 code unit; 0 means “no entries”.
-        /// </summary>
-        /// <remarks>
-        /// - Hydrated by <c>BuildStartCharIndexes()</c> from <see cref="StarterCapTextElem"/> (or derived from <see cref="Dict"/>).
-        /// - Used in <c>ConvertBy()</c> to bound the longest-match probe: <c>tryMaxLen = min(maxWordLength, remaining.Length, cap)</c>.
-        /// - Not serialized. Zero-initialized and built once; safe for O(1) lookups in hot paths.
-        /// </remarks>
-        [JsonIgnore]
-        private ushort[] FirstCharMaxLenUtf16Arr { get; } = new ushort[char.MaxValue + 1];
-
-        /// <summary>
-        /// Runtime-only per-starter length bitmap (1..64). Bit <c>(n−1)</c> set ⇢ a key of length <c>n</c> exists for this starter.
-        /// </summary>
-        /// <remarks>
-        /// - Hydrated by <c>BuildStartCharIndexes()</c> directly from <see cref="Dict"/> keys.
-        /// - Speeds up longest-first search by skipping impossible lengths:
-        ///   <c>if (n ≤ 64 && ((mask >> (n−1)) & 1) == 0) continue;</c>
-        /// - Lengths &gt; 64 are not represented—do not skip those based on this mask (correctness preserved).
-        /// - Not serialized. O(1) read per position; complements <see cref="FirstCharMaxLenUtf16Arr"/>.
-        /// </remarks>
-        [JsonIgnore]
-        private ulong[] FirstCharLenMask64 { get; } = new ulong[char.MaxValue + 1];
-
-        /// <summary>
-        /// Indicates whether the runtime starter indexes have been built.
-        /// Used as a guard to avoid rebuilding <c>FirstCharMaxLenUtf16Arr</c> and <c>FirstCharLenMask64</c>.
-        /// </summary>
-        private bool _built;
-
-        /// <summary>
-        /// Builds the runtime starter indexes for fast lookup.
-        /// </summary>
-        /// <remarks>
-        /// Idempotent: if already built, returns immediately.
-        /// If <c>StarterCapTextElem</c> is empty and <c>Dict</c> is populated, this method first derives
-        /// the sparse caps (first text element → max UTF-16 length) and then hydrates:
-        /// <list type="bullet">
-        /// <item><description><c>FirstCharMaxLenUtf16Arr</c>: per-starter cap (UTF-16 units, O(1)).</description></item>
-        /// <item><description><c>FirstCharLenMask64</c>: per-starter length bitmap for lengths 1..64 (O(1)).</description></item>
-        /// </list>
-        /// Designed to be called once during initialization; not intended for concurrent mutation.
-        /// </remarks>
-        public void BuildStartCharIndexes()
-        {
-            if (_built) return;
-
-            // If no persisted caps, derive sparse caps by first text element (StringInfo)
-            if (StarterCapTextElem.Count == 0 && Dict.Count != 0)
-            {
-                foreach (var k in Dict.Keys)
-                {
-                    if (string.IsNullOrEmpty(k)) continue;
-
-                    var te0 = GetFirstTextElement(k); // e.g. "𠮷", "Á", "👨‍👩‍👧‍👦"
-                    var len = k.Length; // UTF-16 units
-
-                    if (!StarterCapTextElem.TryGetValue(te0, out var cur) || len > cur)
-                        StarterCapTextElem[te0] = (byte)Math.Min(len, byte.MaxValue);
-                }
-            }
-
-            // Hydrate per-starter CAP array from text-element caps
-            foreach (var kv in StarterCapTextElem)
-            {
-                if (string.IsNullOrEmpty(kv.Key)) continue;
-                var c0 = kv.Key[0]; // first UTF-16 unit of the grapheme
-                if (kv.Value > FirstCharMaxLenUtf16Arr[c0])
-                    FirstCharMaxLenUtf16Arr[c0] = kv.Value;
-            }
-
-            // Build per-starter LENGTH MASK (≤64) directly from Dict keys
-            foreach (var k in Dict.Keys)
-            {
-                if (string.IsNullOrEmpty(k)) continue;
-                var c0 = k[0];
-                var len = k.Length;
-                if ((uint)len <= 64u)
-                    FirstCharLenMask64[c0] |= 1UL << (len - 1);
-            }
-
-            _built = true;
-        }
-
-        /// <summary>
-        /// Gets the per-starter maximum key length (in UTF-16 code units) for the given starter.
-        /// </summary>
-        /// <param name="starter">
-        /// The first UTF-16 code unit (char) of the current position in the input.
-        /// </param>
-        /// <returns>
-        /// The maximum key length (UTF-16 units) observed for entries that start with <paramref name="starter"/>; 
-        /// returns 0 if no entries start with this char.
-        /// </returns>
-        /// <remarks>
-        /// O(1). Lazily builds the starter index on first use. The value is an upper bound used to cap
-        /// the longest-match probe in <c>ConvertBy()</c>. Non-BMP single characters naturally have length 2.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ushort GetStarterCap(char starter)
-        {
-            if (!_built) BuildStartCharIndexes();
-            return FirstCharMaxLenUtf16Arr[starter];
-        }
-
-        /// <summary>
-        /// Gets the 64-bit length bitmap for keys that start with the given starter.
-        /// </summary>
-        /// <param name="starter">
-        /// The first UTF-16 code unit (char) of the current position in the input.
-        /// </param>
-        /// <returns>
-        /// A 64-bit mask where bit <c>(n-1)</c> is set if there exists a key of length <c>n</c> (1 ≤ n ≤ 64)
-        /// that starts with <paramref name="starter"/>. Returns 0 if none exist.
-        /// </returns>
-        /// <remarks>
-        /// O(1). Use this to skip impossible probe lengths during longest-first search.
-        /// Lengths &gt; 64 are not represented in the mask and should not be skipped based on it.
-        /// Lazily builds on first use.
-        /// </remarks>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong GetStarterLenMask(char starter)
-        {
-            if (!_built) BuildStartCharIndexes();
-            return FirstCharLenMask64[starter];
-        }
-
-        /// <summary>
-        /// Returns the first Unicode text element (grapheme cluster) of <paramref name="s"/>.
-        /// </summary>
-        /// <param name="s">The source string.</param>
-        /// <returns>
-        /// The first text element (which may consist of one or more UTF-16 code units, e.g., surrogate pairs or
-        /// base+combining sequences). Returns <see cref="string.Empty"/> if <paramref name="s"/> is empty.
-        /// </returns>
-        /// <remarks>
-        /// Uses <see cref="System.Globalization.StringInfo.GetTextElementEnumerator(string)"/> for culture-invariant
-        /// text element boundaries. Intended for building persisted starter caps; runtime matching still operates in UTF-16 units.
-        /// </remarks>
-        private static string GetFirstTextElement(string s)
-        {
-            var e = StringInfo.GetTextElementEnumerator(s);
-            return e.MoveNext() ? e.GetTextElement() : string.Empty;
-        }
+        public int MinLength { get; set; }
 
         /// <summary>
         /// Attempts to get the value associated with the specified key.
@@ -360,7 +203,8 @@ namespace OpenccNetLib
         private static DictWithMaxLength LoadFile(string path)
         {
             var dict = new Dictionary<string, string>(StringComparer.Ordinal);
-            var maxLength = 1;
+            int maxLength = 0; // start at 0 so empty dict stays 0
+            int minLength = int.MaxValue;
 
             if (!File.Exists(path)) throw new FileNotFoundException($"Dictionary file not found: {path}");
 
@@ -404,16 +248,22 @@ namespace OpenccNetLib
                 if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value)) continue;
                 dict[key] = value;
                 maxLength = Math.Max(maxLength, key.Length);
+                minLength = Math.Min(minLength, key.Length);
                 // Optional: Handle lines that do not contain a tab separator if needed
+            }
+
+            if (dict.Count == 0)
+            {
+                maxLength = 0;
+                minLength = 0;
             }
 
             var d = new DictWithMaxLength
             {
                 Dict = dict,
-                MaxLength = maxLength
+                MaxLength = maxLength,
+                MinLength = minLength
             };
-
-            d.BuildStartCharIndexes();
 
             return d;
         }

@@ -436,7 +436,6 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(text)) return string.Empty;
 
             var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
-            // var union = StarterUnion.Build(dictionaries);
 
             if (splitRanges.Count == 0)
             {
@@ -449,7 +448,6 @@ namespace OpenccNetLib
             // Shortcut for single segment
             if (splitRanges.Count == 1)
             {
-                // return ConvertByUnion(text.AsSpan(), dictionaries, maxWordLength);
                 return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
             }
 
@@ -461,7 +459,6 @@ namespace OpenccNetLib
                 {
                     var (start, end) = splitRanges[i];
                     var segment = text.AsSpan(start, end - start);
-                    // results[i] = ConvertByUnion(segment, dictionaries, maxWordLength);
                     results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
                 });
             }
@@ -471,7 +468,6 @@ namespace OpenccNetLib
                 {
                     var (start, end) = splitRanges[i];
                     var segment = text.AsSpan(start, end - start);
-                    // results[i] = ConvertByUnion(segment, dictionaries, maxWordLength);
                     results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
                 }
             }
@@ -489,13 +485,51 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Converts a string using the provided dictionaries, matching the longest possible key at each position.
+        /// Converts text using one or more dictionaries, matching the longest possible key
+        /// at each position. 
         /// </summary>
-        /// <param name="textSpan">The input text segment.</param>
-        /// <param name="dictionaries">The dictionaries to use for lookup.</param>
-        /// <param name="union"></param>
-        /// <param name="maxWordLength">The maximum key length to consider.</param>
-        /// <returns>The converted string segment.</returns>
+        /// <remarks>
+        /// The conversion process is optimized by using a <see cref="StarterUnion"/>:
+        /// <list type="bullet">
+        ///   <item>
+        ///     <description>
+        ///     O(1) lookup of per-starter metadata (maximum length, minimum length, length bitmask).
+        ///     </description>
+        ///   </item>
+        ///   <item>
+        ///     <description>
+        ///     Fast path: single-grapheme replacements are applied immediately when no longer match
+        ///     is possible.
+        ///     </description>
+        ///   </item>
+        ///   <item>
+        ///     <description>
+        ///     General path: longest-first search within the range [<c>unionMinLen</c> … <c>tryMax</c>],
+        ///     skipping impossible lengths using the precomputed bitmask.
+        ///     </description>
+        ///   </item>
+        /// </list>
+        /// Graphemes are determined by UTF-16 code units: BMP characters are length 1; surrogate pairs
+        /// are length 2.  
+        /// Fallback: if no dictionary entry matches, the original grapheme is emitted unchanged.
+        /// </remarks>
+        /// <param name="textSpan">
+        /// The input text segment as a <see cref="ReadOnlySpan{Char}"/>.
+        /// </param>
+        /// <param name="dictionaries">
+        /// The list of dictionaries to use for lookup. Each dictionary specifies its own
+        /// <c>MinLength</c> and <c>MaxLength</c> bounds.
+        /// </param>
+        /// <param name="union">
+        /// The precomputed <see cref="StarterUnion"/> that provides per-starter caps,
+        /// masks, and minimum lengths.
+        /// </param>
+        /// <param name="maxWordLength">
+        /// The maximum key length to consider (global clamp).
+        /// </param>
+        /// <returns>
+        /// A converted string with dictionary replacements applied.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string ConvertByUnion(
             ReadOnlySpan<char> textSpan,
@@ -509,114 +543,120 @@ namespace OpenccNetLib
                 case 1 when Delimiters.Contains(textSpan[0]): return textSpan.ToString();
             }
 
-            var resultBuilder = StringBuilderCache.Value;
-            resultBuilder.Clear();
-            resultBuilder.EnsureCapacity(textSpan.Length * 2);
+            var sb = StringBuilderCache.Value;
+            sb.Clear();
+            sb.EnsureCapacity(textSpan.Length * 2);
 
-            var textLen = textSpan.Length;
+            var n = textSpan.Length;
             var i = 0;
 
             var keyBuffer = ArrayPool<char>.Shared.Rent(maxWordLength);
-
             try
             {
-                while (i < textLen)
+                while (i < n)
                 {
                     var remaining = textSpan.Slice(i);
                     var c0 = remaining[0];
 
-                    // Single text-element step (BMP=1, surrogate pair=2)
-                    var step = (char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1]))
+                    // Grapheme step: BMP=1, surrogate pair=2
+                    var step = char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1])
                         ? 2
                         : 1;
 
-                    // --- StarterUnion lookup (O(1)) ---
-                    union.Get(c0, out var cap, out var lenMaskAll);
+                    union.Get(c0, out var cap, out var lenMaskAll, out var unionMinLen);
 
-                    if (cap == 0)
+                    // Upper bound: dict cap, remaining input, and caller max
+                    var tryMax = Math.Min(Math.Min(maxWordLength, remaining.Length), cap);
+
+                    // No possible match? (no entries, or entries longer than we can take)
+                    if (cap == 0 || unionMinLen == 0 || unionMinLen > tryMax)
                     {
-                        // Emit one text element
-                        resultBuilder.Append(c0);
-                        if (step == 2) resultBuilder.Append(remaining[1]);
+                        sb.Append(c0);
+                        if (step == 2) sb.Append(remaining[1]);
                         i += step;
                         continue;
                     }
 
-                    // Clamp by cap and input/maxWordLength
-                    var tryMaxLen = Math.Min(Math.Min(maxWordLength, remaining.Length), cap);
-
-                    // Is there any longer candidate (len >= step+1) within tryMaxLen?
-                    var maskUpToTry = lenMaskAll;
-                    if (tryMaxLen < 64)
+                    // Is there any candidate longer than the current grapheme size?
+                    bool hasLonger;
+                    if (tryMax < 64)
                     {
-                        // keep only bits [0 .. tryMaxLen-1]
-                        maskUpToTry &= (1UL << tryMaxLen) - 1;
+                        var maskUpToTry = lenMaskAll & ((1UL << tryMax) - 1);
+                        hasLonger = step < tryMax && maskUpToTry >> step != 0UL;
+                    }
+                    else
+                    {
+                        // If tryMax >= 64 we can’t trim the mask cheaply → just check shift
+                        hasLonger = lenMaskAll >> step != 0UL;
                     }
 
-                    var hasLonger = step < tryMaxLen && maskUpToTry >> step != 0;
-
-                    // Single-grapheme fast path ONLY if there is no longer candidate
-                    if (!hasLonger && (lenMaskAll & (1UL << (step - 1))) != 0)
+                    // Single-grapheme fast path when:
+                    //  - there is a length==step candidate (bit set), AND
+                    //  - there's no longer candidate to prefer, AND
+                    //  - step >= minLen (NEW: respect lower bound)
+                    if (!hasLonger &&
+                        step >= unionMinLen &&
+                        ((lenMaskAll >> (step - 1)) & 1UL) != 0UL)
                     {
                         keyBuffer[0] = c0;
                         if (step == 2) keyBuffer[1] = remaining[1];
                         var keyStep = new string(keyBuffer, 0, step);
 
-                        for (int di = 0; di < dictionaries.Count; di++)
+                        for (var di = 0; di < dictionaries.Count; di++)
                         {
                             var d = dictionaries[di];
-                            if (d.MaxLength < step) continue;
-
+                            if (d.MaxLength < step || d.MinLength > step) continue;
                             if (!d.Dict.TryGetValue(keyStep, out var repl)) continue;
-                            resultBuilder.Append(repl);
+
+                            sb.Append(repl);
                             i += step;
                             goto ContinueOuter;
                         }
                     }
 
-                    // General longest-first search (skip impossible lengths via mask)
+                    // General longest-first search, narrowed to [minLen … tryMax]
                     string bestMatch = null;
-                    var bestMatchLength = 0;
+                    var bestLen = 0;
 
                     // Copy once at max candidate length
-                    remaining.Slice(0, tryMaxLen).CopyTo(keyBuffer.AsSpan());
+                    remaining.Slice(0, tryMax).CopyTo(keyBuffer.AsSpan());
 
-                    for (var length = tryMaxLen; length > 0; --length)
+                    for (var len = tryMax; len >= unionMinLen; --len)
                     {
-                        if (length <= 64 && ((lenMaskAll >> (length - 1)) & 1UL) == 0UL)
-                            continue;
+                        if (len <= 64 && ((lenMaskAll >> (len - 1)) & 1UL) == 0UL)
+                            continue; // impossible length per mask
 
-                        var key = new string(keyBuffer, 0, length);
+                        var key = new string(keyBuffer, 0, len);
 
                         for (var di = 0; di < dictionaries.Count; di++)
                         {
                             var d = dictionaries[di];
-                            if (d.MaxLength < length) continue;
-                            if (!d.Dict.TryGetValue(key, out var match)) continue;
+                            if (d.MaxLength < len || d.MinLength > len) continue;
+                            if (!d.Dict.TryGetValue(key, out var repl)) continue;
 
-                            bestMatch = match;
-                            bestMatchLength = length;
-                            goto FoundMatch;
+                            bestMatch = repl;
+                            bestLen = len;
+                            goto Found;
                         }
                     }
 
-                    FoundMatch:
+                    Found:
                     if (bestMatch != null)
                     {
-                        resultBuilder.Append(bestMatch);
-                        i += bestMatchLength;
+                        sb.Append(bestMatch);
+                        i += bestLen;
                     }
                     else
                     {
-                        // Emit one text element (recompute step for safety)
-                        step = (char.IsHighSurrogate(textSpan[i]) &&
-                                i + 1 < textSpan.Length &&
-                                char.IsLowSurrogate(textSpan[i + 1]))
+                        // Emit grapheme
+                        step = char.IsHighSurrogate(textSpan[i]) &&
+                               i + 1 < textSpan.Length &&
+                               char.IsLowSurrogate(textSpan[i + 1])
                             ? 2
                             : 1;
 
-                        resultBuilder.Append(textSpan[i]);
-                        if (step == 2) resultBuilder.Append(textSpan[i + 1]);
+                        sb.Append(textSpan[i]);
+                        if (step == 2) sb.Append(textSpan[i + 1]);
                         i += step;
                     }
 
@@ -628,7 +668,7 @@ namespace OpenccNetLib
                 ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
             }
 
-            return resultBuilder.ToString();
+            return sb.ToString();
         }
 
         /// <summary>
