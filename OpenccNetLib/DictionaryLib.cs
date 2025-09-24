@@ -25,6 +25,10 @@ namespace OpenccNetLib
         /// </summary>
         public int MaxLength { get; set; }
 
+        /// <summary>
+        /// The minimum length of any key in the dictionary.
+        /// Used for optimizing longest-match lookups.
+        /// </summary>
         public int MinLength { get; set; }
 
         /// <summary>
