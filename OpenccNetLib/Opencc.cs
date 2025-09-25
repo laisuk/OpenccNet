@@ -555,24 +555,27 @@ namespace OpenccNetLib
             {
                 while (i < n)
                 {
-                    var remaining = textSpan.Slice(i);
-                    var c0 = remaining[0];
+                    var c0 = textSpan[i];
+                    var hasSecond = i + 1 < n;
+                    var c1 = hasSecond ? textSpan[i + 1] : '\0';
 
                     // Grapheme step: BMP=1, surrogate pair=2
-                    var step = char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1])
-                        ? 2
-                        : 1;
+                    // var step = char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1])
+                    //     ? 2
+                    //     : 1;
+                    var step = (uint)(c0 - 0xD800) <= 0x03FF && hasSecond && (uint)(c1 - 0xDC00) <= 0x03FF ? 2 : 1;
 
                     union.Get(c0, out var cap, out var lenMaskAll, out var unionMinLen);
 
                     // Upper bound: dict cap, remaining input, and caller max
-                    var tryMax = Math.Min(Math.Min(maxWordLength, remaining.Length), cap);
+                    var remaining = n - i;
+                    var tryMax = Math.Min(Math.Min(maxWordLength, remaining), cap);
 
                     // No possible match? (no entries, or entries longer than we can take)
                     if (cap == 0 || unionMinLen == 0 || unionMinLen > tryMax)
                     {
                         sb.Append(c0);
-                        if (step == 2) sb.Append(remaining[1]);
+                        if (step == 2) sb.Append(c1);
                         i += step;
                         continue;
                     }
@@ -599,14 +602,14 @@ namespace OpenccNetLib
                         ((lenMaskAll >> (step - 1)) & 1UL) != 0UL)
                     {
                         keyBuffer[0] = c0;
-                        if (step == 2) keyBuffer[1] = remaining[1];
+                        if (step == 2) keyBuffer[1] = c1;
                         var keyStep = new string(keyBuffer, 0, step);
 
                         for (var di = 0; di < dictionaries.Count; di++)
                         {
                             var d = dictionaries[di];
                             if (d.MaxLength < step || d.MinLength > step) continue;
-                            if (!d.Dict.TryGetValue(keyStep, out var repl)) continue;
+                            if (!d.TryGetValue(keyStep, out var repl)) continue;
 
                             sb.Append(repl);
                             i += step;
@@ -619,7 +622,8 @@ namespace OpenccNetLib
                     var bestLen = 0;
 
                     // Copy once at max candidate length
-                    remaining.Slice(0, tryMax).CopyTo(keyBuffer.AsSpan());
+                    // (We still need a copy because dict keys are strings)
+                    textSpan.Slice(i, tryMax).CopyTo(keyBuffer);
 
                     for (var len = tryMax; len >= unionMinLen; --len)
                     {
@@ -632,7 +636,7 @@ namespace OpenccNetLib
                         {
                             var d = dictionaries[di];
                             if (d.MaxLength < len || d.MinLength > len) continue;
-                            if (!d.Dict.TryGetValue(key, out var repl)) continue;
+                            if (!d.TryGetValue(key, out var repl)) continue;
 
                             bestMatch = repl;
                             bestLen = len;
@@ -648,15 +652,9 @@ namespace OpenccNetLib
                     }
                     else
                     {
-                        // Emit grapheme
-                        step = char.IsHighSurrogate(textSpan[i]) &&
-                               i + 1 < textSpan.Length &&
-                               char.IsLowSurrogate(textSpan[i + 1])
-                            ? 2
-                            : 1;
-
+                        // Reuse the precomputed step and c1 — no need to recompute
                         sb.Append(textSpan[i]);
-                        if (step == 2) sb.Append(textSpan[i + 1]);
+                        if (step == 2) sb.Append(c1);
                         i += step;
                     }
 
