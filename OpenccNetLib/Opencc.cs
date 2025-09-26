@@ -170,65 +170,72 @@ namespace OpenccNetLib
         #region Delimiters Region
 
         /// <summary>
-        /// Delimiter modes for segmenting text.
-        /// Internal use only – <see cref="Full"/> is always used in public APIs.
+        /// Full delimiter set (spaces, punctuation, brackets, symbols, etc.).
+        /// Centralized here so it’s easy to audit/extend.
         /// </summary>
-        private enum DelimiterMode
-        {
-            /// <summary>
-            /// Minimal mode: uses only newline characters ('\n') as delimiters.
-            /// Fastest, suitable for large text blocks (e.g. EPUB files) where fine segmentation isn't needed.
-            /// </summary>
-            Minimal,
-
-            /// <summary>
-            /// Normal mode: uses a small set of common punctuation (e.g. ， 。 ！ ？ and '\n') for balanced segmentation.
-            /// Suitable for general-purpose usage.
-            /// </summary>
-            Normal,
-
-            /// <summary>
-            /// Full mode: uses an extensive set of delimiters including punctuation, whitespace, brackets, and symbols.
-            /// Most accurate for text like articles, emails, and web content.
-            /// </summary>
-            Full
-        }
+        private const string FullDelimiters =
+            " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{}|~＝、。﹁﹂—－（）《》〈〉？！…／＼︒︑︔︓︿﹀︹︺︙︐［﹇］﹈︕︖︰︳︴︽︾︵︶｛︷｝︸﹃﹄【︻】︼　～．，；：";
 
         /// <summary>
-        /// Default delimiters used for segmenting input text based on <see cref="DelimiterMode.Full"/>.
-        /// This set includes spaces, punctuation marks, brackets, and other common symbols for accurate word segmentation.
-        /// For <see cref="DelimiterMode.Minimal"/>, only newline characters are used.
+        /// Provides fast O(1) delimiter membership checks using a precomputed bitset table.
         /// </summary>
-        private static readonly HashSet<char> Delimiters = GetDelimiters(DelimiterMode.Full);
-
-
-        /// <summary>
-        /// Returns the set of delimiters for internal segmentation logic.
-        /// Only <see cref="DelimiterMode.Full"/> is used in public-facing behavior.
-        /// </summary>
-        private static HashSet<char> GetDelimiters(DelimiterMode mode)
+        /// <remarks>
+        /// <para>
+        /// Each of the 65,536 possible <see cref="char"/> values is mapped to one bit
+        /// in a compact <c>ulong[]</c> table (8 KB total).
+        /// </para>
+        /// <para>
+        /// This allows membership testing to be reduced to a single bitwise operation,
+        /// which is far faster than <see cref="HashSet{T}.Contains"/> in hot per-character loops,
+        /// especially for large text (e.g. multi-MB documents).
+        /// </para>
+        /// <para>
+        /// The table is initialized once in the static constructor by setting the bit
+        /// corresponding to each delimiter character in <c>FullDelimiters</c>.
+        /// </para>
+        /// </remarks>
+        private static class DelimiterTable
         {
-            switch (mode)
+            private static readonly ulong[] T = new ulong[0x10000 / 64];
+
+            static DelimiterTable()
             {
-                case DelimiterMode.Minimal:
-                    return new HashSet<char>("\r\n".ToCharArray());
-
-                case DelimiterMode.Normal:
-                    return new HashSet<char>("，。！？\n".ToCharArray());
-
-                case DelimiterMode.Full:
-                    return new HashSet<char>(
-                        " \t\n\r!\"#$%&'()*+,-./:;<=>?@[\\]^_{}|~＝、。﹁﹂—－（）《》〈〉？！…／＼︒︑︔︓︿﹀︹︺︙︐［﹇］﹈︕︖︰︳︴︽︾︵︶｛︷｝︸﹃﹄【︻】︼　～．，；："
-                            .ToCharArray());
-
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown delimiter mode");
+                foreach (var ch in FullDelimiters)
+                {
+                    T[ch >> 6] |= 1UL << (ch & 63);
+                }
             }
+
+            /// <summary>
+            /// Tests whether the given character is a delimiter.
+            /// </summary>
+            /// <param name="c">The character to test.</param>
+            /// <returns>
+            /// <c>true</c> if <paramref name="c"/> is in the delimiter set;
+            /// otherwise, <c>false</c>.
+            /// </returns>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            internal static bool Contains(char c) => (T[c >> 6] & (1UL << (c & 63))) != 0;
         }
+
+        /// <summary>
+        /// Inline helper method that wraps <see cref="DelimiterTable.Contains"/>.
+        /// </summary>
+        /// <remarks>
+        /// This method exists mainly for code readability at call sites.  
+        /// Because it is marked with <see cref="MethodImplOptions.AggressiveInlining"/>,
+        /// the JIT will inline it, so it has effectively zero overhead at runtime.
+        /// </remarks>
+        /// <param name="c">The character to test.</param>
+        /// <returns>
+        /// <c>true</c> if <paramref name="c"/> is a delimiter; otherwise, <c>false</c>.
+        /// </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsDelimiter(char c) => DelimiterTable.Contains(c);
 
         #endregion
 
-        #region Lazy Static Region
+        #region Lazy Static Dictionary Region
 
         // --- START Lazy<T> Implementation ---
 
@@ -440,7 +447,7 @@ namespace OpenccNetLib
             if (splitRanges.Count == 0)
             {
                 if (!string.IsNullOrEmpty(text))
-                    splitRanges.Add((0, text.Length));
+                    splitRanges.Add(new Range(0, text.Length));
                 else
                     return string.Empty;
             }
@@ -457,8 +464,7 @@ namespace OpenccNetLib
             {
                 Parallel.For(0, splitRanges.Count, i =>
                 {
-                    var (start, end) = splitRanges[i];
-                    var segment = text.AsSpan(start, end - start);
+                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
                     results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
                 });
             }
@@ -466,8 +472,7 @@ namespace OpenccNetLib
             {
                 for (var i = 0; i < splitRanges.Count; i++)
                 {
-                    var (start, end) = splitRanges[i];
-                    var segment = text.AsSpan(start, end - start);
+                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
                     results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
                 }
             }
@@ -540,7 +545,7 @@ namespace OpenccNetLib
             switch (textSpan.Length)
             {
                 case 0: return string.Empty;
-                case 1 when Delimiters.Contains(textSpan[0]): return textSpan.ToString();
+                case 1 when IsDelimiter(textSpan[0]): return textSpan.ToString();
             }
 
             var sb = StringBuilderCache.Value;
@@ -700,7 +705,7 @@ namespace OpenccNetLib
                 return string.Empty;
 
             // Fast path for single delimiter span
-            if (text.Length == 1 && Delimiters.Contains(text[0]))
+            if (text.Length == 1 && IsDelimiter(text[0]))
                 return text.ToString();
 
             var resultBuilder = StringBuilderCache.Value;
@@ -777,51 +782,95 @@ namespace OpenccNetLib
         }
 
         /// <summary>
+        /// Represents a half-open character range [Start, End) within an input span.
+        /// Used internally by OpenCC to track non-delimiter and delimiter segments.
+        /// </summary>
+        private readonly struct Range
+        {
+            /// <summary>
+            /// Inclusive start index of the range (0-based).
+            /// </summary>
+            public int Start { get; }
+
+            /// <summary>
+            /// Exclusive end index of the range (0-based).
+            /// </summary>
+            public int End { get; }
+
+            /// <summary>
+            /// Initializes a new <see cref="Range"/> with the specified boundaries.
+            /// </summary>
+            /// <param name="start">Inclusive start index.</param>
+            /// <param name="end">Exclusive end index.</param>
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public Range(int start, int end)
+            {
+                Start = start;
+                End = end;
+            }
+
+            /// <summary>
+            /// Gets the length of the range (<c>End - Start</c>).
+            /// </summary>
+            public int Length => End - Start;
+
+            /// <summary>
+            /// Gets whether the range is empty (<c>End &lt;= Start</c>).
+            /// </summary>
+            public bool IsEmpty => End <= Start;
+
+            /// <summary>
+            /// Returns a string representation in the form <c>[Start, End)</c>.
+            /// </summary>
+            public override string ToString() => $"[{Start}, {End})";
+        }
+
+        /// <summary>
         /// Splits the input span into ranges based on delimiter characters.
         /// </summary>
         /// <param name="input">The input character span.</param>
         /// <param name="inclusive">
         /// If true, each segment includes the delimiter (e.g. "你好，").
-        /// If false (default), each segment excludes the delimiter and delimiters are returned as their own segment.
+        /// If false (default), each segment excludes the delimiter and delimiters
+        /// are returned as their own segment.
         /// </param>
-        /// <returns>A list of (start, end) index tuples for each segment.</returns>
-        private static List<(int start, int end)> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
+        /// <returns>
+        /// A list of <see cref="Range"/> values representing half-open index intervals
+        /// [Start, End) covering all contiguous segments of <paramref name="input"/>.
+        /// </returns>
+        private static List<Range> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
         {
             var length = input.Length;
 
             if (input.IsEmpty)
-                return new List<(int, int)>();
+                return new List<Range>();
 
             // Pre-size based on estimate (assume ~10% delimiters for better initial capacity)
-            var estimatedCapacity = Math.Max(8, length / 10);
-            var ranges = new List<(int, int)>(estimatedCapacity);
+            var ranges = new List<Range>(Math.Max(8, length / 16));
 
             var currentStart = 0;
 
             // Use spans for delimiter lookup if Delimiters is a collection
             for (var i = 0; i < length; i++)
             {
-                if (!Delimiters.Contains(input[i]))
+                if (!IsDelimiter(input[i]))
                     continue;
 
                 if (inclusive)
                 {
                     // Include delimiter in current segment
-                    if (i >= currentStart) // Simplified condition
-                    {
-                        ranges.Add((currentStart, i + 1));
-                    }
+                    ranges.Add(new Range(currentStart, i + 1));
                 }
                 else
                 {
                     // Add segment before delimiter (if any)
                     if (i > currentStart)
                     {
-                        ranges.Add((currentStart, i));
+                        ranges.Add(new Range(currentStart, i));
                     }
 
                     // Add delimiter as separate segment
-                    ranges.Add((i, i + 1));
+                    ranges.Add(new Range(i, i + 1));
                 }
 
                 currentStart = i + 1;
@@ -830,7 +879,7 @@ namespace OpenccNetLib
             // Add remaining segment if any
             if (currentStart < length)
             {
-                ranges.Add((currentStart, length));
+                ranges.Add(new Range(currentStart, length));
             }
 
             return ranges;

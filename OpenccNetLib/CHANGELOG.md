@@ -6,28 +6,36 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.2.0] - 2025-09-24
+## [1.2.0] - 2025-09-26
 
 ### Added
+
 - `StarterUnion` now precomputes per-starter **minLen**, in addition to cap and mask,
   enabling faster clamping of candidate lengths.
 - Plan/union caching (`ConversionPlanCache`) for reduced allocations across repeated conversions.
 
 ### Changed
+
 - Optimized `zhoCheck()` with max char scan length.
 - Updated bundled dictionaries.
 - Corrected longest-match logic: single-grapheme fast path is only taken when
   no longer candidate exists.
 - Conversion is now surrogate-aware and astral-safe in `.NET Standard 2.0`.
+- **Delimiter handling**: replaced `HashSet<char>` with a precomputed bitset table,
+  yielding constant-time O(1) lookups and faster segmentation in hot loops.
 
 ### Removed
+
 - Legacy `StarterCapTextElem` and `BuildStarterIndex()` path (redundant since union-based lookup).
 - Redundant dictionary hydration steps during load, lowering initialization overhead.
+- `DelimiterMode.Minimal` and `DelimiterMode.Normal`, leaving only the `Full` mode used in practice.
 
 ### Performance
+
 - Significant allocation and throughput improvements:
     - Up to ~4.3× faster on short inputs compared to v1.0.3.
     - ~70% less allocation across all input sizes.
+    - Large-text segmentation (e.g. 3M chars) now ~76–120 ms vs 120–150 ms in prior versions.
 - Avalonia GUI memory footprint reduced (~250 MB vs ~400 MB in prior versions).
 
 ---

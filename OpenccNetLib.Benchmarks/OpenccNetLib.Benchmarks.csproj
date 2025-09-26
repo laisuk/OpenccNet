@@ -16,7 +16,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="Samples\QuanZhiDuZheShiJiao.txt">
+      <None Update="Samples\QuanZhiDuZheShiJiao_Hans.txt">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="Samples\QuanZhiDuZheShiJiao_Hant.txt">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>

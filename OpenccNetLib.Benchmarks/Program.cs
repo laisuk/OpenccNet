@@ -20,8 +20,8 @@ namespace OpenccNetLib.Benchmarks
         [GlobalSetup]
         public void Setup()
         {
-            _opencc = new Opencc("s2t");
-            var fullText = File.ReadAllText("Samples/QuanZhiDuZheShiJiao.txt");
+            _opencc = new Opencc("t2s");
+            var fullText = File.ReadAllText("Samples/QuanZhiDuZheShiJiao_Hant.txt");
             _inputText = fullText[..Math.Min(Size, fullText.Length)];
         }
 
