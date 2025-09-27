@@ -441,48 +441,30 @@ namespace OpenccNetLib
             int maxWordLength)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
+            var textLength = text.Length;
+
+            if (textLength < 1_000_000)
+            {
+                return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
+            }
 
             var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
 
-            if (splitRanges.Count == 0)
-            {
-                if (!string.IsNullOrEmpty(text))
-                    splitRanges.Add(new Range(0, text.Length));
-                else
-                    return string.Empty;
-            }
-
-            // Shortcut for single segment
-            if (splitRanges.Count == 1)
+            // Shortcut for lower count segment
+            if (splitRanges.Count < 128)
             {
                 return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
             }
 
             var results = new string[splitRanges.Count];
 
-            if (splitRanges.Count > 16 && text.Length > 2000)
+            Parallel.For(0, splitRanges.Count, i =>
             {
-                Parallel.For(0, splitRanges.Count, i =>
-                {
-                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
-                    results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
-                });
-            }
-            else
-            {
-                for (var i = 0; i < splitRanges.Count; i++)
-                {
-                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
-                    results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
-                }
-            }
+                var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
+                results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
+            });
 
-            // Always use StringBuilder with pre-capacity
-            var totalLen = 0;
-            for (var i = 0; i < results.Length; i++)
-                totalLen += results[i]?.Length ?? 0;
-
-            var sb = new StringBuilder(totalLen);
+            var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.8%
             for (var i = 0; i < results.Length; i++)
                 sb.Append(results[i]);
 
@@ -542,7 +524,8 @@ namespace OpenccNetLib
             StarterUnion union,
             int maxWordLength)
         {
-            switch (textSpan.Length)
+            var n = textSpan.Length;
+            switch (n)
             {
                 case 0: return string.Empty;
                 case 1 when IsDelimiter(textSpan[0]): return textSpan.ToString();
@@ -550,12 +533,11 @@ namespace OpenccNetLib
 
             var sb = StringBuilderCache.Value;
             sb.Clear();
-            sb.EnsureCapacity(textSpan.Length * 2);
+            sb.EnsureCapacity(n * 2 + (n >> 4));
 
-            var n = textSpan.Length;
             var i = 0;
-
             var keyBuffer = ArrayPool<char>.Shared.Rent(maxWordLength);
+            
             try
             {
                 while (i < n)
@@ -704,15 +686,16 @@ namespace OpenccNetLib
             if (text.IsEmpty)
                 return string.Empty;
 
+            var textLen = text.Length;
+
             // Fast path for single delimiter span
-            if (text.Length == 1 && IsDelimiter(text[0]))
+            if (textLen == 1 && IsDelimiter(text[0]))
                 return text.ToString();
 
             var resultBuilder = StringBuilderCache.Value;
             resultBuilder.Clear();
-            resultBuilder.EnsureCapacity(text.Length * 2);
+            resultBuilder.EnsureCapacity(textLen * 2 + (textLen >> 4));
 
-            var textLen = text.Length;
             var i = 0;
 
             // Ensure we rent at least length 1
@@ -736,7 +719,7 @@ namespace OpenccNetLib
                         var anyEligible = false;
                         foreach (var d in dictionaries)
                         {
-                            if (d.MaxLength < length) continue;
+                            if (d.MaxLength < length || d.MinLength > length) continue;
                             anyEligible = true;
                             break;
                         }
@@ -751,9 +734,9 @@ namespace OpenccNetLib
                         // Probe dictionaries
                         foreach (var dictObj in dictionaries)
                         {
-                            if (dictObj.MaxLength < length) continue;
+                            if (dictObj.MaxLength < length || dictObj.MinLength > length) continue;
 
-                            if (!dictObj.Dict.TryGetValue(key, out var match)) continue;
+                            if (!dictObj.TryGetValue(key, out var match)) continue;
                             bestMatch = match;
                             bestMatchLength = length;
                             goto FoundMatch;
@@ -813,11 +796,6 @@ namespace OpenccNetLib
             /// Gets the length of the range (<c>End - Start</c>).
             /// </summary>
             public int Length => End - Start;
-
-            /// <summary>
-            /// Gets whether the range is empty (<c>End &lt;= Start</c>).
-            /// </summary>
-            public bool IsEmpty => End <= Start;
 
             /// <summary>
             /// Returns a string representation in the form <c>[Start, End)</c>.
