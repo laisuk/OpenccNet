@@ -443,30 +443,35 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(text)) return string.Empty;
             var textLength = text.Length;
 
-            if (textLength < 1_000_000)
+            if (textLength < 800_000)
             {
                 return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
             }
 
             var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
+            var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.8%
 
             // Shortcut for lower count segment
-            if (splitRanges.Count < 128)
+            if (splitRanges.Count > 32)
             {
-                return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
+                var results = new string[splitRanges.Count];
+                Parallel.For(0, splitRanges.Count, i =>
+                {
+                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
+                    results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
+                });
+
+                for (var i = 0; i < results.Length; i++)
+                    sb.Append(results[i]);
             }
-
-            var results = new string[splitRanges.Count];
-
-            Parallel.For(0, splitRanges.Count, i =>
+            else
             {
-                var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
-                results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
-            });
-
-            var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.8%
-            for (var i = 0; i < results.Length; i++)
-                sb.Append(results[i]);
+                for (var i = 0; i < splitRanges.Count; i++)
+                {
+                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
+                    sb.Append(ConvertByUnion(segment, dictionaries, union, maxWordLength));
+                }
+            }
 
             return sb.ToString();
         }
@@ -537,7 +542,7 @@ namespace OpenccNetLib
 
             var i = 0;
             var keyBuffer = ArrayPool<char>.Shared.Rent(maxWordLength);
-            
+
             try
             {
                 while (i < n)
@@ -823,9 +828,19 @@ namespace OpenccNetLib
             if (input.IsEmpty)
                 return new List<Range>();
 
-            // Pre-size based on estimate (assume ~10% delimiters for better initial capacity)
-            var ranges = new List<Range>(Math.Max(8, length / 16));
+            // var ranges = new List<Range>(Math.Max(8, length / 10));
+            // Heuristic: ~25% delimiters.
+            // inclusive=false  → ~ 2*d + 1 ≈ 0.50 * length
+            // inclusive=true   → ~ d + 1   ≈ 0.25 * length
+            var estSegments = inclusive
+                ? (length >> 2) + 1 // length * 0.25 + 1
+                : (length >> 1) + 1; // length * 0.50 + 1
 
+            // Clamp to [8, length] to avoid over/under allocation
+            if (estSegments < 8) estSegments = 8;
+            if (estSegments > length) estSegments = length;
+
+            var ranges = new List<Range>(estSegments);
             var currentStart = 0;
 
             // Use spans for delimiter lookup if Delimiters is a collection
