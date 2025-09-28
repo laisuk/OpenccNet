@@ -443,7 +443,7 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(text)) return string.Empty;
             var textLength = text.Length;
 
-            if (textLength < 800_000)
+            if (textLength < 500_000)
             {
                 return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
             }
@@ -452,7 +452,7 @@ namespace OpenccNetLib
             var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.8%
 
             // Shortcut for lower count segment
-            if (splitRanges.Count > 32)
+            if (splitRanges.Count > 500 && textLength > 500_000)
             {
                 var results = new string[splitRanges.Count];
                 Parallel.For(0, splitRanges.Count, i =>
