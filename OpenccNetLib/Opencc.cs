@@ -452,7 +452,7 @@ namespace OpenccNetLib
             var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.8%
 
             // Shortcut for lower count segment
-            if (splitRanges.Count > 500 && textLength > 500_000)
+            if (splitRanges.Count > 1000 || textLength > 1_000_000)
             {
                 var results = new string[splitRanges.Count];
                 Parallel.For(0, splitRanges.Count, i =>
