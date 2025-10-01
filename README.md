@@ -28,7 +28,8 @@ projects with a focus on performance and minimal memory usage.
     - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
 - Optional punctuation conversion
 - Thread-safe and suitable for parallel processing
-- .NET Standard 2.0 compatible
+- .NET Standard 2.0 compatible  
+  (cross-platform: Windows, Linux, macOS; supported on .NET Core 2.0+, .NET 5+, .NET 6/7/8/9/10 LTS)
 
 ## Installation
 
