@@ -67,13 +67,13 @@ Console.WriteLine(traditional);
 | s2tw   | Simplified → Traditional (Taiwan)               |
 | tw2s   | Traditional (Taiwan) → Simplified               |
 | s2twp  | Simplified → Traditional (Taiwan, idioms)       |
-| tw2sp  | Traditional (Taiwan, idioms) → Simplified      |
+| tw2sp  | Traditional (Taiwan, idioms) → Simplified       |
 | s2hk   | Simplified → Traditional (Hong Kong)            |
 | hk2s   | Traditional (Hong Kong) → Simplified            |
 | t2tw   | Traditional → Traditional (Taiwan)              |
 | tw2t   | Traditional (Taiwan) → Traditional              |
-| t2twp  | Traditional → Traditional (Taiwan, idioms)     |
-| tw2tp  | Traditional (Taiwan, idioms) → Traditional     |
+| t2twp  | Traditional → Traditional (Taiwan, idioms)      |
+| tw2tp  | Traditional (Taiwan, idioms) → Traditional      |
 | t2hk   | Traditional → Traditional (Hong Kong)           |
 | hk2t   | Traditional (Hong Kong) → Traditional           |
 | t2jp   | Traditional Kyujitai → Japanese Kanji Shinjitai |
@@ -174,18 +174,19 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - Uses static dictionary caching and thread-local buffers for high throughput.
 - Suitable for batch and parallel processing scenarios.
 
-### 📊 Benchmark Results – OpenccNetLib 1.1.0
+### 📊 Benchmark Results – OpenccNetLib 1.2.0
 
-> BenchmarkDotNet v0.15.2 · .NET 9.0.8 · Windows 11 · RyuJIT AVX2  
+> BenchmarkDotNet v0.15.4 · .NET 9.0.9 · Windows 11 · RyuJIT AVX2  
 > Test: `BM_Convert_Sized` · Warmup + 10 Iterations
+> Config: `s2t`
 
-| Input Size | Mean Time | Gen0 (per 1k ops) |   Gen1 |   Gen2 | Allocated Memory |
-|-----------:|----------:|------------------:|-------:|-------:|-----------------:|
-|        100 |   2.49 µs |             0.538 |      – |      – |          5.51 KB |
-|      1,000 |  57.81 µs |             8.179 |  0.366 |      – |         84.03 KB |
-|     10,000 | 305.89 µs |            78.613 | 22.949 |      – |        798.72 KB |
-|    100,000 |   6.74 ms |           796.875 | 257.813| 78.125 |       8,386.29 KB |
-|  1,000,000 |  65.17 ms |          7,750.00 | 2250.00| 625.00 |      84,931.47 KB |
+| Input Size | Mean Time | Gen0 (per 1k ops) |     Gen1 |    Gen2 | Allocated Memory |
+|-----------:|----------:|------------------:|---------:|--------:|-----------------:|
+|        100 |   2.57 µs |             0.523 |        – |       – |          5.36 KB |
+|      1,000 |  65.27 µs |             8.789 |        - |       – |         90.37 KB |
+|     10,000 | 221.82 µs |            81.543 |   22.461 |       – |        827.37 KB |
+|    100,000 |   6.23 ms |           914.863 |  406.250 |  187.50 |      8,213.83 KB |
+|  1,000,000 |  46.15 ms |          8,090.91 | 2,363.64 | 727.273 |     83,288.56 KB |
 
 ### ⏱ Relative Performance Chart
 
@@ -195,13 +196,14 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 
 - ✅ **Preallocated `StringBuilder`** delivers consistent performance across all input sizes, minimizing reallocations.
 - 🚀 **Inclusive splitting** reduces `ConvertBy()` calls, boosting throughput for segmented processing.
-- 🔁 **Parallel processing** automatically engages for large workloads (≥16 segments, ≥2000 chars), taking full advantage of multicore CPUs.
+- 🔁 **Parallel processing** automatically engages for large workloads (≥16 segments, ≥2000 chars), taking full advantage
+  of multicore CPUs.
 - 📉 **Memory usage scales linearly** with input size — from ~5 KB to ~85 MB — with no unpredictable spikes.
 - 🧠 **GC pressure remains stable** and predictable, even at 1M characters:
-  - Gen0: ~7.7K collections
-  - Gen1: ~2.25K collections
-  - Gen2: ~625 collections  
-    All within expected and manageable ranges.
+    - Gen0: ~7.7K collections
+    - Gen1: ~2.25K collections
+    - Gen2: ~625 collections  
+      All within expected and manageable ranges.
 - ⚡ **Fast warm startup**, suitable for both CLI batch conversion and responsive GUI usage.
 - ✨ **OpenccNetLib 1.1.0** is fully production-ready for high-performance, large-scale Chinese text conversion.
 
