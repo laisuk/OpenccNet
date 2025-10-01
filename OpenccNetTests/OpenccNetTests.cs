@@ -14,7 +14,7 @@ public class OpenccNetTests
         var actualTraditional = opencc.S2T(simplified);
         Assert.AreEqual(expectedTraditional, actualTraditional);
     }
-    
+
     [TestMethod]
     public void S2T_SimpleConversion2()
     {
@@ -83,7 +83,8 @@ public class OpenccNetTests
     {
         var opencc = new Opencc("t2tw");
         const string traditional = "憂鬱";
-        const string expectedTaiwan = "憂鬱"; // In this case, it might be the same, test with a difference if you find one
+        const string
+            expectedTaiwan = "憂鬱"; // In this case, it might be the same, test with a difference if you find one
         var actualTaiwan = opencc.T2Tw(traditional);
         Assert.AreEqual(expectedTaiwan, actualTaiwan);
     }
@@ -147,18 +148,18 @@ public class OpenccNetTests
         var actualSimplifiedWithPunctuation = opencc.T2S(traditionalWithPunctuation, true);
         Assert.AreEqual(expectedSimplifiedWithPunctuation, actualSimplifiedWithPunctuation);
     }
-    
+
     [TestMethod]
     public void switch_conversion()
     {
-        var opencc = new Opencc("s2t"); 
+        var opencc = new Opencc("s2t");
         var result = opencc.Convert("动态切换转换方式");
         Assert.AreEqual("動態切換轉換方式", result);
         // opencc.Config = "t2s";
         opencc.SetConfig("t2s");
         Assert.AreEqual("t2s", opencc.GetConfig());
         result = opencc.Convert("動態切換轉換方式");
-        Assert.AreEqual("动态切换转换方式", result);   
+        Assert.AreEqual("动态切换转换方式", result);
     }
 
     [TestMethod]
@@ -206,7 +207,7 @@ public class OpenccNetTests
         const string emptyText = "";
         Assert.AreEqual(0, Opencc.ZhoCheck(emptyText));
     }
-    
+
     [TestMethod]
     public void UseCustomDictionary()
     {
@@ -216,7 +217,7 @@ public class OpenccNetTests
         const string tText = "美麗漢字";
         Assert.AreEqual(tText, opencc.Convert(sText));
     }
-    
+
     [TestMethod]
     public void ValidConfigTest()
     {

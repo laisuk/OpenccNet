@@ -330,7 +330,8 @@ namespace OpenccNetLib
             if (ReferenceEquals(dict, d.jp_variants)) return BaseDictId.JP_Variants;
             if (ReferenceEquals(dict, d.jps_phrases)) return BaseDictId.JPS_Phrases;
             if (ReferenceEquals(dict, d.jps_characters)) return BaseDictId.JPS_Characters;
-            return ReferenceEquals(dict, d.jp_variants_rev) ? BaseDictId.JP_Variants_Rev 
+            return ReferenceEquals(dict, d.jp_variants_rev)
+                ? BaseDictId.JP_Variants_Rev
                 : throw new InvalidOperationException("Unknown dictionary instance (not mapped).");
         }
     }

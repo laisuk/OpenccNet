@@ -70,7 +70,8 @@ internal static class DictgenCommand
                     return 1;
             }
 
-            Console.WriteLine($"{Blue}Dictionary saved as '{Path.GetFullPath(outputFile)}' in {format.ToUpper()} format.{Reset}");
+            Console.WriteLine(
+                $"{Blue}Dictionary saved as '{Path.GetFullPath(outputFile)}' in {format.ToUpper()} format.{Reset}");
 
             return 0;
         });

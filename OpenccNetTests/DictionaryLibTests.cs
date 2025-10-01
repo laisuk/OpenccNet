@@ -3,7 +3,6 @@ using OpenccNetLib;
 
 namespace OpenccNetTests;
 
-
 [TestClass]
 public class DictionaryLibTests
 {
