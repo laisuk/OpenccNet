@@ -26,6 +26,7 @@ projects with a focus on performance and minimal memory usage.
     - Traditional (Taiwan) ↔ Simplified/Traditional
     - Traditional (Hong Kong) ↔ Simplified/Traditional
     - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
+- Accurate handling of **non-BMP (U+20000+) Chinese characters** for better conversion fidelity
 - Optional punctuation conversion
 - Thread-safe and suitable for parallel processing
 - .NET Standard 2.0 compatible  
