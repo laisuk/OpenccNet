@@ -50,7 +50,7 @@ public class DictionaryLibTests
 
         var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
         Assert.IsNotNull(loaded);
-        Assert.AreEqual(dict.ts_characters.Dict.Count, loaded.ts_characters.Dict.Count);
+        Assert.HasCount(dict.ts_characters.Dict.Count, loaded.ts_characters.Dict);
     }
 
 
