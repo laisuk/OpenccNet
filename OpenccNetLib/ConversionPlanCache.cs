@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace OpenccNetLib
 {
@@ -26,16 +25,117 @@ namespace OpenccNetLib
     /// </item>
     /// <item>
     /// <description>
-    /// <b>Secondary cache:</b> Maps a <see cref="RoundKey"/> (list of  
-    /// <see cref="BaseDictId"/> values) to a shared <see cref="StarterUnion"/>.  
-    /// This allows multiple plans with identical round layouts to reuse  
-    /// the same union, saving memory and build time.
+    /// <b>Secondary cache:</b> Maps a <see cref="UnionKey"/> (semantic slot key)
+    /// to a shared <see cref="StarterUnion"/> instance.
+    /// Each <see cref="UnionKey"/> corresponds to a fixed, well-defined
+    /// dictionary grouping (e.g., <c>S2T</c>, <c>T2S</c>, <c>TwRevPair</c>).
+    /// This allows all conversion plans that reference the same logical
+    /// dictionary slot to reuse the same <see cref="StarterUnion"/>,
+    /// minimizing build time and memory usage.
     /// </description>
     /// </item>
     /// </list>
     /// </remarks>
     public sealed class ConversionPlanCache
     {
+        /// <summary>
+        /// Defines the semantic slot identifiers used to group dictionaries
+        /// for building and caching <see cref="StarterUnion"/> instances.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Each <see cref="UnionKey"/> represents a fixed and well-defined
+        /// dictionary combination (a “conversion slot”) corresponding to one
+        /// logical stage of the OpenCC conversion pipeline.
+        /// </para>
+        /// <para>
+        /// These keys are shared across all conversion plans so that
+        /// identical slots (e.g., <c>S2T</c> or <c>TwRevPair</c>) reuse the
+        /// same cached <see cref="StarterUnion"/>, improving both memory
+        /// efficiency and startup performance.
+        /// </para>
+        /// </remarks>
+        private enum UnionKey
+        {
+            // --- Simplified ↔ Traditional ---
+            /// <summary>
+            /// Simplified → Traditional main dictionaries (phrases + characters).
+            /// </summary>
+            S2T,
+
+            /// <summary>
+            /// Simplified → Traditional with punctuation conversion.
+            /// </summary>
+            S2TPunct,
+
+            /// <summary>
+            /// Traditional → Simplified main dictionaries (phrases + characters).
+            /// </summary>
+            T2S,
+
+            /// <summary>
+            /// Traditional → Simplified with punctuation conversion.
+            /// </summary>
+            T2SPunct,
+
+            // --- Taiwan-specific ---
+            /// <summary>
+            /// Taiwan phrases only (excludes character-level variants).
+            /// </summary>
+            TwPhrasesOnly,
+
+            /// <summary>
+            /// Taiwan variants only (character-level).
+            /// </summary>
+            TwVariantsOnly,
+
+            /// <summary>
+            /// Taiwan reverse phrases only.
+            /// </summary>
+            TwPhrasesRevOnly,
+
+            /// <summary>
+            /// Taiwan reverse pair: variant reverse phrases + variant reverse characters.
+            /// </summary>
+            TwRevPair,
+
+            /// <summary>
+            /// Taiwan → Simplified round-1 triple: phrases_rev + variants_rev_phrases + variants_rev.
+            /// </summary>
+            Tw2SpR1TwRevTriple,
+
+            // --- Hong Kong-specific ---
+            /// <summary>
+            /// Hong Kong variants only (character-level).
+            /// </summary>
+            HkVariantsOnly,
+
+            /// <summary>
+            /// Hong Kong reverse pair: variant reverse phrases + variant reverse characters.
+            /// </summary>
+            HkRevPair,
+
+            // --- Japan-specific ---
+            /// <summary>
+            /// Japanese variants only (character-level).
+            /// </summary>
+            JpVariantsOnly,
+
+            /// <summary>
+            /// Japanese reverse triple: JPS phrases + JPS characters + JP variants_rev.
+            /// </summary>
+            JpRevTriple
+        }
+
+        /// <summary>
+        /// Provides access to the current <see cref="DictionaryMaxlength"/> instance
+        /// used when building new conversion plans and <see cref="StarterUnion"/> caches.
+        /// </summary>
+        /// <remarks>
+        /// This delegate is typically supplied by the owning <c>Opencc</c> instance and
+        /// allows the cache to always reference the latest loaded dictionary set,
+        /// supporting scenarios such as hot-reloading or external dictionary replacement.
+        /// </remarks>
         private readonly Func<DictionaryMaxlength> _dictionaryProvider;
 
         // Primary cache: (config, punct) -> DictRefs (rounds include unions)
@@ -43,8 +143,8 @@ namespace OpenccNetLib
             new ConcurrentDictionary<PlanKey, DictRefs>();
 
         // Secondary cache: round layout (list of dict IDs) -> StarterUnion
-        private readonly ConcurrentDictionary<RoundKey, StarterUnion> _unionCache =
-            new ConcurrentDictionary<RoundKey, StarterUnion>();
+        private readonly ConcurrentDictionary<UnionKey, StarterUnion> _unionCacheByKey =
+            new ConcurrentDictionary<UnionKey, StarterUnion>();
 
         /// <summary>
         /// Initializes a new instance of <see cref="ConversionPlanCache"/>.
@@ -81,439 +181,446 @@ namespace OpenccNetLib
         public void Clear()
         {
             _planCache.Clear();
-            _unionCache.Clear();
+            _unionCacheByKey.Clear();
         }
 
         // ---- Plan building ----------------------------------------------------------------------
 
         /// <summary>
-        /// Constructs a fully-resolved <see cref="DictRefs"/> conversion plan for the given  
-        /// <paramref name="config"/> and punctuation setting.
+        /// Constructs a fully resolved <see cref="DictRefs"/> conversion plan
+        /// for the specified <paramref name="config"/> and punctuation setting.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This method is the core factory for creating conversion plans. It determines the  
-        /// dictionary sequence ("rounds") based on the <see cref="Opencc.OpenccConfig"/> value,  
-        /// optionally including punctuation dictionaries, and attaches a per-round  
-        /// <see cref="StarterUnion"/> built (or retrieved from cache) for that round's dictionary set.
+        /// This method is the central factory responsible for assembling a complete
+        /// conversion plan for a given <see cref="Opencc.OpenccConfig"/> value.
+        /// It determines which dictionary groups (“rounds”) are required,
+        /// based on the target conversion configuration, and attaches a
+        /// corresponding <see cref="StarterUnion"/> to each round.
         /// </para>
         /// <para>
-        /// Some configurations (e.g., <c>S2Tw</c>, <c>Tw2S</c>, <c>HK2S</c>) require two sequential  
-        /// rounds of dictionary application, while others (e.g., <c>S2T</c>, <c>T2S</c>) use only one.
-        /// Each round's <see cref="StarterUnion"/> is fetched via <see cref="GetOrAddUnionFor"/> so  
-        /// that identical dictionary layouts reuse the same union instance.
+        /// Each round’s <see cref="StarterUnion"/> is obtained through
+        /// <see cref="GetOrAddUnionFor(DictionaryMaxlength, UnionKey, out System.Collections.Generic.List{DictWithMaxLength})"/>,
+        /// which uses a <see cref="UnionKey"/> to identify a predefined
+        /// dictionary group (slot).  This ensures that identical rounds
+        /// across different conversion plans share the same cached
+        /// <see cref="StarterUnion"/> instance, improving memory reuse and
+        /// reducing redundant build time.
+        /// </para>
+        /// <para>
+        /// Some configurations (for example, <c>S2Tw</c>, <c>Tw2S</c>, <c>Hk2S</c>)
+        /// consist of two sequential rounds of dictionary application, while
+        /// others (such as <c>S2T</c> and <c>T2S</c>) require only one round.
+        /// Complex conversions like <c>S2Twp</c> and <c>Tw2Sp</c> may involve
+        /// three rounds.  Each round is represented by its corresponding
+        /// <see cref="UnionKey"/> entry.
         /// </para>
         /// </remarks>
-        /// <param name="config">The OpenCC conversion configuration to build a plan for.</param>
+        /// <param name="config">
+        /// The <see cref="Opencc.OpenccConfig"/> defining the type of conversion
+        /// (e.g., Simplified→Traditional, Traditional→Simplified, Taiwan, Hong Kong, or Japan variants).
+        /// </param>
         /// <param name="punctuation">
-        /// Whether to include punctuation dictionaries in the plan.
+        /// Whether punctuation conversion dictionaries should be included in the plan.
         /// </param>
         /// <returns>
-        /// A <see cref="DictRefs"/> object containing the dictionary layout and starter-union  
-        /// acceleration data for each round.
+        /// A fully initialized <see cref="DictRefs"/> instance containing all dictionary
+        /// rounds and their associated <see cref="StarterUnion"/> accelerators.
         /// </returns>
         private DictRefs BuildPlan(Opencc.OpenccConfig config, bool punctuation)
         {
             var d = _dictionaryProvider();
 
-            List<DictWithMaxLength> r1, r2;
-            DictRefs plan;
-
             switch (config)
             {
                 case Opencc.OpenccConfig.S2T:
-                    r1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                    if (punctuation) r1.Add(d.st_punctuations);
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 case Opencc.OpenccConfig.T2S:
-                    r1 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                    if (punctuation) r1.Add(d.ts_punctuations);
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 case Opencc.OpenccConfig.S2Tw:
-                    r1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                    if (punctuation) r1.Add(d.st_punctuations);
-                    r2 = new List<DictWithMaxLength> { d.tw_variants };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                }
 
                 case Opencc.OpenccConfig.Tw2S:
-                    r1 = new List<DictWithMaxLength> { d.tw_variants_rev_phrases, d.tw_variants_rev };
-                    r2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                    if (punctuation) r2.Add(d.ts_punctuations);
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
+                    var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                }
 
                 case Opencc.OpenccConfig.S2Twp:
-                    r1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                    if (punctuation) r1.Add(d.st_punctuations);
-                    r2 = new List<DictWithMaxLength> { d.tw_phrases };
-                    var r3 = new List<DictWithMaxLength> { d.tw_variants };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2))
-                        .WithRound3(r3, GetOrAddUnionFor(r3));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r2);
+                    var u3 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r3);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2).WithRound3(r3, u3);
+                }
 
                 case Opencc.OpenccConfig.Tw2Sp:
-                    r1 = new List<DictWithMaxLength> { d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev };
-                    r2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                    if (punctuation) r2.Add(d.ts_punctuations);
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.Tw2SpR1TwRevTriple, out var r1);
+                    var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                }
 
                 case Opencc.OpenccConfig.S2Hk:
-                    r1 = new List<DictWithMaxLength> { d.st_phrases, d.st_characters };
-                    if (punctuation) r1.Add(d.st_punctuations);
-                    r2 = new List<DictWithMaxLength> { d.hk_variants };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.HkVariantsOnly, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                }
 
                 case Opencc.OpenccConfig.Hk2S:
-                    r1 = new List<DictWithMaxLength> { d.hk_variants_rev_phrases, d.hk_variants_rev };
-                    r2 = new List<DictWithMaxLength> { d.ts_phrases, d.ts_characters };
-                    if (punctuation) r2.Add(d.ts_punctuations);
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.HkRevPair, out var r1);
+                    var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                }
 
                 case Opencc.OpenccConfig.T2Tw:
-                    r1 = new List<DictWithMaxLength> { d.tw_variants };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 case Opencc.OpenccConfig.T2Twp:
-                    r1 = new List<DictWithMaxLength> { d.tw_phrases };
-                    r2 = new List<DictWithMaxLength> { d.tw_variants };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r1);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                }
 
                 case Opencc.OpenccConfig.Tw2T:
-                    r1 = new List<DictWithMaxLength> { d.tw_variants_rev_phrases, d.tw_variants_rev };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 case Opencc.OpenccConfig.Tw2Tp:
-                    r1 = new List<DictWithMaxLength> { d.tw_variants_rev_phrases, d.tw_variants_rev };
-                    r2 = new List<DictWithMaxLength> { d.tw_phrases_rev };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1))
-                        .WithRound2(r2, GetOrAddUnionFor(r2));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.TwPhrasesRevOnly, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                }
 
                 case Opencc.OpenccConfig.T2Hk:
-                    r1 = new List<DictWithMaxLength> { d.hk_variants };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.HkVariantsOnly, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 case Opencc.OpenccConfig.Hk2T:
-                    r1 = new List<DictWithMaxLength> { d.hk_variants_rev_phrases, d.hk_variants_rev };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.HkRevPair, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 case Opencc.OpenccConfig.T2Jp:
-                    r1 = new List<DictWithMaxLength> { d.jp_variants };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.JpVariantsOnly, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 case Opencc.OpenccConfig.Jp2T:
-                    r1 = new List<DictWithMaxLength> { d.jps_phrases, d.jps_characters, d.jp_variants_rev };
-                    plan = new DictRefs(r1, GetOrAddUnionFor(r1));
-                    break;
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.JpRevTriple, out var r1);
+                    return new DictRefs(r1, u1);
+                }
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(config), config, null);
             }
-
-            return plan;
         }
 
         // ---- Secondary union cache helpers ------------------------------------------------------
 
         /// <summary>
-        /// Retrieves a cached <see cref="StarterUnion"/> for the given dictionary set,
-        /// or builds and caches a new one if no identical round layout exists.
+        /// Retrieves a cached <see cref="StarterUnion"/> for the specified <see cref="UnionKey"/>,
+        /// or builds and caches a new one if it does not yet exist.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// A "round layout" is defined by the sequence of base dictionary IDs derived from  
-        /// the provided <paramref name="dicts"/>. This method maps each dictionary to its  
-        /// corresponding <see cref="BaseDictId"/> via <see cref="MapDictToId"/>, creating a  
-        /// <see cref="RoundKey"/> that serves as the cache key.
+        /// Each <see cref="UnionKey"/> represents a logical dictionary group (conversion slot),
+        /// such as <c>S2T</c>, <c>T2S</c>, <c>TwRevPair</c>, etc.  
+        /// This method ensures that all conversion plans referencing the same slot
+        /// reuse a single shared <see cref="StarterUnion"/> instance.
         /// </para>
         /// <para>
-        /// If a matching <see cref="StarterUnion"/> is already in the union cache, it is reused.  
-        /// Otherwise, <see cref="StarterUnion.Build"/> is called to create a new union, which is  
-        /// then stored in the cache for future use.
+        /// The corresponding list of dictionaries is produced by
+        /// <see cref="BuildDicts(DictionaryMaxlength, UnionKey)"/>, which determines
+        /// the exact sequence of dictionaries used for that slot.  
+        /// The resulting <paramref name="dicts"/> list is returned alongside the
+        /// cached or newly built <see cref="StarterUnion"/>.
         /// </para>
         /// <para>
-        /// This ensures that conversion rounds sharing the exact same dictionary sequence also  
-        /// share the same <see cref="StarterUnion"/> instance, reducing memory usage and build time.
-        /// </para>
-        /// </remarks>
-        /// <param name="dicts">
-        /// The list of <see cref="DictWithMaxLength"/> objects representing the dictionaries  
-        /// for this round, in the exact sequence they will be applied.
-        /// </param>
-        /// <returns>
-        /// A cached or newly built <see cref="StarterUnion"/> for the specified dictionary set.
-        /// </returns>
-        private StarterUnion GetOrAddUnionFor(List<DictWithMaxLength> dicts)
-        {
-            var ids = new ushort[dicts.Count];
-            var d = _dictionaryProvider();
-
-            for (var i = 0; i < dicts.Count; i++)
-                ids[i] = (ushort)MapDictToId(d, dicts[i]);
-
-            var key = new RoundKey(ids);
-            return _unionCache.GetOrAdd(key, _ => StarterUnion.Build(dicts));
-        }
-
-        /// <summary>
-        /// Maps a specific <see cref="DictWithMaxLength"/> instance to its corresponding
-        /// <see cref="BaseDictId"/> enumeration value.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This method uses <see cref="object.ReferenceEquals"/> to determine which of the predefined  
-        /// dictionaries in <paramref name="d"/> matches the provided <paramref name="dict"/>.  
-        /// This ensures mapping is based on actual object identity, not on content equality.
-        /// </para>
-        /// <para>
-        /// This mapping is essential for generating stable, repeatable IDs in  
-        /// <see cref="ConversionPlanCache"/> when building <see cref="RoundKey"/> values for  
-        /// union caching. By consistently resolving dictionaries to fixed IDs, it ensures  
-        /// that identical round layouts share the same <see cref="StarterUnion"/> instance.
+        /// This implementation avoids lambda captures of <c>out</c> parameters to remain
+        /// fully compatible with .NET Standard 2.0, using a direct
+        /// <see cref="ConcurrentDictionary{TKey,TValue}.GetOrAdd(TKey,TValue)"/> call instead
+        /// of the value-factory overload.
         /// </para>
         /// </remarks>
         /// <param name="d">
-        /// The <see cref="DictionaryMaxlength"/> containing all base dictionaries for the OpenCC configuration.
+        /// The <see cref="DictionaryMaxlength"/> instance containing all available
+        /// OpenCC dictionaries for the current configuration.
         /// </param>
-        /// <param name="dict">
-        /// The dictionary instance to map to a <see cref="BaseDictId"/>.
+        /// <param name="key">
+        /// The <see cref="UnionKey"/> identifying the dictionary group (conversion slot)
+        /// whose <see cref="StarterUnion"/> should be retrieved or built.
+        /// </param>
+        /// <param name="dicts">
+        /// When this method returns, contains the list of dictionaries corresponding
+        /// to the specified <paramref name="key"/>.  
+        /// The same list is used to build the <see cref="StarterUnion"/> if it was not already cached.
         /// </param>
         /// <returns>
-        /// The <see cref="BaseDictId"/> corresponding to the provided dictionary instance.
+        /// The existing or newly constructed <see cref="StarterUnion"/> instance associated
+        /// with the specified <paramref name="key"/>.
         /// </returns>
-        /// <exception cref="ArgumentException">
-        /// Thrown if the provided dictionary instance does not match any known  
-        /// dictionary in <paramref name="d"/>.
+        /// <threadsafety>
+        /// Thread-safe. Concurrent calls for the same <see cref="UnionKey"/> may result in
+        /// one redundant <see cref="StarterUnion.Build"/> invocation, but only the first
+        /// successful result is stored in the cache.
+        /// </threadsafety>
+        private StarterUnion GetOrAddUnionFor(DictionaryMaxlength d, UnionKey key, out List<DictWithMaxLength> dicts)
+        {
+            dicts = BuildDicts(d, key);
+
+            if (_unionCacheByKey.TryGetValue(key, out var existing))
+                return existing;
+
+            var built = StarterUnion.Build(dicts);
+            // Uses the TValue overload; avoids a valueFactory lambda entirely.
+            return _unionCacheByKey.GetOrAdd(key, built);
+        }
+
+        /// <summary>
+        /// Builds the list of dictionaries corresponding to the specified <see cref="UnionKey"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Each <see cref="UnionKey"/> represents a predefined logical group of dictionaries
+        /// (a “conversion slot”) used when constructing a <see cref="StarterUnion"/>.
+        /// </para>
+        /// <para>
+        /// This method maps the given <paramref name="key"/> to the concrete dictionary instances
+        /// stored within the provided <see cref="DictionaryMaxlength"/> container.  
+        /// For example, <see cref="UnionKey.S2T"/> selects <c>st_phrases</c> and <c>st_characters</c>,
+        /// while <see cref="UnionKey.TwRevPair"/> selects  
+        /// <c>tw_variants_rev_phrases</c> and <c>tw_variants_rev</c>.
+        /// </para>
+        /// <para>
+        /// The resulting list defines the exact dictionary sequence for that conversion slot
+        /// and is used to build or retrieve a cached <see cref="StarterUnion"/>.
+        /// </para>
+        /// </remarks>
+        /// <param name="d">
+        /// The <see cref="DictionaryMaxlength"/> instance containing all available
+        /// OpenCC dictionaries for the current configuration.
+        /// </param>
+        /// <param name="key">
+        /// The <see cref="UnionKey"/> specifying which dictionary group to construct.
+        /// </param>
+        /// <returns>
+        /// A newly created <see cref="List{T}"/> of <see cref="DictWithMaxLength"/>
+        /// objects representing the dictionaries for the specified slot.
+        /// </returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// Thrown if the provided <paramref name="key"/> does not correspond to a known slot.
         /// </exception>
-        private static BaseDictId MapDictToId(DictionaryMaxlength d, DictWithMaxLength dict)
+        private static List<DictWithMaxLength> BuildDicts(DictionaryMaxlength d, UnionKey key)
         {
-            // Keep mappings tight & explicit for ReferenceEquals-based identity
-            if (ReferenceEquals(dict, d.st_phrases)) return BaseDictId.ST_Phrases;
-            if (ReferenceEquals(dict, d.st_characters)) return BaseDictId.ST_Characters;
-            if (ReferenceEquals(dict, d.st_punctuations)) return BaseDictId.ST_Punctuations;
-
-            if (ReferenceEquals(dict, d.ts_phrases)) return BaseDictId.TS_Phrases;
-            if (ReferenceEquals(dict, d.ts_characters)) return BaseDictId.TS_Characters;
-            if (ReferenceEquals(dict, d.ts_punctuations)) return BaseDictId.TS_Punctuations;
-
-            if (ReferenceEquals(dict, d.tw_variants)) return BaseDictId.TW_Variants;
-            if (ReferenceEquals(dict, d.tw_phrases)) return BaseDictId.TW_Phrases;
-            if (ReferenceEquals(dict, d.tw_phrases_rev)) return BaseDictId.TW_Phrases_Rev;
-            if (ReferenceEquals(dict, d.tw_variants_rev)) return BaseDictId.TW_Variants_Rev;
-            if (ReferenceEquals(dict, d.tw_variants_rev_phrases)) return BaseDictId.TW_Variants_Rev_Phrases;
-
-            if (ReferenceEquals(dict, d.hk_variants)) return BaseDictId.HK_Variants;
-            if (ReferenceEquals(dict, d.hk_variants_rev)) return BaseDictId.HK_Variants_Rev;
-            if (ReferenceEquals(dict, d.hk_variants_rev_phrases)) return BaseDictId.HK_Variants_Rev_Phrases;
-
-            if (ReferenceEquals(dict, d.jp_variants)) return BaseDictId.JP_Variants;
-            if (ReferenceEquals(dict, d.jps_phrases)) return BaseDictId.JPS_Phrases;
-            if (ReferenceEquals(dict, d.jps_characters)) return BaseDictId.JPS_Characters;
-            return ReferenceEquals(dict, d.jp_variants_rev)
-                ? BaseDictId.JP_Variants_Rev
-                : throw new InvalidOperationException("Unknown dictionary instance (not mapped).");
-        }
-    }
-
-    // ---- Keys / IDs ---------------------------------------------------------------------------
-
-    /// <summary>
-    /// Immutable key type for identifying cached conversion plans
-    /// in <see cref="ConversionPlanCache"/>.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A <see cref="PlanKey"/> uniquely identifies a conversion plan by the  
-    /// <see cref="Opencc.OpenccConfig"/> value and whether punctuation handling  
-    /// is enabled. This ensures that the plan cache can differentiate between  
-    /// otherwise identical dictionary sequences that differ only in punctuation inclusion.
-    /// </para>
-    /// <para>
-    /// The struct implements <see cref="IEquatable{PlanKey}"/> for fast equality checks  
-    /// and overrides <see cref="GetHashCode"/> to produce a stable hash suitable for  
-    /// use as a key in <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey, TValue}"/>.
-    /// </para>
-    /// <para>
-    /// The hash code is computed by combining the integer representation of  
-    /// <see cref="Opencc.OpenccConfig"/> with the punctuation flag using a prime  
-    /// multiplier (397) to minimize collisions.
-    /// </para>
-    /// </remarks>
-    /// <example>
-    /// Example usage in the primary plan cache:
-    /// <code>
-    /// var plan = _planCache.GetOrAdd(
-    ///     new PlanKey(OpenccConfig.S2T, true),
-    ///     _ => BuildPlan(OpenccConfig.S2T, true)
-    /// );
-    /// </code>
-    /// </example>
-    internal readonly struct PlanKey : IEquatable<PlanKey>
-    {
-        private readonly Opencc.OpenccConfig _config;
-        private readonly bool _punctuation;
-
-        public PlanKey(Opencc.OpenccConfig config, bool punctuation)
-        {
-            _config = config;
-            _punctuation = punctuation;
-        }
-
-        public bool Equals(PlanKey other) => _config == other._config && _punctuation == other._punctuation;
-        public override bool Equals(object obj) => obj is PlanKey pk && Equals(pk);
-        public override int GetHashCode() => ((int)_config * 397) ^ (_punctuation ? 1 : 0);
-        public override string ToString() => _config + (_punctuation ? "_punct" : "");
-    }
-
-    /// <summary>
-    /// Enumerates the canonical IDs for all built-in OpenCC dictionaries.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Each value corresponds to a specific dictionary file or logical group
-    /// in <see cref="DictionaryMaxlength"/> and is used internally to build
-    /// <see cref="StarterUnion"/> instances and cache <see cref="DictRefs"/> plans.
-    /// </para>
-    /// <para>
-    /// The identifiers intentionally use snake_case segments (with underscores)
-    /// to remain consistent with the original OpenCC data source naming convention
-    /// and to make cross-language mapping (Rust, Python, Java) easier.
-    /// </para>
-    /// <para>
-    /// When mapping dictionaries to IDs, reference comparison is used to ensure
-    /// the exact dictionary instance is matched, avoiding accidental lookups by
-    /// value or content.
-    /// </para>
-    /// </remarks>
-    /// <example>
-    /// Example usage:
-    /// <code>
-    /// var dictId = MapDictToId(dictionaryMaxlength, dictionaryMaxlength.st_phrases);
-    /// if (dictId == BaseDictId.ST_Phrases)
-    /// {
-    ///     // Do something specific for ST_Phrases
-    /// }
-    /// </code>
-    /// </example>
-    // ReSharper disable InconsistentNaming
-    internal enum BaseDictId : ushort
-    {
-        ST_Phrases,
-        ST_Characters,
-        ST_Punctuations,
-        TS_Phrases,
-        TS_Characters,
-        TS_Punctuations,
-        TW_Variants,
-        TW_Phrases,
-        TW_Phrases_Rev,
-        TW_Variants_Rev,
-        TW_Variants_Rev_Phrases,
-        HK_Variants,
-        HK_Variants_Rev,
-        HK_Variants_Rev_Phrases,
-        JP_Variants,
-        JPS_Phrases,
-        JPS_Characters,
-        JP_Variants_Rev,
-    }
-    // ReSharper restore InconsistentNaming
-
-    /// <summary>
-    /// Immutable, hashable key representing the ordered list of dictionary IDs
-    /// that make up one conversion round.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Each <see cref="RoundKey"/> corresponds to the exact sequence of
-    /// <see cref="BaseDictId"/> values used for a given conversion round.
-    /// This allows <see cref="ConversionPlanCache"/> to share the same
-    /// <see cref="StarterUnion"/> instance across different plans that
-    /// happen to have identical dictionary layouts.
-    /// </para>
-    /// <para>
-    /// The underlying <c>ushort[]</c> is stored in the order passed to the
-    /// constructor; the sequence must be stable and identical for equality
-    /// and hash code calculations to match.
-    /// </para>
-    /// <para>
-    /// Since dictionary layouts are small (typically 1–3 entries per round),
-    /// the equality and hash logic is implemented directly without
-    /// allocating intermediate objects, making it fast enough for
-    /// high-frequency cache lookups.
-    /// </para>
-    /// <para>
-    /// Example:
-    /// <code>
-    /// var ids = new ushort[] { (ushort)BaseDictId.ST_Phrases, (ushort)BaseDictId.ST_Characters };
-    /// var key = new RoundKey(ids);
-    /// var union = _unionCache.GetOrAdd(key, _ => StarterUnion.Build(dicts));
-    /// </code>
-    /// </para>
-    /// </remarks>
-    internal readonly struct RoundKey : IEquatable<RoundKey>
-    {
-        private readonly ushort[] _ids; // ordered per-round dict IDs
-
-        public RoundKey(ushort[] ids)
-        {
-            _ids = ids;
-        }
-
-        public bool Equals(RoundKey other)
-        {
-            if (ReferenceEquals(_ids, other._ids)) return true;
-            if (_ids == null || other._ids == null || _ids.Length != other._ids.Length) return false;
-            for (var i = 0; i < _ids.Length; i++)
-                if (_ids[i] != other._ids[i])
-                    return false;
-            return true;
-        }
-
-        public override bool Equals(object obj) => obj is RoundKey k && Equals(k);
-
-        public override int GetHashCode()
-        {
-            unchecked
+            switch (key)
             {
-                var h = 17;
-                if (_ids == null) return h;
-                for (var i = 0; i < _ids.Length; i++)
-                    h = h * 31 + _ids[i];
-                return h;
+                // --- S2T / T2S ---
+                case UnionKey.S2T:
+                {
+                    var list = new List<DictWithMaxLength>(2)
+                    {
+                        d.st_phrases,
+                        d.st_characters
+                    };
+                    return list;
+                }
+                case UnionKey.S2TPunct:
+                {
+                    var list = new List<DictWithMaxLength>(3)
+                    {
+                        d.st_phrases,
+                        d.st_characters,
+                        d.st_punctuations
+                    };
+                    return list;
+                }
+                case UnionKey.T2S:
+                {
+                    var list = new List<DictWithMaxLength>(2)
+                    {
+                        d.ts_phrases,
+                        d.ts_characters
+                    };
+                    return list;
+                }
+                case UnionKey.T2SPunct:
+                {
+                    var list = new List<DictWithMaxLength>(3)
+                    {
+                        d.ts_phrases,
+                        d.ts_characters,
+                        d.ts_punctuations
+                    };
+                    return list;
+                }
+
+                // --- TW ---
+                case UnionKey.TwPhrasesOnly:
+                {
+                    var l = new List<DictWithMaxLength>(1) { d.tw_phrases };
+                    return l;
+                }
+                case UnionKey.TwVariantsOnly:
+                {
+                    var l = new List<DictWithMaxLength>(1) { d.tw_variants };
+                    return l;
+                }
+                case UnionKey.TwPhrasesRevOnly:
+                {
+                    var l = new List<DictWithMaxLength>(1) { d.tw_phrases_rev };
+                    return l;
+                }
+                case UnionKey.TwRevPair:
+                {
+                    var list = new List<DictWithMaxLength>(2)
+                    {
+                        d.tw_variants_rev_phrases,
+                        d.tw_variants_rev
+                    };
+                    return list;
+                }
+                case UnionKey.Tw2SpR1TwRevTriple:
+                {
+                    var list = new List<DictWithMaxLength>(3)
+                    {
+                        d.tw_phrases_rev,
+                        d.tw_variants_rev_phrases,
+                        d.tw_variants_rev
+                    };
+                    return list;
+                }
+
+                // --- HK ---
+                case UnionKey.HkVariantsOnly:
+                {
+                    var l = new List<DictWithMaxLength>(1) { d.hk_variants };
+                    return l;
+                }
+                case UnionKey.HkRevPair:
+                {
+                    var list = new List<DictWithMaxLength>(2)
+                    {
+                        d.hk_variants_rev_phrases,
+                        d.hk_variants_rev
+                    };
+                    return list;
+                }
+
+                // --- JP ---
+                case UnionKey.JpVariantsOnly:
+                {
+                    var l = new List<DictWithMaxLength>(1) { d.jp_variants };
+                    return l;
+                }
+                case UnionKey.JpRevTriple:
+                {
+                    var list = new List<DictWithMaxLength>(3)
+                    {
+                        d.jps_phrases,
+                        d.jps_characters,
+                        d.jp_variants_rev
+                    };
+                    return list;
+                }
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(key), key, null);
             }
         }
 
-        public override string ToString() =>
-            _ids == null ? "[]" : "[" + string.Join(",", _ids.Select(x => x.ToString())) + "]";
-    }
+        // ---- Keys / IDs ---------------------------------------------------------------------------
 
-    // ---- Notes --------------------------------------------------------------------------------
-    // - This file assumes existing types in your project:
-    //   - OpenccConfig (enum), DictRefs (rounds with optional StarterUnion args), DictWithMaxLength,
-    //     StarterUnion (with static Build(IReadOnlyList<DictWithMaxLength>)).
-    // - Inject your lazy dictionary via the constructor: () => _lazyDictionary.Value
-    // - Thread-safe: caches are ConcurrentDictionary and StarterUnion is immutable after Build().
-    // - To hot-reload dicts: rebuild DictionaryMaxlength, then call cache.Clear().
+        /// <summary>
+        /// Immutable key type for identifying cached conversion plans
+        /// in <see cref="ConversionPlanCache"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A <see cref="PlanKey"/> uniquely identifies a conversion plan by the  
+        /// <see cref="Opencc.OpenccConfig"/> value and whether punctuation handling  
+        /// is enabled. This ensures that the plan cache can differentiate between  
+        /// otherwise identical dictionary sequences that differ only in punctuation inclusion.
+        /// </para>
+        /// <para>
+        /// The struct implements <see cref="IEquatable{PlanKey}"/> for fast equality checks  
+        /// and overrides <see cref="GetHashCode"/> to produce a stable hash suitable for  
+        /// use as a key in <see cref="System.Collections.Concurrent.ConcurrentDictionary{TKey, TValue}"/>.
+        /// </para>
+        /// <para>
+        /// The hash code is computed by combining the integer representation of  
+        /// <see cref="Opencc.OpenccConfig"/> with the punctuation flag using a prime  
+        /// multiplier (397) to minimize collisions.
+        /// </para>
+        /// </remarks>
+        /// <example>
+        /// Example usage in the primary plan cache:
+        /// <code>
+        /// var plan = _planCache.GetOrAdd(
+        ///     new PlanKey(OpenccConfig.S2T, true),
+        ///     _ => BuildPlan(OpenccConfig.S2T, true)
+        /// );
+        /// </code>
+        /// </example>
+        private readonly struct PlanKey : IEquatable<PlanKey>
+        {
+            private readonly Opencc.OpenccConfig _config;
+            private readonly bool _punctuation;
+
+            public PlanKey(Opencc.OpenccConfig config, bool punctuation)
+            {
+                _config = config;
+                _punctuation = punctuation;
+            }
+
+            public bool Equals(PlanKey other) => _config == other._config && _punctuation == other._punctuation;
+            public override bool Equals(object obj) => obj is PlanKey pk && Equals(pk);
+            public override int GetHashCode() => ((int)_config * 397) ^ (_punctuation ? 1 : 0);
+            public override string ToString() => _config + (_punctuation ? "_punct" : "");
+        }
+
+        // ---- Notes --------------------------------------------------------------------------------
+        // - This file assumes existing types in your project:
+        //   - OpenccConfig (enum), DictRefs (rounds with optional StarterUnion args), DictWithMaxLength,
+        //     StarterUnion (with static Build(IReadOnlyList<DictWithMaxLength>)), and DictionaryMaxlength.
+        // - Inject your lazy dictionary via the constructor: () => _lazyDictionary.Value
+        // - Thread-safe: both caches use ConcurrentDictionary, and StarterUnion is immutable after Build().
+        // - To hot-reload dictionaries: rebuild DictionaryMaxlength, then call cache.Clear().
+        //
+        // - Secondary cache now keyed by UnionKey instead of RoundKey:
+        //     Each UnionKey represents a predefined logical slot (e.g., S2T, TwRevPair, HkRevPair),
+        //     allowing all conversion plans to share the same StarterUnion instance per slot.
+        // - BuildDicts(DictionaryMaxlength, UnionKey) defines which dictionaries belong to each slot.
+        // - GetOrAddUnionFor() ensures that identical slots reuse an existing StarterUnion
+        //   and remains .NET Standard 2.0-compatible (no lambda captures of out parameters).
+        // - Primary cache (_planCache) maps (OpenccConfig, punctuation) → DictRefs, ensuring
+        //   complete plan reuse across conversions with identical configuration.
+    }
 }

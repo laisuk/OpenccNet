@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 namespace OpenccNetLib
@@ -46,30 +45,39 @@ namespace OpenccNetLib
         {
             var u = new StarterUnion();
 
-            for (int di = 0; di < dictionaries.Count; di++)
+            // Hoist arrays to locals (cheaper in tight loops)
+            var cap = u._cap; // ushort[65536]
+            var mask = u._mask; // ulong[65536]
+            var minLn = u._minLen; // ushort[65536]
+
+            for (int di = 0, dn = dictionaries.Count; di < dn; di++)
             {
-                var d = dictionaries[di];
+                var dict = dictionaries[di];
 
-                foreach (var kv in d.Dict)
+                // Iterate keys only; avoids reading kv.Value
+                var keys = dict.Dict.Keys;
+                foreach (var key in keys)
                 {
-                    var key = kv.Key;
-                    if (string.IsNullOrEmpty(key)) continue;
+                    // Dictionary keys should never be null, but guard length == 0 fast
+                    var len = key.Length;
+                    if (len == 0) continue;
 
-                    var c0 = key[0]; // first UTF-16 code unit (OK for non-BMP: we key on the high surrogate)
-                    var len = key.Length; // key length in UTF-16 code units
+                    // Starter bucket by first UTF-16 code unit (high surrogate for non-BMP)
+                    int c0 = key[0];
 
-                    // cap: max length seen
-                    if (len > u._cap[c0])
-                        u._cap[c0] = (ushort)Math.Min(ushort.MaxValue, len);
+                    // cap: track max observed length (clamped to ushort)
+                    var oldCap = cap[c0];
+                    if (len > oldCap)
+                        cap[c0] = (ushort)(len > ushort.MaxValue ? ushort.MaxValue : len);
 
-                    // mask: only up to 64
+                    // mask: set binary bit for lengths 1..64
                     if (len <= 64)
-                        u._mask[c0] |= 1UL << (len - 1);
+                        mask[c0] |= 1UL << (len - 1);
 
-                    // minLen: true minimum (works for >64 as well)
-                    var m = u._minLen[c0];
+                    // minLen: true minimum (also handles >64)
+                    var m = minLn[c0];
                     if (m == 0 || len < m)
-                        u._minLen[c0] = (ushort)Math.Min(ushort.MaxValue, len);
+                        minLn[c0] = (ushort)(len > ushort.MaxValue ? ushort.MaxValue : len);
                 }
             }
 
