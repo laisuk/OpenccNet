@@ -55,7 +55,7 @@ namespace OpenccNetLib
     /// Each property represents a specific conversion mapping.
     /// </summary>
     // ReSharper disable InconsistentNaming
-    public class DictionaryMaxlength
+    public sealed class DictionaryMaxlength
     {
         public DictWithMaxLength st_characters { get; set; } = new DictWithMaxLength();
         public DictWithMaxLength st_phrases { get; set; } = new DictWithMaxLength();
@@ -84,14 +84,20 @@ namespace OpenccNetLib
     /// </summary>
     public static class DictionaryLib
     {
+        /// <summary>Add a thread-safe, opt-in cache.</summary>
+        private static readonly Lazy<DictionaryMaxlength> DefaultLib =
+            new Lazy<DictionaryMaxlength>(() => FromZstd(), true);
+
+        /// <summary>Singleton reuse instead of reloading repeatedly.</summary>
+        public static DictionaryMaxlength Default => DefaultLib.Value;
+
         /// <summary>
         /// Loads the dictionary from a Zstd-compressed file.
         /// Always returns a new instance.
         /// </summary>
         public static DictionaryMaxlength New()
         {
-            return FromZstd();
-            // return FromDicts();
+            return DefaultLib.Value;
         }
 
         /// <summary>

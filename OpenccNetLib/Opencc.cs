@@ -783,7 +783,7 @@ namespace OpenccNetLib
             /// <summary>
             /// Exclusive end index of the range (0-based).
             /// </summary>
-            public int End { get; }
+            private int End { get; }
 
             /// <summary>
             /// Initializes a new <see cref="Range"/> with the specified boundaries.
