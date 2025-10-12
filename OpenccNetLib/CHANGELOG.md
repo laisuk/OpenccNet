@@ -6,6 +6,20 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.1-Preview] - 2025-10-15
+
+### Changed
+
+- Replaced per-round `RoundKey` caching with a simplified `UnionKey`-based slot cache for `StarterUnion`.
+- `ConversionPlanCache` now uses predefined semantic slots (`UnionKey`) shared across all configurations,
+  improving readability, maintainability, and alignment with the OpenccJava architecture.
+- Simplified `GetOrAddUnionFor()` and removed lambda captures for .NET Standard 2.0 compatibility.
+- Reduced code complexity in `BuildPlan()` by using slot-based caching with inline `out List<DictWithMaxLength>`.
+- Minor performance improvement: slightly faster conversion speed and lower memory usage due to reduced allocations.
+- Updated XML documentation comments throughout `ConversionPlanCache` to reflect the new design.
+
+---
+
 ## [1.2.0] - 2025-09-30
 
 ### Added
