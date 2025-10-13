@@ -42,7 +42,7 @@ namespace OpenccNetLib
         /// Type initializer: precomputes surrogate lookup tables once per AppDomain.
         /// </summary>
         /// <remarks>
-        /// Fills <see cref="IsHs"/> for U+D800..U+DBFF and <see cref="IsLs"/> for U+DC00..U+DFFF.
+        /// Fills <see cref="IsHs"/> for U+D800 to U+DBFF and <see cref="IsLs"/> for U+DC00 to U+DFFF.
         /// Complexity is O(2048) and runs only once; arrays are thereafter read-only.
         /// </remarks>
         static StarterUnion()
