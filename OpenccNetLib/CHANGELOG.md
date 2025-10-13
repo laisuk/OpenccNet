@@ -17,10 +17,28 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Converted all dictionary collections from `List<DictWithMaxLength>` to fixed `DictWithMaxLength[]` arrays
   for improved cache locality, zero heap resizing, and reduced GC pressure.
 - `DictRefs` now stores dictionaries in array form and caches per-round `MaxLength` values for faster filtering.
-- Minor performance improvements: **5–10 ms faster** on 3 M-character conversions and slightly lower memory usage
-  due to elimination of transient list allocations.
-- Updated XML documentation throughout `ConversionPlanCache` and `DictRefs` to reflect array-based design
-  and simplified caching model.
+- **Astral-safe starter gating**: introduced `StarterUnion.GetAt(c0, c1, hasSecond, …)` which:
+    - Detects surrogate pairs and returns `starterUnits` (1 for BMP, 2 for valid pairs),
+    - Clears `len==1` in the length mask for non-BMP starters,
+    - Exposes `hasStarter`, `cap`, `mask`, and `minLen` in one inlined call.
+- Hot loop tightened:
+    - Switched from `Get(char, …)` to `GetAt(…)` and clamped the search lower bound to `max(minLen, starterUnits)`,
+      ensuring astral starters never probe `len==1`.
+    - Added precomputed `IsHs[]` / `IsLs[]` lookup tables (U+D800–DBFF / U+DC00–DFFF) to avoid per-iteration range
+      checks.
+- Minor performance improvements:
+    - **~5–10 ms faster** on 3M-character conversions from array-based dictionaries and cache slot simplifications.
+    - **Additional ~2 ms faster** from `GetAt()` + lower-bound clamp and surrogate LUTs (measured average).
+
+### Deprecated
+
+- Legacy `StarterUnion.Get(char, out cap, out mask)` and `Get(char, out cap, out mask, out minLen)` are now marked
+  **[Obsolete]**. They remain as thin shims for non-hot callers; the conversion loop uses `GetAt(…)`.
+
+### Docs
+
+- Updated XML documentation across `ConversionPlanCache`, `DictRefs`, and `StarterUnion` to reflect the array-based
+  design, union slot cache, and the new astral-safe `GetAt()` API.
 
 ---
 

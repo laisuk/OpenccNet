@@ -555,16 +555,20 @@ namespace OpenccNetLib
                     // var step = char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1])
                     //     ? 2
                     //     : 1;
-                    var step = (uint)(c0 - 0xD800) <= 0x03FF && hasSecond && (uint)(c1 - 0xDC00) <= 0x03FF ? 2 : 1;
+                    // var step = (uint)(c0 - 0xD800) <= 0x03FF && hasSecond && (uint)(c1 - 0xDC00) <= 0x03FF ? 2 : 1;
 
-                    union.Get(c0, out var cap, out var lenMaskAll, out var unionMinLen);
+                    // union.Get(c0, out var cap, out var lenMaskAll, out var unionMinLen);
+                    // CHANGED: ask StarterUnion for step (starterUnits), presence, and masks.
+                    union.GetAt(c0, c1, hasSecond,
+                        out var step, out var hasStarter,
+                        out var cap, out var lenMaskAll, out var unionMinLen);
 
                     // Upper bound: dict cap, remaining input, and caller max
                     var remaining = n - i;
                     var tryMax = Math.Min(Math.Min(maxWordLength, remaining), cap);
 
                     // No possible match? (no entries, or entries longer than we can take)
-                    if (cap == 0 || unionMinLen == 0 || unionMinLen > tryMax)
+                    if (!hasStarter || cap == 0 || unionMinLen == 0 || unionMinLen > tryMax)
                     {
                         sb.Append(c0);
                         if (step == 2) sb.Append(c1);
@@ -617,7 +621,12 @@ namespace OpenccNetLib
                     // (We still need a copy because dict keys are strings)
                     textSpan.Slice(i, tryMax).CopyTo(keyBuffer);
 
-                    for (var len = tryMax; len >= unionMinLen; --len)
+                    // CHANGED: enforce lower bound = max(unionMinLen, step)
+                    //  - ensures we never test len < step (e.g., len==1 for astral starters)
+                    //  - len==1 for astrals is already masked out, but this makes it explicit and self-documenting
+                    var lower = unionMinLen > step ? unionMinLen : step;
+
+                    for (var len = tryMax; len >= lower; --len)
                     {
                         if (len <= 64 && ((lenMaskAll >> (len - 1)) & 1UL) == 0UL)
                             continue; // impossible length per mask
