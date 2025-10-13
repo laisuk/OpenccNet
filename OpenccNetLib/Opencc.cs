@@ -437,7 +437,7 @@ namespace OpenccNetLib
         /// <param name="union"></param>
         /// <param name="maxWordLength">Maximum word length for dictionaries</param>
         /// <returns>The converted text.</returns>
-        private static string SegmentReplace(string text, List<DictWithMaxLength> dictionaries, StarterUnion union,
+        private static string SegmentReplace(string text, DictWithMaxLength[] dictionaries, StarterUnion union,
             int maxWordLength)
         {
             if (string.IsNullOrEmpty(text)) return string.Empty;
@@ -525,7 +525,7 @@ namespace OpenccNetLib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string ConvertByUnion(
             ReadOnlySpan<char> textSpan,
-            List<DictWithMaxLength> dictionaries,
+            DictWithMaxLength[] dictionaries,
             StarterUnion union,
             int maxWordLength)
         {
@@ -597,7 +597,7 @@ namespace OpenccNetLib
                         if (step == 2) keyBuffer[1] = c1;
                         var keyStep = new string(keyBuffer, 0, step);
 
-                        for (var di = 0; di < dictionaries.Count; di++)
+                        for (var di = 0; di < dictionaries.Length; di++)
                         {
                             var d = dictionaries[di];
                             if (d.MaxLength < step || d.MinLength > step) continue;
@@ -624,7 +624,7 @@ namespace OpenccNetLib
 
                         var key = new string(keyBuffer, 0, len);
 
-                        for (var di = 0; di < dictionaries.Count; di++)
+                        for (var di = 0; di < dictionaries.Length; di++)
                         {
                             var d = dictionaries[di];
                             if (d.MaxLength < len || d.MinLength > len) continue;
@@ -683,9 +683,9 @@ namespace OpenccNetLib
         /// The converted string segment, with all possible matches replaced by their dictionary values.
         /// If no match is found at a position, the original character is preserved.
         /// </returns>
-        /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, List{DictWithMaxLength}, StarterUnion, int)"/>
+        /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion, int)"/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string ConvertBy(ReadOnlySpan<char> text, List<DictWithMaxLength> dictionaries,
+        private static string ConvertBy(ReadOnlySpan<char> text, DictWithMaxLength[] dictionaries,
             int maxWordLength)
         {
             if (text.IsEmpty)
@@ -1131,7 +1131,7 @@ namespace OpenccNetLib
         /// </summary>
         public static string St(string inputText)
         {
-            var dictRefs = new List<DictWithMaxLength> { Dictionary.st_characters };
+            var dictRefs = new[] { Dictionary.st_characters };
             // maxLength for surrogate pairs and non-BMP character is 2
             return ConvertBy(inputText.AsSpan(), dictRefs, 2);
         }
@@ -1141,7 +1141,7 @@ namespace OpenccNetLib
         /// </summary>
         public static string Ts(string inputText)
         {
-            var dictRefs = new List<DictWithMaxLength> { Dictionary.ts_characters };
+            var dictRefs = new[] { Dictionary.ts_characters };
             // maxLength for surrogate pairs and non-BMP character is 2
             return ConvertBy(inputText.AsSpan(), dictRefs, 2);
         }

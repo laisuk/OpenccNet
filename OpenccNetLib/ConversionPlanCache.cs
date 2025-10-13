@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 
 namespace OpenccNetLib
 {
@@ -200,9 +199,9 @@ namespace OpenccNetLib
         /// </para>
         /// <para>
         /// Each round’s <see cref="StarterUnion"/> is obtained through
-        /// <see cref="GetOrAddUnionFor(DictionaryMaxlength, UnionKey, out System.Collections.Generic.List{DictWithMaxLength})"/>,
+        /// <see cref="GetOrAddUnionFor(DictionaryMaxlength, UnionKey, out DictWithMaxLength[])"/>,
         /// which uses a <see cref="UnionKey"/> to identify a predefined
-        /// dictionary group (slot).  This ensures that identical rounds
+        /// dictionary group (slot). This ensures that identical rounds
         /// across different conversion plans share the same cached
         /// <see cref="StarterUnion"/> instance, improving memory reuse and
         /// reducing redundant build time.
@@ -379,9 +378,9 @@ namespace OpenccNetLib
         /// whose <see cref="StarterUnion"/> should be retrieved or built.
         /// </param>
         /// <param name="dicts">
-        /// When this method returns, contains the list of dictionaries corresponding
+        /// When this method returns, contains the array of dictionaries corresponding
         /// to the specified <paramref name="key"/>.  
-        /// The same list is used to build the <see cref="StarterUnion"/> if it was not already cached.
+        /// The same array is used to build the <see cref="StarterUnion"/> if it was not already cached.
         /// </param>
         /// <returns>
         /// The existing or newly constructed <see cref="StarterUnion"/> instance associated
@@ -392,7 +391,7 @@ namespace OpenccNetLib
         /// one redundant <see cref="StarterUnion.Build"/> invocation, but only the first
         /// successful result is stored in the cache.
         /// </threadsafety>
-        private StarterUnion GetOrAddUnionFor(DictionaryMaxlength d, UnionKey key, out List<DictWithMaxLength> dicts)
+        private StarterUnion GetOrAddUnionFor(DictionaryMaxlength d, UnionKey key, out DictWithMaxLength[] dicts)
         {
             dicts = BuildDicts(d, key);
 
@@ -405,7 +404,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Builds the list of dictionaries corresponding to the specified <see cref="UnionKey"/>.
+        /// Builds the array of dictionaries corresponding to the specified <see cref="UnionKey"/>.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -420,7 +419,7 @@ namespace OpenccNetLib
         /// <c>tw_variants_rev_phrases</c> and <c>tw_variants_rev</c>.
         /// </para>
         /// <para>
-        /// The resulting list defines the exact dictionary sequence for that conversion slot
+        /// The resulting array defines the exact dictionary sequence for that conversion slot
         /// and is used to build or retrieve a cached <see cref="StarterUnion"/>.
         /// </para>
         /// </remarks>
@@ -432,124 +431,94 @@ namespace OpenccNetLib
         /// The <see cref="UnionKey"/> specifying which dictionary group to construct.
         /// </param>
         /// <returns>
-        /// A newly created <see cref="List{T}"/> of <see cref="DictWithMaxLength"/>
+        /// A newly created <see cref="Array"/> of <see cref="DictWithMaxLength"/>
         /// objects representing the dictionaries for the specified slot.
         /// </returns>
         /// <exception cref="ArgumentOutOfRangeException">
         /// Thrown if the provided <paramref name="key"/> does not correspond to a known slot.
         /// </exception>
-        private static List<DictWithMaxLength> BuildDicts(DictionaryMaxlength d, UnionKey key)
+        private static DictWithMaxLength[] BuildDicts(DictionaryMaxlength d, UnionKey key)
         {
             switch (key)
             {
                 // --- S2T / T2S ---
                 case UnionKey.S2T:
-                {
-                    var list = new List<DictWithMaxLength>(2)
+                    return new[]
                     {
                         d.st_phrases,
                         d.st_characters
                     };
-                    return list;
-                }
+
                 case UnionKey.S2TPunct:
-                {
-                    var list = new List<DictWithMaxLength>(3)
+                    return new[]
                     {
                         d.st_phrases,
                         d.st_characters,
                         d.st_punctuations
                     };
-                    return list;
-                }
+
                 case UnionKey.T2S:
-                {
-                    var list = new List<DictWithMaxLength>(2)
+                    return new[]
                     {
                         d.ts_phrases,
                         d.ts_characters
                     };
-                    return list;
-                }
+
                 case UnionKey.T2SPunct:
-                {
-                    var list = new List<DictWithMaxLength>(3)
+                    return new[]
                     {
                         d.ts_phrases,
                         d.ts_characters,
                         d.ts_punctuations
                     };
-                    return list;
-                }
 
                 // --- TW ---
                 case UnionKey.TwPhrasesOnly:
-                {
-                    var l = new List<DictWithMaxLength>(1) { d.tw_phrases };
-                    return l;
-                }
+                    return new[] { d.tw_phrases };
+
                 case UnionKey.TwVariantsOnly:
-                {
-                    var l = new List<DictWithMaxLength>(1) { d.tw_variants };
-                    return l;
-                }
+                    return new[] { d.tw_variants };
+
                 case UnionKey.TwPhrasesRevOnly:
-                {
-                    var l = new List<DictWithMaxLength>(1) { d.tw_phrases_rev };
-                    return l;
-                }
+                    return new[] { d.tw_phrases_rev };
+
                 case UnionKey.TwRevPair:
-                {
-                    var list = new List<DictWithMaxLength>(2)
+                    return new[]
                     {
                         d.tw_variants_rev_phrases,
                         d.tw_variants_rev
                     };
-                    return list;
-                }
+
                 case UnionKey.Tw2SpR1TwRevTriple:
-                {
-                    var list = new List<DictWithMaxLength>(3)
+                    return new[]
                     {
                         d.tw_phrases_rev,
                         d.tw_variants_rev_phrases,
                         d.tw_variants_rev
                     };
-                    return list;
-                }
 
                 // --- HK ---
                 case UnionKey.HkVariantsOnly:
-                {
-                    var l = new List<DictWithMaxLength>(1) { d.hk_variants };
-                    return l;
-                }
+                    return new[] { d.hk_variants };
+
                 case UnionKey.HkRevPair:
-                {
-                    var list = new List<DictWithMaxLength>(2)
+                    return new[]
                     {
                         d.hk_variants_rev_phrases,
                         d.hk_variants_rev
                     };
-                    return list;
-                }
 
                 // --- JP ---
                 case UnionKey.JpVariantsOnly:
-                {
-                    var l = new List<DictWithMaxLength>(1) { d.jp_variants };
-                    return l;
-                }
+                    return new[] { d.jp_variants };
+
                 case UnionKey.JpRevTriple:
-                {
-                    var list = new List<DictWithMaxLength>(3)
+                    return new[]
                     {
                         d.jps_phrases,
                         d.jps_characters,
                         d.jp_variants_rev
                     };
-                    return list;
-                }
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(key), key, null);

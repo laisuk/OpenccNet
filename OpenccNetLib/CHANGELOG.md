@@ -14,9 +14,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - `ConversionPlanCache` now uses predefined semantic slots (`UnionKey`) shared across all configurations,
   improving readability, maintainability, and alignment with the OpenccJava architecture.
 - Simplified `GetOrAddUnionFor()` and removed lambda captures for .NET Standard 2.0 compatibility.
-- Reduced code complexity in `BuildPlan()` by using slot-based caching with inline `out List<DictWithMaxLength>`.
-- Minor performance improvement: slightly faster conversion speed and lower memory usage due to reduced allocations.
-- Updated XML documentation comments throughout `ConversionPlanCache` to reflect the new design.
+- Converted all dictionary collections from `List<DictWithMaxLength>` to fixed `DictWithMaxLength[]` arrays
+  for improved cache locality, zero heap resizing, and reduced GC pressure.
+- `DictRefs` now stores dictionaries in array form and caches per-round `MaxLength` values for faster filtering.
+- Minor performance improvements: **5–10 ms faster** on 3 M-character conversions and slightly lower memory usage
+  due to elimination of transient list allocations.
+- Updated XML documentation throughout `ConversionPlanCache` and `DictRefs` to reflect array-based design
+  and simplified caching model.
 
 ---
 
