@@ -30,5 +30,9 @@
         <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="backup\" />
+    </ItemGroup>
+
 </Project>
 
