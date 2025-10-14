@@ -607,7 +607,8 @@ namespace OpenccNetLib
                             var d = dictionaries[di];
                             if (!d.SupportsLength(step)) continue;
 
-                            keyStep ??= new string(keyBuffer, 0, step);
+                            if (keyStep == null)
+                                keyStep = new string(keyBuffer, 0, step);
                             if (!d.TryGetValue(keyStep, out var repl)) continue;
 
                             sb.Append(repl);
@@ -641,7 +642,8 @@ namespace OpenccNetLib
                             var d = dictionaries[di];
                             if (!d.SupportsLength(len)) continue;
 
-                            key ??= new string(keyBuffer, 0, len);
+                            if (key == null)
+                                key = new string(keyBuffer, 0, len);
                             if (!d.TryGetValue(key, out var repl)) continue;
 
                             bestMatch = repl;
@@ -699,7 +701,9 @@ namespace OpenccNetLib
         /// </returns>
         /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion, int)"/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string ConvertBy(ReadOnlySpan<char> text, DictWithMaxLength[] dictionaries,
+        private static string ConvertBy(
+            ReadOnlySpan<char> text,
+            DictWithMaxLength[] dictionaries,
             int maxWordLength)
         {
             if (text.IsEmpty)
@@ -707,29 +711,22 @@ namespace OpenccNetLib
 
             var textLen = text.Length;
 
-            // Fast path for single delimiter span
+            // Fast path: single delimiter
             if (textLen == 1 && IsDelimiter(text[0]))
                 return text.ToString();
 
-            var resultBuilder = StringBuilderCache.Value;
-            resultBuilder.Clear();
-            resultBuilder.EnsureCapacity(textLen * 2 + (textLen >> 4));
+            var sb = StringBuilderCache.Value;
+            sb.Clear();
+            sb.EnsureCapacity(textLen * 2 + (textLen >> 4));
 
             var i = 0;
 
             // Ensure we rent at least length 1
-            var poolLen = Math.Max(1, maxWordLength);
-            var keyBuffer = ArrayPool<char>.Shared.Rent(poolLen);
+            var bufferLen = Math.Max(1, maxWordLength);
+            var keyBuffer = ArrayPool<char>.Shared.Rent(bufferLen);
 
             try
             {
-                static string BuildKey(ReadOnlySpan<char> source, char[] buffer, int length)
-                {
-                    var wordSpan = source.Slice(0, length);
-                    wordSpan.CopyTo(buffer.AsSpan(0, length));
-                    return new string(buffer, 0, length);
-                }
-
                 while (i < textLen)
                 {
                     var remaining = text.Slice(i);
@@ -743,14 +740,25 @@ namespace OpenccNetLib
                     {
                         string key = null;
 
-                        // Probe dictionaries lazily: only materialize the key when a dictionary
-                        // actually supports the candidate length.
-                        foreach (var dictObj in dictionaries)
+                        // Probe dictionaries lazily:
+                        // Only materialize the key when at least one dictionary supports this length.
+                        for (var d = 0; d < dictionaries.Length; d++)
                         {
-                            if (!dictObj.SupportsLength(length)) continue;
+                            var dict = dictionaries[d];
+                            if (!dict.SupportsLength(length))
+                                continue;
 
-                            key ??= BuildKey(remaining, keyBuffer, length);
-                            if (!dictObj.TryGetValue(key, out var match)) continue;
+                            if (key == null)
+                            {
+                                var wordSpan = remaining.Slice(0, length);
+                                wordSpan.CopyTo(keyBuffer.AsSpan(0, length));
+                                key = new string(keyBuffer, 0, length);
+                            }
+
+                            string match;
+                            if (!dict.TryGetValue(key, out match))
+                                continue;
+
                             bestMatch = match;
                             bestMatchLength = length;
                             goto FoundMatch;
@@ -760,22 +768,22 @@ namespace OpenccNetLib
                     FoundMatch:
                     if (bestMatch != null)
                     {
-                        resultBuilder.Append(bestMatch);
+                        sb.Append(bestMatch);
                         i += bestMatchLength;
                     }
                     else
                     {
-                        resultBuilder.Append(text[i]);
+                        sb.Append(text[i]);
                         i++;
                     }
                 }
             }
             finally
             {
-                ArrayPool<char>.Shared.Return(keyBuffer);
+                ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
             }
 
-            return resultBuilder.ToString();
+            return sb.ToString();
         }
 
         /// <summary>

@@ -37,7 +37,7 @@ namespace OpenccNetLib
         /// Helps skip impossible probes in hot lookup paths.
         /// </summary>
         [JsonIgnore]
-        internal ulong LengthMask { get; private set; }
+        private ulong LengthMask { get; set; }
 
         /// <summary>
         /// Tracks key lengths &gt; 64 UTF-16 units (rare) for completeness.
@@ -96,7 +96,7 @@ namespace OpenccNetLib
 
             var maxLen = 0;
             var minLen = int.MaxValue;
-            ulong mask = 0UL;
+            var mask = 0UL;
             HashSet<int> longLengths = null;
 
             foreach (var key in dict.Keys)
@@ -113,7 +113,10 @@ namespace OpenccNetLib
                 }
                 else
                 {
-                    (longLengths ??= new HashSet<int>()).Add(len);
+                    if (longLengths == null)
+                        longLengths = new HashSet<int>();
+
+                    longLengths.Add(len);
                 }
             }
 
@@ -375,7 +378,10 @@ namespace OpenccNetLib
                 }
                 else
                 {
-                    (longLengths ??= new HashSet<int>()).Add(keyLength);
+                    if (longLengths == null)
+                        longLengths = new HashSet<int>();
+
+                    longLengths.Add(keyLength);
                 }
                 // Optional: Handle lines that do not contain a tab separator if needed
             }
@@ -406,17 +412,19 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Recomputes the per-dictionary length metadata for all dictionaries in the library.
-        /// Ensures deserialized dictionaries have their bitmasks populated.
+        /// <para>
+        /// This method is typically invoked after deserialization to ensure that each
+        /// <see cref="DictWithMaxLength"/> instance rebuilds its internal <c>MinLength</c>,
+        /// <c>MaxLength</c>, and <c>LengthMask</c> values, which are not persisted in the
+        /// serialized form.
+        /// </para>
         /// </summary>
-        /// <param name="instance">Target dictionary container.</param>
+        /// <param name="instance">
+        /// The <see cref="DictionaryMaxlength"/> container whose dictionaries will be refreshed.
+        /// </param>
         private static void RebuildAllLengthMetadata(DictionaryMaxlength instance)
         {
             if (instance == null) return;
-
-            static void Rebuild(DictWithMaxLength dict)
-            {
-                dict?.RebuildLengthMetadata();
-            }
 
             Rebuild(instance.st_characters);
             Rebuild(instance.st_phrases);
@@ -439,17 +447,53 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads the dictionary from a CBOR file.
+        /// Rebuilds the length metadata for a single <see cref="DictWithMaxLength"/> instance.
+        /// <para>
+        /// This helper ensures that a dictionary has its <c>MinLength</c>, <c>MaxLength</c>,
+        /// and <c>LengthMask</c> fields recomputed after deserialization.
+        /// If the provided dictionary is <see langword="null"/>, the call is ignored.
+        /// </para>
         /// </summary>
-        /// <param name="relativePath">Relative path to the CBOR file.</param>
-        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
+        /// <param name="dict">
+        /// The <see cref="DictWithMaxLength"/> to rebuild. May be <see langword="null"/>.
+        /// </param>
+        private static void Rebuild(DictWithMaxLength dict)
+        {
+            dict?.RebuildLengthMetadata();
+        }
+
+        /// <summary>
+        /// Loads <see cref="DictionaryMaxlength"/> from a CBOR file and rebuilds
+        /// non-serialized length metadata (Min/Max/LengthMask) for all dictionaries.
+        /// </summary>
+        /// <param name="relativePath">
+        /// Relative path under <see cref="AppContext.BaseDirectory"/> to the CBOR file.
+        /// Default: <c>dicts/dictionary_maxlength.cbor</c>.
+        /// </param>
+        /// <returns>The hydrated <see cref="DictionaryMaxlength"/> instance.</returns>
+        /// <exception cref="FileNotFoundException">If the CBOR file cannot be found.</exception>
+        /// <exception cref="IOException">If the CBOR file cannot be read.</exception>
         public static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")
         {
+            if (string.IsNullOrEmpty(relativePath))
+                throw new ArgumentException("Path must not be null or empty.", nameof(relativePath));
+
             var baseDir = AppContext.BaseDirectory;
             var fullPath = Path.Combine(baseDir, relativePath);
+
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException("CBOR dictionary file not found.", fullPath);
+
             var bytes = File.ReadAllBytes(fullPath);
+
+            // Decode and materialize the object graph
             var cbor = CBORObject.DecodeFromBytes(bytes, CBOREncodeOptions.Default);
-            return cbor.ToObject<DictionaryMaxlength>();
+            var instance = cbor.ToObject<DictionaryMaxlength>();
+
+            // IMPORTANT: rebuild derived fields not present in serialized form
+            RebuildAllLengthMetadata(instance);
+
+            return instance;
         }
 
         /// <summary>
