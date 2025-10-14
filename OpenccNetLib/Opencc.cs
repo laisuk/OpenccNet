@@ -599,12 +599,15 @@ namespace OpenccNetLib
                     {
                         keyBuffer[0] = c0;
                         if (step == 2) keyBuffer[1] = c1;
-                        var keyStep = new string(keyBuffer, 0, step);
+
+                        string keyStep = null;
 
                         for (var di = 0; di < dictionaries.Length; di++)
                         {
                             var d = dictionaries[di];
-                            if (d.MaxLength < step || d.MinLength > step) continue;
+                            if (!d.SupportsLength(step)) continue;
+
+                            keyStep ??= new string(keyBuffer, 0, step);
                             if (!d.TryGetValue(keyStep, out var repl)) continue;
 
                             sb.Append(repl);
@@ -631,12 +634,14 @@ namespace OpenccNetLib
                         if (len <= 64 && ((lenMaskAll >> (len - 1)) & 1UL) == 0UL)
                             continue; // impossible length per mask
 
-                        var key = new string(keyBuffer, 0, len);
+                        string key = null;
 
                         for (var di = 0; di < dictionaries.Length; di++)
                         {
                             var d = dictionaries[di];
-                            if (d.MaxLength < len || d.MinLength > len) continue;
+                            if (!d.SupportsLength(len)) continue;
+
+                            key ??= new string(keyBuffer, 0, len);
                             if (!d.TryGetValue(key, out var repl)) continue;
 
                             bestMatch = repl;
@@ -718,6 +723,13 @@ namespace OpenccNetLib
 
             try
             {
+                static string BuildKey(ReadOnlySpan<char> source, char[] buffer, int length)
+                {
+                    var wordSpan = source.Slice(0, length);
+                    wordSpan.CopyTo(buffer.AsSpan(0, length));
+                    return new string(buffer, 0, length);
+                }
+
                 while (i < textLen)
                 {
                     var remaining = text.Slice(i);
@@ -729,27 +741,15 @@ namespace OpenccNetLib
                     // Descend from longest to shortest
                     for (var length = tryMaxLen; length > 0; --length)
                     {
-                        // Skip allocation if no dict can possibly match this length
-                        var anyEligible = false;
-                        foreach (var d in dictionaries)
-                        {
-                            if (d.MaxLength < length || d.MinLength > length) continue;
-                            anyEligible = true;
-                            break;
-                        }
+                        string key = null;
 
-                        if (!anyEligible) continue;
-
-                        // Build the key once for this candidate length
-                        var wordSpan = remaining.Slice(0, length);
-                        wordSpan.CopyTo(keyBuffer.AsSpan(0, length));
-                        var key = new string(keyBuffer, 0, length);
-
-                        // Probe dictionaries
+                        // Probe dictionaries lazily: only materialize the key when a dictionary
+                        // actually supports the candidate length.
                         foreach (var dictObj in dictionaries)
                         {
-                            if (dictObj.MaxLength < length || dictObj.MinLength > length) continue;
+                            if (!dictObj.SupportsLength(length)) continue;
 
+                            key ??= BuildKey(remaining, keyBuffer, length);
                             if (!dictObj.TryGetValue(key, out var match)) continue;
                             bestMatch = match;
                             bestMatchLength = length;
