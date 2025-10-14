@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using PeterO.Cbor;
 using ZstdSharp;
 
@@ -32,6 +33,20 @@ namespace OpenccNetLib
         public int MinLength { get; set; }
 
         /// <summary>
+        /// Bitmask tracking which key lengths (1..64) exist in <see cref="Dict"/>.
+        /// Helps skip impossible probes in hot lookup paths.
+        /// </summary>
+        [JsonIgnore]
+        internal ulong LengthMask { get; private set; }
+
+        /// <summary>
+        /// Tracks key lengths &gt; 64 UTF-16 units (rare) for completeness.
+        /// Allocated lazily to avoid overhead when not needed.
+        /// </summary>
+        [JsonIgnore]
+        private HashSet<int> LongLengths { get; set; }
+
+        /// <summary>
         /// Attempts to get the value associated with the specified key.
         /// Aggressively inlined for performance.
         /// </summary>
@@ -42,6 +57,88 @@ namespace OpenccNetLib
         public bool TryGetValue(string key, out string value)
         {
             return Dict.TryGetValue(key, out value);
+        }
+
+        /// <summary>
+        /// Determines whether the dictionary contains any key with the specified length.
+        /// </summary>
+        /// <param name="length">Target key length (in UTF-16 code units).</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool SupportsLength(int length)
+        {
+            if (length <= 0) return false;
+
+            var minLen = MinLength;
+            if (minLen == 0 || length < minLen || length > MaxLength)
+                return false;
+
+            if (length <= 64)
+                return ((LengthMask >> (length - 1)) & 1UL) != 0UL;
+
+            var longLengths = LongLengths;
+            return longLengths != null && longLengths.Contains(length);
+        }
+
+        /// <summary>
+        /// Rebuilds length metadata (min/max/masks) from the current dictionary keys.
+        /// </summary>
+        internal void RebuildLengthMetadata()
+        {
+            var dict = Dict;
+            if (dict == null || dict.Count == 0)
+            {
+                MaxLength = 0;
+                MinLength = 0;
+                LengthMask = 0UL;
+                LongLengths = null;
+                return;
+            }
+
+            var maxLen = 0;
+            var minLen = int.MaxValue;
+            ulong mask = 0UL;
+            HashSet<int> longLengths = null;
+
+            foreach (var key in dict.Keys)
+            {
+                if (string.IsNullOrEmpty(key)) continue;
+
+                var len = key.Length;
+                if (len > maxLen) maxLen = len;
+                if (len < minLen) minLen = len;
+
+                if (len <= 64)
+                {
+                    mask |= 1UL << (len - 1);
+                }
+                else
+                {
+                    (longLengths ??= new HashSet<int>()).Add(len);
+                }
+            }
+
+            if (maxLen == 0)
+            {
+                MaxLength = 0;
+                MinLength = 0;
+                LengthMask = 0UL;
+                LongLengths = null;
+                return;
+            }
+
+            MaxLength = maxLen;
+            MinLength = minLen == int.MaxValue ? maxLen : minLen;
+            LengthMask = mask;
+            LongLengths = longLengths;
+        }
+
+        /// <summary>
+        /// Sets the length metadata that was precomputed during dictionary load.
+        /// </summary>
+        internal void SetLengthMetadata(ulong mask, HashSet<int> longLengths)
+        {
+            LengthMask = mask;
+            LongLengths = longLengths;
         }
 
         /// <summary>
@@ -115,7 +212,9 @@ namespace OpenccNetLib
                 using (var inputStream = File.OpenRead(fullPath))
                 using (var decompressionStream = new DecompressionStream(inputStream))
                 {
-                    return JsonSerializer.Deserialize<DictionaryMaxlength>(decompressionStream);
+                    var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(decompressionStream);
+                    RebuildAllLengthMetadata(instance);
+                    return instance;
                 }
             }
             catch (Exception ex)
@@ -140,7 +239,9 @@ namespace OpenccNetLib
                     throw new FileNotFoundException($"JSON dictionary file not found: {fullPath}");
 
                 var json = File.ReadAllText(fullPath);
-                return JsonSerializer.Deserialize<DictionaryMaxlength>(json);
+                var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(json);
+                RebuildAllLengthMetadata(instance);
+                return instance;
             }
             catch (Exception ex)
             {
@@ -201,6 +302,8 @@ namespace OpenccNetLib
                 ts_punctuations = LoadFile(Path.Combine(baseDir, "TSPunctuations.txt"))
             };
 
+            RebuildAllLengthMetadata(instance);
+
             return instance;
         }
 
@@ -215,6 +318,8 @@ namespace OpenccNetLib
             var dict = new Dictionary<string, string>(StringComparer.Ordinal);
             int maxLength = 0; // start at 0 so empty dict stays 0
             int minLength = int.MaxValue;
+            ulong lengthMask = 0UL;
+            HashSet<int> longLengths = null;
 
             if (!File.Exists(path)) throw new FileNotFoundException($"Dictionary file not found: {path}");
 
@@ -257,8 +362,21 @@ namespace OpenccNetLib
                 // Only add if both key and value are non-empty after trimming
                 if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value)) continue;
                 dict[key] = value;
-                maxLength = Math.Max(maxLength, key.Length);
-                minLength = Math.Min(minLength, key.Length);
+
+                var keyLength = key.Length;
+                if (keyLength == 0) continue;
+
+                if (keyLength > maxLength) maxLength = keyLength;
+                if (keyLength < minLength) minLength = keyLength;
+
+                if (keyLength <= 64)
+                {
+                    lengthMask |= 1UL << (keyLength - 1);
+                }
+                else
+                {
+                    (longLengths ??= new HashSet<int>()).Add(keyLength);
+                }
                 // Optional: Handle lines that do not contain a tab separator if needed
             }
 
@@ -266,6 +384,12 @@ namespace OpenccNetLib
             {
                 maxLength = 0;
                 minLength = 0;
+                lengthMask = 0UL;
+                longLengths = null;
+            }
+            else if (minLength == int.MaxValue)
+            {
+                minLength = maxLength;
             }
 
             var d = new DictWithMaxLength
@@ -275,7 +399,43 @@ namespace OpenccNetLib
                 MinLength = minLength
             };
 
+            d.SetLengthMetadata(lengthMask, longLengths);
+
             return d;
+        }
+
+        /// <summary>
+        /// Recomputes the per-dictionary length metadata for all dictionaries in the library.
+        /// Ensures deserialized dictionaries have their bitmasks populated.
+        /// </summary>
+        /// <param name="instance">Target dictionary container.</param>
+        private static void RebuildAllLengthMetadata(DictionaryMaxlength instance)
+        {
+            if (instance == null) return;
+
+            static void Rebuild(DictWithMaxLength dict)
+            {
+                dict?.RebuildLengthMetadata();
+            }
+
+            Rebuild(instance.st_characters);
+            Rebuild(instance.st_phrases);
+            Rebuild(instance.ts_characters);
+            Rebuild(instance.ts_phrases);
+            Rebuild(instance.tw_phrases);
+            Rebuild(instance.tw_phrases_rev);
+            Rebuild(instance.tw_variants);
+            Rebuild(instance.tw_variants_rev);
+            Rebuild(instance.tw_variants_rev_phrases);
+            Rebuild(instance.hk_variants);
+            Rebuild(instance.hk_variants_rev);
+            Rebuild(instance.hk_variants_rev_phrases);
+            Rebuild(instance.jps_characters);
+            Rebuild(instance.jps_phrases);
+            Rebuild(instance.jp_variants);
+            Rebuild(instance.jp_variants_rev);
+            Rebuild(instance.st_punctuations);
+            Rebuild(instance.ts_punctuations);
         }
 
         /// <summary>
