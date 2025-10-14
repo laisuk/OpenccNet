@@ -221,7 +221,7 @@ replacement and optimized for both CLI and GUI use.
 - Improved performance with thread-local `StringBuilder` caching
 - Reduced memory usage via `ArrayPool<char>` for dictionary keys
 - Adaptive parallelization for large text inputs
-- Preloaded dictionary roundlists for faster first-time conversion
+- Preloaded dictionary round-lists for faster first-time conversion
 - Enhanced UTF-8 range heuristics for Chinese code detection
 - Internal refactoring for GC and allocation efficiency
 
