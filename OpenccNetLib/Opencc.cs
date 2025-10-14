@@ -826,71 +826,57 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Splits the input span into ranges based on delimiter characters.
+        /// Splits the input span into contiguous ranges of non-delimiter and delimiter segments.
+        /// <para>
+        /// This implementation uses a fast bit-level <see cref="IsDelimiter"/> check
+        /// for compatibility and performance on .NET Standard 2.0.
+        /// </para>
         /// </summary>
-        /// <param name="input">The input character span.</param>
+        /// <param name="input">The text span to segment.</param>
         /// <param name="inclusive">
-        /// If true, each segment includes the delimiter (e.g. "你好，").
-        /// If false (default), each segment excludes the delimiter and delimiters
-        /// are returned as their own segment.
+        /// If <c>true</c>, each delimiter is included at the end of its preceding segment;
+        /// otherwise delimiters are emitted as separate single-character ranges.
         /// </param>
         /// <returns>
-        /// A list of <see cref="Range"/> values representing half-open index intervals
-        /// [Start, End) covering all contiguous segments of <paramref name="input"/>.
+        /// A list of <see cref="Range"/> objects representing half-open intervals [Start, End).
         /// </returns>
         private static List<Range> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
         {
             var length = input.Length;
-
-            if (input.IsEmpty)
+            if (length == 0)
                 return new List<Range>();
 
-            // var ranges = new List<Range>(Math.Max(8, length / 10));
-            // Heuristic: ~25% delimiters.
-            // inclusive=false  → ~ 2*d + 1 ≈ 0.50 * length
-            // inclusive=true   → ~ d + 1   ≈ 0.25 * length
-            var estSegments = inclusive
-                ? (length >> 2) + 1 // length * 0.25 + 1
-                : (length >> 1) + 1; // length * 0.50 + 1
-
-            // Clamp to [8, length] to avoid over/under allocation
+            // Heuristic: inclusive ≈ 25 % delimiters, exclusive ≈ 50 %.
+            var estSegments = inclusive ? (length >> 2) + 1 : (length >> 1) + 1;
             if (estSegments < 8) estSegments = 8;
             if (estSegments > length) estSegments = length;
 
             var ranges = new List<Range>(estSegments);
             var currentStart = 0;
 
-            // Use spans for delimiter lookup if Delimiters is a collection
             for (var i = 0; i < length; i++)
             {
-                if (!IsDelimiter(input[i]))
-                    continue;
+                if (!IsDelimiter(input[i])) continue;
 
                 if (inclusive)
                 {
-                    // Include delimiter in current segment
+                    // include delimiter in same segment
                     ranges.Add(new Range(currentStart, i + 1));
                 }
                 else
                 {
-                    // Add segment before delimiter (if any)
                     if (i > currentStart)
-                    {
-                        ranges.Add(new Range(currentStart, i));
-                    }
+                        ranges.Add(new Range(currentStart, i)); // text before delimiter
 
-                    // Add delimiter as separate segment
-                    ranges.Add(new Range(i, i + 1));
+                    ranges.Add(new Range(i, i + 1)); // delimiter itself
                 }
 
                 currentStart = i + 1;
             }
 
-            // Add remaining segment if any
+            // Add trailing range if text doesn't end with a delimiter
             if (currentStart < length)
-            {
                 ranges.Add(new Range(currentStart, length));
-            }
 
             return ranges;
         }
