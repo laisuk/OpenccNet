@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-// using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using PeterO.Cbor;
 using ZstdSharp;
 
@@ -18,30 +18,35 @@ namespace OpenccNetLib
         /// <summary>
         /// The mapping of keys to values for conversion.
         /// </summary>
+        [JsonInclude]
         public Dictionary<string, string> Dict { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
         /// <summary>
         /// The maximum length of any key in the dictionary.
         /// Used for optimizing longest-match lookups.
         /// </summary>
+        [JsonInclude]
         public int MaxLength { get; set; }
 
         /// <summary>
         /// The minimum length of any key in the dictionary.
         /// Used for optimizing longest-match lookups.
         /// </summary>
+        [JsonInclude]
         public int MinLength { get; set; }
 
         /// <summary>
         /// Bitmask tracking which key lengths (1..64) exist in <see cref="Dict"/>.
         /// Helps skip impossible probes in hot lookup paths.
         /// </summary>
+        [JsonInclude]
         public ulong LengthMask { get; set; }
 
         /// <summary>
         /// Tracks key lengths &gt; 64 UTF-16 units (rare) for completeness.
         /// Allocated lazily to avoid overhead when not needed.
         /// </summary>
+        [JsonInclude]
         public HashSet<int> LongLengths { get; set; }
 
         /// <summary>
@@ -50,6 +55,7 @@ namespace OpenccNetLib
         ///  - 1-char for BMP
         ///  - 2-char for surrogate-pair (high+low)
         /// </summary>
+        [JsonInclude]
         public Dictionary<string, ulong> StarterLenMask { get; set; }
 
         /// <summary>
@@ -362,7 +368,7 @@ namespace OpenccNetLib
 
         private static void BuildStarterLenMask(DictWithMaxLength d)
         {
-            if (d == null || d.Dict == null || d.Dict.Count == 0)
+            if (d?.Dict == null || d.Dict.Count == 0)
                 return;
 
             var map = new Dictionary<string, ulong>(StringComparer.Ordinal);
@@ -431,7 +437,8 @@ namespace OpenccNetLib
         /// <param name="path">The output file path.</param>
         public static void SaveCbor(string path)
         {
-            var cbor = CBORObject.FromObject(FromDicts());
+            var instance = (FromDicts());
+            var cbor = CBORObject.FromObject(instance);
             File.WriteAllBytes(path, cbor.EncodeToBytes());
         }
 
