@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
+// using System.Text.Json.Serialization;
 using PeterO.Cbor;
 using ZstdSharp;
 
@@ -36,15 +36,21 @@ namespace OpenccNetLib
         /// Bitmask tracking which key lengths (1..64) exist in <see cref="Dict"/>.
         /// Helps skip impossible probes in hot lookup paths.
         /// </summary>
-        [JsonIgnore]
-        private ulong LengthMask { get; set; }
+        public ulong LengthMask { get; set; }
 
         /// <summary>
         /// Tracks key lengths &gt; 64 UTF-16 units (rare) for completeness.
         /// Allocated lazily to avoid overhead when not needed.
         /// </summary>
-        [JsonIgnore]
-        private HashSet<int> LongLengths { get; set; }
+        public HashSet<int> LongLengths { get; set; }
+
+        /// <summary>
+        /// Per-starter mask of key lengths (1 to =64) present for that starter.
+        /// Key is UTF-16 starter:
+        ///  - 1-char for BMP
+        ///  - 2-char for surrogate-pair (high+low)
+        /// </summary>
+        public Dictionary<string, ulong> StarterLenMask { get; set; }
 
         /// <summary>
         /// Attempts to get the value associated with the specified key.
@@ -80,64 +86,9 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Rebuilds length metadata (min/max/masks) from the current dictionary keys.
-        /// </summary>
-        internal void RebuildLengthMetadata()
-        {
-            var dict = Dict;
-            if (dict == null || dict.Count == 0)
-            {
-                MaxLength = 0;
-                MinLength = 0;
-                LengthMask = 0UL;
-                LongLengths = null;
-                return;
-            }
-
-            var maxLen = 0;
-            var minLen = int.MaxValue;
-            var mask = 0UL;
-            HashSet<int> longLengths = null;
-
-            foreach (var key in dict.Keys)
-            {
-                if (string.IsNullOrEmpty(key)) continue;
-
-                var len = key.Length;
-                if (len > maxLen) maxLen = len;
-                if (len < minLen) minLen = len;
-
-                if (len <= 64)
-                {
-                    mask |= 1UL << (len - 1);
-                }
-                else
-                {
-                    if (longLengths == null)
-                        longLengths = new HashSet<int>();
-
-                    longLengths.Add(len);
-                }
-            }
-
-            if (maxLen == 0)
-            {
-                MaxLength = 0;
-                MinLength = 0;
-                LengthMask = 0UL;
-                LongLengths = null;
-                return;
-            }
-
-            MaxLength = maxLen;
-            MinLength = minLen == int.MaxValue ? maxLen : minLen;
-            LengthMask = mask;
-            LongLengths = longLengths;
-        }
-
-        /// <summary>
         /// Sets the length metadata that was precomputed during dictionary load.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetLengthMetadata(ulong mask, HashSet<int> longLengths)
         {
             LengthMask = mask;
@@ -216,7 +167,6 @@ namespace OpenccNetLib
                 using (var decompressionStream = new DecompressionStream(inputStream))
                 {
                     var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(decompressionStream);
-                    RebuildAllLengthMetadata(instance);
                     return instance;
                 }
             }
@@ -243,7 +193,6 @@ namespace OpenccNetLib
 
                 var json = File.ReadAllText(fullPath);
                 var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(json);
-                RebuildAllLengthMetadata(instance);
                 return instance;
             }
             catch (Exception ex)
@@ -305,7 +254,7 @@ namespace OpenccNetLib
                 ts_punctuations = LoadFile(Path.Combine(baseDir, "TSPunctuations.txt"))
             };
 
-            RebuildAllLengthMetadata(instance);
+            // RebuildAllLengthMetadata(instance);
 
             return instance;
         }
@@ -319,16 +268,16 @@ namespace OpenccNetLib
         private static DictWithMaxLength LoadFile(string path)
         {
             var dict = new Dictionary<string, string>(StringComparer.Ordinal);
-            int maxLength = 0; // start at 0 so empty dict stays 0
-            int minLength = int.MaxValue;
-            ulong lengthMask = 0UL;
+            var maxLength = 0; // start at 0 so empty dict stays 0
+            var minLength = int.MaxValue;
+            var lengthMask = 0UL;
             HashSet<int> longLengths = null;
 
             if (!File.Exists(path)) throw new FileNotFoundException($"Dictionary file not found: {path}");
 
             foreach (var line in File.ReadLines(path))
             {
-                ReadOnlySpan<char> lineSpan = line.AsSpan().Trim();
+                var lineSpan = line.AsSpan().Trim();
 
                 // Skip empty lines, whitespace-only lines, or comment lines
                 if (lineSpan.IsEmpty || lineSpan.IsWhiteSpace() || (lineSpan.Length > 0 && lineSpan[0] == '#'))
@@ -340,8 +289,8 @@ namespace OpenccNetLib
                 var tabIndex = lineSpan.IndexOf('\t');
 
                 if (tabIndex == -1) continue;
-                ReadOnlySpan<char> keySpan = lineSpan.Slice(0, tabIndex);
-                ReadOnlySpan<char> valueFullSpan = lineSpan.Slice(tabIndex + 1);
+                var keySpan = lineSpan.Slice(0, tabIndex);
+                var valueFullSpan = lineSpan.Slice(tabIndex + 1);
 
                 // Find the index of the first space in the value part
                 var firstSpaceIndex = valueFullSpan.IndexOf(' ');
@@ -406,60 +355,40 @@ namespace OpenccNetLib
             };
 
             d.SetLengthMetadata(lengthMask, longLengths);
+            BuildStarterLenMask(d); // 👈 slot in right here
 
             return d;
         }
 
-        /// <summary>
-        /// Recomputes the per-dictionary length metadata for all dictionaries in the library.
-        /// <para>
-        /// This method is typically invoked after deserialization to ensure that each
-        /// <see cref="DictWithMaxLength"/> instance rebuilds its internal <c>MinLength</c>,
-        /// <c>MaxLength</c>, and <c>LengthMask</c> values, which are not persisted in the
-        /// serialized form.
-        /// </para>
-        /// </summary>
-        /// <param name="instance">
-        /// The <see cref="DictionaryMaxlength"/> container whose dictionaries will be refreshed.
-        /// </param>
-        private static void RebuildAllLengthMetadata(DictionaryMaxlength instance)
+        private static void BuildStarterLenMask(DictWithMaxLength d)
         {
-            if (instance == null) return;
+            if (d == null || d.Dict == null || d.Dict.Count == 0)
+                return;
 
-            Rebuild(instance.st_characters);
-            Rebuild(instance.st_phrases);
-            Rebuild(instance.ts_characters);
-            Rebuild(instance.ts_phrases);
-            Rebuild(instance.tw_phrases);
-            Rebuild(instance.tw_phrases_rev);
-            Rebuild(instance.tw_variants);
-            Rebuild(instance.tw_variants_rev);
-            Rebuild(instance.tw_variants_rev_phrases);
-            Rebuild(instance.hk_variants);
-            Rebuild(instance.hk_variants_rev);
-            Rebuild(instance.hk_variants_rev_phrases);
-            Rebuild(instance.jps_characters);
-            Rebuild(instance.jps_phrases);
-            Rebuild(instance.jp_variants);
-            Rebuild(instance.jp_variants_rev);
-            Rebuild(instance.st_punctuations);
-            Rebuild(instance.ts_punctuations);
-        }
+            var map = new Dictionary<string, ulong>(StringComparer.Ordinal);
 
-        /// <summary>
-        /// Rebuilds the length metadata for a single <see cref="DictWithMaxLength"/> instance.
-        /// <para>
-        /// This helper ensures that a dictionary has its <c>MinLength</c>, <c>MaxLength</c>,
-        /// and <c>LengthMask</c> fields recomputed after deserialization.
-        /// If the provided dictionary is <see langword="null"/>, the call is ignored.
-        /// </para>
-        /// </summary>
-        /// <param name="dict">
-        /// The <see cref="DictWithMaxLength"/> to rebuild. May be <see langword="null"/>.
-        /// </param>
-        private static void Rebuild(DictWithMaxLength dict)
-        {
-            dict?.RebuildLengthMetadata();
+            foreach (var key in d.Dict.Keys)
+            {
+                if (string.IsNullOrEmpty(key)) continue;
+                var len = key.Length;
+                if (len <= 0) continue;
+
+                string starter;
+                if (len >= 2 && char.IsHighSurrogate(key[0]) && char.IsLowSurrogate(key[1]))
+                    starter = key.Substring(0, 2);
+                else
+                    starter = key.Substring(0, 1);
+
+                if (!map.TryGetValue(starter, out var mask))
+                    mask = 0UL;
+
+                if ((uint)len - 1u < 64u)
+                    mask |= 1UL << (len - 1);
+
+                map[starter] = mask;
+            }
+
+            d.StarterLenMask = map;
         }
 
         /// <summary>
@@ -491,7 +420,7 @@ namespace OpenccNetLib
             var instance = cbor.ToObject<DictionaryMaxlength>();
 
             // IMPORTANT: rebuild derived fields not present in serialized form
-            RebuildAllLengthMetadata(instance);
+            // RebuildAllLengthMetadata(instance);
 
             return instance;
         }
@@ -519,7 +448,7 @@ namespace OpenccNetLib
         /// Serializes the dictionary to JSON, compresses it with Zstd, and saves to a file.
         /// </summary>
         /// <param name="path">The output file path.</param>
-        public static void SaveCompressed(string path)
+        public static void SaveJsonCompressed(string path)
         {
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(FromDicts());
 
@@ -535,7 +464,7 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="path">The path to the compressed file.</param>
         /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
-        public static DictionaryMaxlength LoadCompressed(string path)
+        public static DictionaryMaxlength LoadJsonCompressed(string path)
         {
             var compressed = File.ReadAllBytes(path);
 

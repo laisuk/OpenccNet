@@ -57,7 +57,7 @@ internal static class DictgenCommand
             switch (format.ToLowerInvariant())
             {
                 case "zstd":
-                    DictionaryLib.SaveCompressed(outputFile);
+                    DictionaryLib.SaveJsonCompressed(outputFile);
                     break;
                 case "cbor":
                     DictionaryLib.SaveCbor(outputFile);

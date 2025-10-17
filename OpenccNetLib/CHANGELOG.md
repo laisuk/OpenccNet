@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.2.1-Preview] – 2025-10-14
+## [1.2.1-Preview] – 2025-10-17
 
 ### Changed
 
@@ -17,52 +17,61 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Converted all dictionary collections from `List<DictWithMaxLength>` to fixed `DictWithMaxLength[]` arrays for improved
   cache locality, zero heap resizing, and reduced GC pressure.
 - `DictRefs` now stores dictionaries in array form and caches per-round `MaxLength` values for faster filtering.
-- **Astral-safe starter gating:** introduced `StarterUnion.GetAt(c0, c1, hasSecond, …)` which
-    - Detects surrogate pairs and returns `starterUnits` (1 for BMP, 2 for valid pairs).
+- **Astral-safe starter gating:** implemented `StarterUnion.GetAt(c0, c1, hasSecond, …)` which
+    - Detects surrogate pairs and reports `starterUnits` (1 for BMP, 2 for valid pairs).
     - Clears `len == 1` bits in the length mask for non-BMP starters.
     - Exposes `hasStarter`, `cap`, `mask`, and `minLen` in one inlined call.
+- **Dense-table union from pre-computed masks:**
+    - Added `BuildFromStarterMasks()` to construct `StarterUnion` directly from each dictionary’s `StarterLenMask`
+      instead of rescanning all keys, cutting dictionary-build time by **~10 ms** for large lexicons.
+    - Each starter bucket uses the first UTF-16 unit (`c0`) as index; surrogate pairs share their high-surrogate bucket
+      (safe for current OpenCC data where astral keys are single scalars).
 - Hot loop tightened:
-    - Switched from `Get(char, …)` to `GetAt(…)` and clamped the search lower bound to `max(minLen, starterUnits)` so
-      astral starters never probe `len == 1`.
+    - Switched from `Get(char, …)` to `GetAt(…)` and clamped the search lower bound to  
+      `max(minLen, starterUnits)` so astral starters never probe `len == 1`.
     - Added pre-computed `IsHs[]` / `IsLs[]` lookup tables (U+D800–DBFF / U+DC00–DFFF) to remove per-iteration range
       checks.
-- Introduced **per-dictionary length-mask gating** (`SupportsLength`) for `DictWithMaxLength`, allowing fast O(1)
+- Introduced **per-dictionary length-mask gating** (`SupportsLength`) for `DictWithMaxLength`, enabling fast O(1)
   filtering of irrelevant key lengths and reducing allocations.
-- Added automatic `RebuildAllLengthMetadata()` call after CBOR deserialization (`FromCbor`) to ensure all `MinLength`,
-  `MaxLength`, and `LengthMask` values are correctly restored.
-- Rewrote `ConvertBy()` for clarity and .NET Standard 2.0 safety:
-    - Removed C# 8 syntax (`??=`, static local functions).
-    - Simplified logic used by `zhoCheck()` to handle only fixed-length (1 or 2) dictionary lookups.
-- Retained the original **bit-level `IsDelimiter()`** logic for optimal performance on .NET Standard 2.0, reverting from
-  Codex’s suggested nested while-loop implementation.
+- Added automatic `RebuildAllLengthMetadata()` after CBOR deserialization (`FromCbor`) to restore  
+  `MinLength`, `MaxLength`, and `LengthMask`.
+- Rewrote `ConvertBy()` for clarity and C# 7.3 safety:
+    - Removed C# 8 syntax (`??=`, static locals).
+    - Simplified logic used by `zhoCheck()` to handle only fixed-length (1 or 2) lookups.
+- Retained original bit-level `IsDelimiter()` logic for optimal .NET Standard 2.0 performance.
+- Simplified bit-scan helpers: replaced `BitOperations` dependency with compact inlined loops  
+  (`LowestLen()` / `HighestLen()`) — faster for small masks and fully portable to older runtimes.
 
 ### Fixed
 
-- Corrected an issue in `ConvertByUnion()` where longer phrase matches were truncated (`len` was incorrectly taken from
+- Corrected an issue in `ConvertByUnion()` where longer phrase matches were truncated (`len` incorrectly taken from
   `step`), restoring full conversions such as “切换 → 切換” and “转换 → 轉換”.
-- Verified astral / non-BMP starter behavior and confirmed parity with opencc-fmmseg (Rust) implementation.
+- Verified astral / non-BMP starter behavior and confirmed parity with the Rust `opencc-fmmseg` implementation.
 
 ### Performance
 
 - Overall **5 – 12 ms faster** on 3 M-character conversions due to:
     - Array-based dictionary layout.
     - Union-slot caching and per-dictionary bitmask gating.
+    - Pre-deserialized mask union replacing full key scans (≈ 10 ms saved on build).
     - Eliminated transient string allocations during dictionary probing.
 
 ### Deprecated
 
 - `StarterUnion.Get(char, out cap, out mask)` and  
-  `Get(char, out cap, out mask, out minLen)` are now marked **[Obsolete]**.  
-  They remain thin shims for non-critical callers; conversion loops use `GetAt()` internally.
+  `Get(char, out cap, out mask, out minLen)` are marked **[Obsolete]**.  
+  They remain thin shims for compatibility; conversion loops now use `GetAt()`.
 
 ### Docs
 
 - Updated XML documentation across `ConversionPlanCache`, `DictRefs`, `DictWithMaxLength`, and `StarterUnion` to
   describe:
     - The new array-based caching model.
-    - The astral-safe `GetAt()` API.
+    - Astral-safe `GetAt()` behavior and surrogate-pair gating.
+    - `BuildFromStarterMasks()` usage and performance advantages.
+    - The loop-based `LowestLen()` / `HighestLen()` bit-scan helpers.
     - Per-dictionary length-mask (`SupportsLength`) behavior.
-    - The simplified, C# 7.3-compatible `ConvertBy()` implementation.
+    - Simplified, C# 7.3-compatible `ConvertBy()` implementation.
 
 ---
 

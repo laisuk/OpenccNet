@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.2.0</Version>
+        <Version>1.2.1</Version>
         <Authors>laisuk</Authors>
         <Description>
             OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
@@ -20,36 +20,25 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>OpenccNet Library</Title>
-        <PackageReleaseNotes>OpenccNetLib v1.2.0
+        <PackageReleaseNotes>OpenccNetLib v1.2.1
 
-            This release focuses on performance and code simplification.
-
-            Benchmarks (BenchmarkDotNet 0.15.2, .NET 9.0.8, Win11, X64 RyuJIT AVX2; IterationCount=10, WarmupCount=1):
-            - 100 chars: 2.49–2.50 µs, ~5.5 KB allocated
-            - 1,000 chars: ~57.8 µs, ~84.0 KB allocated
-            - 10,000 chars: ~305.9 µs, ~798.7 KB allocated
-            - 100,000 chars: ~6.74 ms, ~8.39 MB allocated
-            - 1,000,000 chars: ~65.17 ms, ~84.93 MB allocated
-            Compared to v1.0.3 FMM-only: up to ~4.3× faster on short inputs and ~70% less allocation across sizes.
+            This release focuses on performance, code simplification, and astral-safe text handling.
 
             Highlights
-            - Added StarterUnion with union + plan caching (ConversionPlanCache) → reduces big array churn, fewer Gen2/LOH collections.
-            - O(1) starter metadata: per-starter cap + 64-bit length mask + minLen → skips impossible probe lengths.
-            - Correct longest-match behavior: single-grapheme fast path only when no longer candidates exist.
-            - Surrogate-aware emit path (.NET Standard 2.0 safe) and astral-safe indexing.
-            - Avalonia GUI memory stabilized (~250 MB vs. prior ~400 MB under similar workloads).
-
-            Technical Notes
-            - Removed legacy StarterCapTextElem and BuildStarterIndex path (now redundant).
-            - Primary cache: (config, punctuation) → DictRefs (with per-round unions).
-            - Secondary cache: round layout (BaseDictId[]) → shared StarterUnion.
-            - Mask+cap+minLen clamping reduces probe attempts and avoids tiny string churn.
-            - Reuse of StringBuilder + ArrayPool&lt;char&gt; lowers GC pressure.
+            - Introduced StarterUnion with UnionKey-based caching (ConversionPlanCache) → fewer allocations and faster startup.
+            - Added BuildFromStarterMasks() to construct StarterUnion directly from precomputed per-starter length masks,
+            eliminating full key scans and saving ~10 ms on large dictionary builds.
+            - O(1) per-starter metadata: 64-bit length mask + minLen + cap → skips impossible probe lengths instantly.
+            - Astral-safe GetAt(c0, c1, hasSecond, …) detects surrogate pairs, clamps len == 1, and ensures full non-BMP safety.
+            - Shared high-surrogate (c0) indexing for astral characters (st/ts_characters) → dense, cache-friendly tables.
+            - Simplified bit helpers (LowestLen / HighestLen) with compact inlined loops — faster than BitOperations for small masks.
+            - Corrected longest-match behavior; single-grapheme fast path triggers only when no longer candidates exist.
+            - .NET Standard 2.0-compatible code throughout: removed “??=”, static locals, and lambda captures.
 
             Project: https://github.com/laisuk/OpenccNet
         </PackageReleaseNotes>
-        <AssemblyVersion>1.2.0.0</AssemblyVersion>
-        <FileVersion>1.2.0.0</FileVersion>
+        <AssemblyVersion>1.2.1.0</AssemblyVersion>
+        <FileVersion>1.2.1.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
@@ -79,7 +68,7 @@
             <PackageCopyToOutput>true</PackageCopyToOutput>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        
+
         <!-- 2) Explicitly place third-party license(s) right under dicts/ -->
         <None Include="dicts\LICENSE">
             <Pack>true</Pack>
