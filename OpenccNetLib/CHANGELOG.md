@@ -47,6 +47,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Corrected an issue in `ConvertByUnion()` where longer phrase matches were truncated (`len` incorrectly taken from
   `step`), restoring full conversions such as “切换 → 切換” and “转换 → 轉換”.
 - Verified astral / non-BMP starter behavior and confirmed parity with the Rust `opencc-fmmseg` implementation.
+- Fixed a packaging issue in v1.2.0 where the third-party `dicts\LICENSE` file was copied as a **folder** instead of a file,
+  causing MSBuild copy errors (`MSB3024`) in some user builds.
+    - Starting with **v1.2.1**, the file is now named **`LICENSE.txt`**, ensuring a clean and unambiguous layout.
+    - The change is fully backward compatible:  
+      existing `dicts\LICENSE\` folders from older builds can safely coexist with the new `dicts\LICENSE.txt` file.  
+      Users may delete the old folder manually or simply run `dotnet clean` / `dotnet restore` to refresh their outputs.
+    - The new layout guarantees correct packaging and publishing for all future builds.
 
 ### Performance
 
