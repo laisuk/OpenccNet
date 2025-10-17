@@ -336,7 +336,10 @@ Options:
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
+- This project is licensed under the MIT License. See
+  the [LICENSE](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/LICENSE) file for details.
+- See [THIRD_PARTY_NOTICES.md](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/THIRD_PARTY_NOTICES.md)
+  for bundled OpenCC lexicons (_Apache License 2.0_).
 
 ---
 
