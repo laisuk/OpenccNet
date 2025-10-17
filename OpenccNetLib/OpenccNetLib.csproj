@@ -16,7 +16,6 @@
         <PackageProjectUrl>https://github.com/laisuk/OpenccNet</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Title>OpenccNet Library</Title>
@@ -61,18 +60,10 @@
 
     <!-- Dictionary files - included in package and copied to output -->
     <ItemGroup>
-        <!-- 1) All dict files that have extensions -->
-        <None Include="dicts\**\*.*" Exclude="dicts\LICENSE">
+        <!-- Include all files under dicts (with extensions) -->
+        <None Include="dicts\**\*.*">
             <Pack>true</Pack>
             <PackagePath>contentFiles\any\any\dicts\%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
-            <PackageCopyToOutput>true</PackageCopyToOutput>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-
-        <!-- 2) Explicitly place third-party license(s) right under dicts/ -->
-        <None Include="dicts\LICENSE">
-            <Pack>true</Pack>
-            <PackagePath>contentFiles\any\any\dicts</PackagePath>
             <PackageCopyToOutput>true</PackageCopyToOutput>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
