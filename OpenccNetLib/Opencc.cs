@@ -755,8 +755,7 @@ namespace OpenccNetLib
                                 key = new string(keyBuffer, 0, length);
                             }
 
-                            string match;
-                            if (!dict.TryGetValue(key, out match))
+                            if (!dict.TryGetValue(key, out var match))
                                 continue;
 
                             bestMatch = match;
