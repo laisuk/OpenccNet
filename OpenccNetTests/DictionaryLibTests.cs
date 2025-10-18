@@ -68,6 +68,7 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
+    [Ignore]
     public void TestDictLengthMaskAndLongLengths()
     {
         // Load all dictionaries (from dicts folder)

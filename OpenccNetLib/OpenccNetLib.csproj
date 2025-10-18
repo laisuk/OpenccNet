@@ -24,15 +24,19 @@
             This release focuses on performance, code simplification, and astral-safe text handling.
 
             Highlights
-            - Introduced StarterUnion with UnionKey-based caching (ConversionPlanCache) → fewer allocations and faster startup.
-            - Added BuildFromStarterMasks() to construct StarterUnion directly from precomputed per-starter length masks,
+            - 🚀 **Pre-chunked Parallel Conversion**: Balanced `SplitRanges` batching (128–512 ranges per chunk) now feeds `Parallel.For`
+            with evenly sized tasks — achieving >50% faster conversion on S2T workloads (1M chars → ~21 ms on i5-13400).
+            - 🧩 Added `Chunk` struct and `BuildChunks()` helper for predictable, cache-friendly load balancing with per-chunk
+            `StringBuilder` buffers (slightly higher memory usage +3 MB, well worth the speedup).
+            - 🧠 Introduced `StarterUnion` with `UnionKey`-based caching in `ConversionPlanCache` — fewer allocations and faster startup.
+            - ⚙️ Added `BuildFromStarterMasks()` to construct `StarterUnion` directly from precomputed per-starter length masks,
             eliminating full key scans and saving ~10 ms on large dictionary builds.
-            - O(1) per-starter metadata: 64-bit length mask + minLen + cap → skips impossible probe lengths instantly.
-            - Astral-safe GetAt(c0, c1, hasSecond, …) detects surrogate pairs, clamps len == 1, and ensures full non-BMP safety.
-            - Shared high-surrogate (c0) indexing for astral characters (st/ts_characters) → dense, cache-friendly tables.
-            - Simplified bit helpers (LowestLen / HighestLen) with compact inlined loops — faster than BitOperations for small masks.
-            - Corrected longest-match behavior; single-grapheme fast path triggers only when no longer candidates exist.
-            - .NET Standard 2.0-compatible code throughout: removed “??=”, static locals, and lambda captures.
+            - 🧮 O(1) per-starter metadata: 64-bit length mask + minLen + cap → skips impossible probe lengths instantly.
+            - 🈚 Astral-safe `GetAt(c0, c1, hasSecond, …)` detects surrogate pairs, clamps `len == 1`, and ensures full non-BMP safety.
+            - 🗜️ Shared high-surrogate (c0) indexing for astral characters (st/ts_characters) → dense, cache-friendly tables.
+            - 🔧 Simplified bit helpers (`LowestLen` / `HighestLen`) using compact inlined loops — faster than `BitOperations` for small masks.
+            - ✅ Corrected longest-match behavior; single-grapheme fast path now triggers only when no longer candidates exist.
+            - 💡 .NET Standard 2.0-compatible throughout — removed “??=”, static locals, and lambda captures for full runtime portability.
 
             Project: https://github.com/laisuk/OpenccNet
         </PackageReleaseNotes>

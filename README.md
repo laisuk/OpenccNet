@@ -175,38 +175,61 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - Uses static dictionary caching and thread-local buffers for high throughput.
 - Suitable for batch and parallel processing scenarios.
 
-### 📊 Benchmark Results – OpenccNetLib 1.2.0
+### 🚀 Performance Benchmark for OpenccNetLib 1.2.1
 
-> BenchmarkDotNet v0.15.4 · .NET 9.0.9 · Windows 11 · RyuJIT AVX2  
-> Test: `BM_Convert_Sized` · Warmup + 10 Iterations
-> Config: `s2t`
+#### `S2T` Conversion (after Pre-Chunk Optimization)
 
-| Input Size | Mean Time | Gen0 (per 1k ops) |     Gen1 |    Gen2 | Allocated Memory |
-|-----------:|----------:|------------------:|---------:|--------:|-----------------:|
-|        100 |   2.57 µs |             0.523 |        – |       – |          5.36 KB |
-|      1,000 |  65.27 µs |             8.789 |        - |       – |         90.37 KB |
-|     10,000 | 221.82 µs |            81.543 |   22.461 |       – |        827.37 KB |
-|    100,000 |   6.23 ms |           914.863 |  406.250 |  187.50 |      8,213.83 KB |
-|  1,000,000 |  46.15 ms |          8,090.91 | 2,363.64 | 727.273 |     83,288.56 KB |
+**Environment**
+
+| Item                | Value                                   |
+|---------------------|-----------------------------------------|
+| **BenchmarkDotNet** | v0.15.4                                 |
+| **OS**              | Windows 11 (24H2 / Build 26100.6899)    |
+| **CPU**             | Intel Core i5-13400 (10C/16T @ 2.5 GHz) |
+| **.NET SDK**        | 9.0.306                                 |
+| **Runtime**         | .NET 9.0.10 (X64 RyuJIT x86-64-v3)      |
+| **Iterations**      | 10 (+ 1 warm-up)                        |
+
+| Method               | Size          | Mean                         | Error     | StdDev    | Min          | Max          | Rank | Gen0     | Gen1     | Gen2   | Allocated        |
+|----------------------|---------------|------------------------------|-----------|-----------|--------------|--------------|------|----------|----------|--------|------------------|
+| **BM_Convert_Sized** | **100**       | **2.731 µs**                 | 0.0158 µs | 0.0105 µs | 2.719 µs     | 2.751 µs     | 1    | 0.5226   | –        | –      | 5.37 KB          |
+| **BM_Convert_Sized** | **1 000**     | **66.63 µs**                 | 0.4745 µs | 0.2824 µs | 66.09 µs     | 66.99 µs     | 2    | 8.7891   | –        | –      | 90.38 KB         |
+| **BM_Convert_Sized** | **10 000**    | **264.71 µs**                | 18.05 µs  | 11.94 µs  | 253.76 µs    | 282.28 µs    | 3    | 83.50    | 19.04    | –      | 845.77 KB        |
+| **BM_Convert_Sized** | **100 000**   | **3 968.22 µs (≈ 3.97 ms)**  | 94.88 µs  | 62.76 µs  | 3 904.48 µs  | 4 080.02 µs  | 4    | 890.63   | 367.19   | 117.19 | 8 427.81 KB      |
+| **BM_Convert_Sized** | **1 000 000** | **21 001.46 µs (≈ 21.0 ms)** | 506.18 µs | 334.81 µs | 20 509.70 µs | 21 486.78 µs | 5    | 8 468.75 | 1 437.50 | 625.00 | **85 550.74 KB** |
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmarks110.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmarks121.png)
 
-### ✅ Highlights
+### 🟢 Highlights
 
-- ✅ **Preallocated `StringBuilder`** delivers consistent performance across all input sizes, minimizing reallocations.
-- 🚀 **Inclusive splitting** reduces `ConvertBy()` calls, boosting throughput for segmented processing.
-- 🔁 **Parallel processing** automatically engages for large workloads (≥16 segments, ≥2000 chars), taking full advantage
-  of multicore CPUs.
-- 📉 **Memory usage scales linearly** with input size — from ~5 KB to ~85 MB — with no unpredictable spikes.
-- 🧠 **GC pressure remains stable** and predictable, even at 1M characters:
-    - Gen0: ~7.7K collections
-    - Gen1: ~2.25K collections
-    - Gen2: ~625 collections  
-      All within expected and manageable ranges.
-- ⚡ **Fast warm startup**, suitable for both CLI batch conversion and responsive GUI usage.
-- ✨ **OpenccNetLib 1.1.0** is fully production-ready for high-performance, large-scale Chinese text conversion.
+- **🚀 Performance Gain:**  
+  More than **50 % faster** than the previous implementation.  
+  1 M characters now convert in **≈ 21 ms** — about **47 million chars per second** (≈ 95 MB/s)  
+  on a mid-range Intel i5-13400 CPU.
+
+- **⚙️ Major Improvement Sources**
+    - **Pre-chunked `SplitRanges`** — balanced workloads for `Parallel.For`, minimizing task-stealing overhead.
+    - **Mask-first gating + short-circuit paths** — fewer candidate probes per segment.
+    - **Global `StringBuilder` reuse** — avoids per-segment reallocation on .NET Standard 2.0.
+
+- **📈 GC Profile:**  
+  Stable; most allocations come from per-chunk `StringBuilder`s and the final stitched string.  
+  Threads reuse their buffers efficiently — no Gen 2 pressure spikes.
+
+- **🏁 Throughput:**  
+  Sustained **≈ 95 MB/s** for Simplified → Traditional (S2T) conversions.  
+  Consistent **40–50 ms** conversion time for multi-million-character novels.
+
+- **💾 Memory Overhead:**  
+  Increased from **≈ 83 MB → 85 MB** total — only +3 MB (≈ 3–4 %), an excellent trade-off for the speed gain.
+
+- **🧩 Future Optimization Ideas**
+    - Tune `batchSize` (128–512) for your typical corpus.
+    - Add thread-local scratch arrays via `localInit` / `localFinally` to reduce Gen 0 churn.
+    - Multi-target **.NET 8+** to use `Dictionary.TryGetValue(ReadOnlySpan<char>)`.
+    - Add short-key (len 1–2) lookup tables for ultra-common mappings.
 
 ---
 
@@ -336,8 +359,12 @@ Options:
 
 ## License
 
-- This project is licensed under the MIT License. See the [LICENSE](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/LICENSE) file for details.
-- See [THIRD_PARTY_NOTICES.md](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/THIRD_PARTY_NOTICES.md) for bundled OpenCC lexicons (_Apache License 2.0_).
+- This project is licensed under the MIT License. See
+  the [LICENSE](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/LICENSE) file for details.
+-
+
+See [THIRD_PARTY_NOTICES.md](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/THIRD_PARTY_NOTICES.md)
+for bundled OpenCC lexicons (_Apache License 2.0_).
 
 ---
 

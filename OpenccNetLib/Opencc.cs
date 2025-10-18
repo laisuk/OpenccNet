@@ -264,7 +264,12 @@ namespace OpenccNetLib
             // Warm up JIT + Tiered PGO for segment replacement logic,
             // and potentially pre-spin the ThreadPool if parallel thresholds are met.
             // Uncomment to enable conversion warmup.
-            // _ = new Opencc("s2t").Convert("预热文本");
+            /*
+            var dummy = new Opencc();
+            const string sample = "预热文本Sample測試Warmup";
+            _ = dummy.S2T(sample,true);
+            _ = dummy.T2S(sample, true);
+            */
         }
 
         /// <summary>
@@ -426,55 +431,207 @@ namespace OpenccNetLib
 
         #endregion
 
-        #region Core Convertion Region
+        #region Pre-Splitting and Pre-Chunking Region
 
         /// <summary>
-        /// Performs segment replacement using the provided dictionaries.
-        /// Splits the input text by delimiters and applies dictionary-based conversion to each segment.
+        /// Represents a contiguous batch of text segments (split ranges) to be processed
+        /// sequentially within a single parallel worker.
         /// </summary>
+        /// <remarks>
+        /// Each <see cref="Chunk"/> groups several adjacent <see cref="Range"/> entries
+        /// from the same input text, forming a coarse partition that balances workload
+        /// across threads while maintaining input order.
+        /// </remarks>
+        private readonly struct Chunk
+        {
+            /// <summary>
+            /// The zero-based index of the first <see cref="Range"/> included in this chunk.
+            /// </summary>
+            public readonly int FirstRange;
+
+            /// <summary>
+            /// The total number of <see cref="Range"/> items grouped into this chunk.
+            /// </summary>
+            public readonly int Count;
+
+            /// <summary>
+            /// Estimated total number of UTF-16 characters across all ranges in this chunk.
+            /// Used to pre-size <see cref="StringBuilder"/> capacity for minimal reallocations.
+            /// </summary>
+            public readonly int EstChars;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="Chunk"/> struct.
+            /// </summary>
+            /// <param name="first">Index of the first range in this chunk.</param>
+            /// <param name="count">Number of ranges contained in this chunk.</param>
+            /// <param name="estChars">
+            /// Estimated total character count of all ranges; used for capacity pre-allocation.
+            /// </param>
+            public Chunk(int first, int count, int estChars)
+            {
+                FirstRange = first;
+                Count = count;
+                EstChars = estChars;
+            }
+        }
+
+        /// <summary>
+        /// Builds coarse-grained partitions ("chunks") from a list of split text ranges,
+        /// improving load-balancing and cache locality for
+        /// <see cref="Parallel.For(int,int,Action{int})"/> operations.
+        /// </summary>
+        /// <param name="ranges">
+        /// The list of delimiter-inclusive <see cref="Range"/> segments to partition.
+        /// </param>
+        /// <param name="batchSize">
+        /// Approximate number of ranges per chunk. 128–512 is a good starting point,
+        /// depending on typical segment size.
+        /// </param>
+        /// <returns>
+        /// A list of <see cref="Chunk"/> instances describing balanced,
+        /// contiguous partitions of the input ranges.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This method groups adjacent <see cref="Range"/> entries until the specified
+        /// <paramref name="batchSize"/> is reached, estimating total character counts
+        /// to pre-allocate per-chunk <see cref="StringBuilder"/> instances efficiently.
+        /// </para>
+        /// <para>
+        /// Pre-chunking substantially reduces task-scheduling overhead and improves
+        /// the performance of <see cref="Parallel.For(int,int,Action{int})"/> by feeding it coarser,
+        /// more predictable work units.
+        /// </para>
+        /// </remarks>
+        private static List<Chunk> BuildChunks(IReadOnlyList<Range> ranges, int batchSize = 256)
+        {
+            var chunks = new List<Chunk>(Math.Max(1, ranges.Count / batchSize + 1));
+
+            var i = 0;
+            while (i < ranges.Count)
+            {
+                var take = Math.Min(batchSize, ranges.Count - i);
+
+                // Estimate total character length in this chunk
+                var estChars = 0;
+                for (var k = 0; k < take; k++)
+                    estChars += ranges[i + k].Length;
+
+                chunks.Add(new Chunk(i, take, estChars));
+                i += take;
+            }
+
+            return chunks;
+        }
+
+        /// <summary>
+        /// Performs segmented dictionary-based conversion on the specified text.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The input text is split into delimiter-aware segments (via
+        /// <see cref="GetSplitRangesSpan(ReadOnlySpan{char}, bool)"/>), and each
+        /// segment is converted using <see cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion, int)"/>.
+        /// </para>
+        /// <para>
+        /// For large or highly fragmented inputs, segments are pre-partitioned into
+        /// balanced <see cref="Chunk"/> groups and processed in parallel using
+        /// <see cref="Parallel.For(int,int,Action{int})"/> to maximize throughput and CPU utilization.
+        /// </para>
+        /// <para>
+        /// For small texts or limited segment counts, a single-threaded sequential
+        /// path is chosen to avoid thread-pool overhead.
+        /// </para>
+        /// <para>
+        /// The method reuses a global <see cref="StringBuilder"/> pre-sized to
+        /// <c>textLength × 1.068</c> to minimize reallocation and GC pressure, which
+        /// performs better than <see cref="string.Concat(string[])"/> on
+        /// .NET Standard 2.0.
+        /// </para>
+        /// </remarks>
         /// <param name="text">The input text to convert.</param>
-        /// <param name="dictionaries">The list of dictionaries to use for conversion.</param>
-        /// <param name="union"></param>
-        /// <param name="maxWordLength">Maximum word length for dictionaries</param>
-        /// <returns>The converted text.</returns>
-        private static string SegmentReplace(string text, DictWithMaxLength[] dictionaries, StarterUnion union,
+        /// <param name="dictionaries">
+        /// The collection of <see cref="DictWithMaxLength"/> instances used for
+        /// dictionary-based phrase and character replacement.
+        /// </param>
+        /// <param name="union">
+        /// The <see cref="StarterUnion"/> providing starter-character metadata and
+        /// length-mask gating for each dictionary.
+        /// </param>
+        /// <param name="maxWordLength">
+        /// The maximum dictionary key length (in UTF-16 code units) to consider during
+        /// longest-match lookup.
+        /// </param>
+        /// <returns>
+        /// A converted string with all applicable dictionary replacements applied.
+        /// </returns>
+        private static string SegmentReplace(
+            string text,
+            DictWithMaxLength[] dictionaries,
+            StarterUnion union,
             int maxWordLength)
         {
-            if (string.IsNullOrEmpty(text)) return string.Empty;
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
             var textLength = text.Length;
 
+            // Small texts → run single-threaded for lower scheduling overhead.
             if (textLength < 10_000)
-            {
                 return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
-            }
 
-            var splitRanges = GetSplitRangesSpan(text.AsSpan(), true);
-            var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.8%
+            var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true);
 
-            // Shortcut for lower count segment
-            if (splitRanges.Count > 1_000 || textLength > 100_000)
-            {
-                var results = new string[splitRanges.Count];
-                Parallel.For(0, splitRanges.Count, i =>
-                {
-                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
-                    results[i] = ConvertByUnion(segment, dictionaries, union, maxWordLength);
-                });
+            // Global builder reused for both serial and parallel stitching.
+            var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.25% headroom (~6.8%)
 
-                for (var i = 0; i < results.Length; i++)
-                    sb.Append(results[i]);
-            }
-            else
+            // Sequential path for small or moderately sized input.
+            if (splitRanges.Count <= 1_000 && textLength <= 100_000)
             {
                 for (var i = 0; i < splitRanges.Count; i++)
                 {
-                    var segment = text.AsSpan(splitRanges[i].Start, splitRanges[i].Length);
-                    sb.Append(ConvertByUnion(segment, dictionaries, union, maxWordLength));
+                    var r = splitRanges[i];
+                    sb.Append(ConvertByUnion(
+                        text.AsSpan(r.Start, r.Length),
+                        dictionaries, union, maxWordLength));
                 }
+
+                return sb.ToString();
             }
+
+            // Parallel path for large inputs -------------------------------------
+            var chunks = BuildChunks(splitRanges, batchSize: 256);
+            var parts = new string[chunks.Count];
+            var po = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+
+            Parallel.For(0, chunks.Count, po, cIdx =>
+            {
+                var chunk = chunks[cIdx];
+                var sbPart = new StringBuilder(chunk.EstChars + (chunk.EstChars >> 6));
+
+                var end = chunk.FirstRange + chunk.Count;
+                for (var i = chunk.FirstRange; i < end; i++)
+                {
+                    var r = splitRanges[i];
+                    sbPart.Append(ConvertByUnion(
+                        text.AsSpan(r.Start, r.Length),
+                        dictionaries, union, maxWordLength));
+                }
+
+                parts[cIdx] = sbPart.ToString();
+            });
+
+            // Reuse the same global StringBuilder for final stitching (NS2.0-friendly).
+            for (var i = 0; i < parts.Length; i++)
+                sb.Append(parts[i]);
 
             return sb.ToString();
         }
+
+        #endregion
+
+        #region Core Convertion Region
 
         /// <summary>
         /// Converts text using one or more dictionaries, matching the longest possible key

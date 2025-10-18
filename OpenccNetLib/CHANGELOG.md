@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.2.1-Preview] – 2025-10-17
+## [1.2.1] – 2025-10-19
 
 ### Changed
 
@@ -47,7 +47,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Corrected an issue in `ConvertByUnion()` where longer phrase matches were truncated (`len` incorrectly taken from
   `step`), restoring full conversions such as “切换 → 切換” and “转换 → 轉換”.
 - Verified astral / non-BMP starter behavior and confirmed parity with the Rust `opencc-fmmseg` implementation.
-- Fixed a packaging issue in v1.2.0 where the third-party `dicts\LICENSE` file was copied as a **folder** instead of a file,
+- Fixed a packaging issue in v1.2.0 where the third-party `dicts\LICENSE` file was copied as a **folder** instead of a
+  file,
   causing MSBuild copy errors (`MSB3024`) in some user builds.
     - Starting with **v1.2.1**, the file is now named **`LICENSE.txt`**, ensuring a clean and unambiguous layout.
     - The change is fully backward compatible:  
@@ -57,11 +58,20 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Performance
 
-- Overall **5 – 12 ms faster** on 3 M-character conversions due to:
-    - Array-based dictionary layout.
-    - Union-slot caching and per-dictionary bitmask gating.
-    - Pre-deserialized mask union replacing full key scans (≈ 10 ms saved on build).
-    - Eliminated transient string allocations during dictionary probing.
+- **🏁 Major Speedup (>50%) on S2T Conversions**
+    - Pre-chunked `SplitRanges` drastically reduced thread scheduling and work-stealing overhead.
+    - Large inputs are now split into balanced `Chunk` batches (128–512 ranges) for highly efficient parallel execution.
+    - `Parallel.For` workers now process contiguous slices with near-perfect load balancing and hot cache locality.
+- **💾 Slightly higher memory footprint (+3 MB, ~3–4%)**
+    - Per-chunk `StringBuilder` buffers are short-lived (Gen 0) and safely amortized.
+    - The trade-off yields significantly higher throughput and no Gen 2 GC pressure.
+- **🚀 Benchmark Results (S2T):**
+    - 1M characters: **21 ms** (≈ **47 M chars/s**, ~95 MB/s) on Intel i5-13400.
+    - Throughput improvement over v1.1.x: **+52%** faster end-to-end conversion.
+- **⚙️ Additional optimizations**
+    - Smarter parallel thresholds (`textLength > 100k` or `splitRanges.Count > 1000`).
+    - Global `StringBuilder` reuse (+6.8% capacity headroom) for .NET Standard 2.0 efficiency.
+    - Per-thread builders pre-sized via `ch.EstChars`, reducing dynamic growth and GC activity.
 
 ### Deprecated
 
@@ -79,6 +89,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
     - The loop-based `LowestLen()` / `HighestLen()` bit-scan helpers.
     - Per-dictionary length-mask (`SupportsLength`) behavior.
     - Simplified, C# 7.3-compatible `ConvertBy()` implementation.
+- Added full XML documentation for:
+    - `Chunk` struct and `BuildChunks()` helper, describing its load-balancing strategy.
+    - `SegmentReplace()` method, explaining pre-chunked parallel processing and `.NET Standard 2.0` `StringBuilder`
+      reuse.
 
 ---
 
