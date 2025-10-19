@@ -323,6 +323,7 @@ namespace OpenccNetLib
         /// <param name="dictionaryRelativePath">The path to the dictionary file(s).</param>
         public static void UseDictionaryFromPath(string dictionaryRelativePath)
         {
+            if (string.IsNullOrWhiteSpace(dictionaryRelativePath)) return;
             UseCustomDictionary(DictionaryLib.FromDicts(dictionaryRelativePath));
         }
 
@@ -333,6 +334,7 @@ namespace OpenccNetLib
         /// <param name="jsonString">The JSON string representing the dictionary.</param>
         public static void UseDictionaryFromJsonString(string jsonString)
         {
+            if (string.IsNullOrWhiteSpace(jsonString)) return;
             UseCustomDictionary(JsonSerializer.Deserialize<DictionaryMaxlength>(jsonString));
         }
 
