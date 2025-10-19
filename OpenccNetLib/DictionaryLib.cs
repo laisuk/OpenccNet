@@ -149,12 +149,12 @@ namespace OpenccNetLib
         public static DictionaryMaxlength Default => DefaultLib.Value;
 
         /// <summary>
-        /// Loads the dictionary from a Zstd-compressed file.
-        /// Always returns a new instance.
+        /// Returns the singleton dictionary instance (does not allocate a new one).
+        /// Use <see cref="FromZstd"/> / other loaders if you need a fresh instance.
         /// </summary>
         public static DictionaryMaxlength New()
         {
-            return DefaultLib.Value;
+            return Default;
         }
 
         /// <summary>

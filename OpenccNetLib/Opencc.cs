@@ -243,6 +243,12 @@ namespace OpenccNetLib
         // Initialize these in the static constructor.
         private static Lazy<DictionaryMaxlength> _lazyDictionary;
 
+        /// <summary>
+        /// Gets the loaded dictionary set for all conversion types.
+        /// This property will lazily load the default dictionary if no custom one has been set.
+        /// </summary>
+        private static DictionaryMaxlength Dictionary => _lazyDictionary.Value;
+
         // Static constructor to initialize the Lazy<T> instances.
         // This runs once, automatically and thread-safely, when the Opencc class is first accessed.
         static Opencc()
@@ -261,24 +267,21 @@ namespace OpenccNetLib
             var dict = DictionaryLib.New(); // Load default config
             InitializeLazyLoaders(dict); // Initialize with the default dictionary
 
-            // Warm up JIT + Tiered PGO for segment replacement logic,
-            // and potentially pre-spin the ThreadPool if parallel thresholds are met.
-            // Uncomment to enable conversion warmup (4 most common warmup config pattern selectable).
+            // Warm up JIT + Tiered PGO for the hot conversion paths.
+            // -----------------------------------------------------------------------------
+            // This optional block triggers a few representative conversions to
+            // pre-compile and tier-promote key methods (segment replacement,
+            // per-round loops, and parallel thresholds) before the first real use.
+            // It does NOT affect dictionary or plan caching: those remain per-instance.
+            // Enable only if you want slightly lower latency on the first conversion.
+            //
+            // Example (optional):
             /*
-            var dummy = new Opencc();
+            var dummy = new Opencc(); // uses the immutable DictionaryLib.Default
             const string sample = "预热文本Sample測試Warmup";
             _ = dummy.S2T(sample);
-            _ = dummy.S2T(sample, true);
-            _ = dummy.T2S(sample);
-            _ = dummy.T2S(sample, true);
             */
         }
-
-        /// <summary>
-        /// Gets the loaded dictionary set for all conversion types.
-        /// This property will lazily load the default dictionary if no custom one has been set.
-        /// </summary>
-        private static DictionaryMaxlength Dictionary => _lazyDictionary.Value;
 
         /// <summary>
         /// Helper method to create the Lazy<T/> instances for the dictionary and its derived lists.
