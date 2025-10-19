@@ -366,6 +366,28 @@ namespace OpenccNetLib
             return d;
         }
 
+        /// <summary>
+        /// Builds a per-starter key-length bitmask for the specified dictionary.
+        /// </summary>
+        /// <param name="d">
+        /// The <see cref="DictWithMaxLength"/> instance whose <see cref="DictWithMaxLength.Dict"/> keys
+        /// are analyzed to populate <see cref="DictWithMaxLength.StarterLenMask"/>.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// This method scans all keys in the dictionary and computes, for each unique starter
+        /// (first Unicode character or surrogate pair), a <c>ulong</c> bitmask representing
+        /// which key lengths (1–64) exist for that starter.
+        /// </para>
+        /// <para>
+        /// Each bit position <c>n-1</c> corresponds to the presence of a key of length <c>n</c>.
+        /// Lengths greater than 64 are ignored, as they are extremely rare and do not fit in the 64-bit mask.
+        /// </para>
+        /// <para>
+        /// The resulting <see cref="DictWithMaxLength.StarterLenMask"/> enables fast runtime gating
+        /// in hot lookup paths by allowing quick exclusion of impossible key lengths for a given starter.
+        /// </para>
+        /// </remarks>
         private static void BuildStarterLenMask(DictWithMaxLength d)
         {
             if (d?.Dict == null || d.Dict.Count == 0)

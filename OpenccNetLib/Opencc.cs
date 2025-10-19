@@ -263,11 +263,13 @@ namespace OpenccNetLib
 
             // Warm up JIT + Tiered PGO for segment replacement logic,
             // and potentially pre-spin the ThreadPool if parallel thresholds are met.
-            // Uncomment to enable conversion warmup.
+            // Uncomment to enable conversion warmup (4 most common warmup config pattern selectable).
             /*
             var dummy = new Opencc();
             const string sample = "预热文本Sample測試Warmup";
-            _ = dummy.S2T(sample,true);
+            _ = dummy.S2T(sample);
+            _ = dummy.S2T(sample, true);
+            _ = dummy.T2S(sample);
             _ = dummy.T2S(sample, true);
             */
         }
