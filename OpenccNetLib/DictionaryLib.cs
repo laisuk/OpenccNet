@@ -165,8 +165,7 @@ namespace OpenccNetLib
         /// It is initialized with a delegate that returns the lazily loaded  
         /// <see cref="DefaultLib"/> instance.
         /// </summary>
-        public static ConversionPlanCache PlanCache =
-            new ConversionPlanCache(() => DefaultLib.Value);
+        public static ConversionPlanCache PlanCache;
 
         /// <summary>
         /// Gets the singleton <see cref="DictionaryMaxlength"/> instance for reuse across  
@@ -186,6 +185,7 @@ namespace OpenccNetLib
         /// </summary>
         public static DictionaryMaxlength New()
         {
+            SetDictionaryProvider(() => DefaultLib.Value);
             return Default;
         }
 
