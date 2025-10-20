@@ -141,20 +141,108 @@ namespace OpenccNetLib
     /// </summary>
     public static class DictionaryLib
     {
-        /// <summary>Add a thread-safe, opt-in cache.</summary>
+        /// <summary>
+        /// Lazily initializes the default <see cref="DictionaryMaxlength"/> instance  
+        /// used by all conversions that do not explicitly specify a custom dictionary set.  
+        /// 
+        /// This uses <see cref="FromZstd"/> to load the bundled Zstandard-compressed  
+        /// dictionary data on first access. The initialization is thread-safe and  
+        /// performed only once per process lifetime.
+        /// </summary>
         private static readonly Lazy<DictionaryMaxlength> DefaultLib =
-            new Lazy<DictionaryMaxlength>(() => FromZstd(), true);
+            new Lazy<DictionaryMaxlength>(() => FromZstd(), isThreadSafe: true);
 
-        /// <summary>Singleton reuse instead of reloading repeatedly.</summary>
+        /// <summary>
+        /// Global cache for precomputed <see cref="DictRefs"/> and  
+        /// <see cref="ConversionPlanCache"/> instances derived from <see cref="DefaultLib"/>.  
+        /// 
+        /// Each plan bundles optimized lookup structures, prefiltered dictionary  
+        /// references, and starter masks for a specific <see cref="Opencc.OpenccConfig"/> and  
+        /// punctuation mode.  
+        /// 
+        /// This cache eliminates redundant plan reconstruction between repeated  
+        /// conversions, improving throughput and reducing GC pressure.  
+        /// It is initialized with a delegate that returns the lazily loaded  
+        /// <see cref="DefaultLib"/> instance.
+        /// </summary>
+        public static ConversionPlanCache PlanCache =
+            new ConversionPlanCache(() => DefaultLib.Value);
+
+        /// <summary>
+        /// Gets the singleton <see cref="DictionaryMaxlength"/> instance for reuse across  
+        /// all conversions. This property returns the same object reference on each call.  
+        /// 
+        /// The dictionary is lazily loaded once from the embedded Zstd bundle and is safe  
+        /// for concurrent read access. To obtain a fresh instance, use  
+        /// <see cref="FromZstd"/> or other loader methods directly.
+        /// </summary>
         public static DictionaryMaxlength Default => DefaultLib.Value;
 
         /// <summary>
-        /// Returns the singleton dictionary instance (does not allocate a new one).
-        /// Use <see cref="FromZstd"/> / other loaders if you need a fresh instance.
+        /// Returns the singleton dictionary instance without creating a new copy.  
+        /// This is an alias of <see cref="Default"/> for backward compatibility.  
+        /// Use <see cref="FromZstd"/> or other loaders if you explicitly require  
+        /// a separate, newly loaded dictionary set.
         /// </summary>
         public static DictionaryMaxlength New()
         {
             return Default;
+        }
+
+        /// <summary>
+        /// Replaces the active dictionary provider used by the global  
+        /// <see cref="ConversionPlanCache"/> and clears all cached plans.  
+        /// </summary>
+        /// <remarks>
+        /// Call this method when hot-reloading or replacing the dictionary source  
+        /// at runtime (for example, when loading a custom dictionary set).  
+        /// This method replaces the internal provider delegate used to obtain  
+        /// <see cref="DictionaryMaxlength"/> instances and discards all previously  
+        /// built conversion plans and starter-union caches to ensure consistency.  
+        /// </remarks>
+        /// <param name="provider">
+        /// A delegate returning the new <see cref="DictionaryMaxlength"/> instance  
+        /// to be used by subsequent plan builds.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="provider"/> is <see langword="null"/>.
+        /// </exception>
+        public static void SetDictionaryProvider(Func<DictionaryMaxlength> provider)
+        {
+            if (provider is null)
+                throw new ArgumentNullException(nameof(provider));
+
+            // Replace the global cache with a new instance using the new provider
+            PlanCache = new ConversionPlanCache(provider);
+
+            // Clear any previous cache state (for safety and consistency)
+            PlanCache.Clear();
+        }
+
+        /// <summary>
+        /// Replaces the active dictionary provider using a fixed  
+        /// <see cref="DictionaryMaxlength"/> instance instead of a delegate.  
+        /// </summary>
+        /// <remarks>
+        /// This overload is a convenience wrapper for  
+        /// <see cref="SetDictionaryProvider(Func{DictionaryMaxlength})"/> that  
+        /// automatically wraps the supplied instance in a provider delegate.  
+        /// The global <see cref="DictionaryLib.PlanCache"/> is rebuilt and  
+        /// all existing cached plans are cleared to ensure consistency.  
+        /// </remarks>
+        /// <param name="dictionary">
+        /// The <see cref="DictionaryMaxlength"/> instance to use as the new  
+        /// active dictionary source.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="dictionary"/> is <see langword="null"/>.
+        /// </exception>
+        public static void SetDictionaryProvider(DictionaryMaxlength dictionary)
+        {
+            if (dictionary == null)
+                throw new ArgumentNullException(nameof(dictionary));
+
+            SetDictionaryProvider(() => dictionary);
         }
 
         /// <summary>

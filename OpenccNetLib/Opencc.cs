@@ -257,29 +257,38 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Initializes the static Lazy&lt;T&gt; fields for the Opencc class and preloads the default dictionary and round lists.
-        /// This method is called once by the static constructor to ensure that the default dictionary and its associated
-        /// conversion lists are loaded and ready for use. It also preloads round list values to minimize lazy initialization
-        /// overhead during the first conversion operation.
+        /// Preloads the default dictionary and initializes derived lookup tables  
+        /// used internally by the <see cref="Opencc"/> class.
         /// </summary>
+        /// <remarks>
+        /// This method is invoked once by the static constructor to ensure that the default  
+        /// <see cref="DictionaryLib"/> instance and its related conversion data structures  
+        /// are ready for immediate use.
+        ///
+        /// Optionally, it can perform a brief pre-execution warmup to trigger JIT compilation,  
+        /// tiered PGO, and global <see cref="DictionaryLib.PlanCache"/> initialization for the  
+        /// most common conversion paths (<c>S2T</c> and <c>T2S</c>).
+        ///
+        /// Enabling the warmup block can slightly reduce first-use latency in long-running  
+        /// or GUI applications.  For short-lived console conversions, it is not required.  
+        /// The operation does not alter dictionary contents or affect memory usage.
+        /// </remarks>
         private static void Warmup()
         {
             var dict = DictionaryLib.New(); // Load default config
             InitializeLazyLoaders(dict); // Initialize with the default dictionary
 
-            // Warm up JIT + Tiered PGO for the hot conversion paths.
-            // -----------------------------------------------------------------------------
-            // This optional block triggers a few representative conversions to
-            // pre-compile and tier-promote key methods (segment replacement,
-            // per-round loops, and parallel thresholds) before the first real use.
-            // It does NOT affect dictionary or plan caching: those remain per-instance.
-            // Enable only if you want slightly lower latency on the first conversion.
-            //
-            // Example (optional):
+            // Optional warmup for JIT + Tiered PGO + PlanCache.
+            // -------------------------------------------------
+            // Uncomment the section below if you want to pre-cache hot paths
+            // (recommended for GUI or service applications).
             /*
-            var dummy = new Opencc(); // uses the immutable DictionaryLib.Default
-            const string sample = "预热文本Sample測試Warmup";
-            _ = dummy.S2T(sample);
+            const string text = "預熱文本 Sample 測試 Warmup";
+            var dummy = new Opencc();
+            _ = dummy.S2T(text);
+            _ = dummy.S2T(text, true);
+            _ = dummy.T2S(text);
+            _ = dummy.T2S(text, true);
             */
         }
 
@@ -300,42 +309,66 @@ namespace OpenccNetLib
         // === Public Static Methods for Custom Dictionary Loading (Optional for Users) ===
 
         /// <summary>
-        /// Overrides the default Opencc dictionary with a custom DictionaryMaxlength instance.
-        /// This method should be called once at application startup, if a custom dictionary is desired.
+        /// Overrides the default OpenCC planning source with a custom <see cref="DictionaryMaxlength"/> instance
+        /// by updating the global <see cref="DictionaryLib.PlanCache"/> provider and clearing all cached plans.
         /// </summary>
-        /// <param name="customDictionary">The custom dictionary instance.</param>
+        /// <remarks>
+        /// This does <b>not</b> modify the default lazy dictionary (<c>New()</c>/<c>DefaultLib.Value</c>).
+        /// Only the planning provider is changed, so subsequent conversions use the supplied custom dictionary
+        /// for plan builds while the original default remains intact and accessible.
+        /// </remarks>
+        /// <param name="customDictionary">The custom dictionary instance to use for plan construction.</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="customDictionary"/> is <see langword="null"/>.
+        /// </exception>
         public static void UseCustomDictionary(DictionaryMaxlength customDictionary)
         {
-            if (customDictionary == null)
-            {
+            if (customDictionary is null)
                 throw new ArgumentNullException(nameof(customDictionary), "Custom dictionary cannot be null.");
-            }
 
-            // Re-initialize the Lazy<T> instances to point to the new custom dictionary.
-            // This effectively "resets" the lazy loading for the custom dictionary.
-            InitializeLazyLoaders(customDictionary);
+            // Do not touch InitializeLazyLoaders / DefaultLib.Value.
+            // Swap only the plan cache provider and clear caches.
+            DictionaryLib.SetDictionaryProvider(customDictionary);
         }
 
         /// <summary>
-        /// Overrides the default Opencc dictionary by loading it from a specified path.
-        /// This method should be called once at application startup, if custom dictionary is desired.
+        /// Overrides the planning source by loading a dictionary from a specified path
+        /// and applying it to <see cref="DictionaryLib.PlanCache"/>.
         /// </summary>
+        /// <remarks>
+        /// Leaves the default lazy dictionary untouched. Subsequent conversions build plans
+        /// from the loaded custom dictionary.
+        /// </remarks>
         /// <param name="dictionaryRelativePath">The path to the dictionary file(s).</param>
         public static void UseDictionaryFromPath(string dictionaryRelativePath)
         {
             if (string.IsNullOrWhiteSpace(dictionaryRelativePath)) return;
-            UseCustomDictionary(DictionaryLib.FromDicts(dictionaryRelativePath));
+
+            var custom = DictionaryLib.FromDicts(dictionaryRelativePath);
+            UseCustomDictionary(custom);
         }
 
         /// <summary>
-        /// Overrides the default Opencc dictionary by loading it from a JSON string.
-        /// This method should be called once at application startup, if custom dictionary is desired.
+        /// Overrides the planning source by parsing a JSON representation of
+        /// <see cref="DictionaryMaxlength"/> and applying it to <see cref="DictionaryLib.PlanCache"/>.
         /// </summary>
+        /// <remarks>
+        /// Leaves the default lazy dictionary untouched. Subsequent conversions build plans
+        /// from the parsed custom dictionary.
+        /// </remarks>
         /// <param name="jsonString">The JSON string representing the dictionary.</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown when the JSON payload does not deserialize into a valid dictionary.
+        /// </exception>
         public static void UseDictionaryFromJsonString(string jsonString)
         {
             if (string.IsNullOrWhiteSpace(jsonString)) return;
-            UseCustomDictionary(JsonSerializer.Deserialize<DictionaryMaxlength>(jsonString));
+
+            var custom = JsonSerializer.Deserialize<DictionaryMaxlength>(jsonString);
+            if (custom is null)
+                throw new InvalidOperationException("Failed to deserialize DictionaryMaxlength from JSON.");
+
+            UseCustomDictionary(custom);
         }
 
         // --- END Lazy<T> Implementation ---
@@ -1049,27 +1082,30 @@ namespace OpenccNetLib
         #region Direct API and General Conversion Region
 
         /// <summary>
-        /// Centralized cache for precomputed conversion plans.  
-        /// Each plan bundles dictionary references, union masks, and other  
-        /// runtime-optimized lookup data, keyed by configuration and punctuation mode.  
-        /// Initialized with a delegate that returns the current <see cref="DictionaryMaxlength"/> instance.
+        /// Retrieves a cached <see cref="DictRefs"/> instance for the specified  
+        /// OpenCC conversion configuration and punctuation mode.
         /// </summary>
-        private readonly ConversionPlanCache _planCache =
-            new ConversionPlanCache(() => Dictionary);
-
-        /// <summary>
-        /// Retrieves the dictionary references and lookup structures for the specified  
-        /// OpenCC configuration and punctuation handling mode.  
-        /// Results are served from <see cref="_planCache"/> to avoid rebuilding plans and  
-        /// reduce GC pressure in high-throughput conversions.
-        /// </summary>
-        /// <param name="config">The OpenCC conversion configuration (e.g., S2T, T2HK).</param>
-        /// <param name="punctuation">
-        /// True to include punctuation conversion; false to leave punctuation unchanged.
+        /// <remarks>
+        /// This method obtains prebuilt dictionary references and lookup structures
+        /// from the global <see cref="DictionaryLib.PlanCache"/> initialized with  
+        /// <see cref="DictionaryLib.Default"/>.  
+        /// By serving results from the cache rather than rebuilding plans on demand,
+        /// it minimizes redundant allocations, improves performance consistency,
+        /// and reduces GC pressure during high-throughput text conversions.
+        /// </remarks>
+        /// <param name="config">
+        /// The OpenCC conversion configuration (e.g., <c>S2T</c>, <c>T2HK</c>, <c>TW2S</c>).
         /// </param>
-        /// <returns>A <see cref="DictRefs"/> object containing the prepared dictionary references.</returns>
-        private DictRefs GetDictRefs(OpenccConfig config, bool punctuation)
-            => _planCache.GetPlan(config, punctuation);
+        /// <param name="punctuation">
+        /// When <see langword="true"/>, includes punctuation conversion;  
+        /// when <see langword="false"/>, punctuation characters remain unchanged.
+        /// </param>
+        /// <returns>
+        /// A <see cref="DictRefs"/> object containing the prepared dictionary references
+        /// and lookup tables for the given configuration.
+        /// </returns>
+        private static DictRefs GetDictRefs(OpenccConfig config, bool punctuation)
+            => DictionaryLib.PlanCache.GetPlan(config, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.

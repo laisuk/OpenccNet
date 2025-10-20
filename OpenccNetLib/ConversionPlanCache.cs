@@ -146,15 +146,22 @@ namespace OpenccNetLib
             new ConcurrentDictionary<UnionKey, StarterUnion>();
 
         /// <summary>
-        /// Initializes a new instance of <see cref="ConversionPlanCache"/>.
+        /// Initializes a new instance of the <see cref="ConversionPlanCache"/> class.
         /// </summary>
         /// <param name="dictionaryProvider">
-        /// A function that returns the current <see cref="DictionaryMaxlength"/>  
-        /// instance to be used when building new plans.  
-        /// Typically, wraps the main <c>Dictionary</c> from the <c>Opencc</c> instance.
+        /// A delegate that returns the current <see cref="DictionaryMaxlength"/> instance
+        /// to be used when constructing new conversion plans.
+        /// <para>
+        /// This provider is invoked lazily whenever a plan for a specific
+        /// <see cref="Opencc.OpenccConfig"/> and punctuation mode is requested,
+        /// ensuring that the latest dictionary data is always used without
+        /// requiring explicit cache updates.
+        /// </para>
+        /// Typically, this delegate references the main <c>Dictionary</c>
+        /// instance owned by <c>Opencc</c> or <see cref="DictionaryLib.Default"/>.
         /// </param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if <paramref name="dictionaryProvider"/> is null.
+        /// Thrown when <paramref name="dictionaryProvider"/> is <see langword="null"/>.
         /// </exception>
         public ConversionPlanCache(Func<DictionaryMaxlength> dictionaryProvider)
         {

@@ -6,7 +6,30 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.2.1] – 2025-10-19
+## [1.3.0] – 2025-10-20
+
+### Added
+
+- **Global static `PlanCache` architecture**
+    - Introduced `DictionaryLib.PlanCache`, a global, thread-safe cache of precomputed `DictRefs` and `ConversionPlan`
+      instances.
+    - Uses a lazy provider delegate `(() => DefaultLib.Value)` to avoid redundant initialization and enable instant
+      reuse across all `Opencc` instances.
+    - Fully compatible with **.NET Standard 2.0**; avoids modern language features for broad runtime support.
+
+- **Custom dictionary override APIs**
+    - Added `DictionaryLib.UseCustomDictionary(DictionaryMaxlength)` — allows applications to preload a custom
+      dictionary at startup without altering the default lazy loader.
+    - Added `DictionaryLib.UseDictionaryFromPath(string)` and `UseDictionaryFromJsonString(string)` helpers to load user
+      dictionaries from CBOR/JSON sources.
+    - Added `DictionaryLib.SetDictionaryProvider(Func<DictionaryMaxlength>)` and its non-delegate overload
+      `SetDictionaryProvider(DictionaryMaxlength)` for flexible runtime switching.
+    - All methods automatically rebuild the `PlanCache` and clear cached plans to ensure consistency.
+
+- **Warmup control for long-running apps**
+    - `Opencc.Warmup()` now supports optional pre-execution JIT and plan preloading.
+    - GUI and service applications can call it once at startup to reduce first-use latency;  
+      console tools (single-shot conversions) remain fast without it.
 
 ### Changed
 
@@ -41,6 +64,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Retained original bit-level `IsDelimiter()` logic for optimal .NET Standard 2.0 performance.
 - Simplified bit-scan helpers: replaced `BitOperations` dependency with compact inlined loops  
   (`LowestLen()` / `HighestLen()`) — faster for small masks and fully portable to older runtimes.
+- Simplified initialization logic: `Opencc` now references the global `DictionaryLib.PlanCache` instead of per-instance
+  caches, eliminating redundant plan construction.
+- `InitializeLazyLoaders()` retained for internal use; now invoked only by `Warmup()` or explicit custom dictionary
+  setup.
+- Updated `Warmup()` XML documentation to clarify that CLI tools do **not** need it.
+- Minor tuning to XML docs throughout for clarity, cross-references, and C# 7.3 compliance.
 
 ### Fixed
 
@@ -55,6 +84,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
       existing `dicts\LICENSE\` folders from older builds can safely coexist with the new `dicts\LICENSE.txt` file.  
       Users may delete the old folder manually or simply run `dotnet clean` / `dotnet restore` to refresh their outputs.
     - The new layout guarantees correct packaging and publishing for all future builds.
+- Ensured that plan cache reuse persists across batch conversions in `OpenccNetLibGui`;  
+  subsequent conversions in the same session now execute at full speed with zero re-initialization cost.
+- Corrected edge cases where custom dictionary reloads did not clear plan unions.
 
 ### Performance
 
@@ -72,12 +104,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
     - Smarter parallel thresholds (`textLength > 100k` or `splitRanges.Count > 1000`).
     - Global `StringBuilder` reuse (+6.8% capacity headroom) for .NET Standard 2.0 efficiency.
     - Per-thread builders pre-sized via `ch.EstChars`, reducing dynamic growth and GC activity.
+- **Persistent global cache**: once loaded, dictionary and plan data remain hot-resident across all conversions.
+- **Instant reuse** in GUI and service scenarios — no rebuilds between text-box conversions or batch runs.
+- **Consistent sub-40 ms conversions** for 3 M-character texts on Intel i5-13400 (after first warmup).
+- **Zero GC churn** in steady state; all per-round objects are reused.
 
 ### Deprecated
 
 - `StarterUnion.Get(char, out cap, out mask)` and  
   `Get(char, out cap, out mask, out minLen)` are marked **[Obsolete]**.  
   They remain thin shims for compatibility; conversion loops now use `GetAt()`.
+- Per-instance `_planCache` fields inside `Opencc` are now obsolete.  
+  Use the global `DictionaryLib.PlanCache` for all conversions.
 
 ### Docs
 
@@ -93,6 +131,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
     - `Chunk` struct and `BuildChunks()` helper, describing its load-balancing strategy.
     - `SegmentReplace()` method, explaining pre-chunked parallel processing and `.NET Standard 2.0` `StringBuilder`
       reuse.
+- Added/updated XML documentation for:
+    - `DictionaryLib.PlanCache`
+    - `SetDictionaryProvider()` overloads
+    - `UseCustomDictionary()` and related helpers
+    - `Opencc.Warmup()` behavior and GUI vs. CLI recommendations
+- All public API comments standardized for **.NET Standard 2.0** syntax (no `init`, pattern matching, or modern nullable
+  references).
+
+---
+
+This version marks **the completion of the caching redesign** — a stable, high-performance foundation where `PlanCache`,
+dictionary providers, and warmup behavior are unified, thread-safe, and runtime-configurable.
 
 ---
 
