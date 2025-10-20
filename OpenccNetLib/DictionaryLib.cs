@@ -185,7 +185,7 @@ namespace OpenccNetLib
         /// </summary>
         public static DictionaryMaxlength New()
         {
-            SetDictionaryProvider(() => DefaultLib.Value);
+            SetDictionaryProvider(() => Default);
             return Default;
         }
 
