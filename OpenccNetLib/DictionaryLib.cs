@@ -207,7 +207,7 @@ namespace OpenccNetLib
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="provider"/> is <see langword="null"/>.
         /// </exception>
-        public static void SetDictionaryProvider(Func<DictionaryMaxlength> provider)
+        private static void SetDictionaryProvider(Func<DictionaryMaxlength> provider)
         {
             if (provider is null)
                 throw new ArgumentNullException(nameof(provider));
