@@ -566,6 +566,53 @@ namespace OpenccNetLib
         }
 
         /// <summary>
+        /// Centralized thresholds and tuning parameters controlling how  
+        /// OpenCC conversion routines choose between linear and parallel paths.  
+        /// </summary>
+        /// <remarks>
+        /// These constants define when the converter switches from single-threaded  
+        /// to parallel execution and how data chunks are distributed among workers.  
+        /// 
+        /// Values are selected based on typical performance profiles observed  
+        /// on multicore CPUs (e.g., Intel i5–i9, AMD Ryzen).  
+        /// Adjusting them can fine-tune performance for specific workloads or  
+        /// hardware configurations, but the defaults already yield optimal results  
+        /// for most CJK document conversions.
+        /// </remarks>
+        private static class ConvertTuning
+        {
+            /// <summary>
+            /// Character-length threshold below which the converter runs  
+            /// purely linear (single-threaded) for minimal scheduling overhead.  
+            /// Defaults to <c>8 000</c> on ≤4-core CPUs, <c>10 000</c> on larger systems.  
+            /// </summary>
+            public static readonly int LinearCutoffChars =
+                Environment.ProcessorCount <= 4 ? 8_000 : 10_000;
+
+            /// <summary>
+            /// Minimum text length required to trigger parallel processing.  
+            /// Below this threshold, sequential stitching remains faster.  
+            /// Defaults to <c>150 000</c> on ≤4-core CPUs, <c>100 000</c> otherwise.  
+            /// </summary>
+            public static readonly int ParallelTextGate =
+                Environment.ProcessorCount <= 4 ? 150_000 : 100_000;
+
+            /// <summary>
+            /// Split-range count threshold: if the number of logical text  
+            /// segments exceeds this value, the converter may engage  
+            /// parallel processing even if the text length is smaller.  
+            /// </summary>
+            public const int ParallelRangeGate = 1_000;
+
+            /// <summary>
+            /// Default batch size (number of ranges per chunk) used when  
+            /// constructing <c>BuildChunks()</c> for <see cref="Parallel.For(int,int,Action{int})"/>.  
+            /// A value of 256 balances task granularity and scheduling overhead.  
+            /// </summary>
+            public const int BatchSize = 256;
+        }
+
+        /// <summary>
         /// Performs segmented dictionary-based conversion on the specified text.
         /// </summary>
         /// <remarks>
@@ -618,7 +665,7 @@ namespace OpenccNetLib
             var textLength = text.Length;
 
             // Small texts → run single-threaded for lower scheduling overhead.
-            if (textLength < 10_000)
+            if (textLength < ConvertTuning.LinearCutoffChars)
                 return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
 
             var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true);
@@ -627,7 +674,7 @@ namespace OpenccNetLib
             var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.25% headroom (~6.8%)
 
             // Sequential path for small or moderately sized input.
-            if (splitRanges.Count <= 1_000 && textLength <= 100_000)
+            if (splitRanges.Count <= ConvertTuning.ParallelRangeGate && textLength <= ConvertTuning.ParallelTextGate)
             {
                 for (var i = 0; i < splitRanges.Count; i++)
                 {
@@ -641,7 +688,7 @@ namespace OpenccNetLib
             }
 
             // Parallel path for large inputs -------------------------------------
-            var chunks = BuildChunks(splitRanges, batchSize: 256);
+            var chunks = BuildChunks(splitRanges, batchSize: ConvertTuning.BatchSize);
             var parts = new string[chunks.Count];
             var po = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
 
