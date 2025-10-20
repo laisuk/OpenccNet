@@ -235,6 +235,9 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
     - Multi-target **.NET 8+** to use `Dictionary.TryGetValue(ReadOnlySpan<char>)`.
     - Add short-key (len 1–2) lookup tables for ultra-common mappings.
 
+> **Notes**: In `OpenccNetLib v1.3.0`, performance further improved with the introduction of a global, lazy static
+> PlanCache, eliminating redundant plan rebuilding and reducing GC pressure.
+
 ---
 
 ## API Reference
