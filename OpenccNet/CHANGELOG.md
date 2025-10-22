@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.3.0] - 2025-10-20
+
+### Changed
+
+- Update `OpenccNetLib` to version 1.3.0
+
+---
+
 ## [1.2.0] - 2025-10-01
 
 ### Changed

@@ -20,6 +20,7 @@
         <Description>Convert text and Office files using OpenccNetLib with CLI support.</Description>
         <PackageOutputPath>./nupkg</PackageOutputPath>
         <ApplicationIcon>assets\icon.ico</ApplicationIcon>
+        <LangVersion>10</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
