@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using PeterO.Cbor;
 using ZstdSharp;
 
@@ -136,11 +137,26 @@ namespace OpenccNetLib
     // ReSharper restore InconsistentNaming
 
     /// <summary>
-    /// Provides methods to load, save, and cache OpenCC conversion dictionaries
-    /// in various formats (JSON, CBOR, Zstd-compressed).
+    /// Provides centralized access to the global dictionary provider and  
+    /// conversion plan cache used by all OpenCC conversions.
     /// </summary>
+    /// <remarks>
+    /// This class manages a single shared <see cref="DictionaryMaxlength"/> instance  
+    /// and its associated <see cref="ConversionPlanCache"/> for efficient reuse  
+    /// across all OpenCC operations.  
+    /// <para>
+    /// It supports hot-swapping custom dictionary providers via  
+    /// <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or  
+    /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/> while keeping  
+    /// the default lazy-loaded instance intact.  
+    /// </para>
+    /// </remarks>
     public static class DictionaryLib
     {
+        // --------------------------------------------------------------------------------
+        // Lazy loader for the default dictionary
+        // --------------------------------------------------------------------------------
+
         /// <summary>
         /// Lazily initializes the default <see cref="DictionaryMaxlength"/> instance  
         /// used by all conversions that do not explicitly specify a custom dictionary set.  
@@ -151,6 +167,10 @@ namespace OpenccNetLib
         /// </summary>
         private static readonly Lazy<DictionaryMaxlength> DefaultLib =
             new Lazy<DictionaryMaxlength>(() => FromZstd(), isThreadSafe: true);
+
+        // --------------------------------------------------------------------------------
+        // Global plan cache
+        // --------------------------------------------------------------------------------
 
         /// <summary>
         /// Global cache for precomputed <see cref="DictRefs"/> and  
@@ -167,26 +187,61 @@ namespace OpenccNetLib
         /// </summary>
         public static ConversionPlanCache PlanCache;
 
+        // --------------------------------------------------------------------------------
+        // Public accessors and provider management
+        // --------------------------------------------------------------------------------
+
         /// <summary>
         /// Gets the singleton <see cref="DictionaryMaxlength"/> instance for reuse across  
-        /// all conversions. This property returns the same object reference on each call.  
-        /// 
-        /// The dictionary is lazily loaded once from the embedded Zstd bundle and is safe  
-        /// for concurrent read access. To obtain a fresh instance, use  
-        /// <see cref="FromZstd"/> or other loader methods directly.
+        /// all conversions. This property always returns the same object reference.  
         /// </summary>
-        public static DictionaryMaxlength Default => DefaultLib.Value;
+        /// <remarks>
+        /// The dictionary is lazily initialized from the embedded Zstandard-compressed bundle  
+        /// on first access and is safe for concurrent read access from multiple threads.  
+        /// <para>
+        /// To obtain a new, independent dictionary instance (e.g., when reloading from  
+        /// an external file), use <see cref="FromZstd"/> or other loader methods directly.  
+        /// </para>
+        /// </remarks>
+        /// <returns>
+        /// The shared <see cref="DictionaryMaxlength"/> instance used for all conversions.  
+        /// </returns>
+        public static DictionaryMaxlength Provider => DefaultLib.Value;
+
+        /// <summary>
+        /// Returns the currently active dictionary provider used for plan construction.  
+        /// </summary>
+        /// <remarks>
+        /// This method reads the current provider reference atomically to ensure that  
+        /// concurrent provider swaps are observed immediately and without torn reads.  
+        /// </remarks>
+        /// <returns>
+        /// The <see cref="DictionaryMaxlength"/> instance currently registered as the active provider.  
+        /// </returns>
+        public static DictionaryMaxlength GetProvider()
+        {
+            var currentProvider = Provider;
+            return Volatile.Read(ref currentProvider);
+        }
 
         /// <summary>
         /// Returns the singleton dictionary instance without creating a new copy.  
-        /// This is an alias of <see cref="Default"/> for backward compatibility.  
-        /// Use <see cref="FromZstd"/> or other loaders if you explicitly require  
-        /// a separate, newly loaded dictionary set.
         /// </summary>
+        /// <remarks>
+        /// This method is an alias of <see cref="Provider"/> retained for backward compatibility.  
+        /// It ensures that the global dictionary provider is properly initialized, but does  
+        /// not load or allocate a new dictionary.  
+        /// <para>
+        /// To explicitly create a separate instance, use <see cref="FromZstd"/> or other loader methods.  
+        /// </para>
+        /// </remarks>
+        /// <returns>
+        /// The singleton <see cref="DictionaryMaxlength"/> instance shared across conversions.  
+        /// </returns>
         public static DictionaryMaxlength New()
         {
-            SetDictionaryProvider(() => Default);
-            return Default;
+            SetDictionaryProvider(() => Provider);
+            return Provider;
         }
 
         /// <summary>
@@ -194,11 +249,16 @@ namespace OpenccNetLib
         /// <see cref="ConversionPlanCache"/> and clears all cached plans.  
         /// </summary>
         /// <remarks>
-        /// Call this method when hot-reloading or replacing the dictionary source  
-        /// at runtime (for example, when loading a custom dictionary set).  
-        /// This method replaces the internal provider delegate used to obtain  
-        /// <see cref="DictionaryMaxlength"/> instances and discards all previously  
-        /// built conversion plans and starter-union caches to ensure consistency.  
+        /// Call this method when hot-reloading or replacing the dictionary source at runtime  
+        /// (for example, when loading a custom dictionary set).  
+        /// <para>
+        /// This method updates the internal provider delegate used to obtain  
+        /// <see cref="DictionaryMaxlength"/> instances, then discards all previously built  
+        /// conversion plans and starter-union caches to ensure consistency.  
+        /// </para>
+        /// <para>
+        /// Thread-safe: the provider reference is updated atomically.  
+        /// </para>
         /// </remarks>
         /// <param name="provider">
         /// A delegate returning the new <see cref="DictionaryMaxlength"/> instance  
@@ -212,10 +272,30 @@ namespace OpenccNetLib
             if (provider is null)
                 throw new ArgumentNullException(nameof(provider));
 
+            // Publish new provider atomically
+            var currentProvider = Provider;
+            Interlocked.Exchange(ref currentProvider, provider());
+
             // Replace the global cache with a new instance using the new provider
             PlanCache = new ConversionPlanCache(provider);
 
             // Clear any previous cache state (for safety and consistency)
+            PlanCache.Clear();
+        }
+
+        /// <summary>
+        /// Resets the active dictionary provider back to the default singleton  
+        /// loaded from the embedded resources, and clears all cached plans.  
+        /// </summary>
+        /// <remarks>
+        /// This restores the original <see cref="Provider"/> provider  
+        /// so that subsequent conversions use the default dictionary set.  
+        /// Existing conversion plans and starter unions are discarded.  
+        /// </remarks>
+        public static void ResetDictionaryProviderToDefault()
+        {
+            var currentProvider = Provider;
+            Interlocked.Exchange(ref currentProvider, DefaultLib.Value);
             PlanCache.Clear();
         }
 
@@ -225,14 +305,15 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// This overload is a convenience wrapper for  
-        /// <see cref="SetDictionaryProvider(Func{DictionaryMaxlength})"/> that  
-        /// automatically wraps the supplied instance in a provider delegate.  
-        /// The global <see cref="DictionaryLib.PlanCache"/> is rebuilt and  
-        /// all existing cached plans are cleared to ensure consistency.  
+        /// <see cref="SetDictionaryProvider(Func{DictionaryMaxlength})"/> that automatically  
+        /// wraps the supplied instance in a provider delegate.  
+        /// <para>
+        /// The global <see cref="DictionaryLib.PlanCache"/> is rebuilt and all existing  
+        /// cached plans are cleared to ensure consistency with the new dictionary source.  
+        /// </para>
         /// </remarks>
         /// <param name="dictionary">
-        /// The <see cref="DictionaryMaxlength"/> instance to use as the new  
-        /// active dictionary source.
+        /// The <see cref="DictionaryMaxlength"/> instance to use as the new active dictionary source.  
         /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="dictionary"/> is <see langword="null"/>.

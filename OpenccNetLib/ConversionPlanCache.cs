@@ -158,7 +158,7 @@ namespace OpenccNetLib
         /// requiring explicit cache updates.
         /// </para>
         /// Typically, this delegate references the main <c>Dictionary</c>
-        /// instance owned by <c>Opencc</c> or <see cref="DictionaryLib.Default"/>.
+        /// instance owned by <c>Opencc</c> or <see cref="DictionaryLib.Provider"/>.
         /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="dictionaryProvider"/> is <see langword="null"/>.

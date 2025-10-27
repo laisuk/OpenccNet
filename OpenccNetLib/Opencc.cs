@@ -1135,7 +1135,7 @@ namespace OpenccNetLib
         /// <remarks>
         /// This method obtains prebuilt dictionary references and lookup structures
         /// from the global <see cref="DictionaryLib.PlanCache"/> initialized with  
-        /// <see cref="DictionaryLib.Default"/>.  
+        /// <see cref="DictionaryLib.Provider"/>.  
         /// By serving results from the cache rather than rebuilding plans on demand,
         /// it minimizes redundant allocations, improves performance consistency,
         /// and reduces GC pressure during high-throughput text conversions.
