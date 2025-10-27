@@ -99,7 +99,7 @@ internal static class OfficeCommand
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
             {
-                await Console.Error.WriteLineAsync("❌  Input file does not exist.");
+                await Console.Error.WriteLineAsync("❌ Input file does not exist.");
                 return 1;
             }
 
@@ -107,7 +107,7 @@ internal static class OfficeCommand
             if (!OfficeConverter.IsValidOfficeFormat(resolvedFormat))
             {
                 await Console.Error.WriteLineAsync(
-                    $"❌  Unsupported file format. Supported: {string.Join(", ", OfficeConverter.OfficeFormats)}");
+                    $"❌ Unsupported file format. Supported: {string.Join(", ", OfficeConverter.OfficeFormats)}");
                 return 1;
             }
 
@@ -137,14 +137,14 @@ internal static class OfficeCommand
                 var (success, message) = await builder.ConvertAsync();
 
                 var status = success
-                    ? $" {message}\n📁  Output: {Path.GetFullPath(resolvedOutput)}"
-                    : $"❌  Office document conversion failed: {message}";
+                    ? $"{message}\n📁 Output: {Path.GetFullPath(resolvedOutput)}"
+                    : $"❌ Office document conversion failed: {message}";
                 await Console.Error.WriteLineAsync(status);
                 return success ? 0 : 1;
             }
             catch (Exception ex)
             {
-                await Console.Error.WriteLineAsync($"❌  Exception: {ex.Message}");
+                await Console.Error.WriteLineAsync($"❌ Exception: {ex.Message}");
                 return 1;
             }
         });

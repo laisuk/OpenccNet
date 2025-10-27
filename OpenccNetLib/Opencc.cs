@@ -309,15 +309,31 @@ namespace OpenccNetLib
         // === Public Static Methods for Custom Dictionary Loading (Optional for Users) ===
 
         /// <summary>
-        /// Overrides the default OpenCC planning source with a custom <see cref="DictionaryMaxlength"/> instance
-        /// by updating the global <see cref="DictionaryLib.PlanCache"/> provider and clearing all cached plans.
+        /// Overrides the default OpenCC planning source with a custom  
+        /// <see cref="DictionaryMaxlength"/> instance by updating the global  
+        /// <see cref="DictionaryLib.PlanCache"/> provider and clearing all cached plans.  
         /// </summary>
         /// <remarks>
-        /// This does <b>not</b> modify the default lazy dictionary (<c>New()</c>/<c>DefaultLib.Value</c>).
-        /// Only the planning provider is changed, so subsequent conversions use the supplied custom dictionary
-        /// for plan builds while the original default remains intact and accessible.
+        /// Call this method to apply a custom dictionary at runtime for specialized  
+        /// conversion needs (for example, user-defined terminology or modified mappings).  
+        /// <para>
+        /// This operation does <b>not</b> replace or modify the default lazy-loaded  
+        /// dictionary (<c>DefaultLib.Value</c>); only the global planning provider  
+        /// is swapped. Subsequent conversions will use the supplied custom dictionary  
+        /// for new plan builds, while the original default remains intact and accessible.  
+        /// </para>
+        /// <para>
+        /// Thread-safe: the provider swap is performed atomically, and the global  
+        /// <see cref="DictionaryLib.PlanCache"/> is cleared to ensure that all  
+        /// new conversions use the custom provider.  
+        /// Existing conversions already in progress will continue using their  
+        /// previously built plans.  
+        /// </para>
         /// </remarks>
-        /// <param name="customDictionary">The custom dictionary instance to use for plan construction.</param>
+        /// <param name="customDictionary">
+        /// The custom <see cref="DictionaryMaxlength"/> instance to use for  
+        /// future conversion plan construction.  
+        /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="customDictionary"/> is <see langword="null"/>.
         /// </exception>
@@ -326,9 +342,33 @@ namespace OpenccNetLib
             if (customDictionary is null)
                 throw new ArgumentNullException(nameof(customDictionary), "Custom dictionary cannot be null.");
 
-            // Do not touch InitializeLazyLoaders / DefaultLib.Value.
             // Swap only the plan cache provider and clear caches.
+            // The default dictionary (DefaultLib.Value) remains intact.
             DictionaryLib.SetDictionaryProvider(customDictionary);
+        }
+
+        /// <summary>
+        /// Restores the global dictionary provider to the default built-in instance  
+        /// and clears all cached conversion plans in <see cref="DictionaryLib.PlanCache"/>.  
+        /// </summary>
+        /// <remarks>
+        /// Call this method to revert the active dictionary provider back to the default  
+        /// <see cref="DictionaryMaxlength"/> loaded from embedded resources.  
+        /// <para>
+        /// This method only resets the planning provider; the original lazy-loaded  
+        /// dictionary (<c>DefaultLib.Value</c>) remains intact and is reused.  
+        /// No additional allocations occur, and existing <see cref="DictionaryMaxlength"/>  
+        /// objects are not modified.  
+        /// </para>
+        /// <para>
+        /// Thread-safe: the provider swap is performed atomically, and the global plan cache  
+        /// is fully cleared to ensure that all subsequent conversions use the restored default.  
+        /// </para>
+        /// </remarks>
+        public static void UseDefaultDictionary()
+        {
+            // Restore the default provider and clear the plan cache.
+            DictionaryLib.ResetDictionaryProviderToDefault();
         }
 
         /// <summary>
