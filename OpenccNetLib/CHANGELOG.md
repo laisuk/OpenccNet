@@ -6,6 +6,26 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.1] - 2025-10-28
+
+### Summary
+Maintenance release identical to **v1.3.0**, focused on improving developer experience.
+
+### Added
+- **XML Documentation**:  
+  The NuGet package now includes `OpenccNetLib.xml`, enabling full IntelliSense support in Visual Studio, Rider, and VS Code.  
+  Users can now view `summary`, `param`, and `returns` information when hovering over APIs such as `Opencc.Convert()`.
+
+### Changed
+- Updated `.csproj` with `<GenerateDocumentationFile>true</GenerateDocumentationFile>` and cleaned up redundant manual packing rules.
+- Retained all symbols and source link support for debugging consistency.
+
+### Notes
+- Functionality and performance remain unchanged from **v1.3.0**.
+- `.snupkg` symbol package still provided for source-level debugging.
+
+---
+
 ## [1.3.0] – 2025-10-20
 
 ### Added

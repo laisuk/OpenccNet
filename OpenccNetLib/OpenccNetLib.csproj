@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.3.0</Version>
+        <Version>1.3.1</Version>
         <Authors>laisuk</Authors>
         <Description>
             OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
@@ -18,30 +18,25 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <!-- Generate the XML doc file alongside the DLL -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <!-- (Optional) don’t warn about undocumented public members -->
+        <NoWarn>$(NoWarn);1591</NoWarn>
         <Title>OpenccNet Library</Title>
-        <PackageReleaseNotes>OpenccNetLib v1.3.0
+        <PackageReleaseNotes>OpenccNetLib v1.3.1
 
-            This release focuses on performance, code simplification, and astral-safe text handling.
+            This is a maintenance release identical to v1.3.0, focused on developer experience improvements.
 
             Highlights
-            - 🚀 **Pre-chunked Parallel Conversion**: Balanced `SplitRanges` batching (128–512 ranges per chunk) now feeds `Parallel.For`
-            with evenly sized tasks — achieving >50% faster conversion on S2T workloads (1M chars → ~21 ms on i5-13400).
-            - 🧩 Added `Chunk` struct and `BuildChunks()` helper for predictable, cache-friendly load balancing with per-chunk
-            `StringBuilder` buffers (slightly higher memory usage +3 MB, well worth the speedup).
-            - 🧠 Introduced `StarterUnion` with `UnionKey`-based caching in `ConversionPlanCache` — fewer allocations and faster startup.
-            - ⚙️ Added `BuildFromStarterMasks()` to construct `StarterUnion` directly from precomputed per-starter length masks,
-            eliminating full key scans and saving ~10 ms on large dictionary builds.
-            - 🧮 O(1) per-starter metadata: 64-bit length mask + minLen + cap → skips impossible probe lengths instantly.
-            - 🈚 Astral-safe `GetAt(c0, c1, hasSecond, …)` detects surrogate pairs, clamps `len == 1`, and ensures full non-BMP safety.
-            - 🗜️ Shared high-surrogate (c0) indexing for astral characters (st/ts_characters) → dense, cache-friendly tables.
-            - 🔧 Simplified bit helpers (`LowestLen` / `HighestLen`) using compact inlined loops — faster than `BitOperations` for small masks.
-            - ✅ Corrected longest-match behavior; single-grapheme fast path now triggers only when no longer candidates exist.
-            - 💡 .NET Standard 2.0-compatible throughout — removed “??=”, static locals, and lambda captures for full runtime portability.
+            - 📝 Added XML documentation: the package now includes OpenccNetLib.xml for full IntelliSense support.
+            Hovering over methods like Opencc.Convert() now shows summary, parameter, and return descriptions.
+            - 🔧 Updated project configuration with GenerateDocumentationFile and removed redundant manual XML packing.
+            - 💠 Symbol package (.snupkg) remains available for debugging.
 
-            Project: https://github.com/laisuk/OpenccNet
+            No functionality or performance changes from v1.3.0.
         </PackageReleaseNotes>
-        <AssemblyVersion>1.3.0.0</AssemblyVersion>
-        <FileVersion>1.3.0.0</FileVersion>
+        <AssemblyVersion>1.3.1.0</AssemblyVersion>
+        <FileVersion>1.3.1.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
