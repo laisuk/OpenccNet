@@ -257,30 +257,30 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Preloads the default dictionary and initializes derived lookup tables  
+        /// Preloads the default dictionary and initializes all derived lookup tables  
         /// used internally by the <see cref="Opencc"/> class.
         /// </summary>
         /// <remarks>
         /// This method is invoked once by the static constructor to ensure that the default  
-        /// <see cref="DictionaryLib"/> instance and its related conversion data structures  
-        /// are ready for immediate use.
+        /// <see cref="DictionaryLib"/> instance and its associated conversion metadata  
+        /// (such as starter masks and plan caches) are ready for immediate use.
         ///
-        /// Optionally, it can perform a brief pre-execution warmup to trigger JIT compilation,  
-        /// tiered PGO, and global <see cref="DictionaryLib.PlanCache"/> initialization for the  
-        /// most common conversion paths (<c>S2T</c> and <c>T2S</c>).
+        /// Optionally, a brief warm-up block can be enabled to trigger JIT compilation,  
+        /// tiered PGO optimization, and initialization of global <see cref="DictionaryLib.PlanCache"/>  
+        /// entries for the most common conversion paths (<c>S2T</c> and <c>T2S</c>).
         ///
-        /// Enabling the warmup block can slightly reduce first-use latency in long-running  
-        /// or GUI applications.  For short-lived console conversions, it is not required.  
-        /// The operation does not alter dictionary contents or affect memory usage.
+        /// Uncomment the warm-up section below if you wish to minimize first-use latency in  
+        /// long-running or GUI applications. For short-lived console tools, it is not necessary.  
+        /// The operation is side-effect free and does not modify dictionary contents.
         /// </remarks>
         private static void Warmup()
         {
-            var dict = DictionaryLib.New(); // Load default config
+            var dict = DictionaryLib.New(); // Load default configuration
             InitializeLazyLoaders(dict); // Initialize with the default dictionary
 
-            // Optional warmup for JIT + Tiered PGO + PlanCache.
-            // -------------------------------------------------
-            // Uncomment the section below if you want to pre-cache hot paths
+            // Optional warm-up for JIT + Tiered PGO + PlanCache.
+            // --------------------------------------------------
+            // Uncomment the section below to pre-cache hot paths
             // (recommended for GUI or service applications).
             /*
             const string text = "預熱文本 Sample 測試 Warmup";
