@@ -271,7 +271,7 @@ namespace OpenccNetLib
         ///
         /// Uncomment the warm-up section below if you wish to minimize first-use latency in  
         /// long-running or GUI applications. For short-lived console tools, it is not necessary.  
-        /// The operation is side-effect free and does not modify dictionary contents.
+        /// The operation is side effect free and does not modify dictionary contents.
         /// </remarks>
         private static void Warmup()
         {

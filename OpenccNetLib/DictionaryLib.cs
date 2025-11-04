@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using PeterO.Cbor;
 using ZstdSharp;
@@ -387,6 +390,85 @@ namespace OpenccNetLib
                 {
                     WriteIndented = true
                 }));
+        }
+
+        /// <summary>
+        /// Regular expression used to detect escaped UTF-16 surrogate pairs
+        /// (e.g. <c>\uD841\uDDE3</c>) that represent non-BMP Unicode code points
+        /// such as CJK Extension B–H characters.
+        /// </summary>
+        /// <remarks>
+        /// These surrogate pairs are emitted by <see cref="System.Text.Json.JsonSerializer"/>
+        /// when serializing supplementary-plane characters under .NET Standard 2.0.
+        /// The expression captures the high (<c>\uD8xx</c> / <c>\uDBxx</c>) and low
+        /// (<c>\uDCxx</c> / <c>\uDDxx</c>) surrogate components for later reconstruction
+        /// into a full Unicode scalar via <see cref="char.ConvertFromUtf32(int)"/>.
+        /// </remarks>
+        private static readonly Regex SurrogatePairRegex =
+            new Regex(@"\\u(?<hi>[dD][89ABab][0-9A-Fa-f]{2})\\u(?<lo>[dD][CDEFcdef][0-9A-Fa-f]{2})",
+                RegexOptions.Compiled);
+
+        /// <summary>
+        /// Reconstructs actual Unicode characters from escaped UTF-16 surrogate pairs
+        /// in a serialized JSON string.
+        /// </summary>
+        /// <param name="json">
+        /// The JSON text that may contain surrogate-pair sequences such as
+        /// <c>\uD841\uDDE3</c>.
+        /// </param>
+        /// <returns>
+        /// A new string where all surrogate-pair escapes have been replaced with
+        /// their corresponding UTF-8 code points (e.g. <c>𠗣</c>).
+        /// </returns>
+        /// <remarks>
+        /// This method is primarily used by <see cref="SerializeToJsonUnescaped"/> to
+        /// restore supplementary-plane characters (U+10000–U+10FFFF) that
+        /// <see cref="System.Text.Json"/> would otherwise output as two escaped
+        /// 16-bit surrogate values.
+        /// </remarks>
+        private static string DecodeJsonSurrogatePairs(string json)
+        {
+            return SurrogatePairRegex.Replace(json, m =>
+            {
+                var hi = Convert.ToInt32(m.Groups["hi"].Value, 16);
+                var lo = Convert.ToInt32(m.Groups["lo"].Value, 16);
+                var codepoint = 0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00);
+                return char.ConvertFromUtf32(codepoint);
+            });
+        }
+
+        /// <summary>
+        /// Serializes the current dictionary (from text files) to a JSON file
+        /// without escaping non-ASCII characters.
+        /// </summary>
+        /// <param name="path">The output file path.</param>
+        /// <remarks>
+        /// <para>
+        /// This method writes human-readable JSON where Chinese, Japanese, Korean, or other
+        /// non-ASCII characters appear directly instead of escaped <c>\uXXXX</c> sequences.
+        /// </para>
+        /// <para>
+        /// Because <see cref="System.Text.Json"/> still escapes supplementary-plane characters
+        /// (e.g. CJK Extensions B–H) on .NET Standard 2.0, this method additionally invokes
+        /// <see cref="DecodeJsonSurrogatePairs"/> to replace surrogate-pair escapes with their
+        /// correct Unicode scalars (e.g. <c>\uD841\uDDE3 → 𠗣</c>).
+        /// </para>
+        /// <para>
+        /// The resulting file is written in UTF-8 encoding without a BOM marker.
+        /// </para>
+        /// </remarks>
+        public static void SerializeToJsonUnescaped(string path)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            var json = JsonSerializer.Serialize(FromDicts(), options);
+            json = DecodeJsonSurrogatePairs(json); // convert remaining surrogate pairs
+
+            File.WriteAllText(path, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         }
 
         /// <summary>

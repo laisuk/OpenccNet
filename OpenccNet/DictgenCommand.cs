@@ -35,12 +35,18 @@ internal static class DictgenCommand
             DefaultValueFactory = _ => "dicts",
             Description = "Base directory containing source dictionary files"
         };
+        
+        var unescapeOption = new Option<bool>("--unescape", "-u")
+        {
+            Description = "For JSON format only: write readable Unicode characters instead of \\uXXXX escapes"
+        };
 
         var dictGenCommand = new Command("dictgen", $"{Blue}Generate OpenccNetLib dictionary files.{Reset}")
         {
             formatOption,
             outputOption,
-            baseDirOption
+            baseDirOption,
+            unescapeOption
         };
 
         dictGenCommand.SetAction(pr =>
@@ -48,6 +54,7 @@ internal static class DictgenCommand
             var format = pr.GetValue(formatOption)!;
             var output = pr.GetValue(outputOption);
             var baseDir = pr.GetValue(baseDirOption)!;
+            var unescape = pr.GetValue(unescapeOption);
 
             var defaultOutput = $"dictionary_maxlength.{format}";
             var outputFile = string.IsNullOrWhiteSpace(output) ? defaultOutput : output;
@@ -63,7 +70,13 @@ internal static class DictgenCommand
                     DictionaryLib.SaveCbor(outputFile);
                     break;
                 case "json":
-                    DictionaryLib.SerializeToJson(outputFile);
+                    if (unescape)
+                    {
+                        DictionaryLib.SerializeToJsonUnescaped(outputFile);
+                        Console.WriteLine("(writing unescaped Unicode JSON with surrogate fix)");
+                    }
+                    else
+                        DictionaryLib.SerializeToJson(outputFile);
                     break;
                 default:
                     Console.Error.WriteLine($"❌ Unknown format: {format}");

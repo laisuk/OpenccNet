@@ -6,21 +6,59 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.2-beta1] - 2025-11-04
+
+### Added
+
+- **SerializeToJsonUnescaped()**:  
+  New method in `DictionaryLib` that writes JSON with unescaped Unicode characters, producing fully human-readable
+  output.  
+  Supplementary-plane CJK characters (e.g. Extension B–H) are now properly restored via automatic surrogate-pair
+  decoding.  
+  The resulting file is emitted as **UTF-8 without BOM** for maximum cross-platform compatibility.
+
+- **DecodeJsonSurrogatePairs()** (internal helper):  
+  Detects and converts escaped UTF-16 surrogate pairs (e.g. `\uD841\uDDE3`) back into their real UTF-8 code points.  
+  Used internally by `SerializeToJsonUnescaped()`.
+
+- **`--unescape` flag for `dictgen` CLI**:  
+  Allows generating JSON dictionaries in unescaped form  
+  (`openccnet dictgen -f json --unescape`), improving readability of multilingual lexicons.
+
+### Changed
+
+- Internal documentation improved across serialization helpers, including detailed XML comments explaining
+  surrogate-pair handling, UTF-8 encoding, and BOM behavior.
+
+### Notes
+
+- Default behavior (`SerializeToJson`) remains unchanged and continues producing fully escaped JSON for strict parsers.
+- `SerializeToJsonUnescaped()` output can still be deserialized safely by `System.Text.Json` and other compliant JSON
+  libraries.
+
+---
+
 ## [1.3.1] - 2025-10-28
 
 ### Summary
+
 Maintenance release identical to **v1.3.0**, focused on improving developer experience.
 
 ### Added
+
 - **XML Documentation**:  
-  The NuGet package now includes `OpenccNetLib.xml`, enabling full IntelliSense support in Visual Studio, Rider, and VS Code.  
+  The NuGet package now includes `OpenccNetLib.xml`, enabling full IntelliSense support in Visual Studio, Rider, and VS
+  Code.  
   Users can now view `summary`, `param`, and `returns` information when hovering over APIs such as `Opencc.Convert()`.
 
 ### Changed
-- Updated `.csproj` with `<GenerateDocumentationFile>true</GenerateDocumentationFile>` and cleaned up redundant manual packing rules.
+
+- Updated `.csproj` with `<GenerateDocumentationFile>true</GenerateDocumentationFile>` and cleaned up redundant manual
+  packing rules.
 - Retained all symbols and source link support for debugging consistency.
 
 ### Notes
+
 - Functionality and performance remain unchanged from **v1.3.0**.
 - `.snupkg` symbol package still provided for source-level debugging.
 
