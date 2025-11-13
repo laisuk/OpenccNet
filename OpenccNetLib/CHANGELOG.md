@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.3.2-beta1] - 2025-11-04
+## [1.3.2-beta1] - 2025-11-13
 
 ### Added
 
@@ -29,6 +29,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Internal documentation improved across serialization helpers, including detailed XML comments explaining
   surrogate-pair handling, UTF-8 encoding, and BOM behavior.
+- Optimized FromDicts() in handling missing dictionary files.
 
 ### Notes
 
