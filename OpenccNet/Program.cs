@@ -22,8 +22,11 @@ public static class Program
         rootCommand.Subcommands.Add(OfficeCommand.CreateCommand());
 
         // System.CommandLine beta 5 config wrapper
-        var config = new CommandLineConfiguration(rootCommand);
+        // var config = new CommandLineConfiguration(rootCommand);
 
-        return await config.InvokeAsync(args);
+        // return await config.InvokeAsync(args);
+        
+        // No CommandLineConfiguration wrapper needed anymore
+        return await rootCommand.Parse(args).InvokeAsync();
     }
 }

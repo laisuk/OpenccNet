@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -486,9 +487,56 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="relativeBaseDir">Relative directory containing dictionary text files.</param>
         /// <returns>A fully populated <see cref="DictionaryMaxlength"/> instance.</returns>
+        /// <remarks>
+        /// All dictionary text files under the specified directory must exist.  
+        /// If any required file is missing, this method throws a <see cref="FileNotFoundException"/>  
+        /// and does not return a partially-installed <see cref="DictionaryMaxlength"/>.  
+        /// This ensures that all OpenCC configurations remain valid and prevents  
+        /// undefined behavior during Chinese text conversion.
+        /// </remarks>
         public static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts")
         {
             var baseDir = Path.Combine(AppContext.BaseDirectory, relativeBaseDir);
+
+            // Collect missing files first
+            var required = new[]
+            {
+                "STCharacters.txt",
+                "STPhrases.txt",
+                "TSCharacters.txt",
+                "TSPhrases.txt",
+                "TWPhrases.txt",
+                "TWPhrasesRev.txt",
+                "TWVariants.txt",
+                "TWVariantsRev.txt",
+                "TWVariantsRevPhrases.txt",
+                "HKVariants.txt",
+                "HKVariantsRev.txt",
+                "HKVariantsRevPhrases.txt",
+                "JPShinjitaiCharacters.txt",
+                "JPShinjitaiPhrases.txt",
+                "JPVariants.txt",
+                "JPVariantsRev.txt",
+                "STPunctuations.txt",
+                "TSPunctuations.txt"
+            };
+
+            var dictPaths = required
+                .Select(name => (name, path: Path.Combine(baseDir, name)))
+                .ToArray();
+
+            var missing = dictPaths
+                .Where(p => !File.Exists(p.path))
+                .Select(p => p.name)
+                .ToList();
+
+            if (missing.Count > 0)
+            {
+                var msg = "Missing dictionary files:\n" +
+                          string.Join("\n", missing.Select(Path.GetFileName));
+                throw new FileNotFoundException(msg);
+            }
+
             var instance = new DictionaryMaxlength
             {
                 st_characters = LoadFile(Path.Combine(baseDir, "STCharacters.txt")),

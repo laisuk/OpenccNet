@@ -89,7 +89,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestSerializationUnescaped_NoSurrogates()
     {
-        var jsonPath = Path.Combine(OutputDir, "test_dict_unescaped.json");
+        var jsonPath = Path.Combine(OutputDir, "test_dict_unescaped_no_surrogate.json");
         DictionaryLib.SerializeToJsonUnescaped(jsonPath);
 
         using var sr = new StreamReader(jsonPath);
