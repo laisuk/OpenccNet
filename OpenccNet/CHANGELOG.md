@@ -7,13 +7,25 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.3.2-beta1] - 2025-11-04
+## [1.3.2-beta1] - 2025-11-13
 
 ### Added
 
 - **`--unescape` flag for `dictgen` CLI**:  
   Allows generating JSON dictionaries in unescaped form  
   (`openccnet dictgen -f json --unescape`), improving readability of multilingual lexicons.
+
+### Changed
+
+- Update System.CommandLine to release v2.0.0
+
+---
+
+## [1.3.1] - 2025-11-01
+
+### Changed
+
+- Update `OpenccNetLib` to version 1.3.1
 
 ---
 
