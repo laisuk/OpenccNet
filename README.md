@@ -315,10 +315,11 @@ Usage:
   OpenccNet dictgen [options]
 
 Options:
-  -f, --format <cbor|json|zstd>  Dictionary format: [zstd|cbor|json] [default: zstd]
-  -o, --output <output>          Output filename. Default: dictionary_maxlength.<ext>
-  -b, --base-dir <base-dir>      Base directory containing source dictionary files [default: dicts]
-  -?, -h, --help                 Show help and usage information
+  -f, --format <format>      Dictionary format: zstd|cbor|json [default: zstd]
+  -o, --output <output>      Output filename. Default: dictionary_maxlength.<ext>
+  -b, --base-dir <base-dir>  Base directory containing source dictionary files [default: dicts]
+  -u, --unescape             For JSON format only: write readable Unicode characters instead of \uXXXX escapes
+  -?, -h, --help             Show help and usage information
 ```
 
 ### `OpenccNet convert`
