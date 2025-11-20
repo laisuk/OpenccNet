@@ -29,7 +29,7 @@ namespace OpenccNetTests
             var inputBytes = File.ReadAllBytes(_testDocxPath!);
 
             // ✅ OpenccNetLib 核心類別正確名稱是 Opencc，不是 OpenCC
-            var opencc = new Opencc("s2t");
+            var opencc = new Opencc(OpenccConfig.S2T);
 
             // Act
             var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
@@ -70,7 +70,7 @@ namespace OpenccNetTests
             if (File.Exists(outputPath))
                 File.Delete(outputPath);
 
-            var opencc = new Opencc("s2t");
+            var opencc = new Opencc(OpenccConfig.S2T);
 
             // Act
             OfficeDocConverter.ConvertOfficeFile(

@@ -33,6 +33,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   This simplifies the API surface, improves maintainability, and unifies all key-length constraints under the
   `StarterUnion` metadata model.
 
+- **Moved `OpenccConfig` enum to the `OpenccNetLib` namespace (top-level)**:  
+  The enum was previously nested inside the `Opencc` class.  
+  Moving it to the namespace root makes it a first-class public API type, improving discoverability,
+  IntelliSense usability, and alignment with .NET library design guidelines.  
+  This change is fully backward compatible because all string-based configuration APIs remain unchanged.
+
 - **Refactored `ApplySegmentReplace` delegate**:  
   The primary overload now uses  
   `Func<string, DictWithMaxLength[], StarterUnion, string>`  
@@ -54,6 +60,28 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Default behavior (`SerializeToJson`) remains unchanged and continues producing fully escaped JSON for strict parsers.
 - `SerializeToJsonUnescaped()` output can still be deserialized safely by `System.Text.Json` and other compliant JSON
   libraries.
+
+### Migration Note (for `SetConfig(OpenccConfig)` users)
+
+The `OpenccConfig` enum has been moved out of the `Opencc` class into the
+top-level `OpenccNetLib` namespace.
+
+This affects only code calling:
+
+```csharp
+opencc.SetConfig(Opencc.OpenccConfig.S2T);   // Old style
+```
+
+The method signature is unchanged, but the enum must now be referenced without
+the `Opencc.` prefix:
+
+```csharp
+opencc.SetConfig(OpenccConfig.S2T);          // New, recommended
+```
+
+No other public APIs are affected.  
+The new constructor `Opencc(OpenccConfig)` did not exist in previous versions,
+so this relocation does **not** break any existing constructor usage.
 
 ---
 

@@ -12,6 +12,29 @@ using System.Threading.Tasks;
 namespace OpenccNetLib
 {
     /// <summary>
+    /// Enum representing supported OpenCC configuration keys.
+    /// </summary>
+    public enum OpenccConfig
+    {
+        S2T,
+        T2S,
+        S2Tw,
+        Tw2S,
+        S2Twp,
+        Tw2Sp,
+        S2Hk,
+        Hk2S,
+        T2Tw,
+        T2Twp,
+        Tw2T,
+        Tw2Tp,
+        T2Hk,
+        Hk2T,
+        T2Jp,
+        Jp2T
+    }
+
+    /// <summary>
     /// Main class for OpenCC text conversion. Provides methods for various conversion directions
     /// (Simplified-Traditional, Traditional-Simplified, etc.) and supports multi-stage, high-performance conversion.
     /// </summary>
@@ -34,29 +57,6 @@ namespace OpenccNetLib
             new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
 
         #region Config Enum Region
-
-        /// <summary>
-        /// Enum representing supported OpenCC configuration keys.
-        /// </summary>
-        public enum OpenccConfig
-        {
-            S2T,
-            T2S,
-            S2Tw,
-            Tw2S,
-            S2Twp,
-            Tw2Sp,
-            S2Hk,
-            Hk2S,
-            T2Tw,
-            T2Twp,
-            Tw2T,
-            Tw2Tp,
-            T2Hk,
-            Hk2T,
-            T2Jp,
-            Jp2T
-        }
 
         /// <summary>
         /// Converts the specified <see cref="OpenccConfig"/> enum value to its corresponding string representation.
@@ -429,6 +429,16 @@ namespace OpenccNetLib
         public Opencc(string config = null)
         {
             Config = config;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Opencc"/> class using an <see cref="OpenccConfig"/> enum value.
+        /// This overload is the preferred way to create an Opencc instance.
+        /// </summary>
+        /// <param name="configEnum">The OpenCC conversion configuration enum value.</param>
+        public Opencc(OpenccConfig configEnum)
+        {
+            Config = ConfigEnumToString(configEnum);
         }
 
         /// <summary>
@@ -1172,7 +1182,7 @@ namespace OpenccNetLib
         /// it minimizes redundant allocations, improves performance consistency,
         /// and reduces GC pressure during high-throughput text conversions.
         /// </remarks>
-        /// <param name="config">
+        /// <param name="configEnum">
         /// The OpenCC conversion configuration (e.g., <c>S2T</c>, <c>T2HK</c>, <c>TW2S</c>).
         /// </param>
         /// <param name="punctuation">
@@ -1183,8 +1193,8 @@ namespace OpenccNetLib
         /// A <see cref="DictRefs"/> object containing the prepared dictionary references
         /// and lookup tables for the given configuration.
         /// </returns>
-        private static DictRefs GetDictRefs(OpenccConfig config, bool punctuation)
-            => DictionaryLib.PlanCache.GetPlan(config, punctuation);
+        private static DictRefs GetDictRefs(OpenccConfig configEnum, bool punctuation)
+            => DictionaryLib.PlanCache.GetPlan(configEnum, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.

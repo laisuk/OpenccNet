@@ -15,7 +15,7 @@ projects with a focus on performance and minimal memory usage.
 - [Installation](#installation)
 - [Usage](#usage)
 - [API Reference](#api-reference)
-- [Office Document Coversion](#-office-document--epub-conversion-in-memory-no-temp-files-required)
+- [Office Document Conversion](#-office-document--epub-conversion-in-memory-no-temp-files-required)
 - [Add-On CLI Tools](#add-on-cli-tools-separated-from-openccnetlib)
 - [License](#license)
 
@@ -61,11 +61,26 @@ Or, clone and include the source files in your project.
 
 ```csharp
 using OpenccNetLib;
+
+// Recommended: use the enum-based constructor
+var opencc = new Opencc(OpenccConfig.S2T); // Simplified → Traditional
+
+string traditional = opencc.Convert("汉字转换测试");
+Console.WriteLine(traditional);
+// Output: 漢字轉換測試
+```
+
+Or, using the legacy string-based configuration:
+
+```csharp
+using OpenccNetLib;
 var opencc = new Opencc("s2t"); // Simplified to Traditional 
 string traditional = opencc.Convert("汉字转换测试"); 
 Console.WriteLine(traditional);
 // Output: 漢字轉換測試
 ```
+
+---
 
 ### Supported Configurations
 
@@ -196,15 +211,15 @@ This is ideal for:
 
 ### ✔ Supported formats
 
-| Format | Description                                        |
-|--------|----------------------------------------------------|
-| `docx` | Word document (Office Open XML)                    |
-| `xlsx` | Excel spreadsheet (Office Open XML)                |
-| `pptx` | PowerPoint presentation (Office Open XML)          |
-| `odt`  | OpenDocument Text (LibreOffice / OpenOffice)       |
-| `ods`  | OpenDocument Spreadsheet                           |
-| `odp`  | OpenDocument Presentation                          |
-| `epub` | EPUB e-book (with correct uncompressed mimetype)   |
+| Format | Description                                      |
+|--------|--------------------------------------------------|
+| `docx` | Word document (Office Open XML)                  |
+| `xlsx` | Excel spreadsheet (Office Open XML)              |
+| `pptx` | PowerPoint presentation (Office Open XML)        |
+| `odt`  | OpenDocument Text (LibreOffice / OpenOffice)     |
+| `ods`  | OpenDocument Spreadsheet                         |
+| `odp`  | OpenDocument Presentation                        |
+| `epub` | EPUB e-book (with correct uncompressed mimetype) |
 
 ---
 
@@ -313,7 +328,7 @@ Example (`OfficeDocConverterTests`):
 [TestMethod]
 public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 {
-    var opencc = new Opencc(OpenccConfig.S2T);
+    var opencc = new Opencc("s2t");
     var inputBytes = File.ReadAllBytes("滕王阁序.docx");
 
     var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
@@ -414,7 +429,7 @@ on par with optimized Rust implementations and significantly faster than traditi
   Very stable:
     - Most allocations are from the final output string + temporary key buffers.
     - Minimal Gen 1 activity; Gen 2 only appears on **very large** inputs (≥1M chars).
-    - No spikes or stalls under multi-threaded workloads.
+    - No spikes or stalls under multithreaded workloads.
 
 - **🏁 Throughput**
     - Sustained **≈ 95 MB/s** (S2T) on .NET 10 RyuJIT x86-64-v3.
@@ -441,10 +456,16 @@ on par with optimized Rust implementations and significantly faster than traditi
 
 ### `Opencc` Class
 
-#### 🔧 Constructor
+#### 🔧 Constructors
 
 - `Opencc(string config = null)`  
-  Create a new converter with the specified configuration.
+  Creates a new converter using a configuration name (e.g., `"s2t"`, `"t2s"`).  
+  This overload is compatible with existing code but requires string-based config.
+
+- `Opencc(OpenccConfig configEnum)`  
+  Creates a new converter using the strongly-typed `OpenccConfig` enum  
+  (e.g., `OpenccConfig.S2T`, `OpenccConfig.T2S`).  
+  **Recommended for all new code** because it avoids magic strings.
 
 #### 🔁 Conversion Methods
 

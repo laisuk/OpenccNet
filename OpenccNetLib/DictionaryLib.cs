@@ -181,7 +181,7 @@ namespace OpenccNetLib
         /// <see cref="ConversionPlanCache"/> instances derived from <see cref="DefaultLib"/>.  
         /// 
         /// Each plan bundles optimized lookup structures, prefiltered dictionary  
-        /// references, and starter masks for a specific <see cref="Opencc.OpenccConfig"/> and  
+        /// references, and starter masks for a specific <see cref="OpenccConfig"/> and  
         /// punctuation mode.  
         /// 
         /// This cache eliminates redundant plan reconstruction between repeated  

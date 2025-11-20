@@ -17,7 +17,7 @@ namespace OpenccNetLib
     /// <item>
     /// <description>
     /// <b>Primary cache:</b> Maps a <see cref="PlanKey"/> (combination of  
-    /// <see cref="Opencc.OpenccConfig"/> and punctuation setting) to a  
+    /// <see cref="OpenccConfig"/> and punctuation setting) to a  
     /// <see cref="DictRefs"/> instance, which contains the dictionary sequence  
     /// ("rounds") and any per-round <see cref="StarterUnion"/> for fast lookups.
     /// </description>
@@ -153,7 +153,7 @@ namespace OpenccNetLib
         /// to be used when constructing new conversion plans.
         /// <para>
         /// This provider is invoked lazily whenever a plan for a specific
-        /// <see cref="Opencc.OpenccConfig"/> and punctuation mode is requested,
+        /// <see cref="OpenccConfig"/> and punctuation mode is requested,
         /// ensuring that the latest dictionary data is always used without
         /// requiring explicit cache updates.
         /// </para>
@@ -180,7 +180,7 @@ namespace OpenccNetLib
         /// A <see cref="DictRefs"/> containing the ordered dictionaries and  
         /// per-round <see cref="StarterUnion"/> instances.
         /// </returns>
-        public DictRefs GetPlan(Opencc.OpenccConfig config, bool punctuation = false)
+        public DictRefs GetPlan(OpenccConfig config, bool punctuation = false)
             => _planCache.GetOrAdd(new PlanKey(config, punctuation), _ => BuildPlan(config, punctuation));
 
         /// <summary>Clear all plan and union caches (e.g., after hot-reloading dictionaries).</summary>
@@ -199,7 +199,7 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This method is the central factory responsible for assembling a complete
-        /// conversion plan for a given <see cref="Opencc.OpenccConfig"/> value.
+        /// conversion plan for a given <see cref="OpenccConfig"/> value.
         /// It determines which dictionary groups (“rounds”) are required,
         /// based on the target conversion configuration, and attaches a
         /// corresponding <see cref="StarterUnion"/> to each round.
@@ -223,7 +223,7 @@ namespace OpenccNetLib
         /// </para>
         /// </remarks>
         /// <param name="config">
-        /// The <see cref="Opencc.OpenccConfig"/> defining the type of conversion
+        /// The <see cref="OpenccConfig"/> defining the type of conversion
         /// (e.g., Simplified→Traditional, Traditional→Simplified, Taiwan, Hong Kong, or Japan variants).
         /// </param>
         /// <param name="punctuation">
@@ -233,39 +233,39 @@ namespace OpenccNetLib
         /// A fully initialized <see cref="DictRefs"/> instance containing all dictionary
         /// rounds and their associated <see cref="StarterUnion"/> accelerators.
         /// </returns>
-        private DictRefs BuildPlan(Opencc.OpenccConfig config, bool punctuation)
+        private DictRefs BuildPlan(OpenccConfig config, bool punctuation)
         {
             var d = _dictionaryProvider();
 
             switch (config)
             {
-                case Opencc.OpenccConfig.S2T:
+                case OpenccConfig.S2T:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
-                case Opencc.OpenccConfig.T2S:
+                case OpenccConfig.T2S:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
-                case Opencc.OpenccConfig.S2Tw:
+                case OpenccConfig.S2Tw:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
                     var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
-                case Opencc.OpenccConfig.Tw2S:
+                case OpenccConfig.Tw2S:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
                     var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
-                case Opencc.OpenccConfig.S2Twp:
+                case OpenccConfig.S2Twp:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
                     var u2 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r2);
@@ -273,72 +273,72 @@ namespace OpenccNetLib
                     return new DictRefs(r1, u1).WithRound2(r2, u2).WithRound3(r3, u3);
                 }
 
-                case Opencc.OpenccConfig.Tw2Sp:
+                case OpenccConfig.Tw2Sp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.Tw2SpR1TwRevTriple, out var r1);
                     var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
-                case Opencc.OpenccConfig.S2Hk:
+                case OpenccConfig.S2Hk:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
                     var u2 = GetOrAddUnionFor(d, UnionKey.HkVariantsOnly, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
-                case Opencc.OpenccConfig.Hk2S:
+                case OpenccConfig.Hk2S:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkRevPair, out var r1);
                     var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
-                case Opencc.OpenccConfig.T2Tw:
+                case OpenccConfig.T2Tw:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
-                case Opencc.OpenccConfig.T2Twp:
+                case OpenccConfig.T2Twp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r1);
                     var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
-                case Opencc.OpenccConfig.Tw2T:
+                case OpenccConfig.Tw2T:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
-                case Opencc.OpenccConfig.Tw2Tp:
+                case OpenccConfig.Tw2Tp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
                     var u2 = GetOrAddUnionFor(d, UnionKey.TwPhrasesRevOnly, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
-                case Opencc.OpenccConfig.T2Hk:
+                case OpenccConfig.T2Hk:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkVariantsOnly, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
-                case Opencc.OpenccConfig.Hk2T:
+                case OpenccConfig.Hk2T:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkRevPair, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
-                case Opencc.OpenccConfig.T2Jp:
+                case OpenccConfig.T2Jp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.JpVariantsOnly, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
-                case Opencc.OpenccConfig.Jp2T:
+                case OpenccConfig.Jp2T:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.JpRevTriple, out var r1);
                     return new DictRefs(r1, u1);
@@ -541,7 +541,7 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// A <see cref="PlanKey"/> uniquely identifies a conversion plan by the  
-        /// <see cref="Opencc.OpenccConfig"/> value and whether punctuation handling  
+        /// <see cref="OpenccConfig"/> value and whether punctuation handling  
         /// is enabled. This ensures that the plan cache can differentiate between  
         /// otherwise identical dictionary sequences that differ only in punctuation inclusion.
         /// </para>
@@ -552,7 +552,7 @@ namespace OpenccNetLib
         /// </para>
         /// <para>
         /// The hash code is computed by combining the integer representation of  
-        /// <see cref="Opencc.OpenccConfig"/> with the punctuation flag using a prime  
+        /// <see cref="OpenccConfig"/> with the punctuation flag using a prime  
         /// multiplier (397) to minimize collisions.
         /// </para>
         /// </remarks>
@@ -567,10 +567,10 @@ namespace OpenccNetLib
         /// </example>
         private readonly struct PlanKey : IEquatable<PlanKey>
         {
-            private readonly Opencc.OpenccConfig _config;
+            private readonly OpenccConfig _config;
             private readonly bool _punctuation;
 
-            public PlanKey(Opencc.OpenccConfig config, bool punctuation)
+            public PlanKey(OpenccConfig config, bool punctuation)
             {
                 _config = config;
                 _punctuation = punctuation;
