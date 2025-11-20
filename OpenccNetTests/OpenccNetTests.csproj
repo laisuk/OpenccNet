@@ -21,4 +21,10 @@
         <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="滕王阁序.docx">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

@@ -15,20 +15,28 @@ projects with a focus on performance and minimal memory usage.
 - [Installation](#installation)
 - [Usage](#usage)
 - [API Reference](#api-reference)
+- [Office Document Coversion](#-office-document--epub-conversion-in-memory-no-temp-files-required)
 - [Add-On CLI Tools](#add-on-cli-tools-separated-from-openccnetlib)
 - [License](#license)
 
 ## Features
 
-- Fast, multi-stage conversion using static dictionary caching
+- Fast, multi-stage Chinese text conversion using prebuilt dictionary unions  
+  (optimized with static caching and zero-allocation hot paths)
 - Supports:
     - Simplified ↔ Traditional Chinese
-    - Traditional (Taiwan) ↔ Simplified/Traditional
-    - Traditional (Hong Kong) ↔ Simplified/Traditional
+    - Taiwan Traditional (T) ↔ Simplified / Traditional
+    - Hong Kong Traditional (HK) ↔ Simplified / Traditional
     - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
-- Accurate handling of **non-BMP (U+20000+) Chinese characters** for better conversion fidelity
+- Accurate handling of **Supplementary Plane CJK (U+20000+)** characters  
+  (correct surrogate-pair detection and matching)
 - Optional punctuation conversion
-- Thread-safe and suitable for parallel processing
+- Thread-safe and suitable for high-throughput parallel processing
+- **Office document & EPUB conversion** (pure in-memory):
+    - `.docx` (Word), `.xlsx` (Excel), `.pptx` (PowerPoint), `.epub`
+    - `byte[] → byte[]` conversion with full XML patching
+    - Async/await supported (`ConvertOfficeBytesAsync`)
+    - Zero temp files required; safe for Web, Server, and WASM/Blazor hosts
 - .NET Standard 2.0 compatible  
   (cross-platform: Windows, Linux, macOS; supported on .NET Core 2.0+, .NET 5+, .NET 6/7/8/9/10 LTS)
 
@@ -172,33 +180,206 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 
 ---
 
+## 🆕 Office Document & EPUB Conversion (In-Memory, No Temp Files Required)
+
+Starting from **OpenccNetLib v1.3.2**, the library now provides a **pure in-memory Office / EPUB conversion API**.  
+This allows converting `.docx`, `.xlsx`, `.pptx`, and `.epub` **directly from byte[] to byte[]**, without touching the
+filesystem.
+
+This is ideal for:
+
+- **Web servers** (ASP.NET Core)
+- **Blazor / WebAssembly**
+- **JavaScript interop**
+- **Desktop apps that want to avoid temp paths**
+- **Security-restricted environments**
+
+### ✔ Supported formats
+
+| Format | Description                                |
+|--------|--------------------------------------------|
+| `docx` | Word document                              |
+| `xlsx` | Excel spreadsheet                          |
+| `pptx` | PowerPoint presentation                    |
+| `epub` | EPUB e-book (with mimetype spec preserved) |
+
+---
+
+## 📦 Example: Convert Office Document In-Memory
+
+```csharp
+using OpenccNetLib;
+
+var opencc = new Opencc(OpenccConfig.S2T); // Simplified → Traditional
+
+byte[] inputBytes = File.ReadAllBytes("sample.docx");
+
+byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+    inputBytes,
+    format: "docx",
+    converter: opencc,
+    punctuation: false,
+    keepFont: true
+);
+
+File.WriteAllBytes("output.docx", outputBytes);
+```
+
+---
+
+## ⚡ Async API (Recommended for Server/Web)
+
+```csharp
+var outputBytes = await OfficeDocConverter.ConvertOfficeBytesAsync(
+    inputBytes,
+    "docx",
+    opencc,
+    punctuation: false,
+    keepFont: true
+);
+```
+
+- Fully async
+- No blocking I/O
+- Safe for ASP.NET Core / Blazor
+
+---
+
+## 📁 Optional: Convert Files (Convenience wrappers)
+
+```csharp
+OfficeDocConverter.ConvertOfficeFile(
+    "input.docx",
+    "output.docx",
+    "docx",
+    converter: opencc
+);
+```
+
+Or async:
+
+```csharp
+await OfficeDocConverter.ConvertOfficeFileAsync(
+    "input.docx",
+    "output.docx",
+    "docx",
+    opencc
+);
+```
+
+---
+
+## 🔍 What does conversion do?
+
+Inside the Office container (ZIP), the library will:
+
+- Extract only the relevant XML parts
+- Apply Opencc text conversion (`S2T`, `T2S`, `T2TW`, `HK2S`, etc.)
+- Preserve XML formatting
+- Optionally preserve fonts (`keepFont = true`)
+- Repack the Office document in correct ZIP structure
+- For EPUB: the `mimetype` is written as **uncompressed first entry** (EPUB spec requirement)
+
+---
+
+## 🛡 Error Handling
+
+If conversion fails (invalid format, corrupted ZIP, missing document.xml, etc.):
+
+```csharp
+throw new InvalidOperationException("Conversion failed: ...");
+```
+
+A companion “Try” API may be added in future versions.
+
+---
+
+## 🧪 Unit Tested (MSTest)
+
+OpenccNetLib includes integration tests for:
+
+- `.docx` (Word)
+- ZIP structure validation
+- XML extraction correctness
+- Chinese text conversion inside `word/document.xml`
+- Round-trip verification
+
+Example (`OfficeDocConverterTests`):
+
+```csharp
+[TestMethod]
+public void ConvertOfficeBytes_Docx_S2T_Succeeds()
+{
+    var opencc = new Opencc(OpenccConfig.S2T);
+    var inputBytes = File.ReadAllBytes("滕王阁序.docx");
+
+    var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+        inputBytes, "docx", opencc);
+
+    Assert.IsNotNull(outputBytes);
+
+    using var ms = new MemoryStream(outputBytes);
+    using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
+
+    Assert.IsNotNull(zip.GetEntry("word/document.xml"));
+}
+```
+
+---
+
+## 🚀 Why This Matters
+
+- **Zero temp files** → perfect for cloud environments
+- **Memory-only pipeline** → safer, faster, cleaner
+- **Cross-platform** (Windows / macOS / Linux / WASM)
+- **Blazor and JavaScript-ready** (byte[] in/out)
+- No external dependencies (only built-in System.IO.Compression)
+
+---
+
 ## Performance
 
-- Uses static dictionary caching and thread-local buffers for high throughput.
-- Suitable for batch and parallel processing scenarios.
+- Uses static dictionary caching, precomputed StarterUnion masks, and thread-local buffers for high throughput.
+- Fully optimized for multi-stage conversion with zero-allocation hot paths.
+- Suitable for real-time, batch, and parallel processing.
 
-### 🚀 Performance Benchmark for OpenccNetLib 1.2.1
+### 🚀 Performance Benchmark for **OpenccNetLib 1.4.0**
 
-#### `S2T` Conversion (after Pre-Chunk Optimization)
+#### `S2T` Conversion (after Union-based Optimizations)
 
 **Environment**
 
-| Item                | Value                                   |
-|:--------------------|:----------------------------------------|
-| **BenchmarkDotNet** | v0.15.4                                 |
-| **OS**              | Windows 11 (24H2 / Build 26100.6899)    |
-| **CPU**             | Intel Core i5-13400 (10C/16T @ 2.5 GHz) |
-| **.NET SDK**        | 9.0.306                                 |
-| **Runtime**         | .NET 9.0.10 (X64 RyuJIT x86-64-v3)      |
-| **Iterations**      | 10 (+ 1 warm-up)                        |
+| Item                | Value                                    |
+|---------------------|------------------------------------------|
+| **BenchmarkDotNet** | v0.15.6                                  |
+| **OS**              | Windows 11 (Build 26200.7171)            |
+| **CPU**             | Intel Core i5-13400 (10C/16T @ 2.50 GHz) |
+| **.NET SDK**        | 10.0.100                                 |
+| **Runtime**         | .NET 10.0.0 (X64 RyuJIT x86-64-v3)       |
+| **Iterations**      | 10 (1 warm-up)                           |
 
-| Method               |          Size |         Mean |    Error |   StdDev |      Min |      Max | Rank |     Gen0 |     Gen1 |   Gen2 |       Allocated |
-|:---------------------|--------------:|-------------:|---------:|---------:|---------:|---------:|-----:|---------:|---------:|-------:|----------------:|
-| **BM_Convert_Sized** |       **100** |   **2.73µs** |   0.02µs |   0.01µs |   2.72µs |   2.75µs |    1 |     0.52 |        – |      – |          5.37KB |
-| **BM_Convert_Sized** |     **1,000** |  **66.63µs** |   0.47µs |   0.28µs |  66.09µs |  66.99µs |    2 |     8.79 |        – |      – |         90.38KB |
-| **BM_Convert_Sized** |    **10,000** | **264.71µs** |  18.05µs |  11.94µs | 253.76µs | 282.28µs |    3 |    83.50 |    19.04 |      – |        845.77KB |
-| **BM_Convert_Sized** |   **100,000** |   **3.97ms** |  94.88µs |  62.76µs |   3.90ms |   4.08ms |    4 |   890.63 |   367.19 | 117.19 |      8,427.81KB |
-| **BM_Convert_Sized** | **1,000,000** |   **21.0ms** | 506.18µs | 334.81µs |  20.52ms |  21.49ms |    5 | 8,468.75 | 1,437.50 | 625.00 | **85,550.74KB** |
+#### Results
+
+| Method               |      Size |          Mean |     Error |    StdDev |       Min |       Max | Rank |     Gen0 |     Gen1 |    Gen2 |       Allocated |
+|----------------------|----------:|--------------:|----------:|----------:|----------:|----------:|-----:|---------:|---------:|--------:|----------------:|
+| **BM_Convert_Sized** |       100 |   **2.55 µs** |   0.05 µs |   0.03 µs |   2.53 µs |   2.63 µs |    1 |    0.515 |        – |       – |          5.3 KB |
+| **BM_Convert_Sized** |     1,000 |  **52.61 µs** |   0.42 µs |   0.28 µs |  52.39 µs |  53.23 µs |    2 |    8.789 |        – |       – |         90.3 KB |
+| **BM_Convert_Sized** |    10,000 | **297.87 µs** |  11.36 µs |   7.52 µs | 288.43 µs | 312.53 µs |    3 |   83.496 |   19.043 |       – |        845.9 KB |
+| **BM_Convert_Sized** |   100,000 |   **3.98 ms** |  52.31 µs |  27.36 µs |   3.93 ms |   4.02 ms |    4 |  890.625 |  367.188 | 117.188 |      8,430.5 KB |
+| **BM_Convert_Sized** | 1,000,000 |  **21.17 ms** | 594.50 µs | 393.23 µs |  20.87 ms |  22.01 ms |    5 | 8,468.75 | 1,468.75 | 625.000 | **85,580.4 KB** |
+
+---
+
+### Summary
+
+- **100 chars** → ~2.5 µs
+- **1,000 chars** → ~52 µs
+- **10,000 chars** → ~0.3 ms
+- **100,000 chars** → ~4 ms
+- **1,000,000 chars (1M)** → ~21 ms
+
+This places OpenccNetLib 1.4.0 among the **fastest .NET-based CJK converters**,  
+on par with optimized Rust implementations and significantly faster than traditional trie-based segmenters.
 
 ---
 
@@ -206,38 +387,50 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 
 ![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmarks121.png)
 
-### 🟢 Highlights
+### 🟢 Highlights (OpenccNetLib v1.4.0)
 
 - **🚀 Performance Gain:**  
-  More than **50 % faster** than the previous implementation.  
-  1 M characters now convert in **≈ 21 ms** — about **47 million chars per second** (≈ 95 MB/s)  
-  on a mid-range Intel i5-13400 CPU.
+  Over **50% faster** compared to earlier 1.x releases.  
+  1M characters convert in **≈ 21 ms** — roughly **47–50 million chars/sec**  
+  (≈ **95–100 MB/s**) on a mid-range Intel i5-13400.
 
 - **⚙️ Major Improvement Sources**
-    - **Pre-chunked `SplitRanges`** — balanced workloads for `Parallel.For`, minimizing task-stealing overhead.
-    - **Mask-first gating + short-circuit paths** — fewer candidate probes per segment.
-    - **Global `StringBuilder` reuse** — avoids per-segment reallocation on .NET Standard 2.0.
+    - **StarterUnion dense-table lookup**  
+      Eliminates per-key scanning; provides instant access to:  
+      `(starterUnits, cap, minLen, 64-bit length mask)`.
+    - **Mask-first gating + shortest/longest bounds**  
+      Almost all non-matching starters exit in a **single branch**.
+    - **Dropped `maxWordLength` parameter**  
+      Reduces call-site complexity and removes redundant range checks.
+    - **Zero-allocation hot loop**  
+      Uses `Span<char>`, thread-local `StringBuilder`, and rented buffers.
+    - **Optimized surrogate fast-path**  
+      Lookup tables (`IsHs`, `IsLs`) skip UTF-16 surrogate tests at runtime.
 
-- **📈 GC Profile:**  
-  Stable; most allocations come from per-chunk `StringBuilder`s and the final stitched string.  
-  Threads reuse their buffers efficiently — no Gen 2 pressure spikes.
+- **📈 GC Profile**  
+  Very stable:
+    - Most allocations are from the final output string + temporary key buffers.
+    - Minimal Gen 1 activity; Gen 2 only appears on **very large** inputs (≥1M chars).
+    - No spikes or stalls under multi-threaded workloads.
 
-- **🏁 Throughput:**  
-  Sustained **≈ 95 MB/s** for Simplified → Traditional (S2T) conversions.  
-  Consistent **40–50 ms** conversion time for multi-million-character novels.
+- **🏁 Throughput**
+    - Sustained **≈ 95 MB/s** (S2T) on .NET 10 RyuJIT x86-64-v3.
+    - Multi-million character novels convert in **40–50 ms**, consistently.
 
-- **💾 Memory Overhead:**  
-  Increased from **≈ 83 MB → 85 MB** total — only +3 MB (≈ 3–4 %), an excellent trade-off for the speed gain.
+- **💾 Memory Overhead**
+    - 1M-character input: **~85 MB allocated** total.
+    - Only **+2–3 MB** vs previous versions — an excellent tradeoff for the large speed increase.
 
 - **🧩 Future Optimization Ideas**
-    - Tune `batchSize` (128–512) for your typical corpus.
-    - Add thread-local scratch arrays via `localInit` / `localFinally` to reduce Gen 0 churn.
-    - Multi-target **.NET 8+** to use `Dictionary.TryGetValue(ReadOnlySpan<char>)`.
-    - Add short-key (len 1–2) lookup tables for ultra-common mappings.
+    - Tune splitting batch sizes (128–512 chars) for real-world corpora.
+    - Introduce thread-local scratch arrays (`localInit`, `localFinally`) to reduce Gen 0 churn.
+    - Multi-target **.NET 8+** to unlock `Dictionary.TryGetValue(ReadOnlySpan<char>)`.
+    - Add micro-tables for extremely common lengths (1–2 chars) to reduce mask shifts further.
+    - Investigate SIMD-assisted starter detection (BMP filtering).
 
-> **Notes:** In `OpenccNetLib v1.3.0`, performance further improved with the introduction of a global, lazily
-> initialized static `PlanCache`, eliminating redundant plan rebuilding, reducing GC pressure, and ensuring consistently
-> faster conversions across all instances.
+> **Note:**  
+> Starting from **OpenccNetLib v1.3.x**, a global lazy `PlanCache` eliminates repeated dictionary-union builds,  
+> further reducing GC load and ensuring consistently fast conversions across all Opencc instances.
 
 ---
 
