@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.3.2-beta1] - 2025-11-13
+## [1.3.2-beta1] - 2025-11-20
 
 ### Added
 
@@ -27,12 +27,30 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Internal documentation improved across serialization helpers, including detailed XML comments explaining
-  surrogate-pair handling, UTF-8 encoding, and BOM behavior.
-- Optimized FromDicts() in handling missing dictionary files.
+- **Removed `maxWordLength` parameters across the conversion pipeline**:  
+  All dictionary-length logic has been consolidated into `StarterUnion.GlobalCap`,  
+  eliminating redundant length parameters from `ConvertByUnion`, `DictRefs.Round`, and `ApplySegmentReplace`.  
+  This simplifies the API surface, improves maintainability, and unifies all key-length constraints under the
+  `StarterUnion` metadata model.
+
+- **Refactored `ApplySegmentReplace` delegate**:  
+  The primary overload now uses  
+  `Func<string, DictWithMaxLength[], StarterUnion, string>`  
+  (no `maxLen` parameter).  
+  A legacy overload is retained for compatibility and internally forwards `union.GlobalCap`.
+
+- **Internal documentation and XML comments improved**, especially around:
+    - surrogate-pair restoration and UTF-8 encoding rules
+    - `StarterUnion` metadata behavior
+    - key-length gating, mask ranges (1–64), and handling of long keys (≥64)
+
+- **Optimized FromDicts()** in handling missing or optional dictionary files.
 
 ### Notes
 
+- This refactor does **not** change external behavior.  
+  All existing conversions produce identical results, with reduced internal complexity and improved performance.
+- Custom dictionaries containing long keys (≥64 UTF-16 units), such as poems or 長句文言文, are still fully supported.
 - Default behavior (`SerializeToJson`) remains unchanged and continues producing fully escaped JSON for strict parsers.
 - `SerializeToJsonUnescaped()` output can still be deserialized safely by `System.Text.Json` and other compliant JSON
   libraries.

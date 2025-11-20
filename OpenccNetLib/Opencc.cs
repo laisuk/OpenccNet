@@ -659,7 +659,7 @@ namespace OpenccNetLib
         /// <para>
         /// The input text is split into delimiter-aware segments (via
         /// <see cref="GetSplitRangesSpan(ReadOnlySpan{char}, bool)"/>), and each
-        /// segment is converted using <see cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion, int)"/>.
+        /// segment is converted using <see cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion)"/>.
         /// </para>
         /// <para>
         /// For large or highly fragmented inputs, segments are pre-partitioned into
@@ -686,18 +686,13 @@ namespace OpenccNetLib
         /// The <see cref="StarterUnion"/> providing starter-character metadata and
         /// length-mask gating for each dictionary.
         /// </param>
-        /// <param name="maxWordLength">
-        /// The maximum dictionary key length (in UTF-16 code units) to consider during
-        /// longest-match lookup.
-        /// </param>
         /// <returns>
         /// A converted string with all applicable dictionary replacements applied.
         /// </returns>
         private static string SegmentReplace(
             string text,
             DictWithMaxLength[] dictionaries,
-            StarterUnion union,
-            int maxWordLength)
+            StarterUnion union)
         {
             if (string.IsNullOrEmpty(text))
                 return string.Empty;
@@ -706,7 +701,7 @@ namespace OpenccNetLib
 
             // Small texts → run single-threaded for lower scheduling overhead.
             if (textLength < ConvertTuning.LinearCutoffChars)
-                return ConvertByUnion(text.AsSpan(), dictionaries, union, maxWordLength);
+                return ConvertByUnion(text.AsSpan(), dictionaries, union);
 
             var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true);
 
@@ -721,7 +716,7 @@ namespace OpenccNetLib
                     var r = splitRanges[i];
                     sb.Append(ConvertByUnion(
                         text.AsSpan(r.Start, r.Length),
-                        dictionaries, union, maxWordLength));
+                        dictionaries, union));
                 }
 
                 return sb.ToString();
@@ -743,7 +738,7 @@ namespace OpenccNetLib
                     var r = splitRanges[i];
                     sbPart.Append(ConvertByUnion(
                         text.AsSpan(r.Start, r.Length),
-                        dictionaries, union, maxWordLength));
+                        dictionaries, union));
                 }
 
                 parts[cIdx] = sbPart.ToString();
@@ -800,9 +795,6 @@ namespace OpenccNetLib
         /// The precomputed <see cref="StarterUnion"/> that provides per-starter caps,
         /// masks, and minimum lengths.
         /// </param>
-        /// <param name="maxWordLength">
-        /// The maximum key length to consider (global clamp).
-        /// </param>
         /// <returns>
         /// A converted string with dictionary replacements applied.
         /// </returns>
@@ -810,8 +802,7 @@ namespace OpenccNetLib
         private static string ConvertByUnion(
             ReadOnlySpan<char> textSpan,
             DictWithMaxLength[] dictionaries,
-            StarterUnion union,
-            int maxWordLength)
+            StarterUnion union)
         {
             var n = textSpan.Length;
             switch (n)
@@ -825,7 +816,7 @@ namespace OpenccNetLib
             sb.EnsureCapacity(n * 2 + (n >> 4));
 
             var i = 0;
-            var keyBuffer = ArrayPool<char>.Shared.Rent(maxWordLength);
+            var keyBuffer = ArrayPool<char>.Shared.Rent(union.GlobalCap);
 
             try
             {
@@ -849,7 +840,8 @@ namespace OpenccNetLib
 
                     // Upper bound: dict cap, remaining input, and caller max
                     var remaining = n - i;
-                    var tryMax = Math.Min(Math.Min(maxWordLength, remaining), cap);
+                    // var tryMax = Math.Min(Math.Min(maxWordLength, remaining), cap);
+                    var tryMax = Math.Min(cap, remaining);
 
                     // No possible match? (no entries, or entries longer than we can take)
                     if (!hasStarter || cap == 0 || unionMinLen == 0 || unionMinLen > tryMax)
@@ -983,7 +975,7 @@ namespace OpenccNetLib
         /// The converted string segment, with all possible matches replaced by their dictionary values.
         /// If no match is found at a position, the original character is preserved.
         /// </returns>
-        /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion, int)"/>
+        /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion)"/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string ConvertBy(
             ReadOnlySpan<char> text,

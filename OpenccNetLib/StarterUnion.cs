@@ -20,6 +20,11 @@ namespace OpenccNetLib
         private readonly ushort[] _minLen = new ushort[char.MaxValue + 1];
 
         /// <summary>
+        /// Maximum key length (in UTF-16 code units) across all starters in this union.
+        /// </summary>
+        public int GlobalCap { get; private set; }
+
+        /// <summary>
         /// Lookup table for UTF-16 high surrogates (U+D800–U+DBFF).
         /// </summary>
         /// <remarks>
@@ -217,7 +222,7 @@ namespace OpenccNetLib
         /// </param>
         /// <returns>
         /// A fully built <see cref="StarterUnion"/> containing merged starter masks,
-        /// minimum lengths, and caps for all provided dictionaries.
+        /// minimum lengths, caps and global cap for all provided dictionaries.
         /// </returns>
         private static StarterUnion BuildFromStarterMasks(IReadOnlyList<DictWithMaxLength> dictionaries)
         {
@@ -225,12 +230,15 @@ namespace OpenccNetLib
             var cap = u._cap;
             var mask = u._mask;
             var minLn = u._minLen;
+            var globalCap = 0; // NEW
 
             for (int di = 0, dn = dictionaries.Count; di < dn; di++)
             {
                 var d = dictionaries[di];
                 if (d?.StarterLenMask == null || d.StarterLenMask.Count == 0)
                     continue;
+
+                if (d.MaxLength > globalCap) globalCap = d.MaxLength;
 
                 foreach (var kv in d.StarterLenMask)
                 {
@@ -258,6 +266,7 @@ namespace OpenccNetLib
                 }
             }
 
+            u.GlobalCap = globalCap;
             return u;
         }
 
@@ -270,11 +279,14 @@ namespace OpenccNetLib
             var cap = u._cap;
             var mask = u._mask;
             var minLn = u._minLen;
+            var globalCap = 0;
 
             for (int di = 0, dn = dictionaries.Count; di < dn; di++)
             {
                 var dict = dictionaries[di];
                 if (dict?.Dict == null) continue;
+
+                if (dict.MaxLength > globalCap) globalCap = dict.MaxLength;
 
                 foreach (var key in dict.Dict.Keys)
                 {
@@ -307,6 +319,7 @@ namespace OpenccNetLib
                 }
             }
 
+            u.GlobalCap = globalCap;
             return u;
         }
 
