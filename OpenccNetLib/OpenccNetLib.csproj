@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.3.1</Version>
+        <Version>1.4.0</Version>
         <Authors>laisuk</Authors>
         <Description>
             OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
@@ -23,20 +23,23 @@
         <!-- (Optional) don’t warn about undocumented public members -->
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Title>OpenccNet Library</Title>
-        <PackageReleaseNotes>OpenccNetLib v1.3.1
+        <PackageReleaseNotes>OpenccNetLib v1.4.0
 
-            This is a maintenance release identical to v1.3.0, focused on developer experience improvements.
+            • Added SerializeToJsonUnescaped() for human-readable UTF-8 JSON output
+            • Added DecodeJsonSurrogatePairs() helper for restoring non-BMP CJK
+            • Added "dictgen --unescape" option for generating unescaped dictionaries
 
-            Highlights
-            - 📝 Added XML documentation: the package now includes OpenccNetLib.xml for full IntelliSense support.
-            Hovering over methods like Opencc.Convert() now shows summary, parameter, and return descriptions.
-            - 🔧 Updated project configuration with GenerateDocumentationFile and removed redundant manual XML packing.
-            - 💠 Symbol package (.snupkg) remains available for debugging.
+            • Removed all maxWordLength parameters – now unified under StarterUnion.GlobalCap
+            • Moved OpenccConfig enum to top-level namespace (cleaner API; compatible)
+            • Updated ApplySegmentReplace to simplified delegate (legacy overload preserved)
+            • Improved XML docs and internal metadata descriptions
+            • More robust FromDicts() handling of missing/optional dictionary files
 
-            No functionality or performance changes from v1.3.0.
+            • No behavior changes; conversion results identical
+            • Only SetConfig(OpenccConfig) callers using the old nested enum must update
         </PackageReleaseNotes>
-        <AssemblyVersion>1.3.1.0</AssemblyVersion>
-        <FileVersion>1.3.1.0</FileVersion>
+        <AssemblyVersion>1.4.0.0</AssemblyVersion>
+        <FileVersion>1.4.0.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 

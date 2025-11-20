@@ -403,7 +403,7 @@ on par with optimized Rust implementations and significantly faster than traditi
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmarks121.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/Benchmark_v140.png)
 
 ### 🟢 Highlights (OpenccNetLib v1.4.0)
 
