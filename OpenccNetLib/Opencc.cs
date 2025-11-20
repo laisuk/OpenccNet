@@ -56,7 +56,7 @@ namespace OpenccNetLib
         private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
             new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
 
-        #region Config Enum Region
+        #region Config Enum Helpers Region
 
         /// <summary>
         /// Converts the specified <see cref="OpenccConfig"/> enum value to its corresponding string representation.
