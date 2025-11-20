@@ -196,12 +196,15 @@ This is ideal for:
 
 ### ✔ Supported formats
 
-| Format | Description                                |
-|--------|--------------------------------------------|
-| `docx` | Word document                              |
-| `xlsx` | Excel spreadsheet                          |
-| `pptx` | PowerPoint presentation                    |
-| `epub` | EPUB e-book (with mimetype spec preserved) |
+| Format | Description                                        |
+|--------|----------------------------------------------------|
+| `docx` | Word document (Office Open XML)                    |
+| `xlsx` | Excel spreadsheet (Office Open XML)                |
+| `pptx` | PowerPoint presentation (Office Open XML)          |
+| `odt`  | OpenDocument Text (LibreOffice / OpenOffice)       |
+| `ods`  | OpenDocument Spreadsheet                           |
+| `odp`  | OpenDocument Presentation                          |
+| `epub` | EPUB e-book (with correct uncompressed mimetype)   |
 
 ---
 
@@ -210,7 +213,7 @@ This is ideal for:
 ```csharp
 using OpenccNetLib;
 
-var opencc = new Opencc(OpenccConfig.S2T); // Simplified → Traditional
+var opencc = new Opencc("s2t"); // Simplified → Traditional
 
 byte[] inputBytes = File.ReadAllBytes("sample.docx");
 
@@ -274,7 +277,7 @@ await OfficeDocConverter.ConvertOfficeFileAsync(
 Inside the Office container (ZIP), the library will:
 
 - Extract only the relevant XML parts
-- Apply Opencc text conversion (`S2T`, `T2S`, `T2TW`, `HK2S`, etc.)
+- Apply Opencc text conversion (`s2t`, `t2s`, `t2tw`, `hk2s`, etc.)
 - Preserve XML formatting
 - Optionally preserve fonts (`keepFont = true`)
 - Repack the Office document in correct ZIP structure
