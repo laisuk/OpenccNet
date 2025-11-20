@@ -405,50 +405,61 @@ on par with optimized Rust implementations and significantly faster than traditi
 
 ![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v140.png)
 
+---
+
 ### 🟢 Highlights (OpenccNetLib v1.4.0)
 
-- **🚀 Performance Gain:**  
+- **🚀 Performance Gain**  
   Over **50% faster** compared to earlier 1.x releases.  
   1M characters convert in **≈ 21 ms** — roughly **47–50 million chars/sec**  
   (≈ **95–100 MB/s**) on a mid-range Intel i5-13400.
 
+- **📌 Predictable, Linear Performance (Performance Guarantee)**  
+  Both **time** and **memory usage** scale *linearly* with input size.  
+  No spikes, no nonlinear slow paths, no GC stalls — ensuring:
+    - deterministic latency for large documents
+    - consistent batch processing throughput
+    - stable behavior in multithreaded or server environments
+
+  This is the ideal profile for a high-performance conversion engine.
+
 - **⚙️ Major Improvement Sources**
     - **StarterUnion dense-table lookup**  
-      Eliminates per-key scanning; provides instant access to:  
+      Eliminates per-key scanning; provides instant access to  
       `(starterUnits, cap, minLen, 64-bit length mask)`.
     - **Mask-first gating + shortest/longest bounds**  
-      Almost all non-matching starters exit in a **single branch**.
+      Nearly all non-matching starters exit in a **single branch**.
     - **Dropped `maxWordLength` parameter**  
-      Reduces call-site complexity and removes redundant range checks.
+      Simplifies control flow and removes redundant checks.
     - **Zero-allocation hot loop**  
       Uses `Span<char>`, thread-local `StringBuilder`, and rented buffers.
     - **Optimized surrogate fast-path**  
-      Lookup tables (`IsHs`, `IsLs`) skip UTF-16 surrogate tests at runtime.
+      Using `IsHs` / `IsLs` lookup tables removes per-iteration UTF-16 checks.
 
 - **📈 GC Profile**  
-  Very stable:
-    - Most allocations are from the final output string + temporary key buffers.
-    - Minimal Gen 1 activity; Gen 2 only appears on **very large** inputs (≥1M chars).
-    - No spikes or stalls under multithreaded workloads.
+  Extremely stable:
+    - Allocations come mostly from final output & temporary key buffers.
+    - Very low Gen 1 activity; Gen 2 appears only on **very large** inputs (≥1M chars).
+    - No GC spikes even under high parallelism.
 
 - **🏁 Throughput**
     - Sustained **≈ 95 MB/s** (S2T) on .NET 10 RyuJIT x86-64-v3.
-    - Multi-million character novels convert in **40–50 ms**, consistently.
+    - Large documents (multi-million chars) convert in **40–50 ms**, consistently.
 
 - **💾 Memory Overhead**
-    - 1M-character input: **~85 MB allocated** total.
-    - Only **+2–3 MB** vs previous versions — an excellent tradeoff for the large speed increase.
+    - 1M characters: **~85 MB** allocated (includes output + chunk buffers).
+    - Only **+2–3 MB** vs earlier versions — an excellent tradeoff for major speed gains.
 
 - **🧩 Future Optimization Ideas**
-    - Tune splitting batch sizes (128–512 chars) for real-world corpora.
-    - Introduce thread-local scratch arrays (`localInit`, `localFinally`) to reduce Gen 0 churn.
-    - Multi-target **.NET 8+** to unlock `Dictionary.TryGetValue(ReadOnlySpan<char>)`.
-    - Add micro-tables for extremely common lengths (1–2 chars) to reduce mask shifts further.
-    - Investigate SIMD-assisted starter detection (BMP filtering).
+    - Tune splitting batch sizes (128–512 chars) for real workloads.
+    - Add thread-local scratch buffers (`localInit`, `localFinally`) to reduce Gen 0 churn.
+    - Multi-target **.NET 8+** for span-based `Dictionary.TryGetValue`.
+    - Add micro-tables for extremely common keys (length 1–2).
+    - Explore SIMD-accelerated starter filtering.
 
 > **Note:**  
-> Starting from **OpenccNetLib v1.3.x**, a global lazy `PlanCache` eliminates repeated dictionary-union builds,  
-> further reducing GC load and ensuring consistently fast conversions across all Opencc instances.
+> Since **OpenccNetLib v1.3.x**, the global lazy `PlanCache` eliminates repeated union builds,  
+> reducing GC pressure and ensuring consistently fast conversions across all instances.
 
 ---
 
