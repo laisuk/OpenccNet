@@ -3,6 +3,8 @@
 [![NuGet](https://img.shields.io/nuget/v/OpenccNetLib.svg)](https://www.nuget.org/packages/OpenccNetLib/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/OpenccNetLib.svg?label=downloads&color=blue)](https://www.nuget.org/packages/OpenccNetLib/)
 [![License](https://img.shields.io/github/license/laisuk/OpenccNet.svg)](https://github.com/laisuk/OpenccNet/blob/main/LICENSE)
+[![Total Downloads](https://img.shields.io/github/downloads/laisuk/OpenccNet/total.svg)](https://github.com/laisuk/OpenccNet/releases)
+[![Latest Downloads](https://img.shields.io/github/downloads/laisuk/OpenccNet/latest/total.svg)](https://github.com/laisuk/OpenccNet/releases/latest)
 [![Release](https://github.com/laisuk/OpenccNet/actions/workflows/release.yml/badge.svg)](https://github.com/laisuk/OpenccNet/actions/workflows/release.yml)
 
 **OpenccNetLib** is a fast and efficient .NET library for converting Chinese text, offering support for Simplified ↔
