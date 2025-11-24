@@ -8,6 +8,30 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.4.0] - 2025-11-20
 
+### 🆕 What's New in v1.4.0 (Unreleased)
+
+- Added OfficeHelper for Office?Epub document conversion.
+
+- **Added `OfficeFormat` enum**  
+  Strongly typed format selection for safer, cleaner API usage.
+
+- **Added enum-based overloads**
+  - `ConvertOfficeBytes(byte[], OfficeFormat, …)`
+  - `ConvertOfficeBytesAsync(byte[], OfficeFormat, …)`
+  - `ConvertOfficeFile(string, string, OfficeFormat, …)`
+  - `ConvertOfficeFileAsync(string, string, OfficeFormat, …)`
+
+- **String format overloads retained for compatibility**  
+  (`"docx"`, `"xlsx"`, `"epub"`, etc.)  
+  No breaking changes.
+
+- **Internal refactor**
+  - Core engine now switches on `OfficeFormat`
+  - Cleaner logic
+  - Better performance
+  - Safer against typo bugs
+  - Easier to maintain
+
 ### Added
 
 - **SerializeToJsonUnescaped()**:  

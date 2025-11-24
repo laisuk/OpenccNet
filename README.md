@@ -233,9 +233,10 @@ var opencc = new Opencc("s2t"); // Simplified → Traditional
 
 byte[] inputBytes = File.ReadAllBytes("sample.docx");
 
+// New strongly-typed OfficeFormat enum (recommended)
 byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
     inputBytes,
-    format: "docx",
+    format: OfficeFormat.Docx,
     converter: opencc,
     punctuation: false,
     keepFont: true
@@ -246,31 +247,49 @@ File.WriteAllBytes("output.docx", outputBytes);
 
 ---
 
+## 🔁 Backward-Compatible String Overload
+
+Existing string-based API still works:
+
+```csharp
+byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+    inputBytes,
+    format: "docx",   // legacy string format
+    converter: opencc
+);
+```
+
+No breaking changes — all existing code continues working.
+
+---
+
 ## ⚡ Async API (Recommended for Server/Web)
 
 ```csharp
 var outputBytes = await OfficeDocConverter.ConvertOfficeBytesAsync(
     inputBytes,
-    "docx",
-    opencc,
+    format: OfficeFormat.Docx,
+    converter: opencc,
     punctuation: false,
     keepFont: true
 );
 ```
 
 - Fully async
-- No blocking I/O
-- Safe for ASP.NET Core / Blazor
+- No blocking
+- Safe for ASP.NET Core, MAUI, Blazor WebAssembly
+
+String format async overload also remains available.
 
 ---
 
-## 📁 Optional: Convert Files (Convenience wrappers)
+## 📁 Convert Files (Convenience wrappers)
 
 ```csharp
 OfficeDocConverter.ConvertOfficeFile(
     "input.docx",
     "output.docx",
-    "docx",
+    format: OfficeFormat.Docx,
     converter: opencc
 );
 ```
@@ -281,6 +300,17 @@ Or async:
 await OfficeDocConverter.ConvertOfficeFileAsync(
     "input.docx",
     "output.docx",
+    format: OfficeFormat.Docx,
+    converter: opencc
+);
+```
+
+String-based overload:
+
+```csharp
+OfficeDocConverter.ConvertOfficeFile(
+    "input.docx",
+    "output.docx",
     "docx",
     opencc
 );
@@ -288,16 +318,40 @@ await OfficeDocConverter.ConvertOfficeFileAsync(
 
 ---
 
+## 🆕 What's New in v1.4.0 (Unreleased)
+
+- **Added `OfficeFormat` enum**  
+  Strongly typed format selection for safer, cleaner API usage.
+
+- **Added enum-based overloads**
+  - `ConvertOfficeBytes(byte[], OfficeFormat, …)`
+  - `ConvertOfficeBytesAsync(byte[], OfficeFormat, …)`
+  - `ConvertOfficeFile(string, string, OfficeFormat, …)`
+  - `ConvertOfficeFileAsync(string, string, OfficeFormat, …)`
+
+- **String format overloads retained for compatibility**  
+  (`"docx"`, `"xlsx"`, `"epub"`, etc.)  
+  No breaking changes.
+
+- **Internal refactor**
+  - Core engine now switches on `OfficeFormat`
+  - Cleaner logic
+  - Better performance
+  - Safer against typo bugs
+  - Easier to maintain
+
+---
+
 ## 🔍 What does conversion do?
 
-Inside the Office container (ZIP), the library will:
+Inside the Office/EPUB container (ZIP), the library will:
 
-- Extract only the relevant XML parts
-- Apply Opencc text conversion (`s2t`, `t2s`, `t2tw`, `hk2s`, etc.)
-- Preserve XML formatting
+- Extract only the relevant XML/XHTML parts
+- Apply OpenCC text conversion (`s2t`, `t2s`, `t2tw`, `hk2s`, etc.)
+- Preserve XML structure and formatting
 - Optionally preserve fonts (`keepFont = true`)
-- Repack the Office document in correct ZIP structure
-- For EPUB: the `mimetype` is written as **uncompressed first entry** (EPUB spec requirement)
+- Rebuild the Office container as valid ZIP
+- For EPUB: ensure `mimetype` is **first uncompressed entry** (EPUB spec)
 
 ---
 

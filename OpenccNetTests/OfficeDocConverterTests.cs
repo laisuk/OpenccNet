@@ -92,5 +92,72 @@ namespace OpenccNetTests
             var documentEntry = archive.GetEntry("word/document.xml");
             Assert.IsNotNull(documentEntry, "Converted DOCX missing 'word/document.xml'.");
         }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_DocxEnum_S2T_Succeeds_And_ProducesValidDocx()
+        {
+            // Arrange
+            var inputBytes = File.ReadAllBytes(_testDocxPath!);
+            var opencc = new Opencc(OpenccConfig.S2T);
+
+            // Act
+            var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+                inputBytes,
+                format: OfficeFormat.Docx, // <<< enum version
+                converter: opencc,
+                punctuation: false,
+                keepFont: true);
+
+            // Assert: basic checks
+            Assert.IsNotNull(outputBytes, "Output bytes should not be null.");
+            Assert.AreNotEqual(0, outputBytes.Length, "Output bytes should not be empty.");
+
+            // Assert: container still valid ZIP
+            using var ms = new MemoryStream(outputBytes);
+            using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
+
+            var documentEntry = archive.GetEntry("word/document.xml");
+            Assert.IsNotNull(documentEntry, "Converted DOCX missing 'word/document.xml'.");
+
+            using var entryStream = documentEntry.Open();
+            using var reader = new StreamReader(entryStream, Encoding.UTF8, true);
+            var xml = reader.ReadToEnd();
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(xml), "document.xml should not be empty.");
+        }
+
+        [TestMethod]
+        public void ConvertOfficeFile_DocxEnum_S2T_WritesOutputFile()
+        {
+            // Arrange
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var outputPath = Path.Combine(baseDir, "滕王阁序.enum.converted.docx");
+
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
+
+            var opencc = new Opencc(OpenccConfig.S2T);
+
+            // Act
+            OfficeDocConverter.ConvertOfficeFile(
+                inputPath: _testDocxPath!,
+                outputPath: outputPath,
+                format: OfficeFormat.Docx, // <<< enum version
+                converter: opencc,
+                punctuation: false,
+                keepFont: true);
+
+            // Assert
+            Assert.IsTrue(File.Exists(outputPath), "Converted DOCX file was not created.");
+
+            var outBytes = File.ReadAllBytes(outputPath);
+            Assert.AreNotEqual(0, outBytes.Length, "Converted DOCX content should not be empty.");
+
+            // Verify DOCX structure remains valid ZIP
+            using var ms = new MemoryStream(outBytes);
+            using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
+            var documentEntry = archive.GetEntry("word/document.xml");
+            Assert.IsNotNull(documentEntry, "Converted DOCX missing 'word/document.xml'.");
+        }
     }
 }
