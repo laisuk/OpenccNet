@@ -10,16 +10,69 @@ using System.Threading.Tasks;
 namespace OpenccNetLib
 {
     /// <summary>
-    /// Supported ZIP-based Office and EPUB document formats.
+    /// Specifies the supported ZIP-based document container formats that can be
+    /// processed by <see cref="OfficeDocConverter"/>.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// All formats listed here share a common structural characteristic:
+    /// they are ZIP containers containing XML-based document parts.  
+    /// Only the text-bearing XML / XHTML fragments are modified during conversion;
+    /// all other assets (images, metadata, relationships, fonts, stylesheets, etc.)
+    /// are preserved exactly.
+    /// </para>
+    /// <para>
+    /// Use this enumeration when calling any of the strongly typed overloads:
+    /// <see cref="OfficeDocConverter.ConvertOfficeBytes(byte[], OfficeFormat, Opencc, bool, bool)"/> or  
+    /// <see cref="OfficeDocConverter.ConvertOfficeFile(string, string, OfficeFormat, Opencc, bool, bool)"/>.
+    /// </para>
+    /// </remarks>
     public enum OfficeFormat
     {
+        /// <summary>
+        /// Microsoft Word document in Office Open XML format (WordprocessingML).  
+        /// Text is stored primarily in <c>word/document.xml</c>.
+        /// </summary>
         Docx,
+
+        /// <summary>
+        /// Microsoft Excel workbook in Office Open XML format (SpreadsheetML).  
+        /// Text is stored mainly in <c>xl/sharedStrings.xml</c>.
+        /// </summary>
         Xlsx,
+
+        /// <summary>
+        /// Microsoft PowerPoint presentation in Office Open XML format
+        /// (PresentationML).  
+        /// Text is found within slide XMLs (<c>ppt/slides/slide*.xml</c>),
+        /// layouts, masters, and notes.
+        /// </summary>
         Pptx,
+
+        /// <summary>
+        /// OpenDocument Text format (<c>.odt</c>).  
+        /// Content is stored in <c>content.xml</c>, using ODF vocabulary.
+        /// </summary>
         Odt,
+
+        /// <summary>
+        /// OpenDocument Spreadsheet format (<c>.ods</c>).  
+        /// Content is stored in <c>content.xml</c>.
+        /// </summary>
         Ods,
+
+        /// <summary>
+        /// OpenDocument Presentation format (<c>.odp</c>).  
+        /// Content is stored in <c>content.xml</c>.
+        /// </summary>
         Odp,
+
+        /// <summary>
+        /// EPUB 2/3 digital book container.  
+        /// Text is stored in XHTML/HTML files, while metadata resides in
+        /// <c>content.opf</c> and navigation in <c>.ncx</c>.  
+        /// Requires special EPUB packaging rules (e.g., uncompressed <c>mimetype</c> first).
+        /// </summary>
         Epub
     }
 
@@ -120,7 +173,7 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This method is the in-memory counterpart to
-        /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>.
+        /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
         /// It is designed for scenarios where the caller does not want or cannot use
         /// temporary files, such as:
         /// </para>
@@ -181,9 +234,6 @@ namespace OpenccNetLib
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
         /// </exception>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="format"/> is not one of the supported formats.
-        /// </exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown when the container structure is invalid, the ZIP cannot be unpacked,
         /// or the conversion pipeline fails.
@@ -193,7 +243,11 @@ namespace OpenccNetLib
         /// <code>
         /// var epubBytes = File.ReadAllBytes("novel.epub");
         /// var cc = new Opencc("t2s");
-        /// var converted = ConvertOfficeBytes(epubBytes, "epub", cc, punctuation: true);
+        /// var converted = ConvertOfficeBytes(
+        ///     epubBytes,
+        ///     OfficeFormat.Epub,
+        ///     cc,
+        ///     punctuation: true);
         /// File.WriteAllBytes("novel_simplified.epub", converted);
         /// </code>
         /// </example>
@@ -314,13 +368,13 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This method mirrors <see cref="ConvertOfficeBytes(byte[],string,Opencc,bool,bool)"/>
+        /// This method mirrors <see cref="ConvertOfficeBytes(byte[],OfficeFormat,Opencc,bool,bool)"/>
         /// but performs the work asynchronously.  
         /// </para>
         /// <para>
         /// On .NET Standard 2.0, where true asynchronous file I/O is unavailable,
-        /// the method safely delegates synchronous work to a background thread using
-        /// <see cref="Task.Run{TResult}(Func{TResult})"/>.  
+        /// this method offloads the synchronous conversion work to a background
+        /// thread using <see cref="Task.Run(Action)"/>.
         /// This prevents blocking the UI thread in GUI or web applications.
         /// </para>
         /// <para>
@@ -354,9 +408,6 @@ namespace OpenccNetLib
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
         /// </exception>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="format"/> is not recognized.
-        /// </exception>
         /// <exception cref="InvalidOperationException">
         /// Thrown if the conversion process fails or the input container is invalid.
         /// </exception>
@@ -364,7 +415,7 @@ namespace OpenccNetLib
         /// <code>
         /// byte[] result = await ConvertOfficeBytesAsync(
         ///     inputBytes,
-        ///     "docx",
+        ///     OfficeFormat.Docx,
         ///     new Opencc("s2tw"),
         ///     punctuation: true,
         ///     keepFont: false,
@@ -396,7 +447,7 @@ namespace OpenccNetLib
         /// <para>
         /// On .NET Standard 2.0, where true asynchronous file I/O is unavailable,
         /// the method safely delegates synchronous work to a background thread using
-        /// <see cref="Task.Run{TResult}(Func{TResult})"/>.  
+        /// <see cref="Task.Run(Action)"/>.
         /// This prevents blocking the UI thread in GUI or web applications.
         /// </para>
         /// <para>
@@ -539,7 +590,12 @@ namespace OpenccNetLib
         /// Convert Traditional Chinese DOCX → Simplified (retain punctuation):
         /// <code>
         /// Opencc cc = new Opencc("t2s");
-        /// ConvertOfficeFile("input.docx", "out.docx", "docx", cc, punctuation: true);
+        /// ConvertOfficeFile(
+        ///     "input.docx",
+        ///     "out.docx",
+        ///     OfficeFormat.Docx,
+        ///     cc,
+        ///     punctuation: true);
         /// </code>
         /// </example>
         public static void ConvertOfficeFile(
@@ -669,10 +725,12 @@ namespace OpenccNetLib
         /// <para>
         /// On frameworks without native async file APIs (e.g., .NET Standard 2.0),
         /// this method offloads the synchronous conversion work to a background
-        /// thread using <see cref="Task.Run(Func{Task})"/>.
+        /// thread using <see cref="Task.Run(Action)"/>.
         /// </para>
         /// <para>
         /// The behavior and conversion rules are identical to
+        /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
+        /// and its string-based overload
         /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>.
         /// </para>
         /// <para>
@@ -737,7 +795,7 @@ namespace OpenccNetLib
         /// <para>
         /// On frameworks without native async file APIs (e.g., .NET Standard 2.0),
         /// this method offloads the synchronous conversion work to a background
-        /// thread using <see cref="Task.Run(Func{Task})"/>.
+        /// thread using <see cref="Task.Run(Action)"/>.
         /// </para>
         /// <para>
         /// The behavior and conversion rules are identical to
