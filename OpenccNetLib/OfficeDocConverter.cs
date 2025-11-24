@@ -276,8 +276,17 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// <para>
+        /// This is the legacy string-based overload. It validates the format string
+        /// and then delegates to the strongly typed overload
+        /// <see cref="ConvertOfficeBytes(byte[],OfficeFormat,Opencc,bool,bool)"/>.
+        /// For new code, prefer the <see cref="OfficeFormat"/> enum overload for
+        /// stronger type safety.
+        /// </para>
+        /// <para>
         /// This method is the in-memory counterpart to
-        /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>.
+        /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>
+        /// and its enum-based overload
+        /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
         /// It is designed for scenarios where the caller does not want or cannot use
         /// temporary files, such as:
         /// </para>
@@ -302,9 +311,9 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="inputBytes">Raw bytes of the Office/EPUB container.</param>
         /// <param name="format">
-        /// Logical format of the container (e.g. <c>"docx"</c>, <c>"xlsx"</c>,
+        /// Normalized format identifier (e.g. <c>"docx"</c>, <c>"xlsx"</c>,
         /// <c>"pptx"</c>, <c>"odt"</c>, <c>"ods"</c>, <c>"odp"</c>, <c>"epub"</c>).
-        /// Case-insensitive.
+        /// Case-insensitive. Must be one of the supported format strings.
         /// </param>
         /// <param name="converter">
         /// An initialized <see cref="Opencc"/> instance controlling the desired
@@ -337,7 +346,11 @@ namespace OpenccNetLib
         /// <code>
         /// var epubBytes = File.ReadAllBytes("novel.epub");
         /// var cc = new Opencc("t2s");
-        /// var converted = ConvertOfficeBytes(epubBytes, "epub", cc, punctuation: true);
+        /// var converted = ConvertOfficeBytes(
+        ///     epubBytes,
+        ///     "epub",
+        ///     cc,
+        ///     punctuation: true);
         /// File.WriteAllBytes("novel_simplified.epub", converted);
         /// </code>
         /// </example>
@@ -494,6 +507,7 @@ namespace OpenccNetLib
         ///     keepFont: false,
         ///     cancellationToken);
         /// </code>
+        /// For new code, prefer the OfficeFormat overload for stronger type safety.
         /// </example>
         public static Task<byte[]> ConvertOfficeBytesAsync(
             byte[] inputBytes,
@@ -663,6 +677,8 @@ namespace OpenccNetLib
         /// <param name="format">
         /// Normalized format identifier (e.g. <c>"docx"</c>, <c>"xlsx"</c>, <c>"epub"</c>).  
         /// Must match the container type of <paramref name="inputPath"/>.
+        /// /// This overload accepts a raw string and is preserved for backward compatibility.
+        /// For new code, prefer the OfficeFormat enum overload.
         /// </param>
         /// <param name="converter">
         /// An initialized <see cref="Opencc"/> instance containing the desired conversion configuration.
