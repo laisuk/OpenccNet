@@ -12,25 +12,93 @@ using System.Threading.Tasks;
 namespace OpenccNetLib
 {
     /// <summary>
-    /// Enum representing supported OpenCC configuration keys.
+    /// Represents all supported OpenCC conversion configurations.
     /// </summary>
+    /// <remarks>
+    /// Each configuration defines a directional transformation between
+    /// Chinese variants (Simplified, Traditional, Taiwan, Hong Kong) 
+    /// or Japanese Shinjitai/Kyūjitai forms.
+    /// </remarks>
     public enum OpenccConfig
     {
+        /// <summary>
+        /// Simplified Chinese → Traditional Chinese (General Standard).
+        /// </summary>
         S2T,
+
+        /// <summary>
+        /// Traditional Chinese → Simplified Chinese (General Standard).
+        /// </summary>
         T2S,
+
+        /// <summary>
+        /// Simplified Chinese → Traditional Chinese (Taiwan Standard).
+        /// </summary>
         S2Tw,
+
+        /// <summary>
+        /// Traditional Chinese (Taiwan Standard) → Simplified Chinese.
+        /// </summary>
         Tw2S,
+
+        /// <summary>
+        /// Simplified Chinese → Traditional Chinese (Taiwan Standard, with Taiwan idioms).
+        /// </summary>
         S2Twp,
+
+        /// <summary>
+        /// Traditional Chinese (Taiwan Standard, with idioms) → Simplified Chinese.
+        /// </summary>
         Tw2Sp,
+
+        /// <summary>
+        /// Simplified Chinese → Traditional Chinese (Hong Kong Standard).
+        /// </summary>
         S2Hk,
+
+        /// <summary>
+        /// Traditional Chinese (Hong Kong Standard) → Simplified Chinese.
+        /// </summary>
         Hk2S,
+
+        /// <summary>
+        /// Traditional Chinese (General Standard) → Traditional Chinese (Taiwan Standard).
+        /// </summary>
         T2Tw,
+
+        /// <summary>
+        /// Traditional Chinese (General Standard) → Traditional Chinese (Taiwan, with idioms).
+        /// </summary>
         T2Twp,
+
+        /// <summary>
+        /// Traditional Chinese (Taiwan Standard) → Traditional Chinese (General Standard).
+        /// </summary>
         Tw2T,
+
+        /// <summary>
+        /// Traditional Chinese (Taiwan, with idioms) → Traditional Chinese (General Standard).
+        /// </summary>
         Tw2Tp,
+
+        /// <summary>
+        /// Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard).
+        /// </summary>
         T2Hk,
+
+        /// <summary>
+        /// Traditional Chinese (Hong Kong Standard) → Traditional Chinese (General Standard).
+        /// </summary>
         Hk2T,
+
+        /// <summary>
+        /// Traditional Japanese Kyujitai → Japanese Shinjitai.
+        /// </summary>
         T2Jp,
+
+        /// <summary>
+        /// Japanese Shinjitai → Traditional Japanese Kyujitai.
+        /// </summary>
         Jp2T
     }
 
