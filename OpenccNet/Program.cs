@@ -20,6 +20,7 @@ public static class Program
         rootCommand.Subcommands.Add(DictgenCommand.CreateCommand());
         rootCommand.Subcommands.Add(ConvertCommand.CreateCommand());
         rootCommand.Subcommands.Add(OfficeCommand.CreateCommand());
+        rootCommand.Subcommands.Add(PdfCommand.CreateCommand()); // 👈 new
 
         // System.CommandLine beta 5 config wrapper
         // var config = new CommandLineConfiguration(rootCommand);

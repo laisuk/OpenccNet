@@ -7,17 +7,39 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.4.0-beta1] - 2025-11-13
+## [1.4.0] - 2025-12-03
 
 ### Added
 
-- **`--unescape` flag for `dictgen` CLI**:  
-  Allows generating JSON dictionaries in unescaped form  
-  (`openccnet dictgen -f json --unescape`), improving readability of multilingual lexicons.
+- **New `pdf` subcommand** (`openccnet pdf ...`)  
+  Enables direct PDF-to-text conversion using PdfPig (pure C#, no native PDFium needed).  
+  Supports:
+    - `--input/-i`     PDF file path
+    - `--output/-o`    UTF-8 text output
+    - `--config/-c`    Opencc conversion mode (s2t, t2s, s2tw, etc.)
+    - `--punct/-p`     Punctuation conversion
+    - `--header/-H`    Insert page headers (`=== [Page x/y] ===`)
+    - `--reflow/-r`    CJK paragraph reflow logic
+    - `--compact`      Compact reflow mode  
+      Includes a cross-platform, single-line dynamic progress bar for smooth UX.
+
+- **`--unescape` flag for `dictgen` CLI**  
+  Allows generating JSON dictionaries in *unescaped* form  
+  (`openccnet dictgen -f json --unescape`)  
+  making multilingual lexicons easier to inspect and edit.
 
 ### Changed
 
-- Update System.CommandLine to release v2.0.0
+- Updated to **System.CommandLine 2.0.0** (final stable release).  
+  Refactored all subcommands (`convert`, `office`, `dictgen`, `pdf`) to use the new API  
+  for cleaner structure, better validation, and improved long-term extensibility.
+
+### Notes
+
+- PDF extraction backend uses **PdfPig**, ensuring full cross-platform compatibility  
+  without requiring native dependencies.
+- CLI architecture continues to use a modular subcommand pattern,  
+  making new feature integration simple and maintainable.
 
 ---
 
