@@ -113,9 +113,71 @@ namespace OpenccNet
         }
 
         /// <summary>
-        /// Loads a PDF file and returns the extracted text, optionally
-        /// inserting page headers and reporting progress via a callback.
+        /// Extracts UTF-8 text from a PDF file using PdfPig, with optional page headers
+        /// and real-time progress reporting.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method loads a PDF using <c>PdfPig</c> and iterates through each page,
+        /// extracting text in natural reading order via
+        /// <see cref="ContentOrderTextExtractor.GetText(PdfPig.Content.PdfPage)"/>.
+        /// It is designed for long-running extraction tasks and therefore supports:
+        /// </para>
+        ///
+        /// <list type="bullet">
+        ///   <item><description><b>Progress callbacks</b> — The <paramref name="statusCallback"/> is
+        ///   invoked periodically with human-readable status messages such as:
+        ///   <c>"Loading PDF 🟩🟩⬜⬜⬜ 40%"</c>.</description></item>
+        ///
+        ///   <item><description><b>Adaptive progress frequency</b> — Small PDFs update every page;  
+        ///   large PDFs update at ~5% intervals to avoid excessive console spam.</description></item>
+        ///
+        ///   <item><description><b>Optional page headers</b> — When
+        ///   <paramref name="addPdfPageHeader"/> is <c>true</c>, each page is prefixed with
+        ///   <c>"=== [Page i/total] ==="</c>, improving traceability for later text processing
+        ///   or reflow.</description></item>
+        ///
+        ///   <item><description><b>Cancellation support</b> — If the provided
+        ///   <paramref name="cancellationToken"/> is triggered,
+        ///   extraction stops immediately and an <see cref="OperationCanceledException"/>
+        ///   is thrown.</description></item>
+        /// </list>
+        ///
+        /// <para>
+        /// The returned string is normalized to use <c>\n</c> (LF) newlines, and each page’s
+        /// extracted text is trimmed of leading/trailing whitespace to reduce layout artifacts.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>Important:</b> This method runs on a background task using <c>Task.Run</c> to
+        /// keep the caller responsive (CLI, GUI, or async pipeline). It does not block the
+        /// calling thread.
+        /// </para>
+        /// </remarks>
+        ///
+        /// <param name="filename">
+        /// Full path to the PDF file to load. The file must exist and be readable.
+        /// </param>
+        ///
+        /// <param name="addPdfPageHeader">
+        /// When <c>true</c>, inserts a page header before each extracted page:
+        /// <c>"=== [Page i/total] ==="</c>.
+        /// </param>
+        ///
+        /// <param name="statusCallback">
+        /// Optional callback invoked with progress text. Useful for CLI progress bars or
+        /// GUI status updates. The callback is invoked on the background extraction thread.
+        /// </param>
+        ///
+        /// <param name="cancellationToken">
+        /// Token that can be used to cancel the extraction mid-way. If cancellation occurs,
+        /// an <see cref="OperationCanceledException"/> is thrown.
+        /// </param>
+        ///
+        /// <returns>
+        /// A task producing a single UTF-8 text block containing the extracted PDF content,
+        /// with optional page headers and normalized newlines.
+        /// </returns>
         internal static Task<string> LoadPdfTextAsync(
             string filename,
             bool addPdfPageHeader,
