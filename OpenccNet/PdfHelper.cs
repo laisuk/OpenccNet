@@ -120,7 +120,7 @@ namespace OpenccNet
         /// <para>
         /// This method loads a PDF using <c>PdfPig</c> and iterates through each page,
         /// extracting text in natural reading order via
-        /// <see cref="ContentOrderTextExtractor.GetText(PdfPig.Content.PdfPage)"/>.
+        /// <see cref="ContentOrderTextExtractor"/>.
         /// It is designed for long-running extraction tasks and therefore supports:
         /// </para>
         ///
@@ -224,7 +224,7 @@ namespace OpenccNet
                     {
                         var percent = (int)((double)i / total * 100);
                         statusCallback?.Invoke(
-                            $"Loading PDF {BuildProgressBar(percent)}  {percent}%");
+                            $"Loading PDF [{BuildProgressBar(percent)}]  {percent}%");
                     }
 
                     if (addPdfPageHeader)
@@ -278,6 +278,7 @@ namespace OpenccNet
                 var headingProbe = stripped.TrimStart(' ', '\u3000');
 
                 var isTitleHeading = TitleHeadingRegex.IsMatch(headingProbe);
+                var isShortHeading = IsHeadingLike(stripped);
 
                 // Collapse style-layer repeated titles
                 if (isTitleHeading)
@@ -334,6 +335,45 @@ namespace OpenccNet
                     continue;
                 }
 
+                // 3b) 弱 heading-like：只在上一段尾不是逗號時才生效
+                if (isShortHeading)
+                {
+                    if (buffer.Length > 0)
+                    {
+                        var bt = buffer.ToString().TrimEnd();
+                        if (bt.Length > 0)
+                        {
+                            var last = bt[^1];
+                            if (last == '，' || last == ',')
+                            {
+                                // 上一行逗號結尾 → 視作續句，不當 heading
+                                // fall through → 後面 default merge 邏輯處理
+                            }
+                            else
+                            {
+                                // 真 heading-like → flush
+                                segments.Add(buffer.ToString());
+                                buffer.Clear();
+                                dialogState.Reset();
+                                segments.Add(stripped);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            // buffer 有長度但全空白，其實等同無 → 直接當 heading
+                            segments.Add(stripped);
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        // buffer 空 → 直接當 heading
+                        segments.Add(stripped);
+                        continue;
+                    }
+                }
+
                 // *** DIALOG: treat any line that *starts* with a dialog opener as a new paragraph
                 var currentIsDialogStart = IsDialogStarter(stripped);
 
@@ -379,17 +419,6 @@ namespace OpenccNet
                 // 5) Ends with CJK punctuation → new paragraph
                 if (Array.IndexOf(CjkPunctEndChars, bufferText[^1]) >= 0 &&
                     !dialogState.IsUnclosed)
-                {
-                    segments.Add(bufferText);
-                    buffer.Clear();
-                    buffer.Append(stripped);
-                    dialogState.Reset();
-                    dialogState.Update(stripped);
-                    continue;
-                }
-
-                // 6) Previous is heading-like
-                if (IsHeadingLike(bufferText))
                 {
                     segments.Add(bufferText);
                     buffer.Clear();
@@ -448,8 +477,11 @@ namespace OpenccNet
                 return s.Length > 0 && DialogOpeners.IndexOf(s[0]) >= 0;
             }
 
-            bool IsHeadingLike(string s)
+            static bool IsHeadingLike(string? s)
             {
+                if (s is null)
+                    return false;
+
                 s = s.Trim();
                 if (string.IsNullOrEmpty(s))
                     return false;
@@ -458,31 +490,59 @@ namespace OpenccNet
                 if (s.StartsWith("=== ") && s.EndsWith("==="))
                     return false;
 
-                // if ends with CJK punctuation, it's not a heading
-                if (s.IndexOfAny(CjkPunctEndChars) >= 0)
+                // If *ends* with CJK punctuation → not heading
+                var last = s[^1];
+                if (Array.IndexOf(CjkPunctEndChars, last) >= 0)
                     return false;
 
-                // --- NEW RULE: reject headings with unclosed brackets ---
+                // Reject headings with unclosed brackets (「『“”( 等未配對)
                 if (HasUnclosedBracket(s))
                     return false;
 
-                // short + mostly CJK + short Latin = heading/title
-                switch (s.Length)
+                var len = s.Length;
+
+                // Short line heuristics (<= 15 chars)
+                if (len <= 15)
                 {
-                    // Rule A: short CJK or mixed lines
-                    case <= 15 when
-                        s.Any(ch => ch > 0x7F) &&
-                        s[^1] != '，' && s[^1] != ',':
-                    // Rule B: short pure Latin emphasis line
-                    // ensure it's not punctuation-only
-                    case <= 15 when
-                        s.All(ch => ch <= 0x7F) && // pure ASCII
-                        s.Any(char.IsLetter):
+                    var hasNonAscii = false;
+                    var allAscii = true;
+                    var hasLetter = false;
+                    var allAsciiDigits = true;
+
+                    for (var i = 0; i < len; i++)
+                    {
+                        var ch = s[i];
+
+                        if (ch > 0x7F)
+                        {
+                            hasNonAscii = true;
+                            allAscii = false;
+                            allAsciiDigits = false;
+                            continue;
+                        }
+
+                        if (!char.IsDigit(ch))
+                            allAsciiDigits = false;
+
+                        if (char.IsLetter(ch))
+                            hasLetter = true;
+                    }
+
+                    // Rule C: pure ASCII digits (1, 007, 23, 128 ...) → heading
+                    if (allAsciiDigits)
                         return true;
-                    default:
-                        return false;
+
+                    // Rule A: CJK/mixed short line, not ending with comma
+                    if (hasNonAscii && last != '，' && last != ',')
+                        return true;
+
+                    // Rule B: pure ASCII short line with at least one letter (PROLOGUE / END)
+                    return allAscii && hasLetter;
                 }
+
+                return false;
             }
+
 
             // Check if any unclosed brackets in text string
             static bool HasUnclosedBracket(string s)
