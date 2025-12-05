@@ -5,9 +5,25 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace OpenccNet
 {
+    /// <summary>
+    /// Specifies which PDF text extraction engine to use.
+    /// </summary>
     public enum PdfEngine
     {
+        /// <summary>
+        /// Uses the PdfPig backend for text extraction.
+        /// Suitable for general-purpose parsing and stable for
+        /// most text-embedded PDFs.  
+        /// Pure managed code, no native dependencies.
+        /// </summary>
         PdfPig,
+
+        /// <summary>
+        /// Uses the PDFium backend for text extraction.
+        /// Faster and more robust against complex page structures,
+        /// vector overlays, rotated text, or unusual PDF layouts.  
+        /// Requires native PDFium runtime libraries.
+        /// </summary>
         Pdfium
     }
 
@@ -43,23 +59,45 @@ namespace OpenccNet
         private static readonly string CloseBrackets = "）)]】》";
 
         /// <summary>
-        /// Tracks unmatched dialog brackets for the current paragraph buffer.
-        /// Incremental update, so we never re-scan the whole buffer.
+        /// Tracks the state of open or unmatched dialog quotation marks within
+        /// the current paragraph buffer during PDF text reflow.
+        ///
+        /// This class is designed for incremental updates: callers feed each
+        /// new line or text fragment into <see cref="Update(string?)"/>,
+        /// allowing the state to evolve without rescanning previously processed
+        /// text. This is essential for maintaining dialog continuity across
+        /// broken PDF lines.
         /// </summary>
         private sealed class DialogState
         {
-            // “ ” double quotes
+            /// <summary>
+            /// Counter for unmatched CJK double quotes: “ ”.
+            /// Increments on encountering “ and decrements on ”.
+            /// </summary>
             private int _doubleQuote;
 
-            // ‘ ’ single quotes
+            /// <summary>
+            /// Counter for unmatched CJK single quotes: ‘ ’.
+            /// Increments on encountering ‘ and decrements on ’.
+            /// </summary>
             private int _singleQuote;
 
-            // 「 」 corner quotes
+            /// <summary>
+            /// Counter for unmatched CJK corner quotes: 「 」.
+            /// Increments on encountering 「 and decrements on 」.
+            /// </summary>
             private int _corner;
 
-            // 『 』 bold corner quotes
+            /// <summary>
+            /// Counter for unmatched CJK bold corner quotes: 『 』.
+            /// Increments on encountering 『 and decrements on 』.
+            /// </summary>
             private int _cornerBold;
 
+            /// <summary>
+            /// Resets all quote counters to zero.
+            /// Call this at the start of a new paragraph buffer.
+            /// </summary>
             public void Reset()
             {
                 _doubleQuote = 0;
@@ -68,6 +106,19 @@ namespace OpenccNet
                 _cornerBold = 0;
             }
 
+            /// <summary>
+            /// Updates the dialog state by scanning the provided text fragment.
+            /// 
+            /// Only characters representing CJK dialog punctuation are examined.
+            /// Counters are increased for opening quotes and decreased for
+            /// closing quotes (never below zero). This incremental approach
+            /// avoids rescanning previously processed text and is safe even
+            /// when PDF line breaks occur mid-dialog.
+            /// </summary>
+            /// <param name="s">
+            /// A text fragment (typically one line or buffer chunk).
+            /// If <c>null</c> or empty, the method performs no action.
+            /// </param>
             public void Update(string? s)
             {
                 if (string.IsNullOrEmpty(s))
@@ -108,76 +159,78 @@ namespace OpenccNet
                 }
             }
 
+            /// <summary>
+            /// Gets a value indicating whether any dialog quote type is
+            /// currently left unclosed. When <c>true</c>, the current paragraph
+            /// buffer is considered to be inside an ongoing dialog segment, and
+            /// reflow logic should avoid forcing paragraph breaks until closure.
+            /// </summary>
             public bool IsUnclosed =>
                 _doubleQuote > 0 || _singleQuote > 0 || _corner > 0 || _cornerBold > 0;
         }
 
         /// <summary>
-        /// Extracts UTF-8 text from a PDF file using PdfPig, with optional page headers
-        /// and real-time progress reporting.
+        /// Asynchronously loads a PDF file and extracts plain text from all pages,
+        /// with optional page headers and real-time progress reporting.
+        ///
+        /// This method runs the extraction work on a background thread using
+        /// <see cref="Task.Run{TResult}(Func{TResult}, CancellationToken)"/> and is suitable
+        /// for UI applications that must remain responsive while processing
+        /// large PDFs.
+        ///
+        /// Extraction uses PdfPig’s <see cref="ContentOrderTextExtractor"/> to obtain
+        /// text in a visually ordered manner. No layout information (fonts,
+        /// positions, spacing) is preserved—only text content.
         /// </summary>
+        /// <param name="filename">
+        /// Full path to the PDF file to load.
+        /// </param>
+        /// <param name="addPdfPageHeader">
+        /// If <c>true</c>, each extracted page is prefixed with a marker in the
+        /// form <c>=== [Page X/Y] ===</c>, which is useful for debugging or for
+        /// downstream paragraph-reflow heuristics that rely on page boundaries.
+        /// </param>
+        /// <param name="statusCallback">
+        /// Optional callback invoked periodically with human-readable progress
+        /// messages (e.g. <c>"Loading PDF [#####-----] 45%"</c>).  
+        ///  
+        /// The callback is triggered:
+        /// <list type="bullet">
+        ///   <item><description>at page 1,</description></item>
+        ///   <item><description>at the last page,</description></item>
+        ///   <item><description>and every adaptive interval determined by the
+        ///     total page count.</description></item>
+        /// </list>
+        /// This is typically used to update a UI status bar.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// Token used to cancel the operation.  
+        /// If cancellation is requested, a <see cref="OperationCanceledException"/>
+        /// is thrown immediately.
+        /// </param>
+        /// <returns>
+        /// A task representing the asynchronous operation, returning the fully
+        /// concatenated plain-text content of the PDF file.
+        ///
+        /// Line breaks are normalized, trailing whitespace is trimmed per page,
+        /// and an empty string is returned for PDFs with zero pages.
+        /// </returns>
         /// <remarks>
         /// <para>
-        /// This method loads a PDF using <c>PdfPig</c> and iterates through each page,
-        /// extracting text in natural reading order via
-        /// <see cref="ContentOrderTextExtractor"/>.
-        /// It is designed for long-running extraction tasks and therefore supports:
-        /// </para>
-        ///
+        /// The adaptive progress interval scales based on page count:
         /// <list type="bullet">
-        ///   <item><description><b>Progress callbacks</b> — The <paramref name="statusCallback"/> is
-        ///   invoked periodically with human-readable status messages such as:
-        ///   <c>"Loading PDF 🟩🟩⬜⬜⬜ 40%"</c>.</description></item>
-        ///
-        ///   <item><description><b>Adaptive progress frequency</b> — Small PDFs update every page;  
-        ///   large PDFs update at ~5% intervals to avoid excessive console spam.</description></item>
-        ///
-        ///   <item><description><b>Optional page headers</b> — When
-        ///   <paramref name="addPdfPageHeader"/> is <c>true</c>, each page is prefixed with
-        ///   <c>"=== [Page i/total] ==="</c>, improving traceability for later text processing
-        ///   or reflow.</description></item>
-        ///
-        ///   <item><description><b>Cancellation support</b> — If the provided
-        ///   <paramref name="cancellationToken"/> is triggered,
-        ///   extraction stops immediately and an <see cref="OperationCanceledException"/>
-        ///   is thrown.</description></item>
+        ///   <item><description>≤ 20 pages → update every page</description></item>
+        ///   <item><description>≤ 100 pages → every 3 pages</description></item>
+        ///   <item><description>≤ 300 pages → every 5 pages</description></item>
+        ///   <item><description>&gt; 300 pages → ~5% of total pages</description></item>
         /// </list>
-        ///
-        /// <para>
-        /// The returned string is normalized to use <c>\n</c> (LF) newlines, and each page’s
-        /// extracted text is trimmed of leading/trailing whitespace to reduce layout artifacts.
         /// </para>
-        ///
         /// <para>
-        /// <b>Important:</b> This method runs on a background task using <c>Task.Run</c> to
-        /// keep the caller responsive (CLI, GUI, or async pipeline). It does not block the
-        /// calling thread.
+        /// Because the underlying extraction is CPU-bound and potentially slow,
+        /// this method should always be awaited to prevent blocking the caller's
+        /// thread.
         /// </para>
         /// </remarks>
-        ///
-        /// <param name="filename">
-        /// Full path to the PDF file to load. The file must exist and be readable.
-        /// </param>
-        ///
-        /// <param name="addPdfPageHeader">
-        /// When <c>true</c>, inserts a page header before each extracted page:
-        /// <c>"=== [Page i/total] ==="</c>.
-        /// </param>
-        ///
-        /// <param name="statusCallback">
-        /// Optional callback invoked with progress text. Useful for CLI progress bars or
-        /// GUI status updates. The callback is invoked on the background extraction thread.
-        /// </param>
-        ///
-        /// <param name="cancellationToken">
-        /// Token that can be used to cancel the extraction mid-way. If cancellation occurs,
-        /// an <see cref="OperationCanceledException"/> is thrown.
-        /// </param>
-        ///
-        /// <returns>
-        /// A task producing a single UTF-8 text block containing the extracted PDF content,
-        /// with optional page headers and normalized newlines.
-        /// </returns>
         internal static Task<string> LoadPdfTextAsync(
             string filename,
             bool addPdfPageHeader,
@@ -200,17 +253,15 @@ namespace OpenccNet
                 // Adaptive progress update interval
                 static int GetProgressBlock(int totalPages)
                 {
-                    if (totalPages <= 20)
-                        return 1; // every page
-
-                    if (totalPages <= 100)
-                        return 3; // every 3 pages
-
-                    if (totalPages <= 300)
-                        return 5; // every 5 pages
+                    return totalPages switch
+                    {
+                        <= 20 => 1,
+                        <= 100 => 3,
+                        <= 300 => 5,
+                        _ => Math.Max(1, totalPages / 20)
+                    };
 
                     // large PDFs: ~5% intervals
-                    return Math.Max(1, totalPages / 20);
                 }
 
                 var block = GetProgressBlock(total);
@@ -219,12 +270,12 @@ namespace OpenccNet
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // progress status
+                    // Progress callback
                     if (i % block == 0 || i == 1 || i == total)
                     {
                         var percent = (int)((double)i / total * 100);
                         statusCallback?.Invoke(
-                            $"Loading PDF [{BuildProgressBar(percent)}]  {percent}%");
+                            $"Loading PDF {BuildProgressBar(percent)}  {percent}%");
                     }
 
                     if (addPdfPageHeader)
@@ -344,7 +395,7 @@ namespace OpenccNet
                         if (bt.Length > 0)
                         {
                             var last = bt[^1];
-                            if (last == '，' || last == ',')
+                            if (last is '，' or ',')
                             {
                                 // 上一行逗號結尾 → 視作續句，不當 heading
                                 // fall through → 後面 default merge 邏輯處理
@@ -404,7 +455,7 @@ namespace OpenccNet
                 // e.g. "她寫了一行字：" + "「如果連自己都不相信……」"
                 if (bufferText.EndsWith('：') || bufferText.EndsWith(':'))
                 {
-                    if (stripped.Length > 0 && DialogOpeners.IndexOf(stripped[0]) >= 0)
+                    if (stripped.Length > 0 && DialogOpeners.Contains(stripped[0]))
                     {
                         buffer.Append(stripped);
                         dialogState.Update(stripped);
@@ -474,7 +525,7 @@ namespace OpenccNet
             static bool IsDialogStarter(string s)
             {
                 s = s.TrimStart(' ', '\u3000'); // ignore indent
-                return s.Length > 0 && DialogOpeners.IndexOf(s[0]) >= 0;
+                return s.Length > 0 && DialogOpeners.Contains(s[0]);
             }
 
             static bool IsHeadingLike(string? s)
@@ -502,45 +553,42 @@ namespace OpenccNet
                 var len = s.Length;
 
                 // Short line heuristics (<= 15 chars)
-                if (len <= 15)
+                if (len > 15) return false;
+                var hasNonAscii = false;
+                var allAscii = true;
+                var hasLetter = false;
+                var allAsciiDigits = true;
+
+                for (var i = 0; i < len; i++)
                 {
-                    var hasNonAscii = false;
-                    var allAscii = true;
-                    var hasLetter = false;
-                    var allAsciiDigits = true;
+                    var ch = s[i];
 
-                    for (var i = 0; i < len; i++)
+                    if (ch > 0x7F)
                     {
-                        var ch = s[i];
-
-                        if (ch > 0x7F)
-                        {
-                            hasNonAscii = true;
-                            allAscii = false;
-                            allAsciiDigits = false;
-                            continue;
-                        }
-
-                        if (!char.IsDigit(ch))
-                            allAsciiDigits = false;
-
-                        if (char.IsLetter(ch))
-                            hasLetter = true;
+                        hasNonAscii = true;
+                        allAscii = false;
+                        allAsciiDigits = false;
+                        continue;
                     }
 
-                    // Rule C: pure ASCII digits (1, 007, 23, 128 ...) → heading
-                    if (allAsciiDigits)
-                        return true;
+                    if (!char.IsDigit(ch))
+                        allAsciiDigits = false;
 
-                    // Rule A: CJK/mixed short line, not ending with comma
-                    if (hasNonAscii && last != '，' && last != ',')
-                        return true;
-
-                    // Rule B: pure ASCII short line with at least one letter (PROLOGUE / END)
-                    return allAscii && hasLetter;
+                    if (char.IsLetter(ch))
+                        hasLetter = true;
                 }
 
-                return false;
+                // Rule C: pure ASCII digits (1, 007, 23, 128 ...) → heading
+                if (allAsciiDigits)
+                    return true;
+
+                // Rule A: CJK/mixed short line, not ending with comma
+                if (hasNonAscii && last != '，' && last != ',')
+                    return true;
+
+                // Rule B: pure ASCII short line with at least one letter (PROLOGUE / END)
+                return allAscii && hasLetter;
+
             }
 
 
@@ -574,7 +622,7 @@ namespace OpenccNet
             while (i < s.Length && s[i] == ' ')
                 i++;
 
-            return s.Substring(i);
+            return s[i..];
         }
 
         private static string CollapseRepeatedSegments(string line)
@@ -609,7 +657,7 @@ namespace OpenccNet
                 if (token.Length % unitLen != 0)
                     continue;
 
-                var unit = token.Substring(0, unitLen);
+                var unit = token[..unitLen];
                 var allMatch = true;
 
                 for (var pos = 0; pos < token.Length; pos += unitLen)
@@ -632,16 +680,16 @@ namespace OpenccNet
         // change BuildProgressBar to use percent, not current/total
         private static string BuildProgressBar(int percent, int width = 10)
         {
+            percent = Math.Clamp(percent, 0, 100);
             var filled = (int)((long)percent * width / 100);
-            var sb = new StringBuilder(width * 2);
 
-            for (var i = 0; i < filled; i++)
-                // sb.Append('▉'); // filled block (medium-dark, works on both themes)
-                sb.Append("🟩");
-            for (var i = filled; i < width; i++)
-                // sb.Append('░'); // empty block (light, unobtrusive)
-                sb.Append('⬜');
+            var sb = new StringBuilder(width * 4 + 2);
+            sb.Append('[');
 
+            for (var i = 0; i < filled; i++) sb.Append("🟩");
+            for (var i = filled; i < width; i++) sb.Append("🟨");
+
+            sb.Append(']');
             return sb.ToString();
         }
     }

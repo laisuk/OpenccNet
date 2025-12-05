@@ -73,6 +73,12 @@ internal static class PdfCommand
             DefaultValueFactory = _ => false,
             Description = "Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow."
         };
+        
+        var quietOption = new Option<bool>("--quiet", "-q")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Suppress status and progress output; only errors will be shown."
+        };
 
         var pdfCommand = new Command(
             "pdf",
@@ -84,7 +90,8 @@ internal static class PdfCommand
             punctOption,
             headerOption,
             reflowOption,
-            compactOption
+            compactOption,
+            quietOption
         };
 
         pdfCommand.SetAction(async (pr, cancellationToken) =>
@@ -96,6 +103,7 @@ internal static class PdfCommand
             var addHeader = pr.GetValue(headerOption);
             var reflow = pr.GetValue(reflowOption);
             var compact = pr.GetValue(compactOption);
+            var quiet = pr.GetValue(quietOption);
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
             {
@@ -109,7 +117,7 @@ internal static class PdfCommand
                 return 1;
             }
 
-            if (compact && !reflow)
+            if (compact && !reflow && !quiet)
             {
                 await Console.Error.WriteLineAsync("ℹ️ --compact has no effect without --reflow; ignoring.");
             }
@@ -120,7 +128,8 @@ internal static class PdfCommand
 
             try
             {
-                await Console.Error.WriteLineAsync("⏳ Processing PDF… please wait…");
+                if (!quiet)
+                    await Console.Error.WriteLineAsync("⏳ Processing PDF… please wait…");
 
                 // 1) Extract text via PdfHelper (PdfPig, pure C#)
                 var extractedText = await PdfHelper.LoadPdfTextAsync(
@@ -130,7 +139,8 @@ internal static class PdfCommand
                     {
                         // simple status logging to stderr
                         // Console.Error.WriteLine(status);
-                        Console.Error.Write("\r" + status);
+                        if (!quiet)
+                            Console.Error.Write("\r" + status);
                     },
                     cancellationToken: cancellationToken);
 
@@ -152,8 +162,11 @@ internal static class PdfCommand
                     new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
                     cancellationToken);
 
-                await Console.Error.WriteLineAsync(
-                    $"\n✅ PDF conversion succeeded.\n📁 Output: {Path.GetFullPath(resolvedOutput)}");
+                if (!quiet)
+                {
+                    await Console.Error.WriteLineAsync(
+                        $"\n✅ PDF conversion succeeded.\n📁 Output: {Path.GetFullPath(resolvedOutput)}");
+                }
                 return 0;
             }
             catch (Exception ex)
