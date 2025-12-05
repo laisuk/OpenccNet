@@ -81,10 +81,16 @@ internal static class OfficeCommand
                 "Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable."
         };
 
+        var quietOption = new Option<bool>("--quiet", "-q")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Suppress status and progress output; only errors will be shown."
+        };
+
         var officeCommand = new Command("office", $"{Blue}Convert Office documents or Epub using OpenccNetLib.{Reset}")
         {
             inputFileOption, outputFileOption, configOption, punctOption,
-            formatOption, keepFontOption, autoExtOption
+            formatOption, keepFontOption, autoExtOption, quietOption,
         };
 
         officeCommand.SetAction(async (pr, _) =>
@@ -96,6 +102,7 @@ internal static class OfficeCommand
             var format = pr.GetValue(formatOption);
             var keepFont = pr.GetValue(keepFontOption);
             var autoExt = pr.GetValue(autoExtOption);
+            var quiet = pr.GetValue(quietOption);
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
             {
@@ -121,7 +128,8 @@ internal static class OfficeCommand
                     StringComparison.OrdinalIgnoreCase))
             {
                 resolvedOutput = Path.ChangeExtension(resolvedOutput, resolvedFormat);
-                await Console.Error.WriteLineAsync($"ℹ️ Output file extension adjusted to: {resolvedOutput}");
+                if (!quiet)
+                    await Console.Error.WriteLineAsync($"ℹ️ Output file extension adjusted to: {resolvedOutput}");
             }
 
             try
@@ -136,14 +144,26 @@ internal static class OfficeCommand
 
                 var (success, message) = await builder.ConvertAsync();
 
-                var status = success
-                    ? $"{message}\n📁 Output: {Path.GetFullPath(resolvedOutput)}"
-                    : $"❌ Office document conversion failed: {message}";
-                await Console.Error.WriteLineAsync(status);
-                return success ? 0 : 1;
+                if (success)
+                {
+                    // Success: respect --quiet
+                    if (!quiet)
+                    {
+                        await Console.Error.WriteLineAsync(
+                            $"{message}\n📁 Output: {Path.GetFullPath(resolvedOutput)}");
+                    }
+
+                    return 0;
+                }
+
+                // Failure: ALWAYS show, even in quiet mode
+                await Console.Error.WriteLineAsync(
+                    $"❌ Office document conversion failed: {message}");
+                return 1;
             }
             catch (Exception ex)
             {
+                // Exceptions are always important – don’t hide them with --quiet
                 await Console.Error.WriteLineAsync($"❌ Exception: {ex.Message}");
                 return 1;
             }

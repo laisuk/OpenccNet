@@ -28,6 +28,8 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
   (`openccnet dictgen -f json --unescape`)  
   making multilingual lexicons easier to inspect and edit.
 
+- Added quiet mode in OpenccNet CLI `--quiet/-q`
+
 ### Changed
 
 - Updated to **System.CommandLine 2.0.0** (final stable release).  
