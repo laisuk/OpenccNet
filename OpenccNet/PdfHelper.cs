@@ -42,9 +42,9 @@ namespace OpenccNet
         // Chapter / heading patterns (短行 + 第N章/卷/节/部, 前言/序章/终章/尾声/番外)
         private static readonly Regex TitleHeadingRegex =
             new(
-                @"^(?=.{0,60}$)
+                @"^(?=.{0,50}$)
                   (前言|序章|终章|尾声|后记|尾聲|後記|番外.{0,10}
-                  |.{0,20}?第.{0,10}?([章节部卷節回][^分合]).{0,20}?
+                  |.{0,10}?第.{0,5}?([章节部卷節回][^分合]).{0,20}?
                   )",
                 RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
 
@@ -434,7 +434,24 @@ namespace OpenccNet
                 var stripped = rawLine.TrimEnd();
                 stripped = StripHalfWidthIndentKeepFullWidth(stripped);
 
-                // 2) Logical form for heading detection: no indent at all
+                // 2) Probe form (for structural / heading detection): remove all indentation
+                var probe = stripped.TrimStart(' ', '\u3000');
+
+                // 🧱 ABSOLUTE STRUCTURAL RULE — must be first (run on probe, output stripped)
+                if (IsBoxDrawingLine(probe))
+                {
+                    if (buffer.Length > 0)
+                    {
+                        segments.Add(buffer.ToString());
+                        buffer.Clear();
+                        dialogState.Reset();
+                    }
+
+                    segments.Add(stripped);
+                    continue;
+                }
+
+                // 3) Logical form for heading detection: no indent at all
                 var headingProbe = stripped.TrimStart(' ', '\u3000');
 
                 var isTitleHeading = TitleHeadingRegex.IsMatch(headingProbe);
@@ -691,21 +708,26 @@ namespace OpenccNet
                 if (s.StartsWith("=== ") && s.EndsWith("==="))
                     return false;
 
-                // If *ends* with CJK punctuation → not heading
-                var last = s[^1];
-                if (Array.IndexOf(CjkPunctEndChars, last) >= 0)
-                    return false;
-
                 // Reject headings with unclosed brackets (「『“”( 等未配對)
                 if (HasUnclosedBracket(s))
+                    return false;
+
+                // If *ends* with CJK punctuation → not heading
+                var last = s[^1];
+
+                var len = s.Length;
+                var maxLen = IsAllAscii(s) || IsMixedCjkAscii(s) ? 16 : 8;
+
+                // Short circuit for item title-like: "物品准备："
+                if ((last is ':' or '：') && s.Length <= maxLen && IsAllCjk(s[..^1]))
+                    return true;
+
+                if (Array.IndexOf(CjkPunctEndChars, last) >= 0)
                     return false;
 
                 // Reject any short line containing comma-like separators
                 if (s.Contains('，') || s.Contains(',') || s.Contains('、'))
                     return false;
-
-                var len = s.Length;
-                var maxLen = IsAllAscii(s) ? 16 : 8;
 
                 // Short line heuristics (<= maxLen chars)
                 if (len > maxLen) return false;
@@ -804,6 +826,124 @@ namespace OpenccNet
                         return false;
                 return true;
             }
+
+            // static bool IsAllAsciiDigits(string s)
+            // {
+            //     for (var i = 0; i < s.Length; i++)
+            //     {
+            //         var ch = s[i];
+            //         if (ch > 0x7F || ch < '0' || ch > '9')
+            //             return false;
+            //     }
+            //
+            //     return s.Length > 0;
+            // }
+
+            static bool IsAllCjk(string s)
+            {
+                for (var i = 0; i < s.Length; i++)
+                {
+                    var ch = s[i];
+
+                    // treat common full-width space as not CJK heading content
+                    if (char.IsWhiteSpace(ch))
+                        return false;
+
+                    if (!IsCjk(ch))
+                        return false;
+                }
+
+                return s.Length > 0;
+            }
+
+            // Minimal CJK checker (BMP focused). You can swap with your existing one.
+            static bool IsCjk(char ch)
+            {
+                var c = (int)ch;
+
+                // CJK Unified Ideographs + Extension A
+                if ((uint)(c - 0x3400) <= (0x4DBF - 0x3400)) return true;
+                if ((uint)(c - 0x4E00) <= (0x9FFF - 0x4E00)) return true;
+
+                // Compatibility Ideographs
+                return (uint)(c - 0xF900) <= (0xFAFF - 0xF900);
+            }
+
+            static bool IsMixedCjkAscii(string s)
+            {
+                var hasCjk = false;
+                var hasAscii = false;
+
+                for (var i = 0; i < s.Length; i++)
+                {
+                    var ch = s[i];
+
+                    if (ch <= 0x7F)
+                    {
+                        // ASCII letter/digit only (you can decide if punctuation counts)
+                        if (char.IsLetterOrDigit(ch))
+                            hasAscii = true;
+                        else
+                            return false; // reject ASCII punctuation in headings
+                    }
+                    else
+                    {
+                        if (IsCjk(ch))
+                            hasCjk = true;
+                        else
+                            return false; // reject other scripts/symbols
+                    }
+
+                    if (hasCjk && hasAscii)
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Detects visual separator / divider lines such as:
+        /// ──────
+        /// ======
+        /// ------
+        /// or mixed variants (e.g. ───===───).
+        /// 
+        /// This method is intended to run on a *probe* string
+        /// (indentation already removed). Whitespace is ignored.
+        /// 
+        /// These lines represent layout boundaries and must always
+        /// force paragraph breaks during reflow.
+        /// </summary>
+        private static bool IsBoxDrawingLine(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s))
+                return false;
+
+            var total = 0;
+
+            foreach (var ch in s)
+            {
+                // Ignore whitespace completely (probe may still contain gaps)
+                if (char.IsWhiteSpace(ch))
+                    continue;
+
+                total++;
+
+                // Unicode box drawing block (U+2500–U+257F)
+                if (ch is >= '\u2500' and <= '\u257F')
+                    continue;
+
+                // ASCII visual separators (common in TXT / OCR)
+                if (ch is '-' or '=' or '_' or '~')
+                    continue;
+
+                // Any real text → not a pure visual divider
+                return false;
+            }
+
+            // Require minimal visual length to avoid accidental triggers
+            return total >= 3;
         }
 
         private static string StripHalfWidthIndentKeepFullWidth(string s)
