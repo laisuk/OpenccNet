@@ -36,15 +36,15 @@ namespace OpenccNet
             '。', '！', '？', '；', '：', '…', '—', '”', '」', '’', '』', '.',
 
             // Chinese closing brackets / quotes
-            '）', '】', '》', '〗', '〕', '〉', '」', '』', '］', '｝',
+            '）', '】', '》', '〗', '〕', '〉', '」', '』', '］', '｝', ')', ':', '!'
         };
 
         // Chapter / heading patterns (短行 + 第N章/卷/节/部, 前言/序章/终章/尾声/番外)
         private static readonly Regex TitleHeadingRegex =
             new(
                 @"^(?=.{0,60}$)
-                  (前言|序章|终章|尾声|后记|番外|尾聲|後記
-                  |第.{0,10}?(章|节|部|卷|節|回)
+                  (前言|序章|终章|尾声|后记|尾聲|後記|番外.{0,10}
+                  |.{0,20}?第.{0,10}?([章节部卷節回][^分合]).{0,20}?
                   )",
                 RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
 
@@ -53,10 +53,88 @@ namespace OpenccNet
             new(@"^[\s\u3000]{2,}", RegexOptions.Compiled);
 
         // Dialog brackets (Simplified / Traditional / JP-style)
-        private const string DialogOpeners = "“‘「『";
+        private const string DialogOpeners = "“‘「『﹁﹃";
 
-        private static readonly string OpenBrackets = "（([【《";
-        private static readonly string CloseBrackets = "）)]】》";
+        private static bool IsDialogOpener(char ch)
+            => DialogOpeners.Contains(ch);
+
+        // Bracket punctuations (open-close)
+        private const string OpenBrackets = "（([【《｛〈";
+        private const string CloseBrackets = "）)]】》｝〉";
+
+        // Metadata key-value separators
+        private static readonly char[] MetadataSeparators =
+        {
+            '：', // full-width colon
+            ':', // ASCII colon
+            '　', // full-width ideographic space (U+3000)
+            '・' // full-width ideographic dot (U+3000)
+        };
+
+        // Metadata heading title names
+        private static readonly HashSet<string> MetadataKeys = new(StringComparer.Ordinal)
+        {
+            // ===== 1. Title / Author / Publishing =====
+            "書名", "书名",
+            "作者",
+            "原著",
+            "譯者", "译者",
+            "校訂", "校订",
+            "出版社",
+            "出版時間", "出版时间",
+            "出版日期",
+
+            // ===== 2. Copyright / License =====
+            "版權", "版权",
+            "版權頁", "版权页",
+            "版權信息", "版权信息",
+
+            // ===== 3. Editor / Pricing =====
+            "責任編輯", "责任编辑",
+            "編輯", "编辑", // 有些出版社簡化成「编辑」
+            "責編", "责编", // 等同责任编辑，但常見
+            "定價", "定价",
+
+            // ===== 4. Descriptions / Forewords =====
+            // "內容簡介", "内容简介",
+            // "作者簡介", "作者简介",
+            "簡介", "简介",
+            "前言",
+            "序章",
+            "終章", "终章",
+            "尾聲", "尾声",
+            "後記", "后记",
+
+            // ===== 5. Digital Publishing (ebook platforms) =====
+            "品牌方",
+            "出品方",
+            "授權方", "授权方",
+            "電子版權", "数字版权",
+            "掃描", "扫描",
+            "發行", "发行",
+            "OCR",
+
+            // ===== 6. CIP / Cataloging =====
+            "CIP",
+            "在版編目", "在版编目",
+            "分類號", "分类号",
+            "主題詞", "主题词",
+            "類型", "类型",
+            "標簽", "标签",
+            "系列",
+
+            // ===== 7. Publishing Cycle =====
+            "發行日", "发行日",
+            "初版",
+
+            // ===== 8. Common keys without variants =====
+            "ISBN"
+        };
+
+
+        // =========================================================
+        //  Dialog state tracking
+        // =========================================================
 
         /// <summary>
         /// Tracks the state of open or unmatched dialog quotation marks within
@@ -95,6 +173,16 @@ namespace OpenccNet
             private int _cornerBold;
 
             /// <summary>
+            /// Counter for unmatched upper corner brackets: ﹁ ﹂.
+            /// </summary>
+            private int _cornerTop;
+
+            /// <summary>
+            /// Counter for unmatched wide corner brackets: ﹃ ﹄.
+            /// </summary>
+            private int _cornerWide;
+
+            /// <summary>
             /// Resets all quote counters to zero.
             /// Call this at the start of a new paragraph buffer.
             /// </summary>
@@ -104,6 +192,8 @@ namespace OpenccNet
                 _singleQuote = 0;
                 _corner = 0;
                 _cornerBold = 0;
+                _cornerTop = 0;
+                _cornerWide = 0;
             }
 
             /// <summary>
@@ -128,32 +218,40 @@ namespace OpenccNet
                 {
                     switch (ch)
                     {
-                        case '“':
-                            _doubleQuote++;
-                            break;
+                        // ===== Double quotes =====
+                        case '“': _doubleQuote++; break;
                         case '”':
                             if (_doubleQuote > 0) _doubleQuote--;
                             break;
 
-                        case '‘':
-                            _singleQuote++;
-                            break;
+                        // ===== Single quotes =====
+                        case '‘': _singleQuote++; break;
                         case '’':
                             if (_singleQuote > 0) _singleQuote--;
                             break;
 
-                        case '「':
-                            _corner++;
-                            break;
+                        // ===== Corner brackets =====
+                        case '「': _corner++; break;
                         case '」':
                             if (_corner > 0) _corner--;
                             break;
 
-                        case '『':
-                            _cornerBold++;
-                            break;
+                        // ===== Bold corner brackets =====
+                        case '『': _cornerBold++; break;
                         case '』':
                             if (_cornerBold > 0) _cornerBold--;
+                            break;
+
+                        // ===== NEW: vertical brackets (﹁ ﹂) =====
+                        case '﹁': _cornerTop++; break;
+                        case '﹂':
+                            if (_cornerTop > 0) _cornerTop--;
+                            break;
+
+                        // ===== NEW: vertical bold brackets (﹃ ﹄) =====
+                        case '﹃': _cornerWide++; break;
+                        case '﹄':
+                            if (_cornerWide > 0) _cornerWide--;
                             break;
                     }
                 }
@@ -166,7 +264,8 @@ namespace OpenccNet
             /// reflow logic should avoid forcing paragraph breaks until closure.
             /// </summary>
             public bool IsUnclosed =>
-                _doubleQuote > 0 || _singleQuote > 0 || _corner > 0 || _cornerBold > 0;
+                _doubleQuote > 0 || _singleQuote > 0 || _corner > 0 || _cornerBold > 0 || _cornerTop > 0 ||
+                _cornerWide > 0;
         }
 
         /// <summary>
@@ -237,6 +336,9 @@ namespace OpenccNet
             Action<string>? statusCallback = null,
             CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrWhiteSpace(filename))
+                throw new ArgumentException("PDF path is required.", nameof(filename));
+
             return Task.Run(() =>
             {
                 using var document = PdfDocument.Open(filename);
@@ -278,15 +380,22 @@ namespace OpenccNet
                             $"Loading PDF {BuildProgressBar(percent)}  {percent}%");
                     }
 
-                    if (addPdfPageHeader)
-                    {
-                        sb.AppendLine($"=== [Page {i}/{total}] ===");
-                    }
-
                     var page = document.GetPage(i);
                     var text = ContentOrderTextExtractor.GetText(page);
 
                     text = text.Trim('\r', '\n', ' ');
+
+                    if (string.IsNullOrWhiteSpace(text))
+                    {
+                        if (addPdfPageHeader)
+                            sb.AppendLine($"=== [Page {i}/{total}] ===");
+
+                        sb.AppendLine(); // visible blank page separator
+                        continue;
+                    }
+
+                    if (addPdfPageHeader)
+                        sb.AppendLine($"=== [Page {i}/{total}] ===");
 
                     sb.AppendLine(text);
                     sb.AppendLine();
@@ -330,6 +439,7 @@ namespace OpenccNet
 
                 var isTitleHeading = TitleHeadingRegex.IsMatch(headingProbe);
                 var isShortHeading = IsHeadingLike(stripped);
+                var isMetadata = IsMetadataLine(stripped);
 
                 // Collapse style-layer repeated titles
                 if (isTitleHeading)
@@ -386,7 +496,22 @@ namespace OpenccNet
                     continue;
                 }
 
-                // 3b) 弱 heading-like：只在上一段尾不是逗號時才生效
+                // 3b) Metadata 行（短 key:val，如「書名：xxx」「作者：yyy」）
+                if (isMetadata)
+                {
+                    if (buffer.Length > 0)
+                    {
+                        segments.Add(buffer.ToString());
+                        buffer.Clear();
+                        dialogState.Reset();
+                    }
+
+                    // Metadata 每行獨立存放（之後你可以決定係 skip、折疊、顯示）
+                    segments.Add(stripped);
+                    continue;
+                }
+
+                // 3c) 弱 heading-like：只在上一段尾不是逗號時才生效
                 if (isShortHeading)
                 {
                     if (buffer.Length > 0)
@@ -440,15 +565,40 @@ namespace OpenccNet
                 // We already have some text in buffer
                 var bufferText = buffer.ToString();
 
-                // *** DIALOG: if this line starts a dialog, always flush previous paragraph
-                if (currentIsDialogStart)
+                // 🔸 NEW RULE: If previous line ends with comma, 
+                //     do NOT flush even if this line starts dialog.
+                //     (comma-ending means the sentence is not finished)
+                if (bufferText.Length > 0)
                 {
-                    segments.Add(bufferText);
-                    buffer.Clear();
-                    buffer.Append(stripped);
-                    dialogState.Reset();
-                    dialogState.Update(stripped);
-                    continue;
+                    var trimmed = bufferText.TrimEnd();
+                    var last = trimmed.Length > 0 ? trimmed[^1] : '\0';
+                    if (last is '，' or ',')
+                    {
+                        // fall through → treat as continuation
+                        // do NOT flush here
+                    }
+                    else if (currentIsDialogStart)
+                    {
+                        // *** DIALOG: if this line starts a dialog, 
+                        //     flush previous paragraph (only if safe)
+                        segments.Add(bufferText);
+                        buffer.Clear();
+                        buffer.Append(stripped);
+                        dialogState.Reset();
+                        dialogState.Update(stripped);
+                        continue;
+                    }
+                }
+                else
+                {
+                    // buffer empty, just add new dialog line
+                    if (currentIsDialogStart)
+                    {
+                        buffer.Append(stripped);
+                        dialogState.Reset();
+                        dialogState.Update(stripped);
+                        continue;
+                    }
                 }
 
                 // NEW RULE: colon + dialog continuation
@@ -550,10 +700,15 @@ namespace OpenccNet
                 if (HasUnclosedBracket(s))
                     return false;
 
-                var len = s.Length;
+                // Reject any short line containing comma-like separators
+                if (s.Contains('，') || s.Contains(',') || s.Contains('、'))
+                    return false;
 
-                // Short line heuristics (<= 15 chars)
-                if (len > 15) return false;
+                var len = s.Length;
+                var maxLen = IsAllAscii(s) ? 16 : 8;
+
+                // Short line heuristics (<= maxLen chars)
+                if (len > maxLen) return false;
                 var hasNonAscii = false;
                 var allAscii = true;
                 var hasLetter = false;
@@ -588,9 +743,38 @@ namespace OpenccNet
 
                 // Rule B: pure ASCII short line with at least one letter (PROLOGUE / END)
                 return allAscii && hasLetter;
-
             }
 
+            static bool IsMetadataLine(string line)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    return false;
+
+                // A) length limit
+                if (line.Length > 30)
+                    return false;
+
+                // B) find first separator
+                var idx = line.IndexOfAny(MetadataSeparators);
+                if (idx is <= 0 or > 10)
+                    return false;
+
+                // C) extract key
+                var key = line[..idx].Trim();
+                if (!MetadataKeys.Contains(key))
+                    return false;
+
+                // D) get next non-space character
+                var j = idx + 1;
+                while (j < line.Length && char.IsWhiteSpace(line[j]))
+                    j++;
+
+                if (j >= line.Length)
+                    return false;
+
+                // E) must NOT be dialog opener
+                return !IsDialogOpener(line[j]);
+            }
 
             // Check if any unclosed brackets in text string
             static bool HasUnclosedBracket(string s)
@@ -611,6 +795,14 @@ namespace OpenccNet
                 }
 
                 return hasOpen && !hasClose;
+            }
+
+            static bool IsAllAscii(string s)
+            {
+                for (var i = 0; i < s.Length; i++)
+                    if (s[i] > 0x7F)
+                        return false;
+                return true;
             }
         }
 
