@@ -858,38 +858,48 @@ namespace OpenccNetLib
             if (estSegments > length) estSegments = length;
 
             var ranges = new List<Range>(estSegments);
-            var currentStart = 0;
+            var index = 0;
 
-            // Use spans for delimiter lookup if Delimiters is a collection
-            for (var i = 0; i < length; i++)
+            while (index < length)
             {
-                if (!IsDelimiter(input[i]))
-                    continue;
+                var segmentStart = index;
 
-                if (inclusive)
+                while (index < length && !IsDelimiter(input[index]))
                 {
-                    // Include delimiter in current segment
-                    ranges.Add(new Range(currentStart, i + 1));
+                    index++;
                 }
-                else
+
+                var foundDelimiter = index < length;
+
+                if (foundDelimiter)
                 {
-                    // Add segment before delimiter (if any)
-                    if (i > currentStart)
+                    if (inclusive)
                     {
-                        ranges.Add(new Range(currentStart, i));
+                        // include the delimiter character in the segment when requested
+                        ranges.Add(new Range(segmentStart, index + 1));
+                    }
+                    else
+                    {
+                        if (index > segmentStart)
+                        {
+                            ranges.Add(new Range(segmentStart, index));
+                        }
+
+                        // Emit the delimiter as its own segment
+                        ranges.Add(new Range(index, index + 1));
                     }
 
-                    // Add delimiter as separate segment
-                    ranges.Add(new Range(i, i + 1));
+                    index++;
+                    continue;
                 }
 
-                currentStart = i + 1;
-            }
+                // No more delimiters remain; add the trailing run (if any) and exit.
+                if (index > segmentStart)
+                {
+                    ranges.Add(new Range(segmentStart, index));
+                }
 
-            // Add remaining segment if any
-            if (currentStart < length)
-            {
-                ranges.Add(new Range(currentStart, length));
+                break;
             }
 
             return ranges;
