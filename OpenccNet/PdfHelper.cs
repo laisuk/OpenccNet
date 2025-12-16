@@ -43,7 +43,7 @@ namespace OpenccNet
         private static readonly Regex TitleHeadingRegex =
             new(
                 @"^(?=.{0,50}$)
-                  (前言|序章|终章|尾声|后记|尾聲|後記|番外.{0,10}
+                  (前言|序章|终章|尾声|后记|尾聲|後記|番外.{0,15}
                   |.{0,10}?第.{0,5}?([章节部卷節回][^分合]).{0,20}?
                   )",
                 RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
@@ -537,7 +537,7 @@ namespace OpenccNet
                         if (bt.Length > 0)
                         {
                             var last = bt[^1];
-                            if (last is '，' or ',')
+                            if (last is '，' or ',' or '、')
                             {
                                 // 上一行逗號結尾 → 視作續句，不當 heading
                                 // fall through → 後面 default merge 邏輯處理
