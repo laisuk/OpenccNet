@@ -7,7 +7,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.4.0] - 2025-12-03
+## [1.4.0] - 2025-12-16
 
 ### Added
 
@@ -32,7 +32,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Changed
 
-- Updated to **System.CommandLine 2.0.0** (final stable release).  
+- Updated to **System.CommandLine 2.0.1** (final stable release).  
   Refactored all subcommands (`convert`, `office`, `dictgen`, `pdf`) to use the new API  
   for cleaner structure, better validation, and improved long-term extensibility.
 
