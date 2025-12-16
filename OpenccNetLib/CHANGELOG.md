@@ -6,11 +6,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.0] - 2025-11-20
+## [1.4.0] - 2025-12-16
 
-### 🆕 What's New in v1.4.0 (Unreleased)
+### 🆕 What's New in v1.4.0
 
-- Added OfficeHelper for Office?Epub document conversion.
+- Added OfficeHelper for Office/Epub document conversion.
 
 - **Added `OfficeFormat` enum**  
   Strongly typed format selection for safer, cleaner API usage.

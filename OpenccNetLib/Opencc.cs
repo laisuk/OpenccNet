@@ -1188,16 +1188,17 @@ namespace OpenccNetLib
         /// <param name="input">The text span to segment.</param>
         /// <param name="inclusive">
         /// If <c>true</c>, each delimiter is included at the end of its preceding segment;
-        /// otherwise delimiters are emitted as separate single-character ranges.
+        /// otherwise a delimiter at the start becomes its own segment.
         /// </param>
         /// <returns>
         /// A list of <see cref="Range"/> objects representing half-open intervals [Start, End).
         /// </returns>
+        /// Note: inclusive mode still emits delimiter-only ranges for leading/consecutive delimiters.
         private static List<Range> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
         {
             var length = input.Length;
             if (length == 0)
-                return new List<Range>();
+                return new List<Range>(0);
 
             // Heuristic: inclusive ≈ 25 % delimiters, exclusive ≈ 50 %.
             var estSegments = inclusive ? (length >> 2) + 1 : (length >> 1) + 1;
