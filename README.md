@@ -771,6 +771,8 @@ Batch / automation use
 OpenccNet pdf -i file.pdf -o out.txt -c t2s -r -q
 ```
 
+---
+
 ## Project That Use OpenccNetLib
 
 - [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for `OpenccNetLib`, providing a
