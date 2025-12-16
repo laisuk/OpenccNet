@@ -318,27 +318,27 @@ OfficeDocConverter.ConvertOfficeFile(
 
 ---
 
-## 🆕 What's New in v1.4.0 (Unreleased)
+## 🆕 What's New in v1.4.0
 
 - **Added `OfficeFormat` enum**  
   Strongly typed format selection for safer, cleaner API usage.
 
 - **Added enum-based overloads**
-  - `ConvertOfficeBytes(byte[], OfficeFormat, …)`
-  - `ConvertOfficeBytesAsync(byte[], OfficeFormat, …)`
-  - `ConvertOfficeFile(string, string, OfficeFormat, …)`
-  - `ConvertOfficeFileAsync(string, string, OfficeFormat, …)`
+    - `ConvertOfficeBytes(byte[], OfficeFormat, …)`
+    - `ConvertOfficeBytesAsync(byte[], OfficeFormat, …)`
+    - `ConvertOfficeFile(string, string, OfficeFormat, …)`
+    - `ConvertOfficeFileAsync(string, string, OfficeFormat, …)`
 
 - **String format overloads retained for compatibility**  
   (`"docx"`, `"xlsx"`, `"epub"`, etc.)  
   No breaking changes.
 
 - **Internal refactor**
-  - Core engine now switches on `OfficeFormat`
-  - Cleaner logic
-  - Better performance
-  - Safer against typo bugs
-  - Easier to maintain
+    - Core engine now switches on `OfficeFormat`
+    - Cleaner logic
+    - Better performance
+    - Safer against typo bugs
+    - Easier to maintain
 
 ---
 
@@ -642,6 +642,133 @@ Options:
   --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]
   --auto-ext               Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable. [default: True]
   -?, -h, --help           Show help and usage information
+```
+
+### `OpenccNet pdf`
+
+```
+Description:
+  Convert a PDF to UTF-8 text using PdfPig + OpenccNetLib, with optional CJK paragraph reflow.
+
+Usage:
+  OpenccNet pdf [options]
+
+Options:
+  -i, --input <input>               Input PDF file <input.pdf>
+  -o, --output <output>             Output text file <output.txt>
+  -c, --config <config> (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -p, --punct                       Enable punctuation conversion.
+  -H, --header                      Add [Page x/y] headers to the extracted text.
+  -r, --reflow                      Reflow CJK paragraphs into continuous lines.
+  --compact                         Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
+  -q, --quiet                       Suppress status and progress output; only errors will be shown.
+  -?, -h, --help                    Show help and usage information
+
+```
+
+## Usage Notes — `OpenccNet pdf`
+
+### PDF extraction engine
+
+`OpenccNet pdf` uses a **text-based PDF extraction engine** (PdfPig) and is intended for **digitally generated PDFs** (
+e-books, research papers, reports).
+
+- ✅ Works best with selectable text
+- ❌ Does **not** perform OCR on scanned/image-only PDFs
+- ❌ Visual layout (columns, tables, figures) is not preserved
+
+---
+
+### CJK paragraph reflow
+
+The `--reflow` option applies a **CJK-aware paragraph reconstruction pipeline**, designed for Chinese novels, essays,
+and academic text.
+
+Reflow attempts to:
+
+- Join artificially wrapped lines
+- Repair cross-line splits (e.g. `面` + `容` → `面容`)
+- Preserve headings, short titles, dialog markers, and metadata-like lines
+
+⚠️ **Important limitations**
+
+- Reflow is **heuristic-based**
+- It is **not suitable** for:
+    - Poetry
+    - Comics / scripts
+    - Highly informal or experimental layouts
+- Mainland web novels often use inconsistent formatting and may require tuning
+
+---
+
+### `--compact` mode
+
+When used together with `--reflow`, `--compact`:
+
+- Reduces excessive blank lines
+- Produces denser, book-like paragraphs
+- Is recommended for **long-form reading or further text processing**
+
+> `--compact` has no effect unless `--reflow` is enabled.
+
+---
+
+### Page headers
+
+Using `--header` inserts markers such as:
+
+```
+=== [Page 12/240] ===
+```
+
+This is useful for:
+
+- Debugging extraction issues
+- Locating original PDF pages
+- Avoiding empty or ambiguous page boundaries
+
+---
+
+### Quiet mode
+
+`--quiet` suppresses:
+
+- Progress bars
+- Status messages
+- Informational logs
+
+Only **errors** will be printed.  
+Recommended for batch processing or script integration.
+
+---
+
+### Output encoding
+
+- Output text is always written as **UTF-8**
+- Line endings follow the host platform
+
+If you need other encodings, convert the output text using standard tools after extraction.
+
+---
+
+### Recommended Workflows
+
+**Simple PDF → Traditional Chinese text**
+
+```
+OpenccNet pdf -i input.pdf -o output.txt -c s2t -r
+```
+
+Compact novel conversion with page markers
+
+```
+OpenccNet pdf -i novel.pdf -o novel.txt -c s2tw -r --compact -H
+```
+
+Batch / automation use
+
+```
+OpenccNet pdf -i file.pdf -o out.txt -c t2s -r -q
 ```
 
 ## Project That Use OpenccNetLib
