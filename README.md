@@ -697,7 +697,7 @@ Reflow attempts to:
     - Poetry
     - Comics / scripts
     - Highly informal or experimental layouts
-- Mainland web novels often use inconsistent formatting and may require tuning
+- Web novels often use inconsistent formatting and may require tuning
 
 ---
 
@@ -759,7 +759,7 @@ If you need other encodings, convert the output text using standard tools after 
 OpenccNet pdf -i input.pdf -o output.txt -c s2t -r
 ```
 
-Compact novel conversion with page markers
+Compact novel conversion with **page markers**
 
 ```
 OpenccNet pdf -i novel.pdf -o novel.txt -c s2tw -r --compact -H
@@ -776,7 +776,7 @@ OpenccNet pdf -i file.pdf -o out.txt -c t2s -r -q
 ## Project That Use OpenccNetLib
 
 - [OpenccNetLibGui](https://github.com/laisuk/OpenccNetLibGui) : A GUI application for `OpenccNetLib`, providing a
-  user-friendly interface for Chinese text conversion.
+  user-friendly interface for Traditional/Simplified Chinese text conversion.
 
 ## License
 
