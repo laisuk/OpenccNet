@@ -33,7 +33,7 @@ namespace OpenccNet
         private static readonly char[] CjkPunctEndChars =
         {
             // Standard CJK sentence-ending punctuation
-            '。', '！', '？', '；', '：', '…', '—', '”', '」', '’', '』', '.',
+            '。', '！', '？', '；', '：', '…', '—', '”', '’', '.',
 
             // Chinese closing brackets / quotes
             '）', '】', '》', '〗', '〕', '〉', '」', '』', '］', '｝', ')', ':', '!'
@@ -59,8 +59,8 @@ namespace OpenccNet
             => DialogOpeners.Contains(ch);
 
         // Bracket punctuations (open-close)
-        private const string OpenBrackets = "（([【《｛〈";
-        private const string CloseBrackets = "）)]】》｝〉";
+        private const string OpenBrackets = "（([【《｛〈〔［";
+        private const string CloseBrackets = "）)]】》｝〉〕］";
 
         // Metadata key-value separators
         private static readonly char[] MetadataSeparators =
@@ -68,6 +68,7 @@ namespace OpenccNet
             '：', // full-width colon
             ':', // ASCII colon
             '　', // full-width ideographic space (U+3000)
+            '・', // KATAKANA MIDDLE DOT (U+30FB)
             '・' // full-width ideographic dot (U+3000)
         };
 
@@ -528,43 +529,72 @@ namespace OpenccNet
                     continue;
                 }
 
-                // 3c) 弱 heading-like：只在上一段尾不是逗號時才生效
+                // 3c) Weak heading-like:
+                //     Only takes effect when the “previous paragraph is safe”
+                //     AND “the previous paragraph’s ending looks like a sentence boundary”.
                 if (isShortHeading)
                 {
-                    if (buffer.Length > 0)
+                    var isAllCjk = IsAllCjkIgnoringWhitespace(stripped);
+
+                    bool splitAsHeading;
+                    if (buffer.Length == 0)
                     {
-                        var bt = buffer.ToString().TrimEnd();
-                        if (bt.Length > 0)
-                        {
-                            var last = bt[^1];
-                            if (last is '，' or ',' or '、')
-                            {
-                                // 上一行逗號結尾 → 視作續句，不當 heading
-                                // fall through → 後面 default merge 邏輯處理
-                            }
-                            else
-                            {
-                                // 真 heading-like → flush
-                                segments.Add(buffer.ToString());
-                                buffer.Clear();
-                                dialogState.Reset();
-                                segments.Add(stripped);
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            // buffer 有長度但全空白，其實等同無 → 直接當 heading
-                            segments.Add(stripped);
-                            continue;
-                        }
+                        // Start of document / just flushed
+                        splitAsHeading = true;
                     }
                     else
                     {
-                        // buffer 空 → 直接當 heading
+                        var bufText = buffer.ToString();
+
+                        if (HasUnclosedBracket(bufText))
+                        {
+                            // Unsafe previous paragraph → must be continuation
+                            splitAsHeading = false;
+                        }
+                        else
+                        {
+                            var bt = bufText.TrimEnd();
+
+                            if (bt.Length == 0)
+                            {
+                                // Buffer is whitespace-only → treat like empty
+                                splitAsHeading = true;
+                            }
+                            else
+                            {
+                                var last = bt[^1];
+
+                                var prevEndsWithCommaLike = last is '，' or ',' or '、';
+                                var prevEndsWithSentencePunct = Array.IndexOf(CjkPunctEndChars, last) >= 0;
+
+                                // Comma-ending → continuation
+                                if (prevEndsWithCommaLike)
+                                    splitAsHeading = false;
+                                // All-CJK short heading-like + previous not ended → continuation
+                                else if (isAllCjk && !prevEndsWithSentencePunct)
+                                    splitAsHeading = false;
+                                else
+                                    splitAsHeading = true;
+                            }
+                        }
+                    }
+
+                    if (splitAsHeading)
+                    {
+                        // If we have a real previous paragraph, flush it first
+                        if (buffer.Length > 0)
+                        {
+                            segments.Add(buffer.ToString());
+                            buffer.Clear();
+                            dialogState.Reset();
+                        }
+
+                        // Current line becomes a standalone heading
                         segments.Add(stripped);
                         continue;
                     }
+
+                    // else: fall through → normal merge logic below
                 }
 
                 // *** DIALOG: treat any line that *starts* with a dialog opener as a new paragraph
@@ -585,37 +615,32 @@ namespace OpenccNet
                 // 🔸 NEW RULE: If previous line ends with comma, 
                 //     do NOT flush even if this line starts dialog.
                 //     (comma-ending means the sentence is not finished)
-                if (bufferText.Length > 0)
+                if (currentIsDialogStart)
                 {
-                    var trimmed = bufferText.TrimEnd();
-                    var last = trimmed.Length > 0 ? trimmed[^1] : '\0';
-                    if (last is '，' or ',')
+                    var shouldFlushPrev = bufferText.Length > 0;
+
+                    if (shouldFlushPrev)
                     {
-                        // fall through → treat as continuation
-                        // do NOT flush here
+                        var trimmed = bufferText.TrimEnd();
+                        var last = trimmed.Length > 0 ? trimmed[^1] : '\0';
+
+                        shouldFlushPrev =
+                            last is not ('，' or ',' or '、') &&
+                            !dialogState.IsUnclosed &&
+                            !HasUnclosedBracket(bufferText);
                     }
-                    else if (currentIsDialogStart)
+
+                    if (shouldFlushPrev)
                     {
-                        // *** DIALOG: if this line starts a dialog, 
-                        //     flush previous paragraph (only if safe)
                         segments.Add(bufferText);
                         buffer.Clear();
-                        buffer.Append(stripped);
-                        dialogState.Reset();
-                        dialogState.Update(stripped);
-                        continue;
                     }
-                }
-                else
-                {
-                    // buffer empty, just add new dialog line
-                    if (currentIsDialogStart)
-                    {
-                        buffer.Append(stripped);
-                        dialogState.Reset();
-                        dialogState.Update(stripped);
-                        continue;
-                    }
+
+                    // Start (or continue) the dialog paragraph
+                    buffer.Append(stripped);
+                    dialogState.Reset();
+                    dialogState.Update(stripped);
+                    continue;
                 }
 
                 // NEW RULE: colon + dialog continuation
@@ -716,7 +741,9 @@ namespace OpenccNet
                 var last = s[^1];
 
                 var len = s.Length;
-                var maxLen = IsAllAscii(s) || IsMixedCjkAscii(s) ? 16 : 8;
+                var maxLen = IsAllAscii(s) ? 16
+                    : IsMixedCjkAscii(s) ? 12
+                    : 8;
 
                 // Short circuit for item title-like: "物品准备："
                 if ((last is ':' or '：') && s.Length <= maxLen && IsAllCjk(s[..^1]))
@@ -829,14 +856,30 @@ namespace OpenccNet
 
             // static bool IsAllAsciiDigits(string s)
             // {
+            //     var hasDigit = false;
+            //
             //     for (var i = 0; i < s.Length; i++)
             //     {
             //         var ch = s[i];
-            //         if (ch > 0x7F || ch < '0' || ch > '9')
-            //             return false;
+            //
+            //         switch (ch)
+            //         {
+            //             // ASCII space is neutral
+            //             case ' ':
+            //                 continue;
+            //             // ASCII digits
+            //             case >= '0' and <= '9':
+            //             // FULLWIDTH digits
+            //             case >= '０' and <= '９':
+            //                 hasDigit = true;
+            //                 continue;
+            //             default:
+            //                 // anything else -> reject
+            //                 return false;
+            //         }
             //     }
             //
-            //     return s.Length > 0;
+            //     return hasDigit;
             // }
 
             static bool IsAllCjk(string s)
@@ -878,20 +921,32 @@ namespace OpenccNet
                 {
                     var ch = s[i];
 
+                    // Neutral ASCII (allowed, but doesn't count as ASCII content)
+                    if (ch is ' ' or '-' or '/' or ':' or '.')
+                        continue;
+
                     if (ch <= 0x7F)
                     {
-                        // ASCII letter/digit only (you can decide if punctuation counts)
                         if (char.IsLetterOrDigit(ch))
+                        {
                             hasAscii = true;
+                        }
                         else
-                            return false; // reject ASCII punctuation in headings
+                        {
+                            return false;
+                        }
+                    }
+                    else if (ch is >= '０' and <= '９')
+                    {
+                        hasAscii = true;
+                    }
+                    else if (IsCjk(ch))
+                    {
+                        hasCjk = true;
                     }
                     else
                     {
-                        if (IsCjk(ch))
-                            hasCjk = true;
-                        else
-                            return false; // reject other scripts/symbols
+                        return false;
                     }
 
                     if (hasCjk && hasAscii)
@@ -899,6 +954,17 @@ namespace OpenccNet
                 }
 
                 return false;
+            }
+
+            static bool IsAllCjkIgnoringWhitespace(string s)
+            {
+                foreach (var ch in s)
+                {
+                    if (char.IsWhiteSpace(ch)) continue;
+                    if (ch <= 0x7F) return false; // ASCII => not all-CJK
+                }
+
+                return true;
             }
         }
 
@@ -935,7 +1001,15 @@ namespace OpenccNet
                     continue;
 
                 // ASCII visual separators (common in TXT / OCR)
-                if (ch is '-' or '=' or '_' or '~')
+                if (ch is '-' or '=' or '_' or '~' or '～')
+                    continue;
+
+                // Star / asterisk-based visual dividers
+                if (ch is '*' // ASTERISK (U+002A)
+                    or '＊' // FULLWIDTH ASTERISK (U+FF0A)
+                    or '★' // BLACK STAR (U+2605)
+                    or '☆' // WHITE STAR (U+2606)
+                   )
                     continue;
 
                 // Any real text → not a pure visual divider
