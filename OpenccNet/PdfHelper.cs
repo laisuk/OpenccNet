@@ -741,8 +741,8 @@ namespace OpenccNet
                 var last = s[^1];
 
                 var len = s.Length;
-                var maxLen = IsAllAscii(s) ? 16
-                    : IsMixedCjkAscii(s) ? 12
+                var maxLen = IsAllAscii(s) || IsMixedCjkAscii(s)
+                    ? 16
                     : 8;
 
                 // Short circuit for item title-like: "物品准备："
