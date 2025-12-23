@@ -374,7 +374,8 @@ namespace OpenccNet
                     cancellationToken.ThrowIfCancellationRequested();
 
                     // Progress callback
-                    if (i % block == 0 || i == 1 || i == total)
+                    // if (i % block == 0 || i == 1 || i == total)
+                    if (i == 1 || i == total || (block > 1 && i % block == 0 && i != total))
                     {
                         var percent = (int)((double)i / total * 100);
                         statusCallback?.Invoke(

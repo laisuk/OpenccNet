@@ -36,7 +36,7 @@ internal static class PdfCommand
 
         var configOption = new Option<string>("--config", "-c")
         {
-            Required = true,
+            // Required = true,
             Description = "Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp"
         };
 
@@ -73,11 +73,17 @@ internal static class PdfCommand
             DefaultValueFactory = _ => false,
             Description = "Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow."
         };
-        
+
         var quietOption = new Option<bool>("--quiet", "-q")
         {
             DefaultValueFactory = _ => false,
             Description = "Suppress status and progress output; only errors will be shown."
+        };
+
+        var extractOption = new Option<bool>("--extract", "-e")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Extract text from PDF only (no OpenCC conversion)."
         };
 
         var pdfCommand = new Command(
@@ -91,7 +97,8 @@ internal static class PdfCommand
             headerOption,
             reflowOption,
             compactOption,
-            quietOption
+            quietOption,
+            extractOption,
         };
 
         pdfCommand.SetAction(async (pr, cancellationToken) =>
@@ -104,6 +111,7 @@ internal static class PdfCommand
             var reflow = pr.GetValue(reflowOption);
             var compact = pr.GetValue(compactOption);
             var quiet = pr.GetValue(quietOption);
+            var extract = pr.GetValue(extractOption);
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
             {
@@ -117,6 +125,24 @@ internal static class PdfCommand
                 return 1;
             }
 
+            if (!extract)
+            {
+                if (string.IsNullOrWhiteSpace(config))
+                {
+                    await Console.Error.WriteLineAsync("❌ Missing --config (required unless --extract is used).");
+                    return 1;
+                }
+            }
+            else
+            {
+                if (!quiet && !string.IsNullOrEmpty(config))
+                    await Console.Error.WriteLineAsync("ℹ️ --config is ignored in --extract mode.");
+
+                if (!quiet && punct)
+                    await Console.Error.WriteLineAsync("ℹ️ --punct has no effect in --extract mode.");
+            }
+
+
             if (compact && !reflow && !quiet)
             {
                 await Console.Error.WriteLineAsync("ℹ️ --compact has no effect without --reflow; ignoring.");
@@ -124,7 +150,8 @@ internal static class PdfCommand
 
             var resolvedOutput = output ?? Path.Combine(
                 Path.GetDirectoryName(input) ?? string.Empty,
-                $"{Path.GetFileNameWithoutExtension(input)}_converted.txt");
+                $"{Path.GetFileNameWithoutExtension(input)}" +
+                (extract ? "_extracted.txt" : "_converted.txt"));
 
             try
             {
@@ -144,29 +171,37 @@ internal static class PdfCommand
                     },
                     cancellationToken: cancellationToken);
 
+                var finalText = extractedText;
+
                 // 2) Optional CJK paragraph reflow
                 if (reflow)
                 {
-                    extractedText =
-                        PdfHelper.ReflowCjkParagraphs(extractedText, addPdfPageHeader: addHeader, compact: compact);
+                    finalText = PdfHelper.ReflowCjkParagraphs(
+                        finalText,
+                        addPdfPageHeader: addHeader,
+                        compact: compact);
                 }
 
-                // 3) OpenCC conversion (config + punctuation)
-                var converter = new Opencc(config);
-                var convertedText = converter.Convert(extractedText, punctuation: punct);
+                // 3) OpenCC conversion (only if not extract)
+                if (!extract)
+                {
+                    var converter = new Opencc(config);
+                    finalText = converter.Convert(finalText, punctuation: punct);
+                }
 
-                // 4) Save as UTF-8 (no BOM)
+                // 4) Save UTF-8
                 await File.WriteAllTextAsync(
                     resolvedOutput,
-                    convertedText,
-                    new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                    finalText,
+                    new UTF8Encoding(false),
                     cancellationToken);
 
                 if (!quiet)
                 {
                     await Console.Error.WriteLineAsync(
-                        $"\n✅ PDF conversion succeeded.\n📁 Output: {Path.GetFullPath(resolvedOutput)}");
+                        $"\n✅ PDF {(extract ? "extraction" : "conversion")} succeeded.\n📁 Output: {Path.GetFullPath(resolvedOutput)}");
                 }
+
                 return 0;
             }
             catch (Exception ex)
