@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
@@ -39,12 +40,15 @@ namespace OpenccNet
             '）', '】', '》', '〗', '〕', '〉', '」', '』', '］', '｝', ')', ':', '!'
         };
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsCjkPunctEndChar(char ch) => CjkPunctEndChars.Contains(ch);
+
         // Chapter / heading patterns (短行 + 第N章/卷/节/部, 前言/序章/终章/尾声/番外)
         private static readonly Regex TitleHeadingRegex =
             new(
-                @"^(?=.{0,50}$)
-                  (前言|序章|终章|尾声|后记|尾聲|後記|番外.{0,15}
-                  |.{0,10}?第.{0,5}?([章节部卷節回][^分合]).{0,20}?
+                @"^(?!.*[,，])(?=.{0,50}$)
+                  (前言|序章|楔子|终章|尾声|后记|尾聲|後記|番外.{0,15}
+                  |.{0,10}?第.{0,5}?([章节部卷節回][^分合的])|(?:卷|章)[一二三四五六七八九十](?:$|.{0,20}?)
                   )",
                 RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
 
@@ -54,22 +58,55 @@ namespace OpenccNet
 
         // Dialog brackets (Simplified / Traditional / JP-style)
         private const string DialogOpeners = "“‘「『﹁﹃";
+        // private const string DialogClosers = "”’」』﹂﹄";
 
-        private static bool IsDialogOpener(char ch)
-            => DialogOpeners.Contains(ch);
+        private static bool IsDialogOpener(char ch) => DialogOpeners.Contains(ch);
+        // private static bool IsDialogCloser(char ch) => DialogClosers.Contains(ch);
 
         // Bracket punctuations (open-close)
-        private const string OpenBrackets = "（([【《｛〈〔［";
-        private const string CloseBrackets = "）)]】》｝〉〕］";
+        private static readonly Dictionary<char, char> BracketPairs = new()
+        {
+            // Parentheses
+            ['（'] = '）',
+            ['('] = ')',
+
+            // Square brackets
+            ['['] = ']',
+            ['［'] = '］',
+
+            // Curly braces (ASCII + FULLWIDTH)
+            ['{'] = '}',
+            ['｛'] = '｝',
+
+            // Angle brackets
+            ['<'] = '>',
+            ['＜'] = '＞',
+            ['〈'] = '〉',
+
+            // CJK brackets
+            ['【'] = '】',
+            ['《'] = '》',
+            ['〔'] = '〕',
+            ['〖'] = '〗',
+        };
+
+        private static readonly HashSet<char> OpenBracketSet = BracketPairs.Keys.ToHashSet();
+        private static readonly HashSet<char> CloseBracketSet = BracketPairs.Values.ToHashSet();
+
+        private static bool IsBracketOpener(char ch) => OpenBracketSet.Contains(ch);
+        private static bool IsBracketCloser(char ch) => CloseBracketSet.Contains(ch);
+
+        private static bool IsMatchingBracket(char open, char close) =>
+            BracketPairs.TryGetValue(open, out var expected) && expected == close;
 
         // Metadata key-value separators
         private static readonly char[] MetadataSeparators =
         {
-            '：', // full-width colon
-            ':', // ASCII colon
-            '　', // full-width ideographic space (U+3000)
-            '・', // KATAKANA MIDDLE DOT (U+30FB)
-            '・' // full-width ideographic dot (U+3000)
+            ':', // ASCII colon (U+003A)
+            '：', // Full-width colon (U+FF1A)
+            '　', // Ideographic space (U+3000)
+            '·', // Middle dot (Latin, U+00B7)
+            '・', // Katakana middle dot (U+30FB)
         };
 
         // Metadata heading title names
@@ -472,7 +509,8 @@ namespace OpenccNet
                         var lastChar = buffer[^1];
 
                         // Page-break-like blank line, skip it
-                        if (Array.IndexOf(CjkPunctEndChars, lastChar) < 0)
+                        // if (Array.IndexOf(CjkPunctEndChars, lastChar) < 0)
+                        if (!IsCjkPunctEndChar(lastChar))
                             continue;
                     }
 
@@ -566,7 +604,7 @@ namespace OpenccNet
                                 var last = bt[^1];
 
                                 var prevEndsWithCommaLike = last is '，' or ',' or '、';
-                                var prevEndsWithSentencePunct = Array.IndexOf(CjkPunctEndChars, last) >= 0;
+                                var prevEndsWithSentencePunct = IsCjkPunctEndChar(last);
 
                                 // Comma-ending → continuation
                                 if (prevEndsWithCommaLike)
@@ -648,7 +686,7 @@ namespace OpenccNet
                 // e.g. "她寫了一行字：" + "「如果連自己都不相信……」"
                 if (bufferText.EndsWith('：') || bufferText.EndsWith(':'))
                 {
-                    if (stripped.Length > 0 && DialogOpeners.Contains(stripped[0]))
+                    if (stripped.Length > 0 && IsDialogOpener(stripped[0]))
                     {
                         buffer.Append(stripped);
                         dialogState.Update(stripped);
@@ -661,7 +699,7 @@ namespace OpenccNet
                 // closed, CJK punctuation may end the paragraph as usual.
 
                 // 5) Ends with CJK punctuation → new paragraph
-                if (Array.IndexOf(CjkPunctEndChars, bufferText[^1]) >= 0 &&
+                if (IsCjkPunctEndChar(bufferText[^1]) &&
                     !dialogState.IsUnclosed)
                 {
                     segments.Add(bufferText);
@@ -718,7 +756,7 @@ namespace OpenccNet
             static bool IsDialogStarter(string s)
             {
                 s = s.TrimStart(' ', '\u3000'); // ignore indent
-                return s.Length > 0 && DialogOpeners.Contains(s[0]);
+                return s.Length > 0 && IsDialogOpener(s[0]);
             }
 
             static bool IsHeadingLike(string? s)
@@ -740,8 +778,10 @@ namespace OpenccNet
 
                 // If *ends* with CJK punctuation → not heading
                 var last = s[^1];
-
                 var len = s.Length;
+
+                if (len > 2 && IsMatchingBracket(s[0], last) && IsMostlyCjk(s)) return true;
+
                 var maxLen = IsAllAscii(s) || IsMixedCjkAscii(s)
                     ? 16
                     : 8;
@@ -750,7 +790,8 @@ namespace OpenccNet
                 if ((last is ':' or '：') && s.Length <= maxLen && IsAllCjk(s[..^1]))
                     return true;
 
-                if (Array.IndexOf(CjkPunctEndChars, last) >= 0)
+                // if (Array.IndexOf(CjkPunctEndChars, last) >= 0)
+                if (IsCjkPunctEndChar(last))
                     return false;
 
                 // Reject any short line containing comma-like separators
@@ -837,8 +878,8 @@ namespace OpenccNet
 
                 foreach (var ch in s)
                 {
-                    if (!hasOpen && OpenBrackets.Contains(ch)) hasOpen = true;
-                    if (!hasClose && CloseBrackets.Contains(ch)) hasClose = true;
+                    if (!hasOpen && IsBracketOpener(ch)) hasOpen = true;
+                    if (!hasClose && IsBracketCloser(ch)) hasClose = true;
 
                     if (hasOpen && hasClose)
                         break;
@@ -966,6 +1007,45 @@ namespace OpenccNet
                 }
 
                 return true;
+            }
+
+            static bool IsMostlyCjk(string s)
+            {
+                var cjk = 0;
+                var ascii = 0;
+
+                for (var i = 0; i < s.Length; i++)
+                {
+                    var ch = s[i];
+
+                    // Neutral whitespace
+                    if (char.IsWhiteSpace(ch))
+                        continue;
+
+                    // Neutral digits (ASCII + FULLWIDTH)
+                    if (IsDigitAsciiOrFullWidth(ch))
+                        continue;
+
+                    if (IsCjk(ch))
+                    {
+                        cjk++;
+                        continue;
+                    }
+
+                    // Count ASCII letters only; ASCII punctuation is neutral
+                    if (ch <= 0x7F && char.IsLetter(ch))
+                        ascii++;
+                }
+
+                return cjk > 0 && cjk >= ascii;
+            }
+
+            static bool IsDigitAsciiOrFullWidth(char ch)
+            {
+                // ASCII digits
+                if ((uint)(ch - '0') <= 9) return true;
+                // FULLWIDTH digits
+                return (uint)(ch - '０') <= 9;
             }
         }
 
