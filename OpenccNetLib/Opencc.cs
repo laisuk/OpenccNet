@@ -102,6 +102,40 @@ namespace OpenccNetLib
         Jp2T
     }
 
+    // @Since v1.4.1
+    public static class OpenccConfigExtensions
+    {
+        /// <summary>
+        /// Converts an <see cref="OpenccConfig"/> value to its canonical Opencc configuration name
+        /// (e.g. "s2t", "s2twp").
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string ToCanonicalName(this OpenccConfig config)
+        {
+            switch (config)
+            {
+                case OpenccConfig.S2T: return "s2t";
+                case OpenccConfig.T2S: return "t2s";
+                case OpenccConfig.S2Tw: return "s2tw";
+                case OpenccConfig.Tw2S: return "tw2s";
+                case OpenccConfig.S2Twp: return "s2twp";
+                case OpenccConfig.Tw2Sp: return "tw2sp";
+                case OpenccConfig.S2Hk: return "s2hk";
+                case OpenccConfig.Hk2S: return "hk2s";
+                case OpenccConfig.T2Tw: return "t2tw";
+                case OpenccConfig.T2Twp: return "t2twp";
+                case OpenccConfig.Tw2T: return "tw2t";
+                case OpenccConfig.Tw2Tp: return "tw2tp";
+                case OpenccConfig.T2Hk: return "t2hk";
+                case OpenccConfig.Hk2T: return "hk2t";
+                case OpenccConfig.T2Jp: return "t2jp";
+                case OpenccConfig.Jp2T: return "jp2t";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(config), config, "Invalid OpenCC config");
+            }
+        }
+    }
+
     /// <summary>
     /// Main class for OpenCC text conversion. Provides methods for various conversion directions
     /// (Simplified-Traditional, Traditional-Simplified, etc.) and supports multi-stage, high-performance conversion.
