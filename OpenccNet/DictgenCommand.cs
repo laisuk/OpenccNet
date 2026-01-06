@@ -33,15 +33,25 @@ internal static class DictgenCommand
         var baseDirOption = new Option<string>("--base-dir", "-b")
         {
             DefaultValueFactory = _ => "dicts",
-            Description = "Base directory containing source dictionary files"
+            Description = "Base directory containing OpenCC-style .txt dictionary sources (for dictgen)"
         };
-        
+
         var unescapeOption = new Option<bool>("--unescape", "-u")
         {
             Description = "For JSON format only: write readable Unicode characters instead of \\uXXXX escapes"
         };
 
-        var dictGenCommand = new Command("dictgen", $"{Blue}Generate OpenccNetLib dictionary files.{Reset}")
+        var dictGenCommand = new Command(
+            "dictgen",
+            $"{Blue}Generate OpenccNetLib dictionary files.{Reset}\n\n" +
+            "Examples:\n" +
+            "  OpenccNet dictgen\n" +
+            "    Generate default Zstd dictionary (dictionary_maxlength.zstd)\n\n" +
+            "  OpenccNet dictgen -f cbor\n" +
+            "    Generate CBOR dictionary for interop\n\n" +
+            "  OpenccNet dictgen -f json --unescape\n" +
+            "    Generate readable JSON dictionary without \\uXXXX escapes\n"
+        )
         {
             formatOption,
             outputOption,
@@ -77,6 +87,7 @@ internal static class DictgenCommand
                     }
                     else
                         DictionaryLib.SerializeToJson(outputFile);
+
                     break;
                 default:
                     Console.Error.WriteLine($"❌ Unknown format: {format}");

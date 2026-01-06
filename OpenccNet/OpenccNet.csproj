@@ -26,13 +26,33 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="PdfPig" Version="0.1.13" />
-        <PackageReference Include="System.CommandLine" Version="2.0.1" />
+        <PackageReference Include="PdfPig" Version="0.1.13"/>
+        <PackageReference Include="System.CommandLine" Version="2.0.1"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj" />
+        <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj"/>
     </ItemGroup>
+
+    <Target Name="Trim_Docs_And_Symbols_FromPublish"
+            AfterTargets="ComputeFilesToPublish">
+        <ItemGroup>
+            <!-- Remove dependency XML docs -->
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                                   Condition="'%(ResolvedFileToPublish.Extension)' == '.xml'"/>
+
+            <!-- Remove dependency PDB symbols -->
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                                   Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'"/>
+
+            <!-- Remove unused dict payloads coming from OpenccNetLib package -->
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.cbor'" />
+            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.json'" />
+
+        </ItemGroup>
+    </Target>
 
 </Project>
 
