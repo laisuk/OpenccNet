@@ -25,6 +25,11 @@
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>none</DebugType>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="PdfPig" Version="0.1.13"/>
         <PackageReference Include="System.CommandLine" Version="2.0.1"/>
@@ -47,9 +52,9 @@
 
             <!-- Remove unused dict payloads coming from OpenccNetLib package -->
             <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
-                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.cbor'" />
+                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.cbor'"/>
             <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
-                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.json'" />
+                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.json'"/>
 
         </ItemGroup>
     </Target>
