@@ -147,13 +147,6 @@ namespace OpenccNetLib
             @"[!-/:-@\[-`{-~\t\n\v\f\r 0-9A-Za-z_著]",
             RegexOptions.Compiled);
 
-        // Supported configuration names for conversion directions.
-        private static readonly HashSet<string> ConfigList = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s", "t2tw", "tw2t", "t2twp", "tw2tp",
-            "t2hk", "hk2t", "t2jp", "jp2t"
-        };
-
         // Thread-local StringBuilder for efficient string concatenation.
         private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
             new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
@@ -161,113 +154,430 @@ namespace OpenccNetLib
         #region Config Enum Helpers Region
 
         /// <summary>
-        /// Converts the specified <see cref="OpenccConfig"/> enum value to its corresponding string representation.
+        /// Represents a single OpenCC configuration mapping entry.
         /// </summary>
-        /// <param name="configEnum">The enum value representing the desired OpenCC configuration.</param>
-        /// <returns>
-        /// A lowercase string representing the configuration (e.g., "s2t", "t2s").
-        /// If the input is not recognized, defaults to "s2t".
-        /// </returns>
-        private static string ConfigEnumToString(OpenccConfig configEnum)
+        /// <remarks>
+        /// This struct defines the canonical relationship between an
+        /// <see cref="OpenccConfig"/> identifier and its string representation.
+        /// It is used as the single source of truth for configuration mapping.
+        /// </remarks>
+        private struct ConfigEntry
         {
-            switch (configEnum)
+            /// <summary>
+            /// The OpenCC configuration identifier.
+            /// </summary>
+            public readonly OpenccConfig Id;
+
+            /// <summary>
+            /// The canonical string name of the configuration (lowercase).
+            /// </summary>
+            public readonly string Name;
+
+            /// <summary>
+            /// Initializes a new <see cref="ConfigEntry"/> instance.
+            /// </summary>
+            /// <param name="id">The configuration identifier.</param>
+            /// <param name="name">The canonical configuration name.</param>
+            public ConfigEntry(OpenccConfig id, string name)
             {
-                case OpenccConfig.S2T: return "s2t";
-                case OpenccConfig.T2S: return "t2s";
-                case OpenccConfig.S2Tw: return "s2tw";
-                case OpenccConfig.Tw2S: return "tw2s";
-                case OpenccConfig.S2Twp: return "s2twp";
-                case OpenccConfig.Tw2Sp: return "tw2sp";
-                case OpenccConfig.S2Hk: return "s2hk";
-                case OpenccConfig.Hk2S: return "hk2s";
-                case OpenccConfig.T2Tw: return "t2tw";
-                case OpenccConfig.T2Twp: return "t2twp";
-                case OpenccConfig.Tw2T: return "tw2t";
-                case OpenccConfig.Tw2Tp: return "tw2tp";
-                case OpenccConfig.T2Hk: return "t2hk";
-                case OpenccConfig.Hk2T: return "hk2t";
-                case OpenccConfig.T2Jp: return "t2jp";
-                case OpenccConfig.Jp2T: return "jp2t";
-                default: return "s2t";
+                Id = id;
+                Name = name;
             }
         }
 
+        private const OpenccConfig DefaultConfigId = OpenccConfig.S2T;
+        private const string DefaultConfigName = "s2t";
+
         /// <summary>
-        /// Attempts to parse a configuration string into an <see cref="OpenccConfig"/> enum value.
+        /// Canonical OpenCC configuration mapping table.
         /// </summary>
-        /// <param name="config">The configuration string to parse (e.g., "s2t", "tw2sp").</param>
-        /// <param name="result">
-        /// When this method returns, contains the <see cref="OpenccConfig"/> value equivalent to the input string,
-        /// if the conversion succeeded, or the default value if the conversion failed.
+        /// <remarks>
+        /// This array is the single authoritative source for all configuration mappings
+        /// between <see cref="OpenccConfig"/> identifiers and their string representations.
+        /// <para/>
+        /// All validation, parsing, and projection logic must be derived from this table.
+        /// To add or remove a supported configuration, update this table only.
+        /// </remarks>
+        private static readonly ConfigEntry[] ConfigMap =
+        {
+            new ConfigEntry(OpenccConfig.S2T, "s2t"),
+            new ConfigEntry(OpenccConfig.T2S, "t2s"),
+            new ConfigEntry(OpenccConfig.S2Tw, "s2tw"),
+            new ConfigEntry(OpenccConfig.Tw2S, "tw2s"),
+            new ConfigEntry(OpenccConfig.S2Twp, "s2twp"),
+            new ConfigEntry(OpenccConfig.Tw2Sp, "tw2sp"),
+            new ConfigEntry(OpenccConfig.S2Hk, "s2hk"),
+            new ConfigEntry(OpenccConfig.Hk2S, "hk2s"),
+            new ConfigEntry(OpenccConfig.T2Tw, "t2tw"),
+            new ConfigEntry(OpenccConfig.Tw2T, "tw2t"),
+            new ConfigEntry(OpenccConfig.T2Twp, "t2twp"),
+            new ConfigEntry(OpenccConfig.Tw2Tp, "tw2tp"),
+            new ConfigEntry(OpenccConfig.T2Hk, "t2hk"),
+            new ConfigEntry(OpenccConfig.Hk2T, "hk2t"),
+            new ConfigEntry(OpenccConfig.T2Jp, "t2jp"),
+            new ConfigEntry(OpenccConfig.Jp2T, "jp2t"),
+        };
+
+        /// <summary>
+        /// Lookup table for mapping configuration names to identifiers.
+        /// </summary>
+        /// <remarks>
+        /// Built once from <see cref="ConfigMap"/> at type initialization.
+        /// Uses case-insensitive string comparison.
+        /// </remarks>
+        private static readonly Dictionary<string, OpenccConfig> NameToId =
+            BuildNameToId(ConfigMap);
+
+        /// <summary>
+        /// Lookup table for mapping configuration identifiers to canonical names.
+        /// </summary>
+        /// <remarks>
+        /// Built once from <see cref="ConfigMap"/> at type initialization.
+        /// </remarks>
+        private static readonly Dictionary<OpenccConfig, string> IdToName =
+            BuildIdToName(ConfigMap);
+
+        /// <summary>
+        /// Read-only collection of supported configuration names.
+        /// </summary>
+        /// <remarks>
+        /// Derived from <see cref="ConfigMap"/> and created once at type initialization.
+        /// The collection is stable and does not allocate on each access.
+        /// </remarks>
+        private static readonly IReadOnlyCollection<string> SupportedConfigNames =
+            BuildSupportedNames(ConfigMap);
+
+        /// <summary>
+        /// Builds a lookup table that maps configuration names to identifiers.
+        /// </summary>
+        /// <param name="map">
+        /// The canonical configuration mapping table.
         /// </param>
         /// <returns>
-        /// <c>true</c> if the input string was successfully parsed into an <see cref="OpenccConfig"/>; otherwise, <c>false</c>.
+        /// A dictionary mapping configuration names to <see cref="OpenccConfig"/> identifiers.
         /// </returns>
+        /// <remarks>
+        /// This helper is invoked once during type initialization to construct
+        /// a case-insensitive lookup table from <see cref="ConfigMap"/>.
+        /// </remarks>
+        private static Dictionary<string, OpenccConfig> BuildNameToId(ConfigEntry[] map)
+        {
+            var dict = new Dictionary<string, OpenccConfig>(map.Length, StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < map.Length; i++)
+                dict[map[i].Name] = map[i].Id;
+            return dict;
+        }
+
+        /// <summary>
+        /// Builds a lookup table that maps configuration identifiers to canonical names.
+        /// </summary>
+        /// <param name="map">
+        /// The canonical configuration mapping table.
+        /// </param>
+        /// <returns>
+        /// A dictionary mapping <see cref="OpenccConfig"/> identifiers to their
+        /// canonical string representations.
+        /// </returns>
+        /// <remarks>
+        /// This helper is invoked once during type initialization to construct
+        /// the reverse mapping from <see cref="ConfigMap"/>.
+        /// </remarks>
+        private static Dictionary<OpenccConfig, string> BuildIdToName(ConfigEntry[] map)
+        {
+            var dict = new Dictionary<OpenccConfig, string>(map.Length);
+            for (var i = 0; i < map.Length; i++)
+                dict[map[i].Id] = map[i].Name;
+            return dict;
+        }
+
+        /// <summary>
+        /// Builds a read-only collection of supported configuration names.
+        /// </summary>
+        /// <param name="map">
+        /// The canonical configuration mapping table.
+        /// </param>
+        /// <returns>
+        /// A stable, read-only collection of configuration names.
+        /// </returns>
+        /// <remarks>
+        /// The returned collection is created once at type initialization
+        /// and reused for the lifetime of the application.
+        /// </remarks>
+        private static IReadOnlyCollection<string> BuildSupportedNames(ConfigEntry[] map)
+        {
+            // Stable ordering, allocation happens once at type initialization.
+            var names = new string[map.Length];
+            for (var i = 0; i < map.Length; i++)
+                names[i] = map[i].Name;
+
+            // .NET Standard 2.0: Array.AsReadOnly is available.
+            return Array.AsReadOnly(names);
+        }
+
+        /// <summary>
+        /// Converts a configuration identifier to its canonical string representation.
+        /// </summary>
+        /// <param name="configId">
+        /// The configuration identifier to convert.
+        /// </param>
+        /// <returns>
+        /// The canonical lowercase configuration name, or the default configuration
+        /// name if the identifier is not recognized.
+        /// </returns>
+        /// <remarks>
+        /// This helper is used internally to project the authoritative enum-based
+        /// configuration state into the legacy string-based API.
+        /// </remarks>
+        private static string ConfigIdToString(OpenccConfig configId)
+        {
+            return IdToName.TryGetValue(configId, out var name) ? name : DefaultConfigName;
+        }
+
+        /// <summary>
+        /// Attempts to parse a configuration name into an <see cref="OpenccConfig"/> identifier.
+        /// </summary>
+        /// <param name="config">
+        /// The configuration name to parse (for example, <c>"s2t"</c>, <c>"tw2sp"</c>).
+        /// The comparison is case-insensitive and ignores leading or trailing whitespace.
+        /// </param>
+        /// <param name="result">
+        /// When this method returns, contains the corresponding <see cref="OpenccConfig"/> value
+        /// if parsing succeeded; otherwise, the default value.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> if <paramref name="config"/> represents a supported OpenCC configuration;
+        /// <c>false</c> if <paramref name="config"/> is <c>null</c>, empty, whitespace-only,
+        /// or not a recognized configuration name.
+        /// </returns>
+        /// <remarks>
+        /// This method does not throw exceptions.
+        /// It is intended for validation, parsing user input, and binding scenarios.
+        /// </remarks>
         public static bool TryParseConfig(string config, out OpenccConfig result)
         {
-            if (config == null)
+            if (string.IsNullOrWhiteSpace(config))
             {
                 result = default;
                 return false;
             }
 
-            switch (config.ToLowerInvariant())
-            {
-                case "s2t":
-                    result = OpenccConfig.S2T;
-                    return true;
-                case "t2s":
-                    result = OpenccConfig.T2S;
-                    return true;
-                case "s2tw":
-                    result = OpenccConfig.S2Tw;
-                    return true;
-                case "tw2s":
-                    result = OpenccConfig.Tw2S;
-                    return true;
-                case "s2twp":
-                    result = OpenccConfig.S2Twp;
-                    return true;
-                case "tw2sp":
-                    result = OpenccConfig.Tw2Sp;
-                    return true;
-                case "s2hk":
-                    result = OpenccConfig.S2Hk;
-                    return true;
-                case "hk2s":
-                    result = OpenccConfig.Hk2S;
-                    return true;
-                case "t2tw":
-                    result = OpenccConfig.T2Tw;
-                    return true;
-                case "t2twp":
-                    result = OpenccConfig.T2Twp;
-                    return true;
-                case "tw2t":
-                    result = OpenccConfig.Tw2T;
-                    return true;
-                case "tw2tp":
-                    result = OpenccConfig.Tw2Tp;
-                    return true;
-                case "t2hk":
-                    result = OpenccConfig.T2Hk;
-                    return true;
-                case "hk2t":
-                    result = OpenccConfig.Hk2T;
-                    return true;
-                case "t2jp":
-                    result = OpenccConfig.T2Jp;
-                    return true;
-                case "jp2t":
-                    result = OpenccConfig.Jp2T;
-                    return true;
-                default:
-                    result = default;
-                    return false;
-            }
+            var s = config.Trim();
+            return NameToId.TryGetValue(s, out result);
         }
 
-        #endregion
+        /// <summary>
+        /// Determines whether the specified configuration name is a supported OpenCC configuration.
+        /// </summary>
+        /// <param name="config">
+        /// The configuration name to validate (for example, <c>"s2t"</c>, <c>"t2hk"</c>).
+        /// The comparison is case-insensitive and ignores leading or trailing whitespace.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> if the configuration name is recognized and supported;
+        /// otherwise, <c>false</c>.
+        /// </returns>
+        /// <remarks>
+        /// This method performs validation only and does not modify any instance state.
+        /// </remarks>
+        public static bool IsValidConfig(string config)
+        {
+            return TryParseConfig(config, out _);
+        }
+
+        /// <summary>
+        /// Gets a read-only collection of all supported OpenCC configuration names.
+        /// </summary>
+        /// <returns>
+        /// A stable, read-only collection of canonical configuration names
+        /// (for example, <c>"s2t"</c>, <c>"tw2sp"</c>).
+        /// </returns>
+        /// <remarks>
+        /// The returned collection contains lowercase, canonical identifiers and
+        /// does not allocate on each call.  
+        /// Modifying the returned collection is not supported.
+        /// </remarks>
+        public static IReadOnlyCollection<string> GetSupportedConfigs()
+        {
+            return SupportedConfigNames;
+        }
+
+        #endregion // Config Enum Helpers Region
+
+        #region Instance Configs
+
+        // ================= Instance state =================
+
+        /// <summary>
+        /// Holds the current OpenCC configuration identifier.
+        /// </summary>
+        /// <remarks>
+        /// This field is the single source of truth for the active configuration.
+        /// All public and internal configuration APIs ultimately read from or
+        /// update this value.
+        /// </remarks>
+        private OpenccConfig _configId = DefaultConfigId;
+
+        /// <summary>
+        /// Stores the most recent configuration-related error message.
+        /// </summary>
+        /// <remarks>
+        /// This field is updated when invalid configuration values are provided
+        /// through public or internal setters. A <c>null</c> value indicates that
+        /// no configuration error is currently recorded.
+        /// </remarks>
+        private string _lastError;
+
+        /// <summary>
+        /// Gets or sets the current OpenCC conversion configuration using the legacy string-based API.
+        /// </summary>
+        /// <value>
+        /// A canonical configuration name such as <c>"s2t"</c> or <c>"tw2sp"</c>.
+        /// The returned value is always lowercase and normalized.
+        /// </value>
+        /// <remarks>
+        /// This property exists for backward compatibility and convenience.
+        /// Internally, the configuration is stored as an <see cref="OpenccConfig"/> identifier.
+        /// <para/>
+        /// When an invalid value is assigned, the configuration falls back to <c>"s2t"</c>
+        /// and an error message is recorded internally.
+        /// </remarks>
+        public string Config
+        {
+            get => ConfigIdToString(_configId);
+            set => SetConfigInternal(value, true);
+        }
+
+        /// <summary>
+        /// Sets the conversion configuration using a configuration name string.
+        /// </summary>
+        /// <param name="config">
+        /// The configuration name to apply (for example, <c>"s2t"</c>, <c>"t2hk"</c>).
+        /// The comparison is case-insensitive and ignores leading or trailing whitespace.
+        /// </param>
+        /// <remarks>
+        /// This method is equivalent to assigning the <see cref="Config"/> property.
+        /// Internally, the configuration is stored as an <see cref="OpenccConfig"/> identifier.
+        /// <para/>
+        /// If the provided value is invalid or unrecognized, the configuration
+        /// falls back to <c>"s2t"</c> and an error message is recorded internally.
+        /// </remarks>
+        public void SetConfig(string config)
+        {
+            SetConfigInternal(config, true);
+        }
+
+        /// <summary>
+        /// Sets the conversion configuration using an <see cref="OpenccConfig"/> enum value.
+        /// </summary>
+        /// <param name="configEnum">
+        /// The OpenCC configuration identifier to apply.
+        /// </param>
+        /// <remarks>
+        /// This overload is the preferred way to set the configuration when using strongly typed APIs.
+        /// <para/>
+        /// If an invalid enum value is provided (for example, a value created by casting an integer),
+        /// the configuration falls back to <c>"s2t"</c> and an error message is recorded internally.
+        /// </remarks>
+        public void SetConfig(OpenccConfig configEnum)
+        {
+            SetConfigInternal(configEnum, true);
+        }
+
+        /// <summary>
+        /// Gets the current conversion configuration as a canonical string.
+        /// </summary>
+        /// <returns>
+        /// The normalized configuration name currently in use
+        /// (for example, <c>"s2t"</c>, <c>"tw2sp"</c>).
+        /// </returns>
+        /// <remarks>
+        /// This method is functionally equivalent to reading the <see cref="Config"/> property
+        /// and is provided for compatibility with older APIs.
+        /// </remarks>
+        public string GetConfig()
+        {
+            return Config;
+        }
+
+        /// <summary>
+        /// Gets the current conversion configuration as an <see cref="OpenccConfig"/> identifier.
+        /// </summary>
+        /// <returns>
+        /// The <see cref="OpenccConfig"/> value currently in use.
+        /// </returns>
+        /// <remarks>
+        /// This method exposes the authoritative internal configuration state.
+        /// It is recommended for advanced usage, interop scenarios, and strongly typed integrations.
+        /// </remarks>
+        public OpenccConfig GetConfigId()
+        {
+            return _configId;
+        }
+
+        /// <summary>
+        /// Sets the internal configuration from a string value.
+        /// </summary>
+        /// <param name="config">
+        /// Configuration name to apply. Parsed in a case-insensitive manner.
+        /// </param>
+        /// <param name="setLastError">
+        /// Whether to record an error message when the input is invalid.
+        /// </param>
+        /// <remarks>
+        /// This method is the internal entry point for all string-based configuration updates.
+        /// It enforces the single-owner rule by updating <c>_configId</c> only.
+        /// <para/>
+        /// Invalid values cause the configuration to fall back to the default
+        /// and optionally update the internal error state.
+        /// </remarks>
+        private void SetConfigInternal(string config, bool setLastError)
+        {
+            if (TryParseConfig(config, out var id))
+            {
+                _configId = id;
+                if (setLastError) _lastError = null;
+                return;
+            }
+
+            _configId = DefaultConfigId;
+            if (setLastError)
+                _lastError = "Invalid config provided: \"" + config + "\". Using default '" + DefaultConfigName + "'.";
+        }
+
+        /// <summary>
+        /// Sets the internal configuration from an <see cref="OpenccConfig"/> identifier.
+        /// </summary>
+        /// <param name="id">
+        /// Configuration identifier to apply.
+        /// </param>
+        /// <param name="setLastError">
+        /// Whether to record an error message when the input is invalid.
+        /// </param>
+        /// <remarks>
+        /// This method is the internal entry point for enum-based configuration updates.
+        /// It validates the identifier against the known configuration map
+        /// and enforces the single-owner rule by updating <c>_configId</c> only.
+        /// <para/>
+        /// Invalid enum values (for example, values created by casting integers)
+        /// cause the configuration to fall back to the default
+        /// and optionally update the internal error state.
+        /// </remarks>
+        private void SetConfigInternal(OpenccConfig id, bool setLastError)
+        {
+            // Reject unknown enum values (e.g. cast from int)
+            if (IdToName.TryGetValue(id, out _))
+            {
+                _configId = id;
+                if (setLastError) _lastError = null;
+                return;
+            }
+
+            _configId = DefaultConfigId;
+            if (setLastError)
+                _lastError = "Invalid config id provided: " + id + ". Using default '" + DefaultConfigName + "'.";
+        }
+
+        #endregion // Instance Configs
 
         #region Delimiters Region
 
@@ -335,7 +645,7 @@ namespace OpenccNetLib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsDelimiter(char c) => DelimiterTable.Contains(c);
 
-        #endregion
+        #endregion // Delimiters Region
 
         #region Lazy Static Dictionary Region
 
@@ -515,13 +825,9 @@ namespace OpenccNetLib
 
         // --- END Lazy<T> Implementation ---
 
-        #endregion
+        #endregion // Lazy Static Dictionary Region
 
-        #region Opencc Contructor and Public Fields Region
-
-        private string _config;
-
-        private string _lastError;
+        #region Opencc Constructor and Public Fields Region
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Opencc"/> class with the specified configuration.
@@ -540,77 +846,8 @@ namespace OpenccNetLib
         /// <param name="configEnum">The OpenCC conversion configuration enum value.</param>
         public Opencc(OpenccConfig configEnum)
         {
-            Config = ConfigEnumToString(configEnum);
-        }
-
-        /// <summary>
-        /// Gets or sets the current conversion configuration.
-        /// If an invalid configuration is assigned, it falls back to "s2t" and records the error.
-        /// </summary>
-        public string Config
-        {
-            get => _config;
-            set
-            {
-                var lower = value?.ToLowerInvariant();
-                if (IsValidConfig(lower))
-                {
-                    _config = lower;
-                    _lastError = null;
-                }
-                else
-                {
-                    _config = "s2t";
-                    _lastError = $"Invalid config provided: \"{value}\". Using default 's2t'.";
-                }
-            }
-        }
-
-        /// <summary>
-        /// Sets the configuration value for the current OpenCC instance.
-        /// If the provided config is invalid, it reverts to the default "s2t".
-        /// </summary>
-        /// <param name="config">The configuration name to set (e.g., "s2t", "t2s").</param>
-        public void SetConfig(string config)
-        {
-            Config = IsValidConfig(config) ? config : "s2t";
-        }
-
-        /// <summary>
-        /// Sets the configuration using the <see cref="OpenccConfig"/> enum.
-        /// </summary>
-        /// <param name="configEnum">The OpenCC configuration enum value.</param>
-        public void SetConfig(OpenccConfig configEnum)
-        {
-            Config = ConfigEnumToString(configEnum);
-        }
-
-        /// <summary>
-        /// Gets the current configuration value of this OpenCC instance.
-        /// </summary>
-        /// <returns>The configuration name currently in use.</returns>
-        public string GetConfig()
-        {
-            return Config;
-        }
-
-        /// <summary>
-        /// Gets a read-only collection of all supported configuration names.
-        /// </summary>
-        /// <returns>A collection of valid configuration identifiers.</returns>
-        public static IReadOnlyCollection<string> GetSupportedConfigs()
-        {
-            return ConfigList;
-        }
-
-        /// <summary>
-        /// Checks whether the provided configuration name is valid.
-        /// </summary>
-        /// <param name="config">The configuration name to validate.</param>
-        /// <returns><c>true</c> if the configuration is supported; otherwise, <c>false</c>.</returns>
-        public static bool IsValidConfig(string config)
-        {
-            return ConfigList.Contains(config);
+            // Single-owner rule: set via enum path
+            SetConfigInternal(configEnum, setLastError: false);
         }
 
         /// <summary>
@@ -621,7 +858,7 @@ namespace OpenccNetLib
             return _lastError;
         }
 
-        #endregion
+        #endregion // Opencc Constructor and Public Fields Region
 
         #region Pre-Splitting and Pre-Chunking Region
 

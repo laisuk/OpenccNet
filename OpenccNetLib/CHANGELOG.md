@@ -6,6 +6,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.1] - 2025-01-07
+
+### Changed
+- `OpenccConfig` as single source of truth for `Opencc` internal configuration
+- Added `ToCanonicalName()` for `OpenccConfig` Enum
+
 ## [1.4.0] - 2025-12-16
 
 ### 🆕 What's New in v1.4.0

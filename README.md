@@ -557,27 +557,79 @@ on par with optimized Rust implementations and significantly faster than traditi
 
 #### ⚙️ Configuration
 
-- `string Config { get; set; }`  
-  Gets or sets the current config string. Invalid configs fallback to "`s2t`" and update error status.
-- `void SetConfig(string config)`  
-  Set the config using a string (e.g., "`tw2sp`"). Falls back to "`s2t`" if invalid.
-- `void SetConfig(OpenccConfig configEnum)`  
-  Set the config using a strongly typed OpenccConfig enum. Recommended for safety and IDE support.
-- `string GetConfig()`  
-  Returns the current config string (e.g., "`s2tw`").
-- `string GetLastError()`  
-  Returns the most recent error message, if any, from config setting.
+Opencc supports both **string-based** and **enum-based** configuration APIs.  
+Internally, all configurations are stored as a strongly typed `OpenccConfig` identifier;  
+string APIs are provided for backward compatibility and convenience.
 
-#### 📋 Validation and Helpers
+> **Recommended:** Use the `OpenccConfig` enum–based APIs whenever possible.  
+> String-based APIs are fully supported but are considered legacy-style convenience helpers.
+
+---
+
+##### Instance Configuration APIs
+
+- `string Config { get; set; }`  
+  Gets or sets the current conversion configuration using a canonical string  
+  (for example, `"s2t"`, `"tw2sp"`).  
+  Invalid values automatically fall back to `"s2t"` and update the internal error status.
+
+- `void SetConfig(string config)`  
+  Sets the conversion configuration using a string name.  
+  Comparison is case-insensitive and ignores surrounding whitespace.  
+  Falls back to `"s2t"` if the value is invalid.
+
+- `void SetConfig(OpenccConfig configEnum)`  
+  Sets the conversion configuration using a strongly typed `OpenccConfig` enum value.  
+  **This is the preferred and recommended approach** for type safety, IDE support,
+  and interop scenarios (P/Invoke, JNI, bindings).
+
+- `string GetConfig()`  
+  Returns the current configuration as a canonical lowercase string  
+  (for example, `"s2tw"`).
+
+- `OpenccConfig GetConfigId()`  
+  Returns the current configuration as an `OpenccConfig` enum value.  
+  This reflects the authoritative internal configuration state.
+
+- `string GetLastError()`  
+  Returns the most recent configuration-related error message, if any.  
+  A `null` value indicates that no configuration error is currently recorded.
+
+---
+
+#### 📋 Validation and Helper APIs
+
+The following static helpers are provided for validation, parsing, and discovery of
+supported configurations:
+
+- `static bool TryParseConfig(string config, out OpenccConfig result)`  
+  Attempts to parse a configuration string into the corresponding `OpenccConfig` enum value.  
+  Comparison is case-insensitive and ignores leading or trailing whitespace.  
+  Returns `false` if the input is `null`, empty, or not a recognized configuration.
 
 - `static bool IsValidConfig(string config)`  
-  Checks whether the given string is a valid config name.
+  Determines whether the specified string represents a supported OpenCC configuration.
+
 - `static IReadOnlyCollection<string> GetSupportedConfigs()`  
-  Returns the list of all supported config names as strings.
-- `static bool TryParseConfig(string config, out OpenccConfig result)`  
-  Converts a valid config string to the corresponding `OpenccConfig` enum. Returns `false` if invalid.
+  Returns a read-only collection of all supported configuration names  
+  (canonical lowercase strings).  
+  The returned collection is stable and does not allocate on each call.
+
 - `static int ZhoCheck(string inputText)`  
-  Detects whether the input is likely Simplified Chinese (`2`), Traditional Chinese (`1`), or neither (`0`).
+  Detects whether the input text is likely:
+    - `2` → Simplified Chinese
+    - `1` → Traditional Chinese
+    - `0` → Neither / unknown
+
+---
+
+##### Notes
+
+- All configuration inputs ultimately resolve to a single internal
+  `OpenccConfig` identifier.
+- Invalid configuration values never throw; they safely fall back to `"s2t"`.
+- Enum-based APIs are future-proof and align with the C API, Rust core,
+  and other language bindings.
 
 ---
 
