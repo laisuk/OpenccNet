@@ -9,13 +9,6 @@ internal static class PdfCommand
     private const string Blue = "\u001b[1;34m";
     private const string Reset = "\u001b[0m";
 
-    // Same config set as ConvertCommand / OfficeCommand
-    private static readonly HashSet<string> ConfigList = new(StringComparer.Ordinal)
-    {
-        "s2t", "t2s", "s2tw", "tw2s", "s2twp", "tw2sp", "s2hk", "hk2s",
-        "t2tw", "tw2t", "t2twp", "tw2tp", "t2hk", "hk2t", "t2jp", "jp2t"
-    };
-
     internal static Command CreateCommand()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -37,15 +30,19 @@ internal static class PdfCommand
         var configOption = new Option<string>("--config", "-c")
         {
             // Required = true,
-            Description = "Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp"
+            Description =
+                "Conversion configuration.\nValid options: " +
+                string.Join(", ", Opencc.GetSupportedConfigs())
         };
 
         configOption.Validators.Add(result =>
         {
             var value = result.GetValueOrDefault<string>();
-            if (!string.IsNullOrEmpty(value) && !ConfigList.Contains(value))
+            if (!string.IsNullOrEmpty(value) && !Opencc.IsValidConfig(value))
             {
-                result.AddError($"Invalid config '{value}'. Valid options: {string.Join(", ", ConfigList)}");
+                result.AddError(
+                    $"Invalid config '{value}'. Valid options: {string.Join(", ", Opencc.GetSupportedConfigs())}"
+                );
             }
         });
 
@@ -176,7 +173,7 @@ internal static class PdfCommand
                 // 2) Optional CJK paragraph reflow
                 if (reflow)
                 {
-                    finalText = PdfHelper.ReflowCjkParagraphs(
+                    finalText = ReflowHelper.ReflowCjkParagraphs(
                         finalText,
                         addPdfPageHeader: addHeader,
                         compact: compact);
