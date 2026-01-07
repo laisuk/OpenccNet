@@ -224,4 +224,28 @@ public class OpenccNetTests
         var config = Opencc.GetSupportedConfigs().Last();
         Assert.IsTrue(Opencc.IsValidConfig(config));
     }
+
+    [TestMethod]
+    public void ConfigCanonicalNameTest()
+    {
+        // Basic canonical mappings
+        Assert.AreEqual("s2t", OpenccConfig.S2T.ToCanonicalName());
+        Assert.AreEqual("t2s", OpenccConfig.T2S.ToCanonicalName());
+        Assert.AreEqual("s2tw", OpenccConfig.S2Tw.ToCanonicalName());
+        Assert.AreEqual("tw2s", OpenccConfig.Tw2S.ToCanonicalName());
+        Assert.AreEqual("s2twp", OpenccConfig.S2Twp.ToCanonicalName());
+        Assert.AreEqual("tw2sp", OpenccConfig.Tw2Sp.ToCanonicalName());
+        Assert.AreEqual("s2hk", OpenccConfig.S2Hk.ToCanonicalName());
+        Assert.AreEqual("hk2s", OpenccConfig.Hk2S.ToCanonicalName());
+
+        Assert.AreEqual("t2tw", OpenccConfig.T2Tw.ToCanonicalName());
+        Assert.AreEqual("tw2t", OpenccConfig.Tw2T.ToCanonicalName());
+        Assert.AreEqual("t2twp", OpenccConfig.T2Twp.ToCanonicalName());
+        Assert.AreEqual("tw2tp", OpenccConfig.Tw2Tp.ToCanonicalName());
+
+        Assert.AreEqual("t2hk", OpenccConfig.T2Hk.ToCanonicalName());
+        Assert.AreEqual("hk2t", OpenccConfig.Hk2T.ToCanonicalName());
+        Assert.AreEqual("t2jp", OpenccConfig.T2Jp.ToCanonicalName());
+        Assert.AreEqual("jp2t", OpenccConfig.Jp2T.ToCanonicalName());
+    }
 }
