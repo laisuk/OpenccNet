@@ -344,6 +344,11 @@ public static class ReflowHelper
             {
                 if (!addPdfPageHeader && buffer.Length > 0)
                 {
+                    // NEW: If dialog is unclosed, always treat blank line as soft (cross-page artifact).
+                    // Never flush mid-dialog just because we saw a blank line.
+                    if (dialogState.IsUnclosed)
+                        continue;
+                    
                     // Light rule: only flush on blank line if buffer ends with STRONG sentence end.
                     // Otherwise, treat as a soft cross-page blank line and keep accumulating.
                     var idx = FindLastNonWhitespaceIndex(bufferText);
@@ -795,6 +800,11 @@ public static class ReflowHelper
             if (IsBracketCloser(last) && lastNonWs > 0 && IsMostlyCjk(s))
                 return true;
 
+            // 4c) NEW: long Mostly-CJK line ending with full-width colon "："
+            // Treat as a weak boundary (common in novels: "他说：" then dialog starts next line)
+            if (last == '：' && IsMostlyCjk(s))
+                return true;
+            
             // Level 2 (lenient): allow ellipsis as weak boundary
             if (EndsWithEllipsis(s))
                 return true;
