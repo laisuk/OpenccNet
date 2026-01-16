@@ -136,6 +136,9 @@ internal static class PunctSets
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsBracketCloser(char ch) => CloseBrackets.Contains(ch);
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool IsAllowedPostfixCloser(char ch) => ch is '）' or ')';
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsMatchingBracket(char open, char close)

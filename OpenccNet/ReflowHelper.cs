@@ -485,7 +485,7 @@ public static class ReflowHelper
                         IsCjk(last) ||
                         dialogState.IsUnclosed ||
                         hasUnclosedBracket;
-                    
+
                     shouldFlushPrev = !isContinuation;
                 }
 
@@ -705,10 +705,8 @@ public static class ReflowHelper
             if (!PunctSets.TryGetLastNonWhitespace(s, out var lastIdx, out var last))
                 return false;
 
-            // prev non-whitespace (before last-Non-Ws)
-            PunctSets.TryGetPrevNonWhitespace(s, lastIdx, out var prevIdx, out var prev);
-
-            // Level 3 rules (strict)
+            // ---- STRICT rules (level >= 3) ----
+            // 1) Strong sentence end
             switch (last)
             {
                 case var _ when PunctSets.IsStrongSentenceEnd(last):
@@ -717,8 +715,11 @@ public static class ReflowHelper
                     return true;
             }
 
-            // 4a) Quote closers after strong end
-            if (PunctSets.IsQuoteCloser(last) && prevIdx >= 0)
+            // prev non-whitespace (before last-Non-Ws)
+            PunctSets.TryGetPrevNonWhitespace(s, lastIdx, out var prevIdx, out var prev);
+
+            // 2) Quote closers + Allowed postfix closer after strong end
+            if ((PunctSets.IsQuoteCloser(last) || PunctSets.IsAllowedPostfixCloser(last)) && prevIdx >= 0)
             {
                 // Strong end immediately before quote closer
                 if (PunctSets.IsStrongSentenceEnd(prev))
@@ -726,20 +727,20 @@ public static class ReflowHelper
 
                 // OCR artifact: “.” where '.' acts like '。' (CJK context)
                 // '.' is not the lastNonWs (quote is), so use the "before closers" version.
-                if (prev == '.' && level >= 3 &&
-                    IsOcrCjkAsciiPunctBeforeClosers(s, prevIdx))
+                if (prev == '.' && IsOcrCjkAsciiPunctBeforeClosers(s, prevIdx))
                     return true;
             }
 
-            // Level 2 rules (lenient)
             if (level >= 3)
                 return false;
 
-            // 4b) Bracket closers with most CJK
-            if (PunctSets.IsBracketCloser(last) && lastIdx > 0 && IsMostlyCjk(s))
-                return true;
+            // ---- LENIENT rules (level == 2) ----
 
-            // 4c) NEW: long Mostly-CJK line ending with full-width colon "："
+            // 3) Bracket closers with most CJK (reserved)
+            // if (PunctSets.IsBracketCloser(last) && lastIdx > 0 && IsMostlyCjk(s))
+            //     return true;
+
+            // 4) NEW: long Mostly-CJK line ending with full-width colon "："
             // Treat as a weak boundary (common in novels: "他说：" then dialog starts next line)
             if (last == '：' && IsMostlyCjk(s))
                 return true;
@@ -748,11 +749,10 @@ public static class ReflowHelper
             if (EndsWithEllipsis(s))
                 return true;
 
-            // Level 1 rules (very lenient)
             if (level >= 2)
                 return false;
 
-            // 5) Weak (optional)
+            // ---- VERY LENIENT rules (level == 1) ----
             return last is '；' or '：' or ';' or ':';
         }
 
