@@ -372,9 +372,9 @@ internal static class PunctSets
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool TryGetPrevNonWhitespace(string s, int startIndex, out char ch)
+    internal static bool TryGetPrevNonWhitespace(string s, int beforeIndex, out char ch)
     {
-        for (var i = startIndex - 1; i >= 0; i--)
+        for (var i = beforeIndex - 1; i >= 0; i--)
         {
             var c = s[i];
             if (char.IsWhiteSpace(c))
