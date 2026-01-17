@@ -61,6 +61,12 @@ internal static class PunctSets
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsSoftClauseEnd(char ch) => SoftClauseEndChars.Contains(ch);
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool EndsWithColonLike(string s)
+    {
+        return TryGetLastNonWhitespace(s, out var last) && (last is '：' or ':');
+    }
 
     // -------------------------
     // Sentence endings (two tiers)

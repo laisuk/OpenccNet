@@ -414,7 +414,7 @@ public static class ReflowHelper
                             if (prevEndsWithCommaLike)
                                 splitAsHeading = false;
                             // All-CJK short heading-like + previous not ended → continuation
-                            else if (isAllCjk && !prevEndsWithSentencePunct)
+                            else if ((isAllCjk || PunctSets.EndsWithColonLike(stripped)) && !prevEndsWithSentencePunct)
                                 splitAsHeading = false;
                             else
                                 splitAsHeading = true;
