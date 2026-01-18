@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace OpenccNet;
 
@@ -8,6 +9,7 @@ internal static class PunctSets
     // -------------------------
     // Dialog quotes
     // -------------------------
+
     // Dialog brackets (Simplified / Traditional / JP-style)
     private const string DialogOpeners = "“‘「『﹁﹃";
     private const string DialogClosers = "”’」』﹂﹄";
@@ -16,7 +18,7 @@ internal static class PunctSets
     internal static bool IsDialogOpener(char ch) => DialogOpeners.Contains(ch);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static bool IsDialogCloser(char ch) => DialogClosers.Contains(ch);
+    public static bool IsDialogCloser(char ch) => DialogClosers.Contains(ch);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsQuoteCloser(char ch) => IsDialogCloser(ch);
@@ -26,10 +28,24 @@ internal static class PunctSets
     /// after skipping leading whitespace and indentation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsDialogStarter(string s)
+    internal static bool BeginWithDialogStarter(ReadOnlySpan<char> s)
     {
-        return TryGetFirstNonWhitespace(s, out var ch) &&
-               IsDialogOpener(ch);
+        for (var i = 0; i < s.Length; i++)
+        {
+            var ch = s[i];
+            if (char.IsWhiteSpace(ch))
+                continue;
+
+            return IsDialogOpener(ch);
+        }
+
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool EndsWithDialogCloser(ReadOnlySpan<char> s)
+    {
+        return TryGetLastNonWhitespace(s, out _, out var last) && IsDialogCloser(last);
     }
 
     // -------------------------
@@ -45,11 +61,11 @@ internal static class PunctSets
     /// separator characters (e.g. ， , 、).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool ContainsAnyCommaLike(string s)
+    internal static bool ContainsAnyCommaLike(ReadOnlySpan<char> s)
     {
-        foreach (var ch in s)
+        for (var i = 0; i < s.Length; i++)
         {
-            if (IsCommaLike(ch))
+            if (IsCommaLike(s[i]))
                 return true;
         }
 
@@ -61,12 +77,20 @@ internal static class PunctSets
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsSoftClauseEnd(char ch) => SoftClauseEndChars.Contains(ch);
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool EndsWithColonLike(string s)
+    internal static bool IsColonLike(char ch) => ch is '：' or ':';
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool EndsWithColonLike(ReadOnlySpan<char> s)
     {
-        return TryGetLastNonWhitespace(s, out var last) && (last is '：' or ':');
+        return TryGetLastNonWhitespace(s, out _, out var last) && IsColonLike(last);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool EndsWithColonLike(StringBuilder sb)
+        => TryGetLastNonWhitespace(sb, out _, out var last) && IsColonLike(last);
+
 
     // -------------------------
     // Sentence endings (two tiers)
@@ -81,11 +105,11 @@ internal static class PunctSets
     };
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool ContainsStrongSentenceEnd(string s)
+    internal static bool ContainsStrongSentenceEnd(ReadOnlySpan<char> s)
     {
-        foreach (var ch in s)
+        for (var i = 0; i < s.Length; i++)
         {
-            if (IsStrongSentenceEnd(ch))
+            if (IsStrongSentenceEnd(s[i]))
                 return true;
         }
 
@@ -93,8 +117,8 @@ internal static class PunctSets
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool EndsWithStrongSentenceEnd(string s)
-        => TryGetLastNonWhitespace(s, out var ch) && IsStrongSentenceEnd(ch);
+    internal static bool EndsWithStrongSentenceEnd(ReadOnlySpan<char> s)
+        => TryGetLastNonWhitespace(s, out _, out var ch) && IsStrongSentenceEnd(ch);
 
     // Tier 2: clause-or-end-ish (looser heuristics, not always a true sentence end)
     private static readonly HashSet<char> ClauseOrEndPunct = new()
@@ -142,58 +166,123 @@ internal static class PunctSets
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsBracketCloser(char ch) => CloseBrackets.Contains(ch);
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsAllowedPostfixCloser(char ch) => ch is '）' or ')';
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool EndsWithAllowedPostfixCloser(ReadOnlySpan<char> s)
+    {
+        return TryGetLastNonWhitespace(s, out _, out var last)
+               && IsAllowedPostfixCloser(last);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsMatchingBracket(char open, char close)
         => BracketPairs.TryGetValue(open, out var expected) && expected == close;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsWrappedByMatchingBracket(string s, char lastNonWs, int minLen = 3)
+    internal static bool IsWrappedByMatchingBracket(ReadOnlySpan<char> s, char lastNonWs, int minLen = 3)
     {
         // minLen=3 means at least: open + 1 char + close
         return s.Length >= minLen && IsMatchingBracket(s[0], lastNonWs);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsBracketTypeBalanced(string s, char open)
+    internal static bool IsBracketTypeBalanced(ReadOnlySpan<char> s, char open)
     {
-        if (!BracketPairs.TryGetValue(open, out var close))
-            return true; // unknown opener → ignore
+        if (!TryGetMatchingCloser(open, out var close))
+            return true;
 
         var depth = 0;
-
-        foreach (var ch in s)
+        for (var i = 0; i < s.Length; i++)
         {
-            if (ch == open)
-            {
-                depth++;
-            }
+            var ch = s[i];
+            if (ch == open) depth++;
             else if (ch == close)
             {
                 depth--;
-                if (depth < 0)
-                    return false;
+                if (depth < 0) return false;
             }
         }
 
         return depth == 0;
     }
 
+    internal static bool IsBracketTypeBalanced(StringBuilder? sb, int start, int end, char open)
+    {
+        if (sb == null || sb.Length == 0)
+            return false;
+
+        if ((uint)start >= (uint)sb.Length || (uint)end >= (uint)sb.Length || start > end)
+            return false;
+
+        if (!TryGetMatchingCloser(open, out var close))
+            return true; // unknown opener → ignore
+
+        var depth = 0;
+
+        var pos = 0;
+        foreach (var mem in sb.GetChunks())
+        {
+            var span = mem.Span;
+            var chunkStart = pos;
+            var chunkEnd = pos + span.Length - 1;
+
+            // Range entirely before this chunk
+            if (end < chunkStart)
+                break;
+
+            // Range entirely after this chunk
+            if (start > chunkEnd)
+            {
+                pos += span.Length;
+                continue;
+            }
+
+            // Overlap: scan only the overlap portion
+            var i0 = start <= chunkStart ? 0 : (start - chunkStart);
+            var i1 = end >= chunkEnd ? (span.Length - 1) : (end - chunkStart);
+
+            for (var i = i0; i <= i1; i++)
+            {
+                var ch = span[i];
+                if (ch == open)
+                {
+                    depth++;
+                }
+                else if (ch == close)
+                {
+                    depth--;
+                    if (depth < 0)
+                        return false;
+                }
+            }
+
+            pos += span.Length;
+        }
+
+        return depth == 0;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool TryGetMatchingCloser(char open, out char close)
+        => BracketPairs.TryGetValue(open, out close);
+
     /// <summary>
     /// Returns <c>true</c> if the text contains any unclosed or mismatched brackets
     /// according to <see cref="BracketPairs"/>.
     /// Treats stray closers / mismatches as unsafe.
     /// </summary>
-    // Cross-page / soft-wrap safety:
-    // If the previous buffer is inside an unclosed bracket like
-    // "（......" ... "...。）", never flush on blank lines / sentence ends.
-    // Otherwise, we may split a single parenthesized paragraph across pages.
-    internal static bool HasUnclosedBracket(string s)
+    /// <remarks>
+    /// Cross-page / soft-wrap safety:
+    /// If the previous buffer is inside an unclosed bracket like
+    /// "（......" ... "...。）", never flush on blank lines / sentence ends.
+    /// Otherwise, we may split a single parenthesized paragraph across pages.
+    /// </remarks>
+    internal static bool HasUnclosedBracket(ReadOnlySpan<char> s)
     {
-        if (string.IsNullOrEmpty(s))
+        if (s.IsEmpty)
             return false;
 
         char[]? rented = null;
@@ -202,8 +291,10 @@ internal static class PunctSets
 
         try
         {
-            foreach (var ch in s)
+            for (var i = 0; i < s.Length; i++)
             {
+                var ch = s[i];
+
                 if (IsBracketOpener(ch))
                 {
                     seenBracket = true;
@@ -244,6 +335,75 @@ internal static class PunctSets
         {
             if (rented is not null)
                 ArrayPool<char>.Shared.Return(rented);
+        }
+    }
+
+    /// <summary>
+    /// Bracket stack scan on StringBuilder without allocating a buffer string.
+    /// Semantics follow HasUnclosedBracket(string).
+    /// </summary>
+    public static bool HasUnclosedBracket(StringBuilder? sb)
+    {
+        if (sb == null || sb.Length == 0)
+            return false;
+
+        char[]? stack = null;
+        var top = 0;
+        var seenBracket = false;
+
+        try
+        {
+            stack = ArrayPool<char>.Shared.Rent(Math.Min(sb.Length, 256));
+
+            foreach (var mem in sb.GetChunks())
+            {
+                var s = mem.Span;
+                for (var i = 0; i < s.Length; i++)
+                {
+                    var ch = s[i];
+
+                    if (IsBracketOpener(ch))
+                    {
+                        seenBracket = true;
+                        if (top == stack.Length)
+                        {
+                            // grow
+                            var newArr = ArrayPool<char>.Shared.Rent(stack.Length * 2);
+                            Array.Copy(stack, 0, newArr, 0, stack.Length);
+                            ArrayPool<char>.Shared.Return(stack);
+                            stack = newArr;
+                        }
+
+                        stack[top++] = ch;
+                    }
+                    else if (IsBracketCloser(ch))
+                    {
+                        seenBracket = true;
+
+                        if (top == 0)
+                        {
+                            // closer without opener => treat unsafe as "unclosed"
+                            return true;
+                        }
+
+                        var open = stack[top - 1];
+                        if (!IsMatchingBracket(open, ch))
+                        {
+                            // mismatch => unsafe
+                            return true;
+                        }
+
+                        top--;
+                    }
+                }
+            }
+
+            return seenBracket && top != 0;
+        }
+        finally
+        {
+            if (stack != null)
+                ArrayPool<char>.Shared.Return(stack);
         }
     }
 
@@ -304,47 +464,105 @@ internal static class PunctSets
     /// When detected, these lines should be handled as hard layout boundaries
     /// and normally force a paragraph break during reflow.
     /// </remarks>
-    internal static bool IsVisualDividerLine(string s, int minVisualChars = 3)
+    internal static bool IsVisualDividerLine(ReadOnlySpan<char> s, int minVisualChars = 3)
     {
-        if (string.IsNullOrEmpty(s))
+        if (s.IsEmpty)
             return false;
 
         var visualCount = 0;
 
-        foreach (var ch in s)
+        for (var i = 0; i < s.Length; i++)
         {
+            var ch = s[i];
+
             if (char.IsWhiteSpace(ch))
                 continue;
 
-            if (!IsBoxDrawingChar(ch) && !IsAsciiDividerChar(ch) && !IsStarDividerChar(ch)) return false; // real text
+            // Any non-divider visible char => real text
+            if (!IsBoxDrawingChar(ch) && !IsAsciiDividerChar(ch) && !IsStarDividerChar(ch))
+                return false;
+
             visualCount++;
         }
 
         return visualCount >= minVisualChars;
     }
 
-    // -------------------------
-    // Common helper (optional)
-    // -------------------------
-    internal static bool TryGetLastNonWhitespace(string s, out char ch)
+    /// <summary>
+    /// Try to get the last non-whitespace character from a span.
+    /// Returns index (0.\.Length-1) and the character.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool TryGetLastNonWhitespace(
+        ReadOnlySpan<char> s,
+        out int lastIdx,
+        out char last)
     {
+        lastIdx = -1;
+        last = '\0';
+
         for (var i = s.Length - 1; i >= 0; i--)
         {
-            var c = s[i];
-            if (char.IsWhiteSpace(c)) continue;
-            ch = c;
+            var ch = s[i];
+            if (char.IsWhiteSpace(ch))
+                continue;
+
+            lastIdx = i;
+            last = ch;
             return true;
         }
 
-        ch = '\0';
         return false;
     }
 
-
+    /// <summary>
+    /// Try to get last and previous non-whitespace characters in one pass.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool TryGetLastNonWhitespace(string s, out int index, out char ch)
+    internal static bool TryGetLastTwoNonWhitespace(
+        ReadOnlySpan<char> s,
+        out int lastIdx, out char last,
+        out int prevIdx, out char prev)
     {
-        for (var i = s.Length - 1; i >= 0; i--)
+        lastIdx = prevIdx = -1;
+        last = prev = '\0';
+
+        if (!TryGetLastNonWhitespace(s, out lastIdx, out last))
+            return false;
+
+        // prev non-ws before lastIdx
+        for (var i = lastIdx - 1; i >= 0; i--)
+        {
+            var ch = s[i];
+            if (char.IsWhiteSpace(ch))
+                continue;
+
+            prevIdx = i;
+            prev = ch;
+            return true;
+        }
+
+        // found last, but no prev
+        prevIdx = -1;
+        prev = '\0';
+        return true;
+    }
+
+    /// <summary>
+    /// Try to get the previous non-whitespace char before beforeIndex in a span.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool TryGetPrevNonWhitespace(
+        ReadOnlySpan<char> s,
+        int beforeIndex,
+        out int index,
+        out char ch)
+    {
+        index = -1;
+        ch = '\0';
+
+        var i = Math.Min(beforeIndex - 1, s.Length - 1);
+        for (; i >= 0; i--)
         {
             var c = s[i];
             if (char.IsWhiteSpace(c))
@@ -355,61 +573,86 @@ internal static class PunctSets
             return true;
         }
 
-        index = -1;
-        ch = '\0';
         return false;
     }
 
+    /// <summary>
+    /// Try to get the previous non-whitespace char before beforeIndex in a span (char-only).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool TryGetFirstNonWhitespace(string s, out char ch)
+    internal static bool TryGetPrevNonWhitespace(
+        ReadOnlySpan<char> s,
+        int beforeIndex,
+        out char ch)
     {
-        for (var i = 0; i < s.Length; i++)
-        {
-            var c = s[i];
-            if (char.IsWhiteSpace(c))
-                continue;
-
-            ch = c;
-            return true;
-        }
-
-        ch = '\0';
-        return false;
+        return TryGetPrevNonWhitespace(s, beforeIndex, out _, out ch);
     }
 
+    /// <summary>
+    /// Try to get the last non-whitespace character from a StringBuilder without allocating.
+    /// Returns global index (0 to Length-1) and the character.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool TryGetPrevNonWhitespace(string s, int beforeIndex, out char ch)
+    internal static bool TryGetLastNonWhitespace(
+        StringBuilder? sb,
+        out int lastIdx,
+        out char last)
     {
-        for (var i = beforeIndex - 1; i >= 0; i--)
-        {
-            var c = s[i];
-            if (char.IsWhiteSpace(c))
-                continue;
+        lastIdx = -1;
+        last = '\0';
 
-            ch = c;
-            return true;
+        if (sb == null || sb.Length == 0)
+            return false;
+
+        var pos = 0;
+        foreach (var mem in sb.GetChunks())
+        {
+            var s = mem.Span;
+            for (var i = 0; i < s.Length; i++, pos++)
+            {
+                var ch = s[i];
+                if (char.IsWhiteSpace(ch)) continue;
+                lastIdx = pos;
+                last = ch;
+            }
         }
 
-        ch = '\0';
-        return false;
+        return lastIdx >= 0;
     }
 
+    /// <summary>
+    /// Try to get last and previous non-whitespace characters in one pass (no allocations).
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool TryGetPrevNonWhitespace(string s, int beforeIndex, out int index, out char ch)
+    internal static bool TryGetLastTwoNonWhitespace(
+        StringBuilder? sb,
+        out int lastIdx, out char last,
+        out int prevIdx, out char prev)
     {
-        for (var i = beforeIndex - 1; i >= 0; i--)
-        {
-            var c = s[i];
-            if (char.IsWhiteSpace(c))
-                continue;
+        lastIdx = prevIdx = -1;
+        last = prev = '\0';
 
-            index = i;
-            ch = c;
-            return true;
+        if (sb == null || sb.Length == 0)
+            return false;
+
+        var pos = 0;
+        foreach (var mem in sb.GetChunks())
+        {
+            var s = mem.Span;
+            for (var i = 0; i < s.Length; i++, pos++)
+            {
+                var ch = s[i];
+                if (char.IsWhiteSpace(ch))
+                    continue;
+
+                // shift
+                prevIdx = lastIdx;
+                prev = last;
+                lastIdx = pos;
+                last = ch;
+            }
         }
 
-        index = -1;
-        ch = '\0';
-        return false;
+        return lastIdx >= 0;
     }
 }

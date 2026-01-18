@@ -300,8 +300,19 @@ public static class ReflowHelper
                 stripped = CollapseRepeatedSegments(stripped);
 
             // We already have some text in buffer
-            var bufferText = buffer.Length > 0 ? buffer.ToString() : string.Empty;
-            var hasUnclosedBracket = buffer.Length > 0 && PunctSets.HasUnclosedBracket(bufferText);
+            // var bufferText = buffer.Length > 0 ? buffer.ToString() : string.Empty;
+            // var hasUnclosedBracket = buffer.Length > 0 && PunctSets.HasUnclosedBracket(bufferText);
+            var hasBuffer = buffer.Length > 0;
+            bool? hasUnclosedBracketLazy = null;
+
+            bool HasUnclosedBracket()
+            {
+                if (!hasBuffer)
+                    return false;
+
+                return hasUnclosedBracketLazy ??=
+                    PunctSets.HasUnclosedBracket(buffer);
+            }
 
             // 1) Empty line
             if (stripped.Length == 0)
@@ -310,12 +321,12 @@ public static class ReflowHelper
                 {
                     // NEW: If dialog is unclosed, always treat blank line as soft (cross-page artifact).
                     // Never flush mid-dialog just because we saw a blank line.
-                    if (dialogState.IsUnclosed || hasUnclosedBracket)
+                    if (dialogState.IsUnclosed || HasUnclosedBracket())
                         continue;
 
                     // Light rule: only flush on blank line if buffer ends with STRONG sentence end.
                     // Otherwise, treat as a soft cross-page blank line and keep accumulating.
-                    if (PunctSets.TryGetLastNonWhitespace(bufferText, out var last) &&
+                    if (PunctSets.TryGetLastNonWhitespace(buffer, out _, out var last) &&
                         !PunctSets.IsStrongSentenceEnd(last))
                     {
                         continue;
@@ -325,7 +336,7 @@ public static class ReflowHelper
                 // End of paragraph → flush buffer (do NOT emit "")
                 if (buffer.Length > 0)
                 {
-                    segments.Add(bufferText);
+                    segments.Add(buffer.ToString());
                     buffer.Clear();
                     dialogState.Reset();
                 }
@@ -340,7 +351,7 @@ public static class ReflowHelper
             {
                 if (buffer.Length > 0)
                 {
-                    segments.Add(bufferText);
+                    segments.Add(buffer.ToString());
                     buffer.Clear();
                     dialogState.Reset();
                 }
@@ -354,7 +365,7 @@ public static class ReflowHelper
             {
                 if (buffer.Length > 0)
                 {
-                    segments.Add(bufferText);
+                    segments.Add(buffer.ToString());
                     buffer.Clear();
                     dialogState.Reset();
                 }
@@ -368,7 +379,7 @@ public static class ReflowHelper
             {
                 if (buffer.Length > 0)
                 {
-                    segments.Add(bufferText);
+                    segments.Add(buffer.ToString());
                     buffer.Clear();
                     dialogState.Reset();
                 }
@@ -383,7 +394,7 @@ public static class ReflowHelper
             //     AND “the previous paragraph’s ending looks like a sentence boundary”.
             if (isShortHeading)
             {
-                var isAllCjk = IsAllCjkIgnoringWhitespace(stripped);
+                var isAllCjk = CjkText.IsAllCjkIgnoringWhitespace(stripped);
 
                 bool splitAsHeading;
                 if (buffer.Length == 0)
@@ -393,14 +404,14 @@ public static class ReflowHelper
                 }
                 else
                 {
-                    if (hasUnclosedBracket)
+                    if (HasUnclosedBracket())
                     {
                         // Unsafe previous paragraph → must be continuation
                         splitAsHeading = false;
                     }
                     else
                     {
-                        if (!PunctSets.TryGetLastNonWhitespace(bufferText, out var last))
+                        if (!PunctSets.TryGetLastNonWhitespace(buffer, out _, out var last))
                         {
                             // Buffer is whitespace-only → treat like empty
                             splitAsHeading = true;
@@ -410,11 +421,16 @@ public static class ReflowHelper
                             var prevEndsWithCommaLike = PunctSets.IsCommaLike(last);
                             var prevEndsWithSentencePunct = PunctSets.IsClauseOrEndPunct(last);
 
+                            var currentLooksLikeContinuationMarker =
+                                isAllCjk
+                                || PunctSets.EndsWithColonLike(stripped)
+                                || PunctSets.EndsWithAllowedPostfixCloser(stripped);
+
                             // Comma-ending → continuation
                             if (prevEndsWithCommaLike)
                                 splitAsHeading = false;
                             // All-CJK short heading-like + previous not ended → continuation
-                            else if ((isAllCjk || PunctSets.EndsWithColonLike(stripped)) && !prevEndsWithSentencePunct)
+                            else if (currentLooksLikeContinuationMarker && !prevEndsWithSentencePunct)
                                 splitAsHeading = false;
                             else
                                 splitAsHeading = true;
@@ -427,7 +443,7 @@ public static class ReflowHelper
                     // If we have a real previous paragraph, flush it first
                     if (buffer.Length > 0)
                     {
-                        segments.Add(bufferText);
+                        segments.Add(buffer.ToString());
                         buffer.Clear();
                         dialogState.Reset();
                     }
@@ -440,35 +456,30 @@ public static class ReflowHelper
                 // else: fall through → normal merge logic below
             }
 
-            // ===== Finalizer: strong sentence end → flush immediately. Do not remove. ===== //
-            // If the current line completes a strong sentence, append it and flush immediately.
-            if (buffer.Length > 0
-                && !dialogState.IsUnclosed
-                && !hasUnclosedBracket
-                && PunctSets.EndsWithStrongSentenceEnd(stripped))
+            switch (buffer.Length)
             {
-                buffer.Append(stripped); // buffer now has new value
-                segments.Add(buffer.ToString()); // This is not old bufferText (it had been updated)
-                buffer.Clear();
-                dialogState.Reset();
-                dialogState.Update(stripped);
-                continue;
+                // ===== Finalizer: strong sentence end → flush immediately. Do not remove. ===== //
+                // If the current line completes a strong sentence, append it and flush immediately.
+                case > 0
+                    when !dialogState.IsUnclosed
+                         && !HasUnclosedBracket()
+                         && PunctSets.EndsWithStrongSentenceEnd(stripped):
+                    buffer.Append(stripped); // buffer now has new value
+                    segments.Add(buffer.ToString()); // This is not old bufferText (it had been updated)
+                    buffer.Clear();
+                    dialogState.Reset();
+                    dialogState.Update(stripped);
+                    continue;
+                case 0:
+                    // 4) First line inside buffer → start of a new paragraph
+                    buffer.Append(stripped);
+                    dialogState.Reset();
+                    dialogState.Update(stripped);
+                    continue;
             }
 
             // *** DIALOG: treat any line that *starts* with a dialog opener as a new paragraph
-            var currentIsDialogStart = PunctSets.IsDialogStarter(stripped);
-
-            if (buffer.Length == 0)
-            {
-                // 4) First line inside buffer → start of a new paragraph
-                buffer.Append(stripped);
-                dialogState.Reset();
-                dialogState.Update(stripped);
-                continue;
-            }
-
-            // We already have some text in buffer
-            // var bufferText = buffer.ToString();
+            var currentIsDialogStart = PunctSets.BeginWithDialogStarter(stripped);
 
             // 🔸 NEW RULE: If previous line ends with comma, 
             //     do NOT flush even if this line starts dialog.
@@ -477,21 +488,21 @@ public static class ReflowHelper
             {
                 var shouldFlushPrev = false;
 
-                if (bufferText.Length > 0 &&
-                    PunctSets.TryGetLastNonWhitespace(bufferText, out var last))
+                if (buffer.Length > 0 &&
+                    PunctSets.TryGetLastNonWhitespace(buffer, out _, out var last))
                 {
                     var isContinuation =
                         PunctSets.IsCommaLike(last) ||
-                        IsCjk(last) ||
+                        CjkText.IsCjk(last) ||
                         dialogState.IsUnclosed ||
-                        hasUnclosedBracket;
+                        HasUnclosedBracket();
 
                     shouldFlushPrev = !isContinuation;
                 }
 
                 if (shouldFlushPrev)
                 {
-                    segments.Add(bufferText);
+                    segments.Add(buffer.ToString());
                     buffer.Clear();
                 }
 
@@ -502,17 +513,54 @@ public static class ReflowHelper
                 continue;
             }
 
+            // 🔸 9b) Dialog end line: ends with dialog closer.
+            // Flush when the char before closer is strong end,
+            // and bracket safety is satisfied (with a narrow typo override).
+            if (PunctSets.TryGetLastNonWhitespace(stripped, out var lastIdx, out var lastCh) &&
+                PunctSets.IsDialogCloser(lastCh))
+            {
+                // Check punctuation right before the closer (e.g., “？” / “。”)
+                var punctBeforeCloserIsStrong =
+                    PunctSets.TryGetPrevNonWhitespace(stripped, lastIdx, out var prevCh) &&
+                    PunctSets.IsClauseOrEndPunct(prevCh);
+
+                // Snapshot bracket safety BEFORE appending current line
+                var bufferHasBracketIssue = HasUnclosedBracket();
+                var lineHasBracketIssue = PunctSets.HasUnclosedBracket(stripped);
+
+                buffer.Append(stripped);
+                dialogState.Update(stripped);
+
+                // Allow flush if:
+                // - dialog is closed after this line
+                // - punctuation before closer is a strong end
+                // - and either:
+                //     (a) buffer has no bracket issue, OR
+                //     (b) buffer has bracket issue but this line itself is the culprit (OCR/typo),
+                //        so allow a dialog-end flush anyway.
+                if (!dialogState.IsUnclosed &&
+                    punctBeforeCloserIsStrong &&
+                    (!bufferHasBracketIssue || lineHasBracketIssue))
+                {
+                    segments.Add(buffer.ToString());
+                    buffer.Clear();
+                    dialogState.Reset();
+                }
+
+                continue;
+            }
+
             // NEW RULE: colon + dialog continuation
             // e.g. "她寫了一行字：" + "「如果連自己都不相信……」"
-            if (bufferText.EndsWith('：') || bufferText.EndsWith(':'))
-            {
-                if (stripped.Length > 0 && PunctSets.IsDialogOpener(stripped[0]))
-                {
-                    buffer.Append(stripped);
-                    dialogState.Update(stripped);
-                    continue;
-                }
-            }
+            // if (PunctSets.EndsWithColonLike(buffer))
+            // {
+            //     if (stripped.Length > 0 && PunctSets.IsDialogOpener(stripped[0]))
+            //     {
+            //         buffer.Append(stripped);
+            //         dialogState.Update(stripped);
+            //         continue;
+            //     }
+            // }
 
             // NOTE: we *do* block splits when dialogState.IsUnclosed,
             // so multi-line dialog stays together. Once all quotes are
@@ -524,19 +572,19 @@ public static class ReflowHelper
                 // Triggered by full-width CJK sentence-ending punctuation (。！？ etc.)
                 // NOTE: Dialog safety gate has the highest priority.
                 // If dialog quotes/brackets are not closed, never split the paragraph.
-                case false when EndsWithSentenceBoundary(bufferText, level: 2) && !hasUnclosedBracket:
+                case false when CjkText.EndsWithSentenceBoundary(buffer, level: 2) && !HasUnclosedBracket():
 
                 // 6) Closing CJK bracket boundary → new paragraph
                 // Handles cases where a paragraph ends with a full-width closing bracket/quote
                 // (e.g. ）】》」) and should not be merged with the next line.
-                case false when EndsWithCjkBracketBoundary(bufferText):
+                case false when CjkText.EndsWithCjkBracketBoundary(buffer):
 
                 // 7) Indentation → new paragraph
                 // Pre-append rule:
                 // Indentation indicates a new paragraph starts on this line.
                 // Flush the previous buffer and immediately seed the next paragraph.
                 case false when buffer.Length > 0 && IndentRegex.IsMatch(rawLine):
-                    segments.Add(bufferText);
+                    segments.Add(buffer.ToString());
                     buffer.Clear();
                     buffer.Append(stripped);
                     dialogState.Reset();
@@ -545,16 +593,16 @@ public static class ReflowHelper
             }
 
             // 8) Chapter-like endings: 章 / 节 / 部 / 卷 (with trailing brackets)
-            if (bufferText.Length <= 12 &&
-                Regex.IsMatch(bufferText, @"(章|节|部|卷|節|回)[】》〗〕〉」』）]*$"))
-            {
-                segments.Add(bufferText);
-                buffer.Clear();
-                buffer.Append(stripped);
-                dialogState.Reset();
-                dialogState.Update(stripped);
-                continue;
-            }
+            // if (buffer.Length <= 12 &&
+            //     Regex.IsMatch(buffer.ToString(), @"(章|节|部|卷|節|回)[】》〗〕〉」』）]*$"))
+            // {
+            //     segments.Add(buffer.ToString());
+            //     buffer.Clear();
+            //     buffer.Append(stripped);
+            //     dialogState.Reset();
+            //     dialogState.Update(stripped);
+            //     continue;
+            // }
 
             // 9) Default merge (soft line break)
             buffer.Append(stripped);
@@ -575,13 +623,11 @@ public static class ReflowHelper
 
         // ====== Inline helpers ======
 
-        static bool IsHeadingLike(string? s)
+        // ------ heading-Like ------
+        static bool IsHeadingLike(ReadOnlySpan<char> s)
         {
-            if (s is null)
-                return false;
-
             s = s.Trim();
-            if (string.IsNullOrEmpty(s))
+            if (s.IsEmpty)
                 return false;
 
             // keep page markers intact
@@ -596,15 +642,21 @@ public static class ReflowHelper
             var last = s[^1];
             var len = s.Length;
 
-            if (len > 2 && PunctSets.IsMatchingBracket(s[0], last) && IsMostlyCjk(s)) return true;
+            if (PunctSets.IsWrappedByMatchingBracket(s, last) && CjkText.IsMostlyCjk(s)) return true;
 
-            var maxLen = IsAllAscii(s) || IsMixedCjkAscii(s)
+            var maxLen = CjkText.IsAllAscii(s) || CjkText.IsMixedCjkAscii(s)
                 ? 16
                 : 8;
 
             // Short circuit for item title-like: "物品准备："
-            if ((last is ':' or '：') && s.Length <= maxLen && IsAllCjkNoWhiteSpace(s[..^1]))
+            if ((last is ':' or '：') && s.Length <= maxLen && CjkText.IsAllCjkNoWhiteSpace(s[..^1]))
                 return true;
+
+            // Allow postfix closer with condition
+            if (PunctSets.IsAllowedPostfixCloser(last) && !PunctSets.ContainsAnyCommaLike(s))
+            {
+                return true;
+            }
 
             // if (Array.IndexOf(CjkPunctEndChars, last) >= 0)
             if (PunctSets.IsClauseOrEndPunct(last))
@@ -652,6 +704,7 @@ public static class ReflowHelper
             return allAscii && hasLetter;
         }
 
+        // ------ Metadata ------
         static bool IsMetadataLine(string line)
         {
             if (string.IsNullOrWhiteSpace(line))
@@ -695,402 +748,8 @@ public static class ReflowHelper
 
             return !PunctSets.IsDialogOpener(line[j]);
         }
-
-        static bool EndsWithSentenceBoundary(string s, int level = 2)
-        {
-            if (string.IsNullOrWhiteSpace(s))
-                return false;
-
-            // last non-whitespace
-            if (!PunctSets.TryGetLastNonWhitespace(s, out var lastIdx, out var last))
-                return false;
-
-            // ---- STRICT rules (level >= 3) ----
-            // 1) Strong sentence end
-            switch (last)
-            {
-                case var _ when PunctSets.IsStrongSentenceEnd(last):
-                case '.' when level >= 3 && IsOcrCjkAsciiPunctAtLineEnd(s, lastIdx):
-                case ':' when level >= 3 && IsOcrCjkAsciiPunctAtLineEnd(s, lastIdx):
-                    return true;
-            }
-
-            // prev non-whitespace (before last-Non-Ws)
-            PunctSets.TryGetPrevNonWhitespace(s, lastIdx, out var prevIdx, out var prev);
-
-            // 2) Quote closers + Allowed postfix closer after strong end
-            if ((PunctSets.IsQuoteCloser(last) || PunctSets.IsAllowedPostfixCloser(last)) && prevIdx >= 0)
-            {
-                // Strong end immediately before quote closer
-                if (PunctSets.IsStrongSentenceEnd(prev))
-                    return true;
-
-                // OCR artifact: “.” where '.' acts like '。' (CJK context)
-                // '.' is not the lastNonWs (quote is), so use the "before closers" version.
-                if (prev == '.' && IsOcrCjkAsciiPunctBeforeClosers(s, prevIdx))
-                    return true;
-            }
-
-            if (level >= 3)
-                return false;
-
-            // ---- LENIENT rules (level == 2) ----
-
-            // 3) Bracket closers with most CJK (reserved)
-            // if (PunctSets.IsBracketCloser(last) && lastIdx > 0 && IsMostlyCjk(s))
-            //     return true;
-
-            // 4) NEW: long Mostly-CJK line ending with full-width colon "："
-            // Treat as a weak boundary (common in novels: "他说：" then dialog starts next line)
-            if (last == '：' && IsMostlyCjk(s))
-                return true;
-
-            // Level 2 (lenient): allow ellipsis as weak boundary
-            if (EndsWithEllipsis(s))
-                return true;
-
-            if (level >= 2)
-                return false;
-
-            // ---- VERY LENIENT rules (level == 1) ----
-            return last is '；' or '：' or ';' or ':';
-        }
-
-        static bool EndsWithCjkBracketBoundary(string s)
-        {
-            if (string.IsNullOrWhiteSpace(s))
-                return false;
-
-            s = s.Trim();
-            if (s.Length < 2)
-                return false;
-
-            var open = s[0];
-            var close = s[^1];
-
-            // 1) Must be one of our known pairs
-            if (!PunctSets.IsMatchingBracket(open, close))
-                return false;
-
-            // 2) Must be mostly CJK to avoid "(test)" "[1.2]" etc.
-            return IsMostlyCjk(s) &&
-                   // 3) Ensure this bracket type is balanced inside the line
-                   //    (prevents premature close / malformed OCR)
-                   IsBracketTypeBalanced(s, open, close);
-        }
-
-        static bool IsBracketTypeBalanced(string s, char open, char close)
-        {
-            var depth = 0;
-
-            foreach (var ch in s)
-            {
-                if (ch == open) depth++;
-                else if (ch == close)
-                {
-                    depth--;
-                    if (depth < 0) return false; // closing before opening
-                }
-            }
-
-            return depth == 0;
-        }
-
-        static bool EndsWithEllipsis(string s)
-        {
-            if (string.IsNullOrWhiteSpace(s))
-                return false;
-
-            // Strong CJK gate: ellipsis only meaningful in CJK context
-            if (!IsMostlyCjk(s))
-                return false;
-
-            var i = s.Length - 1;
-            while (i >= 0 && char.IsWhiteSpace(s[i])) i--;
-            if (i < 0)
-                return false;
-
-            // Single Unicode ellipsis
-            if (s[i] == '…')
-                return true;
-
-            // OCR case: ASCII "..."
-            return i >= 2 && s[i] == '.' && s[i - 1] == '.' && s[i - 2] == '.';
-        }
-
-        // Strict: the ASCII punct itself is the last non-whitespace char (level 3 strict rules).
-        static bool IsOcrCjkAsciiPunctAtLineEnd(string s, int lastNonWsIndex)
-        {
-            if (lastNonWsIndex <= 0)
-                return false;
-
-            return IsCjk(s[lastNonWsIndex - 1]) && IsMostlyCjk(s);
-        }
-
-        // Relaxed "end": after index, only whitespace and closers are allowed.
-        // Needed for patterns like: CJK '.' then closing quote/bracket: “。”  .」  .）
-        static bool IsOcrCjkAsciiPunctBeforeClosers(string s, int index)
-        {
-            if (!IsAtEndAllowingClosers(s, index))
-                return false;
-
-            if (index <= 0)
-                return false;
-
-            return IsCjk(s[index - 1]) && IsMostlyCjk(s);
-        }
-
-        static bool IsAtEndAllowingClosers(string s, int index)
-        {
-            for (var j = index + 1; j < s.Length; j++)
-            {
-                var ch = s[j];
-                if (char.IsWhiteSpace(ch))
-                    continue;
-
-                if (PunctSets.IsQuoteCloser(ch) || PunctSets.IsBracketCloser(ch))
-                    continue;
-
-                return false;
-            }
-
-            return true;
-        }
-
-        // static int FindLastNonWhitespaceIndex(string s)
-        // {
-        //     for (var i = s.Length - 1; i >= 0; i--)
-        //         if (!char.IsWhiteSpace(s[i]))
-        //             return i;
-        //     return -1;
-        // }
-
-        // static int FindPrevNonWhitespaceIndex(string s, int endExclusive)
-        // {
-        //     for (var j = endExclusive - 1; j >= 0; j--)
-        //         if (!char.IsWhiteSpace(s[j]))
-        //             return j;
-        //     return -1;
-        // }
-
-        // static bool IsStrongSentenceEnd(char ch) =>
-        //     ch is '。' or '！' or '？' or '!' or '?';
-
-        static bool IsAllAscii(string s)
-        {
-            for (var i = 0; i < s.Length; i++)
-                if (s[i] > 0x7F)
-                    return false;
-            return true;
-        }
-
-        // static bool IsAllAsciiDigits(string s)
-        // {
-        //     var hasDigit = false;
-        //
-        //     for (var i = 0; i < s.Length; i++)
-        //     {
-        //         var ch = s[i];
-        //
-        //         switch (ch)
-        //         {
-        //             // ASCII space is neutral
-        //             case ' ':
-        //                 continue;
-        //             // ASCII digits
-        //             case >= '0' and <= '9':
-        //             // FULLWIDTH digits
-        //             case >= '０' and <= '９':
-        //                 hasDigit = true;
-        //                 continue;
-        //             default:
-        //                 // anything else -> reject
-        //                 return false;
-        //         }
-        //     }
-        //
-        //     return hasDigit;
-        // }
-
-        // Minimal CJK checker (BMP focused). You can swap with your existing one.
-        static bool IsCjk(char ch)
-        {
-            var c = (int)ch;
-
-            // CJK Unified Ideographs + Extension A
-            if ((uint)(c - 0x3400) <= (0x4DBF - 0x3400)) return true;
-            if ((uint)(c - 0x4E00) <= (0x9FFF - 0x4E00)) return true;
-
-            // Compatibility Ideographs
-            return (uint)(c - 0xF900) <= (0xFAFF - 0xF900);
-        }
-
-        // Returns true if the string consists entirely of CJK characters.
-        // Whitespace handling is controlled by allowWhitespace.
-        // Returns false for null, empty, or whitespace-only strings.
-        static bool IsAllCjk(string s, bool allowWhitespace = false)
-        {
-            var seen = false;
-
-            foreach (var ch in s)
-            {
-                if (char.IsWhiteSpace(ch))
-                {
-                    if (!allowWhitespace)
-                        return false;
-                    continue;
-                }
-
-                seen = true;
-
-                if (!IsCjk(ch))
-                    return false;
-            }
-
-            return seen;
-        }
-
-        static bool IsAllCjkIgnoringWhitespace(string s)
-            => IsAllCjk(s, allowWhitespace: true);
-
-        static bool IsAllCjkNoWhiteSpace(string s)
-            => IsAllCjk(s, allowWhitespace: false);
-
-        static bool IsMixedCjkAscii(string s)
-        {
-            var hasCjk = false;
-            var hasAscii = false;
-
-            for (var i = 0; i < s.Length; i++)
-            {
-                var ch = s[i];
-
-                // Neutral ASCII (allowed, but doesn't count as ASCII content)
-                if (ch is ' ' or '-' or '/' or ':' or '.')
-                    continue;
-
-                if (ch <= 0x7F)
-                {
-                    if (char.IsLetterOrDigit(ch))
-                    {
-                        hasAscii = true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-                else if (ch is >= '０' and <= '９')
-                {
-                    hasAscii = true;
-                }
-                else if (IsCjk(ch))
-                {
-                    hasCjk = true;
-                }
-                else
-                {
-                    return false;
-                }
-
-                if (hasCjk && hasAscii)
-                    return true;
-            }
-
-            return false;
-        }
-
-        static bool IsMostlyCjk(string s)
-        {
-            var cjk = 0;
-            var ascii = 0;
-
-            for (var i = 0; i < s.Length; i++)
-            {
-                var ch = s[i];
-
-                // Neutral whitespace
-                if (char.IsWhiteSpace(ch))
-                    continue;
-
-                // Neutral digits (ASCII + FULLWIDTH)
-                if (IsDigitAsciiOrFullWidth(ch))
-                    continue;
-
-                if (IsCjk(ch))
-                {
-                    cjk++;
-                    continue;
-                }
-
-                // Count ASCII letters only; ASCII punctuation is neutral
-                if (ch <= 0x7F && char.IsLetter(ch))
-                    ascii++;
-            }
-
-            return cjk > 0 && cjk >= ascii;
-        }
-
-        static bool IsDigitAsciiOrFullWidth(char ch)
-        {
-            // ASCII digits
-            if ((uint)(ch - '0') <= 9) return true;
-            // FULLWIDTH digits
-            return (uint)(ch - '０') <= 9;
-        }
     }
 
-    /// <summary>
-    /// Detects visual separator / divider lines such as:
-    /// ──────
-    /// ======
-    /// ------
-    /// or mixed variants (e.g. ───===───).
-    /// 
-    /// This method is intended to run on a *probe* string
-    /// (indentation already removed). Whitespace is ignored.
-    /// 
-    /// These lines represent layout boundaries and must always
-    /// force paragraph breaks during reflow.
-    /// </summary>
-    // private static bool IsBoxDrawingLine(string s)
-    // {
-    //     if (string.IsNullOrWhiteSpace(s))
-    //         return false;
-    //
-    //     var total = 0;
-    //
-    //     foreach (var ch in s)
-    //     {
-    //         // Ignore whitespace completely (probe may still contain gaps)
-    //         if (char.IsWhiteSpace(ch))
-    //             continue;
-    //
-    //         total++;
-    //
-    //         // Unicode box drawing block (U+2500–U+257F)
-    //         if (ch is >= '\u2500' and <= '\u257F')
-    //             continue;
-    //
-    //         // ASCII visual separators (common in TXT / OCR)
-    //         if (ch is '-' or '=' or '_' or '~' or '～')
-    //             continue;
-    //
-    //         // Star / asterisk-based visual dividers
-    //         if (ch is '*' // ASTERISK (U+002A)
-    //             or '＊' // FULLWIDTH ASTERISK (U+FF0A)
-    //             or '★' // BLACK STAR (U+2605)
-    //             or '☆' // WHITE STAR (U+2606)
-    //            )
-    //             continue;
-    //
-    //         // Any real text → not a pure visual divider
-    //         return false;
-    //     }
-    //
-    //     // Require minimal visual length to avoid accidental triggers
-    //     return total >= 3;
-    // }
     private static string StripHalfWidthIndentKeepFullWidth(string s)
     {
         var i = 0;
