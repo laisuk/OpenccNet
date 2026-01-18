@@ -87,7 +87,6 @@ internal static class PunctSets
         return TryGetLastNonWhitespace(s, out _, out var last) && IsColonLike(last);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool EndsWithColonLike(StringBuilder sb)
         => TryGetLastNonWhitespace(sb, out _, out var last) && IsColonLike(last);
 
@@ -623,7 +622,6 @@ internal static class PunctSets
     /// <summary>
     /// Try to get last and previous non-whitespace characters in one pass (no allocations).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool TryGetLastTwoNonWhitespace(
         StringBuilder? sb,
         out int lastIdx, out char last,

@@ -13,6 +13,7 @@ namespace OpenccNet
         /// Minimal CJK checker (BMP focused).
         /// Designed for reflow heuristics, not full Unicode linguistics.
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool IsCjk(char ch)
         {
             int c = ch;
@@ -25,6 +26,7 @@ namespace OpenccNet
             return (uint)(c - 0xF900) <= (0xFAFF - 0xF900);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsDigitAsciiOrFullWidth(char ch)
         {
             // ASCII digits
@@ -37,6 +39,7 @@ namespace OpenccNet
         //  ASCII helpers
         // =========================
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool IsAllAscii(ReadOnlySpan<char> s)
         {
             for (var i = 0; i < s.Length; i++)
