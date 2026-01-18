@@ -456,6 +456,7 @@ public static class ReflowHelper
                 // else: fall through → normal merge logic below
             }
 
+            // ----- Current line finalizer ------
             switch (buffer.Length)
             {
                 // ===== Finalizer: strong sentence end → flush immediately. Do not remove. ===== //
