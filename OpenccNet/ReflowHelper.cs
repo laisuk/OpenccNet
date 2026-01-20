@@ -290,7 +290,7 @@ public static class ReflowHelper
 
             // 🔹 NEW: collapse style-layer repeated segments *before* heading detection
             stripped = CollapseRepeatedSegments(stripped);
-            
+
             // 3) Logical form for heading detection: no indent at all
             probe = stripped.TrimStart(' ', '\u3000');
 
@@ -660,7 +660,7 @@ public static class ReflowHelper
                 : 8;
 
             var len = s.Length;
-            
+
             // Short circuit for item title-like: "物品准备："
             if ((last is ':' or '：') &&
                 len <= maxLen &&
@@ -669,7 +669,7 @@ public static class ReflowHelper
             {
                 return true;
             }
-            
+
             // Allow postfix closer with condition
             if (PunctSets.IsAllowedPostfixCloser(last) && !PunctSets.ContainsAnyCommaLike(s))
             {
@@ -683,7 +683,7 @@ public static class ReflowHelper
             // Reject any short line containing comma-like separators
             if (PunctSets.ContainsAnyCommaLike(s))
                 return false;
-            
+
             // Short line heuristics (<= maxLen chars)
             if (len > maxLen) return false;
             var hasNonAscii = false;
@@ -723,20 +723,26 @@ public static class ReflowHelper
         }
 
         // ------ Metadata ------
-        static bool IsMetadataLine(string line)
+        static bool IsMetadataLine(ReadOnlySpan<char> line)
         {
-            if (string.IsNullOrWhiteSpace(line))
+            if (line.IsEmpty)
                 return false;
 
-            if (line.Length > 30)
-                return false;
-
+            // Equivalent to string.IsNullOrWhiteSpace
             var firstNonWs = 0;
             while (firstNonWs < line.Length && char.IsWhiteSpace(line[firstNonWs]))
                 firstNonWs++;
 
-            var idx = -1;
-            var j = -1;
+            if (firstNonWs >= line.Length)
+                return false;
+
+            // original: if (line.Length > 30) return false;
+            // (keep semantics: uses raw line length, not trimmed length)
+            if (line.Length > 30)
+                return false;
+
+            var idx = -1; // separator index
+            var j = -1; // first non-ws after separator
 
             for (var i = firstNonWs; i < line.Length; i++)
             {
@@ -752,18 +758,20 @@ public static class ReflowHelper
                 break;
             }
 
+            // must have a separator and content after it
+            if (idx < 0 || j < 0 || j >= line.Length)
+                return false;
+
             // structural early reject (ignore leading whitespace)
             var rawKeyLen = idx - firstNonWs;
             if (rawKeyLen <= 0 || rawKeyLen > MaxMetadataKeyLength)
                 return false;
 
-            if (j < 0 || j >= line.Length)
-                return false;
-
             // semantic owner
-            if (!IsMetadataKey(line.AsSpan(firstNonWs, rawKeyLen)))
+            if (!IsMetadataKey(line.Slice(firstNonWs, rawKeyLen)))
                 return false;
 
+            // Must not start value with dialog opener
             return !PunctSets.IsDialogOpener(line[j]);
         }
     }
