@@ -27,7 +27,7 @@ internal static class PunctSets
     /// after skipping leading whitespace and indentation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool BeginWithDialogStarter(ReadOnlySpan<char> s)
+    internal static bool BeginsWithDialogOpener(ReadOnlySpan<char> s)
     {
         for (var i = 0; i < s.Length; i++)
         {
