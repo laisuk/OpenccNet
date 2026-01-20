@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace OpenccNet;
 
@@ -86,10 +85,6 @@ internal static class PunctSets
     {
         return TryGetLastNonWhitespace(s, out _, out var last) && IsColonLike(last);
     }
-
-    internal static bool EndsWithColonLike(StringBuilder sb)
-        => TryGetLastNonWhitespace(sb, out _, out var last) && IsColonLike(last);
-
 
     // -------------------------
     // Sentence endings (two tiers)
@@ -207,63 +202,7 @@ internal static class PunctSets
 
         return depth == 0;
     }
-
-    internal static bool IsBracketTypeBalanced(StringBuilder? sb, int start, int end, char open)
-    {
-        if (sb == null || sb.Length == 0)
-            return false;
-
-        if ((uint)start >= (uint)sb.Length || (uint)end >= (uint)sb.Length || start > end)
-            return false;
-
-        if (!TryGetMatchingCloser(open, out var close))
-            return true; // unknown opener → ignore
-
-        var depth = 0;
-
-        var pos = 0;
-        foreach (var mem in sb.GetChunks())
-        {
-            var span = mem.Span;
-            var chunkStart = pos;
-            var chunkEnd = pos + span.Length - 1;
-
-            // Range entirely before this chunk
-            if (end < chunkStart)
-                break;
-
-            // Range entirely after this chunk
-            if (start > chunkEnd)
-            {
-                pos += span.Length;
-                continue;
-            }
-
-            // Overlap: scan only the overlap portion
-            var i0 = start <= chunkStart ? 0 : (start - chunkStart);
-            var i1 = end >= chunkEnd ? (span.Length - 1) : (end - chunkStart);
-
-            for (var i = i0; i <= i1; i++)
-            {
-                var ch = span[i];
-                if (ch == open)
-                {
-                    depth++;
-                }
-                else if (ch == close)
-                {
-                    depth--;
-                    if (depth < 0)
-                        return false;
-                }
-            }
-
-            pos += span.Length;
-        }
-
-        return depth == 0;
-    }
-
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool TryGetMatchingCloser(char open, out char close)
         => BracketPairs.TryGetValue(open, out close);
@@ -334,75 +273,6 @@ internal static class PunctSets
         {
             if (rented is not null)
                 ArrayPool<char>.Shared.Return(rented);
-        }
-    }
-
-    /// <summary>
-    /// Bracket stack scan on StringBuilder without allocating a buffer string.
-    /// Semantics follow HasUnclosedBracket(string).
-    /// </summary>
-    public static bool HasUnclosedBracket(StringBuilder? sb)
-    {
-        if (sb == null || sb.Length == 0)
-            return false;
-
-        char[]? stack = null;
-        var top = 0;
-        var seenBracket = false;
-
-        try
-        {
-            stack = ArrayPool<char>.Shared.Rent(Math.Min(sb.Length, 256));
-
-            foreach (var mem in sb.GetChunks())
-            {
-                var s = mem.Span;
-                for (var i = 0; i < s.Length; i++)
-                {
-                    var ch = s[i];
-
-                    if (IsBracketOpener(ch))
-                    {
-                        seenBracket = true;
-                        if (top == stack.Length)
-                        {
-                            // grow
-                            var newArr = ArrayPool<char>.Shared.Rent(stack.Length * 2);
-                            Array.Copy(stack, 0, newArr, 0, stack.Length);
-                            ArrayPool<char>.Shared.Return(stack);
-                            stack = newArr;
-                        }
-
-                        stack[top++] = ch;
-                    }
-                    else if (IsBracketCloser(ch))
-                    {
-                        seenBracket = true;
-
-                        if (top == 0)
-                        {
-                            // closer without opener => treat unsafe as "unclosed"
-                            return true;
-                        }
-
-                        var open = stack[top - 1];
-                        if (!IsMatchingBracket(open, ch))
-                        {
-                            // mismatch => unsafe
-                            return true;
-                        }
-
-                        top--;
-                    }
-                }
-            }
-
-            return seenBracket && top != 0;
-        }
-        finally
-        {
-            if (stack != null)
-                ArrayPool<char>.Shared.Return(stack);
         }
     }
 
@@ -554,11 +424,11 @@ internal static class PunctSets
     internal static bool TryGetPrevNonWhitespace(
         ReadOnlySpan<char> s,
         int beforeIndex,
-        out int index,
-        out char ch)
+        out int prevIndex,
+        out char prevChar)
     {
-        index = -1;
-        ch = '\0';
+        prevIndex = -1;
+        prevChar = '\0';
 
         var i = Math.Min(beforeIndex - 1, s.Length - 1);
         for (; i >= 0; i--)
@@ -567,8 +437,8 @@ internal static class PunctSets
             if (char.IsWhiteSpace(c))
                 continue;
 
-            index = i;
-            ch = c;
+            prevIndex = i;
+            prevChar = c;
             return true;
         }
 
@@ -582,75 +452,9 @@ internal static class PunctSets
     internal static bool TryGetPrevNonWhitespace(
         ReadOnlySpan<char> s,
         int beforeIndex,
-        out char ch)
+        out char prevChar)
     {
-        return TryGetPrevNonWhitespace(s, beforeIndex, out _, out ch);
+        return TryGetPrevNonWhitespace(s, beforeIndex, out _, out prevChar);
     }
-
-    /// <summary>
-    /// Try to get the last non-whitespace character from a StringBuilder without allocating.
-    /// Returns global index (0 to Length-1) and the character.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool TryGetLastNonWhitespace(
-        StringBuilder? sb,
-        out int lastIdx,
-        out char last)
-    {
-        lastIdx = -1;
-        last = '\0';
-
-        if (sb == null || sb.Length == 0)
-            return false;
-
-        var pos = 0;
-        foreach (var mem in sb.GetChunks())
-        {
-            var s = mem.Span;
-            for (var i = 0; i < s.Length; i++, pos++)
-            {
-                var ch = s[i];
-                if (char.IsWhiteSpace(ch)) continue;
-                lastIdx = pos;
-                last = ch;
-            }
-        }
-
-        return lastIdx >= 0;
-    }
-
-    /// <summary>
-    /// Try to get last and previous non-whitespace characters in one pass (no allocations).
-    /// </summary>
-    internal static bool TryGetLastTwoNonWhitespace(
-        StringBuilder? sb,
-        out int lastIdx, out char last,
-        out int prevIdx, out char prev)
-    {
-        lastIdx = prevIdx = -1;
-        last = prev = '\0';
-
-        if (sb == null || sb.Length == 0)
-            return false;
-
-        var pos = 0;
-        foreach (var mem in sb.GetChunks())
-        {
-            var s = mem.Span;
-            for (var i = 0; i < s.Length; i++, pos++)
-            {
-                var ch = s[i];
-                if (char.IsWhiteSpace(ch))
-                    continue;
-
-                // shift
-                prevIdx = lastIdx;
-                prev = last;
-                lastIdx = pos;
-                last = ch;
-            }
-        }
-
-        return lastIdx >= 0;
-    }
+    
 }

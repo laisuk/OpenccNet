@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace OpenccNet
 {
@@ -159,7 +158,7 @@ namespace OpenccNet
             => IsAllCjk(s, allowWhitespace: false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static bool ContainsAnyCjk(ReadOnlySpan<char> s)
+        private static bool ContainsAnyCjk(ReadOnlySpan<char> s)
         {
             for (var i = 0; i < s.Length; i++)
                 if (IsCjk(s[i]))
@@ -170,9 +169,6 @@ namespace OpenccNet
         // =========================
         //  Mostly-CJK heuristic
         // =========================
-
-        // internal static bool IsMostlyCjk(string s)
-        //     => !string.IsNullOrEmpty(s) && IsMostlyCjk(s.AsSpan());
 
         internal static bool IsMostlyCjk(ReadOnlySpan<char> s)
         {
@@ -198,43 +194,11 @@ namespace OpenccNet
                 }
 
                 // Count ASCII letters only; ASCII punctuation is neutral
-                if (ch <= 0x7F && char.IsLetter(ch))
-                    ascii++;
-            }
-
-            return cjk > 0 && cjk >= ascii;
-        }
-
-        internal static bool IsMostlyCjk(StringBuilder? sb)
-        {
-            if (sb == null || sb.Length == 0)
-                return false;
-
-            var cjk = 0;
-            var ascii = 0;
-
-            foreach (var mem in sb.GetChunks())
-            {
-                var s = mem.Span;
-                for (var i = 0; i < s.Length; i++)
-                {
-                    var ch = s[i];
-
-                    if (char.IsWhiteSpace(ch))
-                        continue;
-
-                    if (IsDigitAsciiOrFullWidth(ch))
-                        continue;
-
-                    if (IsCjk(ch))
-                    {
-                        cjk++;
-                        continue;
-                    }
-
-                    if (ch <= 0x7F && char.IsLetter(ch))
-                        ascii++;
-                }
+                if (ch > 0x7F || !char.IsLetter(ch)) continue;
+                ascii++;
+                // Early fail: clearly non-CJK
+                if (ascii > cjk + 4)
+                    return false;
             }
 
             return cjk > 0 && cjk >= ascii;
@@ -244,7 +208,7 @@ namespace OpenccNet
         //  Ellipsis
         // =========================
 
-        internal static bool EndsWithEllipsis(ReadOnlySpan<char> s)
+        private static bool EndsWithEllipsis(ReadOnlySpan<char> s)
         {
             if (s.IsEmpty)
                 return false;
@@ -266,89 +230,29 @@ namespace OpenccNet
             return i >= 2 && s[i] == '.' && s[i - 1] == '.' && s[i - 2] == '.';
         }
 
-        // ------ Sentence Boundary ------ //
+        // ------ Sentence Boundary start ------ //
 
-        internal static bool EndsWithSentenceBoundary(StringBuilder? sb, int level = 2)
+        internal static bool EndsWithSentenceBoundary(ReadOnlySpan<char> s, int level = 2)
         {
-            if (sb == null || sb.Length == 0)
+            if (s.IsWhiteSpace())
                 return false;
 
-            // Rolling last 3 non-whitespace chars (+ indices)
-            int lastIdx = -1, prevIdx = -1, prevPrevIdx = -1;
-            char last = '\0', prev = '\0', prevPrev = '\0';
-
-            // "Mostly CJK" counts (EXACT same semantics as IsMostlyCjk())
-            var cjk = 0;
-            var ascii = 0;
-
-            // Track the most recent ASCII punct candidate '.' or ':' and whether only closers/ws follow it.
-            // Needed for: IsOcrCjkAsciiPunctBeforeClosers(...)
-            var asciiPunctIdx = -1;
-            var asciiPunctTailOk = false;
-
-            var pos = 0;
-            foreach (var mem in sb.GetChunks())
-            {
-                var span = mem.Span;
-
-                for (var i = 0; i < span.Length; i++, pos++)
-                {
-                    var ch = span[i];
-
-                    if (char.IsWhiteSpace(ch))
-                        continue;
-
-                    // ---- Mostly-CJK counting (neutral ws + digits; count CJK; count ASCII letters only)
-                    if (!IsDigitAsciiOrFullWidth(ch))
-                    {
-                        if (IsCjk(ch))
-                        {
-                            cjk++;
-                        }
-                        else if (ch <= 0x7F && char.IsLetter(ch))
-                        {
-                            ascii++;
-                        }
-                    }
-
-                    // ---- Tail validation for ASCII punct candidate (after candidate: only whitespace/closers allowed)
-                    if (asciiPunctIdx >= 0)
-                    {
-                        // We only see non-whitespace here (whitespace skipped).
-                        if (!(PunctSets.IsQuoteCloser(ch) || PunctSets.IsBracketCloser(ch)))
-                        {
-                            asciiPunctTailOk = false;
-                        }
-                    }
-
-                    // ---- Update rolling last/prev/prevPrev (non-whitespace only)
-                    prevPrevIdx = prevIdx;
-                    prevPrev = prev;
-                    prevIdx = lastIdx;
-                    prev = last;
-                    lastIdx = pos;
-                    last = ch;
-
-                    // ---- Update ASCII punct candidate
-                    if (ch is not ('.' or ':')) continue;
-                    asciiPunctIdx = pos;
-                    asciiPunctTailOk = true;
-                }
-            }
-
-            if (lastIdx < 0)
+            // last non-whitespace
+            if (!PunctSets.TryGetLastNonWhitespace(s, out var lastIdx, out var last))
                 return false;
-
-            var isMostlyCjk = cjk > 0 && cjk >= ascii;
 
             // ---- STRICT rules (level >= 3) ----
             // 1) Strong sentence end
-            if (PunctSets.IsStrongSentenceEnd(last))
-                return true;
+            switch (last)
+            {
+                case var _ when PunctSets.IsStrongSentenceEnd(last):
+                case '.' when level >= 3 && IsOcrCjkAsciiPunctAtLineEnd(s, lastIdx):
+                case ':' when level >= 3 && IsOcrCjkAsciiPunctAtLineEnd(s, lastIdx):
+                    return true;
+            }
 
-            // Strict OCR: ASCII punct itself is last non-ws char
-            if (last is '.' or ':' && prevIdx >= 0 && IsCjk(prev) && isMostlyCjk)
-                return true;
+            // prev non-whitespace (before last-Non-Ws)
+            PunctSets.TryGetPrevNonWhitespace(s, lastIdx, out var prevIdx, out var prev);
 
             // 2) Quote closers + Allowed postfix closer after strong end
             if ((PunctSets.IsQuoteCloser(last) || PunctSets.IsAllowedPostfixCloser(last)) && prevIdx >= 0)
@@ -357,46 +261,25 @@ namespace OpenccNet
                 if (PunctSets.IsStrongSentenceEnd(prev))
                     return true;
 
-                // OCR artifact: '.' before closers ('.' is prev non-ws, last is closer)
-                // Original requires:
-                // - after '.' only whitespace and closers
-                // - previous non-ws before '.' must be CJK
-                // - line mostly CJK
-                if (prev == '.' &&
-                    asciiPunctIdx == prevIdx &&
-                    asciiPunctTailOk &&
-                    prevPrevIdx >= 0 &&
-                    IsCjk(prevPrev) &&
-                    isMostlyCjk)
-                {
+                // OCR artifact: “.” where '.' acts like '。' (CJK context)
+                // '.' is not the lastNonWs (quote is), so use the "before closers" version.
+                if (prev == '.' && IsOcrCjkAsciiPunctBeforeClosers(s, prevIdx))
                     return true;
-                }
             }
-            
+
             if (level >= 3)
                 return false;
 
             // ---- LENIENT rules (level == 2) ----
-            
-            // 3) Bracket closers with most CJK (reserved)
-            // if (PunctSets.IsBracketCloser(last) && lastIdx > 0 && IsMostlyCjk(s))
-            //     return true;
-            
-            switch (isMostlyCjk)
-            {
-                // 4) Mostly-CJK line ending with full-width colon "："
-                case true when last == '：':
-                // Ellipsis (same semantics as your string version: trim-right-ws then check tail)
-                // Single Unicode ellipsis
-                case true when last == '…':
-                // OCR case: ASCII "..." at the very end (consecutive indices after trimming whitespace)
-                case true when
-                    last == '.' && prev == '.' && prevPrev == '.' &&
-                    prevPrevIdx >= 0 &&
-                    lastIdx == prevIdx + 1 &&
-                    prevIdx == prevPrevIdx + 1:
-                    return true;
-            }
+
+            // 4) NEW: long Mostly-CJK line ending with full-width colon "："
+            // Treat as a weak boundary (common in novels: "他说：" then dialog starts next line)
+            if (last == '：' && IsMostlyCjk(s))
+                return true;
+
+            // Level 2 (lenient): allow ellipsis as weak boundary
+            if (EndsWithEllipsis(s))
+                return true;
 
             if (level >= 2)
                 return false;
@@ -405,117 +288,88 @@ namespace OpenccNet
             return last is '；' or '：' or ';' or ':';
         }
 
-        // ------ Bracket Boundary ------ //
-
-        internal static bool EndsWithCjkBracketBoundary(StringBuilder? sb)
+        // Strict: the ASCII punct itself is the last non-whitespace char (level 3 strict rules).
+        private static bool IsOcrCjkAsciiPunctAtLineEnd(ReadOnlySpan<char> s, int lastNonWsIndex)
         {
-            if (sb == null || sb.Length == 0)
+            if (lastNonWsIndex <= 0)
                 return false;
 
-            // Equivalent to: s = s.Trim(); if (s.Length < 2) return false;
-            if (!PunctSets.TryGetLastNonWhitespace(sb, out var lastIdx, out var close))
+            return IsCjk(s[lastNonWsIndex - 1]) && IsMostlyCjk(s);
+        }
+
+        // Relaxed "end": after index, only whitespace and closers are allowed.
+        // Needed for patterns like: CJK '.' then closing quote/bracket: “。”  .」  .）
+        private static bool IsOcrCjkAsciiPunctBeforeClosers(ReadOnlySpan<char> s, int index)
+        {
+            if (!IsAtEndAllowingClosers(s, index))
                 return false;
 
-            var firstIdx = -1;
-            var open = '\0';
+            // Must have a previous *non-whitespace* character
+            if (!PunctSets.TryGetPrevNonWhitespace(s, index, out var prev))
+                return false;
 
-            var pos = 0;
-            foreach (var mem in sb.GetChunks())
+            // Previous meaningful char must be CJK, and the line mostly CJK
+            return IsCjk(prev) && IsMostlyCjk(s);
+        }
+
+        private static bool IsAtEndAllowingClosers(ReadOnlySpan<char> s, int index)
+        {
+            for (var j = index + 1; j < s.Length; j++)
             {
-                var span = mem.Span;
-                for (var i = 0; i < span.Length; i++, pos++)
-                {
-                    var ch = span[i];
-                    if (char.IsWhiteSpace(ch))
-                        continue;
+                var ch = s[j];
+                if (char.IsWhiteSpace(ch))
+                    continue;
 
-                    firstIdx = pos;
-                    open = ch;
-                    goto FOUND_FIRST;
-                }
+                if (PunctSets.IsQuoteCloser(ch) || PunctSets.IsBracketCloser(ch))
+                    continue;
+
+                return false;
             }
 
-            FOUND_FIRST:
-            if (firstIdx < 0)
+            return true;
+        }
+
+        // ------ Sentence Boundary end ------ //
+
+
+        // ------ Bracket Boundary start ------
+
+        internal static bool EndsWithCjkBracketBoundary(ReadOnlySpan<char> s)
+        {
+            // Equivalent to string.IsNullOrWhiteSpace
+            if (s.IsWhiteSpace())
                 return false;
 
-            if (lastIdx - firstIdx + 1 < 2)
+            // Trim without allocation
+            s = s.Trim();
+            if (s.Length < 2)
                 return false;
+
+            var open = s[0];
+            var close = s[^1];
 
             // 1) Must be one of our known pairs.
             if (!PunctSets.IsMatchingBracket(open, close))
                 return false;
 
-            // Inner range (exclude outer bracket pair), then inner.Trim()
-            var innerStart = firstIdx + 1;
-            var innerEnd = lastIdx - 1;
-            if (innerStart > innerEnd)
+            // Inner content (exclude the outer bracket pair)
+            var inner = s.Slice(1, s.Length - 2).Trim();
+            if (inner.IsEmpty)
                 return false;
 
-            var innerFirst = -1;
-            var innerLast = -1;
-
-            // 2) Must be mostly CJK (based on inner.Trim()).
-            // Additionally: if open is '(' or '[', require at least one CJK char in inner.Trim().
-            var cjk = 0;
-            var ascii = 0;
-            var innerHasCjk = false;
-
-            pos = 0;
-            foreach (var mem in sb.GetChunks())
-            {
-                var span = mem.Span;
-                for (var i = 0; i < span.Length; i++, pos++)
-                {
-                    if (pos < innerStart)
-                        continue;
-                    if (pos > innerEnd)
-                        goto DONE_INNER_SCAN;
-
-                    var ch = span[i];
-
-                    // inner.Trim() bounds
-                    if (!char.IsWhiteSpace(ch))
-                    {
-                        if (innerFirst < 0) innerFirst = pos;
-                        innerLast = pos;
-                    }
-
-                    // Mostly-CJK counts (same semantics as IsMostlyCjk): ignore whitespace and digits.
-                    if (char.IsWhiteSpace(ch))
-                        continue;
-
-                    if (IsDigitAsciiOrFullWidth(ch))
-                        continue;
-
-                    if (IsCjk(ch))
-                    {
-                        cjk++;
-                        innerHasCjk = true;
-                        continue;
-                    }
-
-                    // Count ASCII letters only; ASCII punctuation is neutral
-                    if (ch <= 0x7F && char.IsLetter(ch))
-                        ascii++;
-                }
-            }
-
-            DONE_INNER_SCAN:
-            // inner.Trim().Length == 0
-            if (innerFirst < 0 || innerLast < innerFirst)
+            // 2) Must be mostly CJK (reject "(test)", "[1.2]", etc.)
+            if (!IsMostlyCjk(inner))
                 return false;
 
-            // Must be mostly CJK: cjk > 0 && cjk >= ascii
-            if (!(cjk > 0 && cjk >= ascii))
+            // ASCII bracket pairs are suspicious → require at least one CJK inside
+            if ((open is '(' or '[') && !ContainsAnyCjk(inner))
                 return false;
 
-            // ASCII bracket pairs suspicious -> require at least one CJK in inner
-            if (open is '(' or '[' && !innerHasCjk)
-                return false;
-
-            // 3) Ensure this bracket type is balanced inside the trimmed text
-            return PunctSets.IsBracketTypeBalanced(sb, firstIdx, lastIdx, open);
+            // 3) Ensure this bracket type is balanced inside the text
+            //    (prevents malformed OCR / premature close)
+            return PunctSets.IsBracketTypeBalanced(s, open);
         }
+
+        // ------ Bracket Boundary end ------
     }
 }
