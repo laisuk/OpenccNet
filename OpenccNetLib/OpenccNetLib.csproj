@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.4.0</Version>
+        <Version>1.4.1</Version>
         <Authors>laisuk</Authors>
         <Description>
             OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
@@ -23,23 +23,17 @@
         <!-- (Optional) don’t warn about undocumented public members -->
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Title>OpenccNet Library</Title>
-        <PackageReleaseNotes>OpenccNetLib v1.4.0
+        <PackageReleaseNotes>OpenccNetLib v1.4.1
 
-            • Added SerializeToJsonUnescaped() for human-readable UTF-8 JSON output
-            • Added DecodeJsonSurrogatePairs() helper for restoring non-BMP CJK
-            • Added "dictgen --unescape" option for generating unescaped dictionaries
-
-            • Removed all maxWordLength parameters – now unified under StarterUnion.GlobalCap
-            • Moved OpenccConfig enum to top-level namespace (cleaner API; compatible)
-            • Updated ApplySegmentReplace to simplified delegate (legacy overload preserved)
-            • Improved XML docs and internal metadata descriptions
-            • More robust FromDicts() handling of missing/optional dictionary files
+            - OpenccConfig is now the single source of truth for internal Opencc configuration
+            - Added ToCanonicalName() for the OpenccConfig enum
+            - Improved and aligned XML documentation with the current dictionary provider and plan cache architecture
+            - Update OpenCC dictionary to version v1.2.0
 
             • No behavior changes; conversion results identical
-            • Only SetConfig(OpenccConfig) callers using the old nested enum must update
         </PackageReleaseNotes>
-        <AssemblyVersion>1.4.0.0</AssemblyVersion>
-        <FileVersion>1.4.0.0</FileVersion>
+        <AssemblyVersion>1.4.1.0</AssemblyVersion>
+        <FileVersion>1.4.1.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 

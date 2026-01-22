@@ -6,12 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.1] - 2026-01-20
+## [1.4.1] - 2026-01-23
 
 ### Changed
 - `OpenccConfig` is now the single source of truth for internal `Opencc` configuration
 - Added `ToCanonicalName()` for the `OpenccConfig` enum
 - Improved and aligned XML documentation with the current dictionary provider and plan cache architecture
+- Update OpenCC dictionary to version v1.2.0
 
 ## [1.4.0] - 2025-12-16
 
