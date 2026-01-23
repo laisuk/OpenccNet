@@ -710,15 +710,17 @@ Usage:
   OpenccNet pdf [options]
 
 Options:
-  -i, --input <input>               Input PDF file <input.pdf>
-  -o, --output <output>             Output text file <output.txt>
-  -c, --config <config> (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
-  -p, --punct                       Enable punctuation conversion.
-  -H, --header                      Add [Page x/y] headers to the extracted text.
-  -r, --reflow                      Reflow CJK paragraphs into continuous lines.
-  --compact                         Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
-  -q, --quiet                       Suppress status and progress output; only errors will be shown.
-  -?, -h, --help                    Show help and usage information
+  -i, --input <input>    Input PDF file <input.pdf>
+  -o, --output <output>  Output text file <output.txt>
+  -c, --config <config>  Conversion configuration.
+                         Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+  -p, --punct            Enable punctuation conversion.
+  -H, --header           Add [Page x/y] headers to the extracted text.
+  -r, --reflow           Reflow CJK paragraphs into continuous lines.
+  --compact              Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
+  -q, --quiet            Suppress status and progress output; only errors will be shown.
+  -e, --extract          Extract text from PDF only (no OpenCC conversion).
+  -?, -h, --help         Show help and usage information
 
 ```
 

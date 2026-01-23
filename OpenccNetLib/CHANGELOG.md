@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.1] - 2026-01-23
+## [1.4.1] - 2026-01-25
 
 ### Changed
 - `OpenccConfig` is now the single source of truth for internal `Opencc` configuration

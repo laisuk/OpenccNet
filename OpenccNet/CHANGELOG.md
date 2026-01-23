@@ -7,6 +7,13 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.4.1] - 2026-01-25
+
+### Changed
+- Optimized CJK Reflow in CLI `OpenccNet pdf` 
+- Update `OpenccNetLib` to v1.4.1
+---
+
 ## [1.4.0] - 2025-12-16
 
 ### Added
