@@ -28,7 +28,7 @@
             - OpenccConfig is now the single source of truth for internal Opencc configuration
             - Added ToCanonicalName() for the OpenccConfig enum
             - Improved and aligned XML documentation with the current dictionary provider and plan cache architecture
-            - Update OpenCC dictionary to version v1.2.0
+            - Update Opencc dictionary to version v1.2.0
 
             • No behavior changes; conversion results identical
         </PackageReleaseNotes>
