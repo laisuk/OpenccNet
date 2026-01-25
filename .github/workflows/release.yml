@@ -18,6 +18,9 @@ jobs:
           - os: windows-latest
             rid: win-x64
             ext: zip
+          - os: windows-latest
+            rid: win-x86
+            ext: zip
           - os: ubuntu-latest
             rid: linux-x64
             ext: tar.gz
