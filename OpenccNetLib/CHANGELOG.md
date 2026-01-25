@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [1.4.1] - 2026-01-25
 
 ### Changed
+
 - `OpenccConfig` is now the single source of truth for internal `Opencc` configuration
 - Added `ToCanonicalName()` for the `OpenccConfig` enum
 - Improved and aligned XML documentation with the current dictionary provider and plan cache architecture
@@ -24,21 +25,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   Strongly typed format selection for safer, cleaner API usage.
 
 - **Added enum-based overloads**
-  - `ConvertOfficeBytes(byte[], OfficeFormat, …)`
-  - `ConvertOfficeBytesAsync(byte[], OfficeFormat, …)`
-  - `ConvertOfficeFile(string, string, OfficeFormat, …)`
-  - `ConvertOfficeFileAsync(string, string, OfficeFormat, …)`
+    - `ConvertOfficeBytes(byte[], OfficeFormat, …)`
+    - `ConvertOfficeBytesAsync(byte[], OfficeFormat, …)`
+    - `ConvertOfficeFile(string, string, OfficeFormat, …)`
+    - `ConvertOfficeFileAsync(string, string, OfficeFormat, …)`
 
 - **String format overloads retained for compatibility**  
   (`"docx"`, `"xlsx"`, `"epub"`, etc.)  
   No breaking changes.
 
 - **Internal refactor**
-  - Core engine now switches on `OfficeFormat`
-  - Cleaner logic
-  - Better performance
-  - Safer against typo bugs
-  - Easier to maintain
+    - Core engine now switches on `OfficeFormat`
+    - Cleaner logic
+    - Better performance
+    - Safer against typo bugs
+    - Easier to maintain
 
 ### Added
 
@@ -365,30 +366,32 @@ This release’s performance leap comes from **multi-layered optimizations**, no
 
 1. **Lookup Layer**
 
-- Added **StarterCaps** array and **64-bit probe masks** per starter char to skip impossible lengths instantly.
-- Astral-aware indexing means surrogate pairs and emoji are matched in a single logical lookup.
-- Shared `StarterUnion` objects across plans with identical round layouts.
+    - Added **StarterCaps** array and **64-bit probe masks** per starter char to skip impossible lengths instantly.
+    - Astral-aware indexing means surrogate pairs and emoji are matched in a single logical lookup.
+    - Shared `StarterUnion` objects across plans with identical round layouts.
 
 2. **Matching Loop**
 
-- **Fast path** for the most common keys (1–2 UTF-16 units) removes almost all redundant probing for `st_characters` /
-  `ts_characters`.
-- Eliminated substring allocations during probes; everything operates directly on char spans.
+    - **Fast path** for the most common keys (1–2 UTF-16 units) removes almost all redundant probing for
+      `st_characters` /
+      `ts_characters`.
+    - Eliminated substring allocations during probes; everything operates directly on char spans.
 
 3. **Dictionary Plan Caching**
 
-- `ConversionPlanCache` + `RoundKey` hashing ensures a `(config, punctuation)` plan is built once and reused, instead of
-  rebuilding `DictRefs` and unions on every call.
+    - `ConversionPlanCache` + `RoundKey` hashing ensures a `(config, punctuation)` plan is built once and reused,
+      instead of
+      rebuilding `DictRefs` and unions on every call.
 
 4. **Runtime Memory Behavior**
 
-- Buffer reuse and fewer intermediate collections keep memory stable.
-- GUI idle footprint dropped from ~400 MB to ~250 MB due to fewer temp allocations in repeated conversions.
+    - Buffer reuse and fewer intermediate collections keep memory stable.
+    - GUI idle footprint dropped from ~400 MB to ~250 MB due to fewer temp allocations in repeated conversions.
 
 5. **Compatibility & Safety**
 
-- Kept `.NET Standard 2.0` surrogate-safe emit path for broad compatibility.
-- Strengthened archive handling with **Zip Slip** prevention without hurting throughput.
+    - Kept `.NET Standard 2.0` surrogate-safe emit path for broad compatibility.
+    - Strengthened archive handling with **Zip Slip** prevention without hurting throughput.
 
 ---
 

@@ -118,7 +118,7 @@ Console.WriteLine(result);
 ```csharp
 using OpenccNetLib;
 
-var opencc = new Opencc("s2t");
+var opencc = new Opencc("s2t");  // Or: var opencc = new Opencc(OpenccConfig.S2T);
 
 // Initial conversion
 string result = opencc.Convert("动态切换转换方式");

@@ -5,7 +5,7 @@
 ## 🚀 Features
 
 - ✅ OpenCC config-based conversion (`s2t`, `t2s`, etc.)
-- 📁 Batch convert `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.epub`
+- 📁 Batch convert `text-based` files, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.epub` and `.pdf`
 - 🧠 Font name preservation (optional)
 - 🧼 Converts only target content (not binary or irrelevant metadata)
 - 🖥️ CLI-friendly output and stdin/stdout support
@@ -42,6 +42,12 @@ OpenccNet office -c s2t -i file.docx --format docx -p
 OpenccNet office -c s2t -i book.epub --format epub --keep-font:false
 ```
 
+#### Convert PDF document (Text embedded or searchable PDF document)
+
+```bash
+OpenccNet pdf -c s2t -p -i sample.pdf -o sample.txt --reflow
+```
+
 #### Use stdin/stdout
 
 ```bash
@@ -50,7 +56,7 @@ echo "汉字简化" | OpenccNet convert -c s2t
 
 ---
 
-## ⚙️ Options
+## ⚙️ Office Document Conversion Options
 
 | Option           | Description                                                       |
 |------------------|-------------------------------------------------------------------|
@@ -169,4 +175,27 @@ Options:
   --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]
   --auto-ext               Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable. [default: True]
   -?, -h, --help           Show help and usage information
+```
+
+```bash
+OpenccNet pdf --help
+Description:
+  Convert a PDF to UTF-8 text using PdfPig + OpenccNetLib, with optional CJK paragraph reflow.
+
+Usage:
+  OpenccNet pdf [options]
+
+Options:
+  -i, --input <input>    Input PDF file <input.pdf>
+  -o, --output <output>  Output text file <output.txt>
+  -c, --config <config>  Conversion configuration.
+                         Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+  -p, --punct            Enable punctuation conversion.
+  -H, --header           Add [Page x/y] headers to the extracted text.
+  -r, --reflow           Reflow CJK paragraphs into continuous lines.
+  --compact              Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
+  -q, --quiet            Suppress status and progress output; only errors will be shown.
+  -e, --extract          Extract text from PDF only (no OpenCC conversion).
+  -?, -h, --help         Show help and usage information
+
 ```
