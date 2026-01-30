@@ -27,6 +27,9 @@ jobs:
           - os: macos-latest
             rid: osx-arm64
             ext: tar.gz
+          - os: macos-15-intel
+            rid: osx-x64
+            ext: tar.gz
 
     steps:
       - name: Checkout

@@ -662,7 +662,7 @@ public static class ReflowHelper
             var len = s.Length;
 
             // Short circuit for item title-like: "物品准备："
-            if ((last is ':' or '：') &&
+            if (PunctSets.IsColonLike(last) &&
                 len <= maxLen &&
                 lastIdx > 0 && // need at least one char before ':'
                 CjkText.IsAllCjkNoWhiteSpace(s[..lastIdx]))
@@ -776,7 +776,8 @@ public static class ReflowHelper
         }
     }
 
-    private static string StripHalfWidthIndentKeepFullWidth(string s)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string StripHalfWidthIndentKeepFullWidth(ReadOnlySpan<char> s)
     {
         var i = 0;
 
@@ -784,7 +785,7 @@ public static class ReflowHelper
         while (i < s.Length && s[i] == ' ')
             i++;
 
-        return s[i..];
+        return s[i..].ToString();
     }
 
     private static string CollapseRepeatedSegments(string line)
