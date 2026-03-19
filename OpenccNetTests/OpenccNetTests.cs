@@ -142,10 +142,11 @@ public class OpenccNetTests
     [TestMethod]
     public void T2S_WithPunctuation()
     {
-        var opencc = new Opencc("t2s");
+        // var opencc = new Opencc("t2s");
+        var opencc = new Opencc("T2S");
         const string traditionalWithPunctuation = "你好「世界」！";
         const string expectedSimplifiedWithPunctuation = "你好“世界”！";
-        var actualSimplifiedWithPunctuation = opencc.T2S(traditionalWithPunctuation, true);
+        var actualSimplifiedWithPunctuation = opencc.Convert(traditionalWithPunctuation, true);
         Assert.AreEqual(expectedSimplifiedWithPunctuation, actualSimplifiedWithPunctuation);
     }
 
