@@ -964,4 +964,3 @@ namespace OpenccNetLib
         }
     }
 }
-

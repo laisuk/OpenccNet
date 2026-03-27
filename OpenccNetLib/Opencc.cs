@@ -178,6 +178,25 @@ namespace OpenccNetLib
 
             return text;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ClampUtf16Boundary(string text, int maxUnits)
+        {
+            if (string.IsNullOrEmpty(text) || maxUnits <= 0)
+                return 0;
+
+            if (maxUnits >= text.Length)
+                return text.Length;
+
+            if (char.IsHighSurrogate(text[maxUnits - 1]) &&
+                char.IsLowSurrogate(text[maxUnits]))
+            {
+                return maxUnits - 1;
+            }
+
+            return maxUnits;
+        }
+
         #region Config Enum Helpers Region
 
         /// <summary>
@@ -1807,7 +1826,7 @@ namespace OpenccNetLib
         {
             if (string.IsNullOrEmpty(inputText)) return 0;
 
-            var scanLength = inputText.Length > 500 ? 500 : inputText.Length;
+            var scanLength = ClampUtf16Boundary(inputText, 500);
             var sample = scanLength == inputText.Length ? inputText : inputText.Substring(0, scanLength);
             var stripped = StripRegex.Replace(sample, string.Empty);
             if (string.IsNullOrEmpty(stripped)) return 0;
@@ -1826,4 +1845,3 @@ namespace OpenccNetLib
         #endregion
     }
 }
-
