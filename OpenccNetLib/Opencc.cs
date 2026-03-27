@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
@@ -151,6 +151,33 @@ namespace OpenccNetLib
         private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
             new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
 
+        private const int CachedStringBuilderTrimThreshold = 64 * 1024;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static StringBuilder RentCachedStringBuilder(int capacity)
+        {
+            var sb = StringBuilderCache.Value;
+            if (sb.Capacity > CachedStringBuilderTrimThreshold && capacity < (CachedStringBuilderTrimThreshold >> 1))
+            {
+                sb = new StringBuilder(Math.Max(1024, capacity));
+                StringBuilderCache.Value = sb;
+                return sb;
+            }
+
+            sb.Clear();
+            sb.EnsureCapacity(capacity);
+            return sb;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string GetCachedStringAndMaybeTrim(StringBuilder sb)
+        {
+            var text = sb.ToString();
+            if (sb.Capacity > CachedStringBuilderTrimThreshold)
+                StringBuilderCache.Value = new StringBuilder(1024);
+
+            return text;
+        }
         #region Config Enum Helpers Region
 
         /// <summary>
@@ -1063,9 +1090,11 @@ namespace OpenccNetLib
                 for (var i = 0; i < splitRanges.Count; i++)
                 {
                     var r = splitRanges[i];
-                    sb.Append(ConvertByUnion(
+                    ConvertByUnionInto(
+                        sb,
                         text.AsSpan(r.Start, r.Length),
-                        dictionaries, union));
+                        dictionaries,
+                        union);
                 }
 
                 return sb.ToString();
@@ -1085,9 +1114,11 @@ namespace OpenccNetLib
                 for (var i = chunk.FirstRange; i < end; i++)
                 {
                     var r = splitRanges[i];
-                    sbPart.Append(ConvertByUnion(
+                    ConvertByUnionInto(
+                        sbPart,
                         text.AsSpan(r.Start, r.Length),
-                        dictionaries, union));
+                        dictionaries,
+                        union);
                 }
 
                 parts[cIdx] = sbPart.ToString();
@@ -1160,12 +1191,30 @@ namespace OpenccNetLib
                 case 1 when IsDelimiter(textSpan[0]): return textSpan.ToString();
             }
 
-            var sb = StringBuilderCache.Value;
-            sb.Clear();
-            sb.EnsureCapacity(n * 2 + (n >> 4));
+            var sb = RentCachedStringBuilder(n * 2 + (n >> 4));
+            ConvertByUnionInto(sb, textSpan, dictionaries, union);
+            return GetCachedStringAndMaybeTrim(sb);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ConvertByUnionInto(
+            StringBuilder sb,
+            ReadOnlySpan<char> textSpan,
+            DictWithMaxLength[] dictionaries,
+            StarterUnion union)
+        {
+            var n = textSpan.Length;
+            if (n == 0)
+                return;
+
+            if (n == 1 && IsDelimiter(textSpan[0]))
+            {
+                sb.Append(textSpan[0]);
+                return;
+            }
 
             var i = 0;
-            var keyBuffer = ArrayPool<char>.Shared.Rent(union.GlobalCap);
+            var keyBuffer = ArrayPool<char>.Shared.Rent(Math.Max(1, union.GlobalCap));
 
             try
             {
@@ -1175,24 +1224,13 @@ namespace OpenccNetLib
                     var hasSecond = i + 1 < n;
                     var c1 = hasSecond ? textSpan[i + 1] : '\0';
 
-                    // Grapheme step: BMP=1, surrogate pair=2
-                    // var step = char.IsHighSurrogate(c0) && remaining.Length > 1 && char.IsLowSurrogate(remaining[1])
-                    //     ? 2
-                    //     : 1;
-                    // var step = (uint)(c0 - 0xD800) <= 0x03FF && hasSecond && (uint)(c1 - 0xDC00) <= 0x03FF ? 2 : 1;
-
-                    // union.Get(c0, out var cap, out var lenMaskAll, out var unionMinLen);
-                    // CHANGED: ask StarterUnion for step (starterUnits), presence, and masks.
                     union.GetAt(c0, c1, hasSecond,
                         out var step, out var hasStarter,
                         out var cap, out var lenMaskAll, out var unionMinLen);
 
-                    // Upper bound: dict cap, remaining input, and caller max
                     var remaining = n - i;
-                    // var tryMax = Math.Min(Math.Min(maxWordLength, remaining), cap);
                     var tryMax = Math.Min(cap, remaining);
 
-                    // No possible match? (no entries, or entries longer than we can take)
                     if (!hasStarter || cap == 0 || unionMinLen == 0 || unionMinLen > tryMax)
                     {
                         sb.Append(c0);
@@ -1201,7 +1239,6 @@ namespace OpenccNetLib
                         continue;
                     }
 
-                    // Is there any candidate longer than the current grapheme size?
                     bool hasLonger;
                     if (tryMax < 64)
                     {
@@ -1210,14 +1247,9 @@ namespace OpenccNetLib
                     }
                     else
                     {
-                        // If tryMax >= 64 we can’t trim the mask cheaply → just check shift
                         hasLonger = lenMaskAll >> step != 0UL;
                     }
 
-                    // Single-grapheme fast path when:
-                    //  - there is a length==step candidate (bit set), AND
-                    //  - there's no longer candidate to prefer, AND
-                    //  - step >= minLen (NEW: respect lower bound)
                     if (!hasLonger &&
                         step >= unionMinLen &&
                         ((lenMaskAll >> (step - 1)) & 1UL) != 0UL)
@@ -1242,23 +1274,16 @@ namespace OpenccNetLib
                         }
                     }
 
-                    // General longest-first search, narrowed to [minLen … tryMax]
                     string bestMatch = null;
                     var bestLen = 0;
 
-                    // Copy once at max candidate length
-                    // (We still need a copy because dict keys are strings)
                     textSpan.Slice(i, tryMax).CopyTo(keyBuffer);
-
-                    // CHANGED: enforce lower bound = max(unionMinLen, step)
-                    //  - ensures we never test len < step (e.g., len==1 for astral starters)
-                    //  - len==1 for astrals is already masked out, but this makes it explicit and self-documenting
                     var lower = unionMinLen > step ? unionMinLen : step;
 
                     for (var len = tryMax; len >= lower; --len)
                     {
                         if (len <= 64 && ((lenMaskAll >> (len - 1)) & 1UL) == 0UL)
-                            continue; // impossible length per mask
+                            continue;
 
                         string key = null;
 
@@ -1285,8 +1310,7 @@ namespace OpenccNetLib
                     }
                     else
                     {
-                        // Reuse the precomputed step and c1 — no need to recompute
-                        sb.Append(textSpan[i]);
+                        sb.Append(c0);
                         if (step == 2) sb.Append(c1);
                         i += step;
                     }
@@ -1298,8 +1322,6 @@ namespace OpenccNetLib
             {
                 ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
             }
-
-            return sb.ToString();
         }
 
         /// <summary>
@@ -1340,9 +1362,7 @@ namespace OpenccNetLib
             if (textLen == 1 && IsDelimiter(text[0]))
                 return text.ToString();
 
-            var sb = StringBuilderCache.Value;
-            sb.Clear();
-            sb.EnsureCapacity(textLen * 2 + (textLen >> 4));
+            var sb = RentCachedStringBuilder(textLen * 2 + (textLen >> 4));
 
             var i = 0;
 
@@ -1708,42 +1728,42 @@ namespace OpenccNetLib
 
             try
             {
-                switch (Config)
+                switch (_configId)
                 {
-                    case "s2t":
+                    case OpenccConfig.S2T:
                         return S2T(inputText, punctuation);
-                    case "s2tw":
+                    case OpenccConfig.S2Tw:
                         return S2Tw(inputText, punctuation);
-                    case "s2twp":
+                    case OpenccConfig.S2Twp:
                         return S2Twp(inputText, punctuation);
-                    case "s2hk":
+                    case OpenccConfig.S2Hk:
                         return S2Hk(inputText, punctuation);
-                    case "t2s":
+                    case OpenccConfig.T2S:
                         return T2S(inputText, punctuation);
-                    case "t2tw":
+                    case OpenccConfig.T2Tw:
                         return T2Tw(inputText);
-                    case "t2twp":
+                    case OpenccConfig.T2Twp:
                         return T2Twp(inputText);
-                    case "t2hk":
+                    case OpenccConfig.T2Hk:
                         return T2Hk(inputText);
-                    case "tw2s":
+                    case OpenccConfig.Tw2S:
                         return Tw2S(inputText, punctuation);
-                    case "tw2sp":
+                    case OpenccConfig.Tw2Sp:
                         return Tw2Sp(inputText, punctuation);
-                    case "tw2t":
+                    case OpenccConfig.Tw2T:
                         return Tw2T(inputText);
-                    case "tw2tp":
+                    case OpenccConfig.Tw2Tp:
                         return Tw2Tp(inputText);
-                    case "hk2s":
+                    case OpenccConfig.Hk2S:
                         return Hk2S(inputText, punctuation);
-                    case "hk2t":
+                    case OpenccConfig.Hk2T:
                         return Hk2T(inputText);
-                    case "jp2t":
+                    case OpenccConfig.Jp2T:
                         return Jp2T(inputText);
-                    case "t2jp":
+                    case OpenccConfig.T2Jp:
                         return T2Jp(inputText);
                     default:
-                        return inputText; // Return the original input
+                        return inputText;
                 }
             }
             catch (Exception e)
@@ -1788,7 +1808,8 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(inputText)) return 0;
 
             var scanLength = inputText.Length > 500 ? 500 : inputText.Length;
-            var stripped = StripRegex.Replace(inputText.Substring(0, scanLength), string.Empty);
+            var sample = scanLength == inputText.Length ? inputText : inputText.Substring(0, scanLength);
+            var stripped = StripRegex.Replace(sample, string.Empty);
             if (string.IsNullOrEmpty(stripped)) return 0;
 
             var stringInfo = new StringInfo(stripped);
@@ -1805,3 +1826,4 @@ namespace OpenccNetLib
         #endregion
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 
 namespace OpenccNetLib
@@ -145,6 +145,10 @@ namespace OpenccNetLib
         private readonly ConcurrentDictionary<UnionKey, StarterUnion> _unionCacheByKey =
             new ConcurrentDictionary<UnionKey, StarterUnion>();
 
+        // Cache the dictionary arrays for each union slot within this cache instance.
+        private readonly ConcurrentDictionary<UnionKey, DictWithMaxLength[]> _dictArrayCacheByKey =
+            new ConcurrentDictionary<UnionKey, DictWithMaxLength[]>();
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ConversionPlanCache"/> class.
         /// </summary>
@@ -188,6 +192,7 @@ namespace OpenccNetLib
         {
             _planCache.Clear();
             _unionCacheByKey.Clear();
+            _dictArrayCacheByKey.Clear();
         }
 
         // ---- Plan building ----------------------------------------------------------------------
@@ -400,7 +405,7 @@ namespace OpenccNetLib
         /// </threadsafety>
         private StarterUnion GetOrAddUnionFor(DictionaryMaxlength d, UnionKey key, out DictWithMaxLength[] dicts)
         {
-            dicts = BuildDicts(d, key);
+            dicts = _dictArrayCacheByKey.GetOrAdd(key, _ => BuildDicts(d, key));
 
             if (_unionCacheByKey.TryGetValue(key, out var existing))
                 return existing;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -414,7 +414,7 @@ namespace OpenccNetLib
                 using (var decompressionStream = new DecompressionStream(inputStream))
                 {
                     var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(decompressionStream);
-                    return instance;
+                    return EnsureDerivedMetadata(instance);
                 }
             }
             catch (Exception ex)
@@ -438,9 +438,11 @@ namespace OpenccNetLib
                 if (!File.Exists(fullPath))
                     throw new FileNotFoundException($"JSON dictionary file not found: {fullPath}");
 
-                var json = File.ReadAllText(fullPath);
-                var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(json);
-                return instance;
+                using (var stream = File.OpenRead(fullPath))
+                {
+                    var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(stream);
+                    return EnsureDerivedMetadata(instance);
+                }
             }
             catch (Exception ex)
             {
@@ -652,8 +654,8 @@ namespace OpenccNetLib
             {
                 var lineSpan = line.AsSpan().Trim();
 
-                // Skip empty lines, whitespace-only lines, or comment lines
-                if (lineSpan.IsEmpty || lineSpan.IsWhiteSpace() || (lineSpan.Length > 0 && lineSpan[0] == '#'))
+                // Skip empty lines or comment lines
+                if (lineSpan.IsEmpty || lineSpan[0] == '#')
                 {
                     continue;
                 }
@@ -680,12 +682,12 @@ namespace OpenccNetLib
                 keySpan = keySpan.Trim();
                 valueSpan = valueSpan.Trim();
 
+                // Only add if both key and value are non-empty after trimming
+                if (keySpan.IsEmpty || valueSpan.IsEmpty) continue;
+
                 // Convert ReadOnlySpan<char> to string ONLY when storing in the dictionary
                 var key = keySpan.ToString();
                 var value = valueSpan.ToString();
-
-                // Only add if both key and value are non-empty after trimming
-                if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value)) continue;
                 dict[key] = value;
 
                 var keyLength = key.Length;
@@ -760,7 +762,7 @@ namespace OpenccNetLib
             if (d?.Dict == null || d.Dict.Count == 0)
                 return;
 
-            var map = new Dictionary<string, ulong>(StringComparer.Ordinal);
+            var map = new Dictionary<string, ulong>(Math.Min(d.Dict.Count, 1024), StringComparer.Ordinal);
 
             foreach (var key in d.Dict.Keys)
             {
@@ -784,6 +786,95 @@ namespace OpenccNetLib
             }
 
             d.StarterLenMask = map;
+        }
+
+        /// <summary>
+        /// Ensures all derived per-dictionary metadata needed by hot lookup paths
+        /// exists after deserialization from JSON/CBOR/Zstd.
+        /// </summary>
+        private static DictionaryMaxlength EnsureDerivedMetadata(DictionaryMaxlength instance)
+        {
+            if (instance == null)
+                throw new InvalidOperationException("Deserialized dictionary instance was null.");
+
+            EnsureDictionaryMetadata(instance.st_characters);
+            EnsureDictionaryMetadata(instance.st_phrases);
+            EnsureDictionaryMetadata(instance.ts_characters);
+            EnsureDictionaryMetadata(instance.ts_phrases);
+            EnsureDictionaryMetadata(instance.tw_phrases);
+            EnsureDictionaryMetadata(instance.tw_phrases_rev);
+            EnsureDictionaryMetadata(instance.tw_variants);
+            EnsureDictionaryMetadata(instance.tw_variants_rev);
+            EnsureDictionaryMetadata(instance.tw_variants_rev_phrases);
+            EnsureDictionaryMetadata(instance.hk_variants);
+            EnsureDictionaryMetadata(instance.hk_variants_rev);
+            EnsureDictionaryMetadata(instance.hk_variants_rev_phrases);
+            EnsureDictionaryMetadata(instance.jps_characters);
+            EnsureDictionaryMetadata(instance.jps_phrases);
+            EnsureDictionaryMetadata(instance.jp_variants);
+            EnsureDictionaryMetadata(instance.jp_variants_rev);
+            EnsureDictionaryMetadata(instance.st_punctuations);
+            EnsureDictionaryMetadata(instance.ts_punctuations);
+
+            return instance;
+        }
+
+        /// <summary>
+        /// Rebuilds derived metadata for a single dictionary when it is missing or incomplete.
+        /// </summary>
+        private static void EnsureDictionaryMetadata(DictWithMaxLength d)
+        {
+            if (d == null)
+                return;
+
+            var dict = d.Dict;
+            if (dict == null || dict.Count == 0)
+            {
+                d.Dict = dict ?? new Dictionary<string, string>(StringComparer.Ordinal);
+                d.MaxLength = 0;
+                d.MinLength = 0;
+                d.SetLengthMetadata(0UL, null);
+                d.StarterLenMask = null;
+                return;
+            }
+
+            var needsLengthMetadata = d.MaxLength <= 0 || d.MinLength <= 0 || (d.LengthMask == 0UL && d.MaxLength > 0);
+            if (needsLengthMetadata)
+            {
+                var maxLength = 0;
+                var minLength = int.MaxValue;
+                var lengthMask = 0UL;
+                HashSet<int> longLengths = null;
+
+                foreach (var key in dict.Keys)
+                {
+                    if (string.IsNullOrEmpty(key))
+                        continue;
+
+                    var keyLength = key.Length;
+                    if (keyLength > maxLength) maxLength = keyLength;
+                    if (keyLength < minLength) minLength = keyLength;
+
+                    if (keyLength <= 64)
+                    {
+                        lengthMask |= 1UL << (keyLength - 1);
+                    }
+                    else
+                    {
+                        if (longLengths == null)
+                            longLengths = new HashSet<int>();
+
+                        longLengths.Add(keyLength);
+                    }
+                }
+
+                d.MaxLength = maxLength;
+                d.MinLength = minLength == int.MaxValue ? 0 : minLength;
+                d.SetLengthMetadata(lengthMask, longLengths);
+            }
+
+            if (d.StarterLenMask == null || d.StarterLenMask.Count == 0)
+                BuildStarterLenMask(d);
         }
 
         /// <summary>
@@ -867,8 +958,10 @@ namespace OpenccNetLib
             using (var decompressor = new Decompressor())
             {
                 var jsonBytes = decompressor.Unwrap(compressed);
-                return JsonSerializer.Deserialize<DictionaryMaxlength>(jsonBytes);
+                var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(jsonBytes);
+                return EnsureDerivedMetadata(instance);
             }
         }
     }
 }
+
