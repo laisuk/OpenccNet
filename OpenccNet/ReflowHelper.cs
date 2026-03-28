@@ -540,18 +540,32 @@ public static class ReflowHelper
                 buffer.Append(stripped);
                 dialogState.Update(stripped);
 
-                // Allow flush if:
-                // - dialog is closed after this line
-                // - punctuation before closer is a strong end
-                // - and either:
-                //     (a) buffer has no bracket issue, OR
-                //     (b) buffer has bracket issue but this line itself is the culprit (OCR/typo),
-                //        so allow a dialog-end flush anyway.
+                // Allow flush when we reach a reliable dialog boundary.
+                //
+                // Conditions:
+                // - Dialog is logically closed after this line (no pending open quotes).
+                // - The character before the dialog closer is a *strong sentence end*
+                //   (e.g. 。！？), ensuring this is a complete sentence, not just a quoted fragment.
+                //
+                // Additional tolerance for imperfect input (OCR / EPUB / PDF):
+                //     (a) Normal case: buffer has no bracket/quote imbalance.
+                //     (b) Local corruption: current line itself has bracket issues
+                //         → treat it as the source of error and allow flush to prevent propagation.
+                //     (c) Fallback (hot-path safe):
+                //         even if imbalance persists, allow flush when:
+                //         - we already have a strong sentence end, AND
+                //         - buffer is sufficiently long (> 60 chars),
+                //         → prevents runaway buffer growth caused by missing quotes or page splits.
+                //
+                // Important:
+                // - DO NOT flush on dialog closer alone.
+                //   A closer without strong end (e.g. “不適合換行”) is often just a phrase,
+                //   not a complete sentence, and must not trigger a split.
                 if (!dialogState.IsUnclosed &&
                     punctBeforeCloserIsStrong &&
-                    (!bufferHasBracketIssue || lineHasBracketIssue))
+                    (!bufferHasBracketIssue || lineHasBracketIssue || buffer.Length > 60))
                 {
-                    segments.Add(buffer.ToString()); // new buffer value, not old bufferText
+                    segments.Add(buffer.ToString()); // use updated buffer content
                     buffer.Clear();
                     dialogState.Reset();
                 }
