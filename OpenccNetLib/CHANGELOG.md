@@ -10,7 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Update dictionary
+- Update dictionary data
 
 ---
 

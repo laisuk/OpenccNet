@@ -7,6 +7,15 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.4.2-beta1] - 2026-03-30
+
+### Changed
+
+- Update dictionary data
+- Optimized ReflowHelper
+
+---
+
 ## [1.4.1] - 2026-01-25
 
 ### Changed
