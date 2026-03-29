@@ -554,7 +554,7 @@ public static class ReflowHelper
                 //     (c) Fallback (hot-path safe):
                 //         even if imbalance persists, allow flush when:
                 //         - we already have a strong sentence end, AND
-                //         - buffer is sufficiently long (> 60 chars),
+                //         - buffer is sufficiently long (> 120 chars),
                 //         → prevents runaway buffer growth caused by missing quotes or page splits.
                 //
                 // Important:
@@ -563,7 +563,7 @@ public static class ReflowHelper
                 //   not a complete sentence, and must not trigger a split.
                 if (!dialogState.IsUnclosed &&
                     punctBeforeCloserIsStrong &&
-                    (!bufferHasBracketIssue || lineHasBracketIssue || buffer.Length > 60))
+                    (!bufferHasBracketIssue || lineHasBracketIssue || buffer.Length > 120))
                 {
                     segments.Add(buffer.ToString()); // use updated buffer content
                     buffer.Clear();
