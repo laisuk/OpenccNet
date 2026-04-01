@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Micro-optimization of DictionaryLib and OpenCC::ConvertByUnion
 - Update dictionary data
 
 ---

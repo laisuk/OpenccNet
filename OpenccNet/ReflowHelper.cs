@@ -658,7 +658,7 @@ public static class ReflowHelper
                 return false;
 
             // Reject headings with unclosed brackets (「『“”( 等未配對)
-            if (PunctSets.HasUnclosedBracket(s))
+            if (PunctSets.HasUnclosedBracket(s) || PunctSets.HasUnclosedDialogQuote(s))
                 return false;
 
             // last non-whitespace (more robust than s[^1])

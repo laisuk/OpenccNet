@@ -1489,10 +1489,10 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Splits the input span into contiguous ranges of non-delimiter and delimiter segments.
+        /// Splits the input span into contiguous ranges of text and delimiter segments.
         /// <para>
-        /// This implementation uses a fast bit-level <see cref="IsDelimiter"/> check
-        /// for compatibility and performance on .NET Standard 2.0.
+        /// This implementation uses a fast bitset-based <see cref="IsDelimiter"/> check
+        /// for good performance and .NET Standard 2.0 compatibility.
         /// </para>
         /// </summary>
         /// <param name="input">The text span to segment.</param>

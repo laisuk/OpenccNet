@@ -13,11 +13,23 @@ internal static class PunctSets
     private const string DialogOpeners = "“‘「『﹁﹃";
     private const string DialogClosers = "”’」』﹂﹄";
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal static bool IsDialogOpener(char ch) => DialogOpeners.Contains(ch);
+    private static readonly bool[] DialogOpenerTable = new bool[char.MaxValue + 1];
+    private static readonly bool[] DialogCloserTable = new bool[char.MaxValue + 1];
+
+    static PunctSets()
+    {
+        foreach (var c in DialogOpeners)
+            DialogOpenerTable[c] = true;
+
+        foreach (var c in DialogClosers)
+            DialogCloserTable[c] = true;
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool IsDialogCloser(char ch) => DialogClosers.Contains(ch);
+    internal static bool IsDialogOpener(char ch) => DialogOpenerTable[ch];
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsDialogCloser(char ch) => DialogCloserTable[ch];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static bool IsQuoteCloser(char ch) => IsDialogCloser(ch);
@@ -274,6 +286,68 @@ internal static class PunctSets
             if (rented is not null)
                 ArrayPool<char>.Shared.Return(rented);
         }
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool HasUnclosedDialogQuote(ReadOnlySpan<char> s)
+    {
+        Span<byte> balance = stackalloc byte[6]; // fixed size, no heap
+
+        foreach (var ch in s)
+        {
+            switch (ch)
+            {
+                // --- Openers ---
+                case '“': balance[0]++; break;
+                case '‘': balance[1]++; break;
+                case '「': balance[2]++; break;
+                case '『': balance[3]++; break;
+                case '﹁': balance[4]++; break;
+                case '﹃': balance[5]++; break;
+
+                // --- Closers ---
+                case '”':
+                case '〞':
+                case '〟':
+                    if (balance[0] > 0) balance[0]--;
+                    else return true;
+                    break;
+
+                case '’':
+                    if (balance[1] > 0) balance[1]--;
+                    else return true;
+                    break;
+
+                case '」':
+                    if (balance[2] > 0) balance[2]--;
+                    else return true;
+                    break;
+
+                case '』':
+                    if (balance[3] > 0) balance[3]--;
+                    else return true;
+                    break;
+
+                case '﹂':
+                    if (balance[4] > 0) balance[4]--;
+                    else return true;
+                    break;
+
+                case '﹄':
+                    if (balance[5] > 0) balance[5]--;
+                    else return true;
+                    break;
+            }
+        }
+
+        // any unclosed opener remains
+        for (var i = 0; i < 6; i++)
+        {
+            if (balance[i] > 0)
+                return true;
+        }
+
+        return false;
     }
 
     // -------------------------
