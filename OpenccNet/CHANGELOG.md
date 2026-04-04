@@ -14,6 +14,11 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 - Update dictionary data
 - Optimized ReflowHelper
 
+### Fixed
+
+- Fixed XLSX conversion to also process worksheet inline strings (t="inlineStr"), preventing missed text conversion in
+  hybrid workbooks that contain both shared strings and inline strings.
+
 ---
 
 ## [1.4.1] - 2026-01-25
