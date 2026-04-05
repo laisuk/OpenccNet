@@ -13,6 +13,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Micro-optimization of DictionaryLib and OpenCC::ConvertByUnion
 - Update dictionary data
 
+- ### Fixed
+
+- Fixed `XLSX` conversion to also process worksheet inline strings (`t="inlineStr"`), preventing missed text conversion in
+  hybrid workbooks that contain both `shared strings` and `inline strings`.
+
 ---
 
 ## [1.4.1] - 2026-01-25
