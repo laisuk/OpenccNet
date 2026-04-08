@@ -21,6 +21,9 @@ jobs:
           - os: windows-latest
             rid: win-x86
             ext: zip
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+            ext: tar.gz
           - os: ubuntu-latest
             rid: linux-x64
             ext: tar.gz
