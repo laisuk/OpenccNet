@@ -12,12 +12,13 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 ### Changed
 
 - Update dictionary data
-- Optimized ReflowHelper
+- Optimized `ReflowHelper`
+- Update `OpenccNetLib` to v1.4.2
 
 ### Fixed
 
-- Fixed XLSX conversion to also process worksheet inline strings (t="inlineStr"), preventing missed text conversion in
-  hybrid workbooks that contain both shared strings and inline strings.
+- Fixed XLSX conversion to also process worksheet inline strings (`t="inlineStr"`), preventing missed text conversion in
+  hybrid workbooks that contain both `shared strings` and `inline strings`.
 
 ---
 
