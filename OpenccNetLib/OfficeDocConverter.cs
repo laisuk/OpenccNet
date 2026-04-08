@@ -144,6 +144,14 @@ namespace OpenccNetLib
     /// </remarks>
     public static class OfficeDocConverter
     {
+        private static readonly Regex XlsxInlineStringCellRegex = new Regex(
+            "<c\\b(?=[^>]*\\bt=(?:\"inlineStr\"|'inlineStr'))[^>]*>.*?</c>",
+            RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        private static readonly Regex XlsxTextNodeRegex = new Regex(
+            "(<t\\b[^>]*>)(.*?)(</t>)",
+            RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
         /// <summary>
         /// Set of logical format names supported by this converter.
         /// </summary>
@@ -969,7 +977,7 @@ namespace OpenccNetLib
 
                     Dictionary<string, string> fontMap = null;
 
-                    if (keepFont)
+                    if (keepFont && ShouldMaskFonts(format, relativePath))
                     {
                         string pattern = null;
 
@@ -1020,8 +1028,16 @@ namespace OpenccNetLib
                         }
                     }
 
-                    // Opencc conversion
-                    var convertedXml = converter.Convert(xmlContent, punctuation);
+                    string convertedXml;
+
+                    if (format == OfficeFormat.Xlsx)
+                    {
+                        convertedXml = ConvertXlsxXmlPart(xmlContent, relativePath, converter, punctuation);
+                    }
+                    else
+                    {
+                        convertedXml = converter.Convert(xmlContent, punctuation);
+                    }
 
                     // Restore fonts
                     if (fontMap != null)
@@ -1168,8 +1184,8 @@ namespace OpenccNetLib
                     return new List<string> { Path.Combine("word", "document.xml") };
 
                 case "xlsx":
-                    // Shared string table (cell text).
-                    return new List<string> { Path.Combine("xl", "sharedStrings.xml") };
+                    // Shared strings plus worksheet XML parts for inline-string cells.
+                    return GetXlsxTargetXmlPaths(tempDir);
 
                 case "pptx":
                     // All slide/notes/layout/master/comment XML parts.
@@ -1189,6 +1205,70 @@ namespace OpenccNetLib
                     // Unsupported or unknown format.
                     return new List<string>();
             }
+        }
+
+        private static List<string> GetXlsxTargetXmlPaths(string tempDir)
+        {
+            var list = new List<string>();
+
+            var sharedStringsPath = Path.Combine(tempDir, "xl", "sharedStrings.xml");
+            if (File.Exists(sharedStringsPath))
+                list.Add(Path.Combine("xl", "sharedStrings.xml"));
+
+            var worksheetsDir = Path.Combine(tempDir, "xl", "worksheets");
+            if (!Directory.Exists(worksheetsDir))
+                return list;
+
+            var files = Directory.GetFiles(worksheetsDir, "*.xml", SearchOption.AllDirectories);
+            for (var i = 0; i < files.Length; i++)
+                list.Add(GetRelativePath(tempDir, files[i]));
+
+            return list;
+        }
+
+        private static bool ShouldMaskFonts(OfficeFormat format, string relativePath)
+        {
+            if (format != OfficeFormat.Xlsx)
+                return true;
+
+            var normalizedPath = relativePath.Replace('\\', '/');
+            return string.Equals(normalizedPath, "xl/sharedStrings.xml", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ConvertXlsxXmlPart(
+            string xmlContent,
+            string relativePath,
+            Opencc converter,
+            bool punctuation)
+        {
+            var normalizedPath = relativePath.Replace('\\', '/');
+
+            if (string.Equals(normalizedPath, "xl/sharedStrings.xml", StringComparison.OrdinalIgnoreCase))
+                return converter.Convert(xmlContent, punctuation);
+
+            if (normalizedPath.StartsWith("xl/worksheets/", StringComparison.OrdinalIgnoreCase) &&
+                normalizedPath.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+            {
+                return XlsxInlineStringCellRegex.Replace(xmlContent, delegate(Match cellMatch)
+                {
+                    var cellXml = cellMatch.Value;
+
+                    return XlsxTextNodeRegex.Replace(cellXml, delegate(Match textMatch)
+                    {
+                        var openTag = textMatch.Groups[1].Value;
+                        var innerText = textMatch.Groups[2].Value;
+                        var closeTag = textMatch.Groups[3].Value;
+
+                        if (string.IsNullOrEmpty(innerText))
+                            return textMatch.Value;
+
+                        var convertedText = converter.Convert(innerText, punctuation);
+                        return openTag + convertedText + closeTag;
+                    });
+                });
+            }
+
+            return xmlContent;
         }
 
         /// <summary>

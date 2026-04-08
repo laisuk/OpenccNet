@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using PeterO.Cbor;
 using OpenccNetLib;
 
 namespace OpenccNetTests;
@@ -39,6 +40,46 @@ public class DictionaryLibTests
         Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
     }
 
+
+    [TestMethod]
+    public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility()
+    {
+        var legacyPath = Path.Combine(OutputDir, "legacy_dict_missing_metadata.cbor");
+        var currentBytes = DictionaryLib.ToCborBytes();
+        var root = CBORObject.DecodeFromBytes(currentBytes, CBOREncodeOptions.Default);
+
+        foreach (var key in root.Keys)
+        {
+            var dictObject = root[key];
+            dictObject.Remove(CBORObject.FromObject("maxLength"));
+            dictObject.Remove(CBORObject.FromObject("minLength"));
+            dictObject.Remove(CBORObject.FromObject("lengthMask"));
+            dictObject.Remove(CBORObject.FromObject("longLengths"));
+            dictObject.Remove(CBORObject.FromObject("starterLenMask"));
+        }
+
+        File.WriteAllBytes(legacyPath, root.EncodeToBytes());
+
+        var loaded = DictionaryLib.FromCbor(legacyPath);
+        Assert.IsNotNull(loaded);
+        Assert.IsGreaterThan(0, loaded.st_characters.MaxLength, "MaxLength should be rebuilt for legacy CBOR.");
+        Assert.IsGreaterThan(0, loaded.st_characters.MinLength, "MinLength should be rebuilt for legacy CBOR.");
+        Assert.AreNotEqual((ulong)0, loaded.st_characters.LengthMask, "LengthMask should be rebuilt for legacy CBOR.");
+        Assert.IsTrue(loaded.st_characters.StarterLenMask is { Count: > 0 },
+            "StarterLenMask should be rebuilt for legacy CBOR.");
+
+        Opencc.UseCustomDictionary(loaded);
+        try
+        {
+            var opencc = new Opencc("s2t");
+            Assert.AreEqual("漢字", opencc.Convert("汉字"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
+    }
+
     [TestMethod]
     public void TestSerialization()
     {
@@ -68,8 +109,8 @@ public class DictionaryLibTests
         string jsonSnippet;
         using (var reader = new StreamReader(jsonPath))
         {
-            char[] buffer = new char[4096];
-            int read = reader.ReadBlock(buffer, 0, buffer.Length);
+            var buffer = new char[4096];
+            var read = reader.ReadBlock(buffer, 0, buffer.Length);
             jsonSnippet = new string(buffer, 0, read);
         }
 
@@ -85,7 +126,7 @@ public class DictionaryLibTests
         Assert.IsNotNull(loaded, "Deserialized dictionary should not be null.");
         Assert.HasCount(dict.ts_characters.Dict.Count, loaded.ts_characters.Dict);
     }
-    
+
     [TestMethod]
     public void TestSerializationUnescaped_NoSurrogates()
     {
@@ -97,8 +138,9 @@ public class DictionaryLibTests
         var n = sr.ReadBlock(buf, 0, buf.Length);
         var head = new string(buf, 0, n);
 
-        Assert.IsFalse(head.Contains("\\uD8") || head.Contains("\\uDB") || head.Contains("\\uDC") || head.Contains("\\uDD"),
-            "Unescaped JSON should not contain surrogate \\uD8xx/\\uDBxx/\\uDCxx/\\uDDxx sequences.");
+        Assert.IsFalse(
+            head.Contains("\\uD8") || head.Contains("\\uDB") || head.Contains("\\uDC") || head.Contains("\\uDD"),
+            @"Unescaped JSON should not contain surrogate \uD8xx/\uDBxx/\uDCxx/\uDDxx sequences.");
     }
 
     [TestMethod]

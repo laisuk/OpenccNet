@@ -878,8 +878,8 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads <see cref="DictionaryMaxlength"/> from a CBOR file and rebuilds
-        /// non-serialized length metadata (Min/Max/LengthMask) for all dictionaries.
+        /// Loads <see cref="DictionaryMaxlength"/> from a CBOR file and ensures
+        /// all derived dictionary metadata is present before returning the instance.
         /// </summary>
         /// <param name="relativePath">
         /// Relative path under <see cref="AppContext.BaseDirectory"/> to the CBOR file.
@@ -905,10 +905,9 @@ namespace OpenccNetLib
             var cbor = CBORObject.DecodeFromBytes(bytes, CBOREncodeOptions.Default);
             var instance = cbor.ToObject<DictionaryMaxlength>();
 
-            // IMPORTANT: rebuild derived fields not present in serialized form
-            // RebuildAllLengthMetadata(instance);
-
-            return instance;
+            // Normalize older or externally-generated payloads that may not carry
+            // all derived lookup metadata required by the hot conversion paths.
+            return EnsureDerivedMetadata(instance);
         }
 
         /// <summary>
