@@ -41,7 +41,7 @@ namespace OpenccNetTests
 
             // Assert 基本檢查
             Assert.IsNotNull(outputBytes, "Output bytes should not be null.");
-            Assert.AreNotEqual(0, outputBytes.Length, "Output bytes should not be empty.");
+            Assert.IsNotEmpty(outputBytes, "Output bytes should not be empty.");
 
             // Assert: DOCX 容器仍為合法 ZIP
             using var ms = new MemoryStream(outputBytes);
@@ -85,7 +85,7 @@ namespace OpenccNetTests
             Assert.IsTrue(File.Exists(outputPath), "Converted DOCX file was not created.");
 
             var outBytes = File.ReadAllBytes(outputPath);
-            Assert.AreNotEqual(0, outBytes.Length, "Converted DOCX file should not be empty.");
+            Assert.IsNotEmpty(outBytes, "Converted DOCX file should not be empty.");
 
             using var ms = new MemoryStream(outBytes);
             using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
@@ -110,7 +110,7 @@ namespace OpenccNetTests
 
             // Assert: basic checks
             Assert.IsNotNull(outputBytes, "Output bytes should not be null.");
-            Assert.AreNotEqual(0, outputBytes.Length, "Output bytes should not be empty.");
+            Assert.IsNotEmpty(outputBytes, "Output bytes should not be empty.");
 
             // Assert: container still valid ZIP
             using var ms = new MemoryStream(outputBytes);
