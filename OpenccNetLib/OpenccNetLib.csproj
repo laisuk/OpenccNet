@@ -30,8 +30,7 @@
             - Update Opencc dictionary data
             - Fixed XLSX conversion to also process worksheet inline strings (t="inlineStr"), preventing missed text conversion in
             hybrid workbooks that contain both shared strings and inline strings.
-
-            • No behavior changes; conversion results identical
+            - No behavior changes; core conversion results remain identical.
         </PackageReleaseNotes>
         <AssemblyVersion>1.4.2.0</AssemblyVersion>
         <FileVersion>1.4.2.0</FileVersion>

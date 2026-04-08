@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Micro-optimization of `DictionaryLib` and `OpenCC::ConvertByUnion` for improved throughput.
 - Updated bundled dictionary data.
+- No behavior changes; core conversion results remain identical.
 
 - This is the **last version that includes prebuilt dictionary data** (`dictionary_maxlength.cbor` / `.json`) inside the NuGet package.
 - Moving forward, `.zsd` files will serve as the **single source of truth** for dictionary data.
