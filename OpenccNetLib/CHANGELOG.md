@@ -6,17 +6,26 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.2-beta1] - 2026-03-20
+## [1.4.2] - 2026-04-08
 
 ### Changed
 
-- Micro-optimization of DictionaryLib and OpenCC::ConvertByUnion
-- Update dictionary data
+- Micro-optimization of `DictionaryLib` and `OpenCC::ConvertByUnion` for improved throughput.
+- Updated bundled dictionary data.
 
-- ### Fixed
+- This is the **last version that includes prebuilt dictionary data** (`dictionary_maxlength.cbor` / `.json`) inside the NuGet package.
+- Moving forward, `.zsd` files will serve as the **single source of truth** for dictionary data.
+- Users can generate `.cbor` / `.json` dictionary files via the `OpenccNet dictgen` CLI.
+- Public APIs supporting CBOR/JSON dictionary loading remain **fully unchanged and backward compatible**.
 
-- Fixed `XLSX` conversion to also process worksheet inline strings (`t="inlineStr"`), preventing missed text conversion in
-  hybrid workbooks that contain both `shared strings` and `inline strings`.
+### Fixed
+
+- Fixed `XLSX` conversion to process worksheet inline strings (`t="inlineStr"`), ensuring correct handling of hybrid workbooks containing both `shared strings` and `inline strings`.
+
+### Notes
+
+- This change prepares for a cleaner and more maintainable dictionary pipeline.
+- The next major version (planned **1.5.0**) may fully transition to CLI-generated dictionary assets and remove bundled data.
 
 ---
 
