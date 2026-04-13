@@ -802,25 +802,154 @@ public static class ReflowHelper
         return s[i..].ToString();
     }
 
+    // ------------------------------------------------------------
+    // Style-layer repeat collapse for PDF headings / title lines.
+    //
+    // Conceptually this emulates a regex like:
+    //
+    //    (.{4,10}?)\1{2,3}
+    //
+    // i.e. “a phrase of length 4–10 chars, repeated 3–4 times”,
+    // but implemented in a token- and phrase-aware way so we can
+    // correctly handle CJK titles and multi-word headings.
+    //
+    // This routine is intentionally conservative:
+    //   - It targets layout / styling noise (highlighted titles,
+    //     duplicated TOC entries, etc.).
+    //   - It avoids collapsing natural language like “哈哈哈哈哈哈”.
+    // ------------------------------------------------------------
     private static string CollapseRepeatedSegments(string line)
     {
         if (string.IsNullOrEmpty(line))
             return line;
 
-        // Split on whitespace into chunks (titles often have 1–3 parts)
+        // Split on whitespace into discrete tokens.
+        // Typical headings have 1–3 tokens; TOC / cover captions may have more.
         var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
             return line;
 
+        // 1) Phrase-level collapse:
+        //    Detect and collapse repeated *word sequences*, e.g.:
+        //
+        //    "背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟"
+        //      → "背负着一切的麒麟"
+        //
+        //    "（第一季大结局） （第一季大结局） （第一季大结局） （第一季大结局）"
+        //      → "（第一季大结局）"
+        //
+        parts = CollapseRepeatedWordSequences(parts);
+
+        // 2) Token-level collapse:
+        //    As a fallback, if an individual token itself is made of
+        //    a repeated substring (e.g. "AbcdAbcdAbcd"), collapse it:
+        //
+        //      "AbcdAbcdAbcd" → "Abcd"
+        //
+        //    This is carefully tuned so we do *not* destroy natural
+        //    short repeats such as "哈哈哈哈哈哈".
         for (var i = 0; i < parts.Length; i++)
         {
             parts[i] = CollapseRepeatedToken(parts[i]);
         }
 
-        // Re-join with a single space between tokens
+        // Re-join with a single space between tokens.
         return string.Join(" ", parts);
     }
 
+    /// <summary>
+    /// Collapses repeated sequences of tokens (phrases) within a line.
+    ///
+    /// This targets PDF-styled headings where the same phrase is rendered
+    /// 3–4 times for emphasis, for example:
+    ///
+    ///   「背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟 背负着一切的麒麟」
+    ///
+    /// The algorithm:
+    ///   - Scans for candidate phrases of length 1 to <c>maxPhraseLen</c> tokens.
+    ///   - If the same phrase occurs consecutively at least <c>minRepeats</c>
+    ///     times (default = 3), all repeats are collapsed into a single copy.
+    ///   - Prefix and suffix tokens are preserved.
+    ///
+    /// This is intentionally conservative to avoid collapsing normal text,
+    /// while effectively removing layout/styling repetition in headings.
+    /// </summary>
+    private static string[] CollapseRepeatedWordSequences(string[] parts)
+    {
+        const int minRepeats = 3; // minimum number of consecutive repeats required
+        const int maxPhraseLen = 8; // typical heading phrases are short
+
+        var n = parts.Length;
+        if (n < minRepeats)
+            return parts;
+
+        // Scan from left to right for any repeating phrase.
+        for (var start = 0; start < n; start++)
+        {
+            for (var phraseLen = 1; phraseLen <= maxPhraseLen && start + phraseLen <= n; phraseLen++)
+            {
+                // phrase = parts[start .. start+phraseLen-1]
+                var count = 1;
+
+                while (true)
+                {
+                    var nextStart = start + count * phraseLen;
+                    if (nextStart + phraseLen > n)
+                        break;
+
+                    var equal = true;
+                    for (var k = 0; k < phraseLen; k++)
+                    {
+                        if (parts[start + k].Equals(parts[nextStart + k], StringComparison.Ordinal)) continue;
+                        equal = false;
+                        break;
+                    }
+
+                    if (!equal)
+                        break;
+
+                    count++;
+                }
+
+                if (count < minRepeats) continue;
+                {
+                    // Build collapsed list:
+                    //   [prefix] + [one phrase] + [tail]
+                    var result = new List<string>(n - (count - 1) * phraseLen);
+
+                    // Prefix before the repeated phrase.
+                    for (var i = 0; i < start; i++)
+                        result.Add(parts[i]);
+
+                    // Single copy of the repeated phrase.
+                    for (var k = 0; k < phraseLen; k++)
+                        result.Add(parts[start + k]);
+
+                    // Tail after all repeats.
+                    var tailStart = start + count * phraseLen;
+                    for (var i = tailStart; i < n; i++)
+                        result.Add(parts[i]);
+
+                    return result.ToArray();
+                }
+            }
+        }
+
+        return parts;
+    }
+
+    /// <summary>
+    /// Collapses a single token if it is composed entirely of a repeated
+    /// substring, where the base unit is between 4 and 10 characters and
+    /// appears at least 3 times.
+    ///
+    /// Examples:
+    ///   "AbcdAbcdAbcd"      → "Abcd"
+    ///   "第一季大结局第一季大结局第一季大结局" → "第一季大结局"
+    ///
+    /// Very short units (length &lt; 4) are ignored on purpose to avoid
+    /// collapsing natural language patterns such as "哈哈哈哈哈哈".
+    /// </summary>
     private static string CollapseRepeatedToken(string token)
     {
         // Very short tokens or huge ones are unlikely to be styled repeats.
