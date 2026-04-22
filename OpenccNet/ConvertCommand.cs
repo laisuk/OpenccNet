@@ -101,9 +101,9 @@ internal static class ConvertCommand
     {
         try
         {
-            var inputStr = await ReadInputAsync(inputFile, inputEncoding);
             // Assuming OpenccNetLib provides a way to initialize Opencc with a config string
             var opencc = new Opencc(config);
+            var inputStr = await ReadInputAsync(inputFile, inputEncoding);
             var outputStr = opencc.Convert(inputStr, punct);
             await WriteOutputAsync(outputFile, outputStr, outputEncoding);
 
