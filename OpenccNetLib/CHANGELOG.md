@@ -6,6 +6,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.5.0-beta1] - 2026-05-04
+
+### Changed
+
+* Update dictionary data.
+* `.zsd` is now the **single source of truth** for dictionary data in this version.
+* Prebuilt `.cbor` / `.json` dictionary files are no longer included in the NuGet package.
+* `.cbor` / `.json` formats are now intended for **advanced and custom dictionary workflows**.
+* Users can generate `.cbor` / `.json` via the `openccnet dictgen` CLI, or download them from the `/data/` directory in
+  the repository.
+* Public APIs for CBOR/JSON dictionary loading remain **unchanged and fully backward compatible**.
+* All existing GUI applications continue to work **without any changes or impact**.
+
+---
+
 ## [1.4.2] - 2026-04-08
 
 ### Changed
@@ -14,20 +29,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Updated bundled dictionary data.
 - No behavior changes; core conversion results remain identical.
 
-* This is the **last version that includes prebuilt dictionary data** (`dictionary_maxlength.cbor` / `.json`) in the NuGet package.
+* This is the **last version that includes prebuilt dictionary data** (`dictionary_maxlength.cbor` / `.json`) in the
+  NuGet package.
 * Starting from the next major version, `.zsd` will become the **single source of truth** for dictionary data.
 * The `.cbor` / `.json` formats are primarily intended for **advanced and custom dictionary workflows**.
-* Users can generate these formats using the `openccnet dictgen` CLI, or download them from the `/data/` directory in the repository if needed.
+* Users can generate these formats using the `openccnet dictgen` CLI, or download them from the `/data/` directory in
+  the repository if needed.
 * Public APIs for loading CBOR/JSON dictionaries remain **unchanged and fully backward compatible**.
 
 ### Fixed
 
-- Fixed `XLSX` conversion to process worksheet inline strings (`t="inlineStr"`), ensuring correct handling of hybrid workbooks containing both `shared strings` and `inline strings`.
+- Fixed `XLSX` conversion to process worksheet inline strings (`t="inlineStr"`), ensuring correct handling of hybrid
+  workbooks containing both `shared strings` and `inline strings`.
 
 ### Notes
 
 - This change prepares for a cleaner and more maintainable dictionary pipeline.
-- The next major version (planned **1.5.0**) may fully transition to CLI-generated dictionary assets and remove bundled data.
+- The next major version (planned **1.5.0**) may fully transition to CLI-generated dictionary assets and remove bundled
+  data.
 
 ---
 

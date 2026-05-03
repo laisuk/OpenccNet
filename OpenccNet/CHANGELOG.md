@@ -7,6 +7,14 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+[1.5.0-beta1] - 2026-05-04
+
+### Changed
+
+- Update OpenccNetLib to v1.5.0
+
+---
+
 ## [1.4.2] - 2026-04-08
 
 ### Changed

@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.4.2</Version>
+        <Version>1.5.0</Version>
         <Authors>laisuk</Authors>
         <Description>
             OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
@@ -23,7 +23,7 @@
         <!-- (Optional) don’t warn about undocumented public members -->
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Title>OpenccNet Library</Title>
-        <PackageReleaseNotes>OpenccNetLib v1.4.2
+        <PackageReleaseNotes>OpenccNetLib v1.5.0
 
             - Micro-optimization of DictionaryLib and OpenCC::ConvertByUnion
             - Update dictionary data
@@ -31,8 +31,8 @@
             - Fixed XLSX conversion to also process worksheet inline strings (t="inlineStr"), preventing missed text conversion in hybrid workbooks that contain both shared strings and inline strings.
             - No behavior changes; core conversion results remain identical.
         </PackageReleaseNotes>
-        <AssemblyVersion>1.4.2.0</AssemblyVersion>
-        <FileVersion>1.4.2.0</FileVersion>
+        <AssemblyVersion>1.5.0.0</AssemblyVersion>
+        <FileVersion>1.5.0.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 

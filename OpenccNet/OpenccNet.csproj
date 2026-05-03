@@ -6,10 +6,10 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <Version>1.4.2</Version>  <!-- NuGet + Tool version -->
-        <AssemblyVersion>1.4.2.0</AssemblyVersion>
-        <FileVersion>1.4.2.0</FileVersion>
-        <InformationalVersion>1.4.2.0</InformationalVersion>
+        <Version>1.5.0</Version>  <!-- NuGet + Tool version -->
+        <AssemblyVersion>1.5.0.0</AssemblyVersion>
+        <FileVersion>1.5.0.0</FileVersion>
+        <InformationalVersion>1.5.0.0</InformationalVersion>
         <Copyright>© 2026 Laisuk Lai. All rights reserved.</Copyright>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 
@@ -50,13 +50,6 @@
             <!-- Remove dependency PDB symbols -->
             <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
                                    Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'"/>
-
-            <!-- Remove unused dict payloads coming from OpenccNetLib package -->
-<!--            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"-->
-<!--                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.cbor'"/>-->
-<!--            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"-->
-<!--                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.json'"/>-->
-
         </ItemGroup>
     </Target>
 
