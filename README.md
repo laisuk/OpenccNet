@@ -322,30 +322,6 @@ OfficeDocConverter.ConvertOfficeFile(
 
 ---
 
-## 🆕 What's New in v1.4.0
-
-- **Added `OfficeFormat` enum**  
-  Strongly typed format selection for safer, cleaner API usage.
-
-- **Added enum-based overloads**
-    - `ConvertOfficeBytes(byte[], OfficeFormat, …)`
-    - `ConvertOfficeBytesAsync(byte[], OfficeFormat, …)`
-    - `ConvertOfficeFile(string, string, OfficeFormat, …)`
-    - `ConvertOfficeFileAsync(string, string, OfficeFormat, …)`
-
-- **String format overloads retained for compatibility**  
-  (`"docx"`, `"xlsx"`, `"epub"`, etc.)  
-  No breaking changes.
-
-- **Internal refactor**
-    - Core engine now switches on `OfficeFormat`
-    - Cleaner logic
-    - Better performance
-    - Safer against typo bugs
-    - Easier to maintain
-
----
-
 ## 🔍 What does conversion do?
 
 Inside the Office/EPUB container (ZIP), the library will:
@@ -474,9 +450,10 @@ public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 
 ### Conclusion
 
-OpenccNetLib 1.5.0 maintains its position among the **fastest .NET-based CJK converters**,  
+OpenccNetLib 1.5.0 maintains its position among the **high performance .NET-based CJK converters**,  
 delivering **production-grade performance under realistic workloads**, while preserving deterministic conversion
 results.
+
 ---
 
 ### ⏱ Relative Performance Chart
