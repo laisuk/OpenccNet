@@ -25,10 +25,7 @@
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.5.0
 
-            - Micro-optimization of DictionaryLib and OpenCC::ConvertByUnion
             - Update dictionary data
-            - Update Opencc dictionary data
-            - Fixed XLSX conversion to also process worksheet inline strings (t="inlineStr"), preventing missed text conversion in hybrid workbooks that contain both shared strings and inline strings.
             - No behavior changes; core conversion results remain identical.
         </PackageReleaseNotes>
         <AssemblyVersion>1.5.0.0</AssemblyVersion>
