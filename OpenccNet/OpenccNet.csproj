@@ -52,10 +52,10 @@
                                    Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'"/>
 
             <!-- Remove unused dict payloads coming from OpenccNetLib package -->
-            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
-                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.cbor'"/>
-            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
-                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.json'"/>
+<!--            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"-->
+<!--                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.cbor'"/>-->
+<!--            <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"-->
+<!--                                   Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/')) == 'dicts/dictionary_maxlength.json'"/>-->
 
         </ItemGroup>
     </Target>

@@ -14,10 +14,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Updated bundled dictionary data.
 - No behavior changes; core conversion results remain identical.
 
-- This is the **last version that includes prebuilt dictionary data** (`dictionary_maxlength.cbor` / `.json`) inside the NuGet package.
-- Moving forward, `.zsd` files will serve as the **single source of truth** for dictionary data.
-- Users can generate `.cbor` / `.json` dictionary files via the `OpenccNet dictgen` CLI.
-- Public APIs supporting CBOR/JSON dictionary loading remain **fully unchanged and backward compatible**.
+* This is the **last version that includes prebuilt dictionary data** (`dictionary_maxlength.cbor` / `.json`) in the NuGet package.
+* Starting from the next major version, `.zsd` will become the **single source of truth** for dictionary data.
+* The `.cbor` / `.json` formats are primarily intended for **advanced and custom dictionary workflows**.
+* Users can generate these formats using the `openccnet dictgen` CLI, or download them from the `/data/` directory in the repository if needed.
+* Public APIs for loading CBOR/JSON dictionaries remain **unchanged and fully backward compatible**.
 
 ### Fixed
 

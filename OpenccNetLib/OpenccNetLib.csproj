@@ -46,6 +46,12 @@
     <!-- Include icon file in package -->
     <ItemGroup>
         <None Include="Images/icon.png" Pack="true" PackagePath="/"/>
+        <None Update="data\dictionary_maxlength.zstd">
+          <Pack>true</Pack>
+          <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
+          <PackageCopyToOutput>true</PackageCopyToOutput>
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <!-- Include README in package -->
