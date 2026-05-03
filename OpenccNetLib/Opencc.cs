@@ -1602,6 +1602,9 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese (Taiwan standard).
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
         public string S2Tw(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2Tw, punctuation);
@@ -1612,6 +1615,9 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Traditional Chinese (Taiwan standard) to Simplified Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
         public string Tw2S(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2S, punctuation);
@@ -1622,6 +1628,9 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese (Taiwan standard, with phrase and variant rounds).
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
         public string S2Twp(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2Twp, punctuation);
@@ -1632,6 +1641,9 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Traditional Chinese (Taiwan) to Simplified Chinese (with phrase and variant rounds).
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
         public string Tw2Sp(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2Sp, punctuation);
@@ -1642,6 +1654,9 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Simplified Chinese to Hong Kong Traditional Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
         public string S2Hk(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2Hk, punctuation);
@@ -1652,6 +1667,9 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Hong Kong Traditional Chinese to Simplified Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
         public string Hk2S(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Hk2S, punctuation);
@@ -1662,6 +1680,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Traditional Chinese to Taiwan Traditional Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string T2Tw(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Tw, false);
@@ -1671,6 +1691,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Traditional Chinese to Taiwan Traditional Chinese (with phrase and variant rounds).
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string T2Twp(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Twp, false);
@@ -1680,6 +1702,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Taiwan Traditional Chinese to Traditional Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string Tw2T(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2T, false);
@@ -1689,6 +1713,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Taiwan Traditional Chinese to Traditional Chinese (with phrase round).
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string Tw2Tp(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2Tp, false);
@@ -1698,6 +1724,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Traditional Chinese to Hong Kong Traditional Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string T2Hk(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Hk, false);
@@ -1707,6 +1735,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Hong Kong Traditional Chinese to Traditional Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string Hk2T(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Hk2T, false);
@@ -1716,6 +1746,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Traditional Chinese to Japanese Kanji variants.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string T2Jp(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Jp, false);
@@ -1725,6 +1757,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Japanese Kanji variants to Traditional Chinese.
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public string Jp2T(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Jp2T, false);
@@ -1799,6 +1833,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Simplified Chinese characters to Traditional Chinese (single character only).
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public static string St(string inputText)
         {
             var dictRefs = new[] { Dictionary.st_characters };
@@ -1809,6 +1845,8 @@ namespace OpenccNetLib
         /// <summary>
         /// Converts Traditional Chinese characters to Simplified Chinese (single character only).
         /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
         public static string Ts(string inputText)
         {
             var dictRefs = new[] { Dictionary.ts_characters };

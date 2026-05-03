@@ -25,8 +25,13 @@
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.5.0
 
-            - Update dictionary data
-            - No behavior changes; core conversion results remain identical.
+            - Updated bundled dictionary data.
+            - Zstd dictionary data is now the single source of truth in the NuGet package.
+            - Prebuilt CBOR/JSON dictionary files are no longer bundled; CBOR/JSON loading APIs remain backward compatible for advanced custom dictionary workflows.
+            - Hardened public API surface: OfficeDocConverter.SupportedFormats is read-only and DictionaryLib.PlanCache is no longer externally replaceable.
+            - Clarified async Office/EPUB conversion cancellation behavior and added pre-start cancellation checks.
+            - Improved XML documentation for conversion helpers and DictionaryMaxlength snake_case dictionary properties.
+            - Existing GUI applications and core conversion behavior remain unchanged.
         </PackageReleaseNotes>
         <AssemblyVersion>1.5.0.0</AssemblyVersion>
         <FileVersion>1.5.0.0</FileVersion>
@@ -37,17 +42,17 @@
         <PackageReference Include="PeterO.Cbor" Version="4.5.5"/>
         <PackageReference Include="System.Memory" Version="4.6.3"/>
         <PackageReference Include="System.Text.Json" Version="8.0.5"/>
-        <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
+        <PackageReference Include="ZstdSharp.Port" Version="0.8.8"/>
     </ItemGroup>
 
     <!-- Include icon file in package -->
     <ItemGroup>
         <None Include="Images/icon.png" Pack="true" PackagePath="/"/>
         <None Update="data\dictionary_maxlength.zstd">
-          <Pack>true</Pack>
-          <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
-          <PackageCopyToOutput>true</PackageCopyToOutput>
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <Pack>true</Pack>
+            <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
+            <PackageCopyToOutput>true</PackageCopyToOutput>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
 

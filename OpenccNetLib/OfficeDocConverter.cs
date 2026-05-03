@@ -152,10 +152,7 @@ namespace OpenccNetLib
             "(<t\\b[^>]*>)(.*?)(</t>)",
             RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        /// <summary>
-        /// Set of logical format names supported by this converter.
-        /// </summary>
-        public static readonly ISet<string> SupportedFormats =
+        private static readonly ISet<string> SupportedFormatSet =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "docx", "xlsx", "pptx",
@@ -164,13 +161,23 @@ namespace OpenccNetLib
             };
 
         /// <summary>
+        /// Gets the logical format names supported by this converter.
+        /// </summary>
+        /// <remarks>
+        /// The returned collection is read-only. Use <see cref="IsSupportedFormat"/>
+        /// for case-insensitive validation.
+        /// </remarks>
+        public static readonly IReadOnlyCollection<string> SupportedFormats =
+            Array.AsReadOnly(new[] { "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub" });
+
+        /// <summary>
         /// Returns <c>true</c> if the specified format is supported by
         /// <see cref="OfficeDocConverter"/> (<c>docx/xlsx/pptx/odt/ods/odp/epub</c>).
         /// </summary>
         /// <param name="format">Logical format name (e.g. "docx"). Case-insensitive.</param>
         public static bool IsSupportedFormat(string format)
         {
-            return !string.IsNullOrWhiteSpace(format) && SupportedFormats.Contains(format);
+            return !string.IsNullOrWhiteSpace(format) && SupportedFormatSet.Contains(format);
         }
 
         /// <summary>
@@ -421,7 +428,9 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether punctuation conversion is applied.</param>
         /// <param name="keepFont">Whether to preserve font declarations where possible.</param>
         /// <param name="cancellationToken">
-        /// Optional cancellation token. Cancels before repackaging or output allocation.
+        /// Optional cancellation token. Cancellation is honored before the background
+        /// conversion task starts; once the synchronous conversion is running, it
+        /// continues to completion.
         /// </param>
         /// <returns>
         /// A task that resolves to the converted Office/EPUB container bytes.
@@ -451,6 +460,7 @@ namespace OpenccNetLib
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return Task.Run(
                 () => ConvertOfficeBytes(inputBytes, format, converter, punctuation, keepFont),
                 cancellationToken);
@@ -491,7 +501,9 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether punctuation conversion is applied.</param>
         /// <param name="keepFont">Whether to preserve font declarations where possible.</param>
         /// <param name="cancellationToken">
-        /// Optional cancellation token. Cancels before repackaging or output allocation.
+        /// Optional cancellation token. Cancellation is honored before the background
+        /// conversion task starts; once the synchronous conversion is running, it
+        /// continues to completion.
         /// </param>
         /// <returns>
         /// A task that resolves to the converted Office/EPUB container bytes.
@@ -525,6 +537,7 @@ namespace OpenccNetLib
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
             // netstandard2.0-friendly async wrapper around synchronous core
             return Task.Run(
@@ -774,7 +787,8 @@ namespace OpenccNetLib
         /// <param name="keepFont">Whether font attributes should be preserved.</param>
         /// <param name="cancellationToken">
         /// Optional cancellation token.  
-        /// Cancellation is cooperative and stops before I/O write-back.
+        /// Cancellation is honored before the background conversion task starts;
+        /// once the synchronous conversion is running, it continues to completion.
         /// </param>
         /// <returns>
         /// A task that represents the asynchronous conversion operation.
@@ -806,6 +820,7 @@ namespace OpenccNetLib
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return Task.Run(
                 () => ConvertOfficeFile(inputPath, outputPath, format, converter, punctuation, keepFont),
                 cancellationToken);
@@ -839,7 +854,8 @@ namespace OpenccNetLib
         /// <param name="keepFont">Whether font attributes should be preserved.</param>
         /// <param name="cancellationToken">
         /// Optional cancellation token.  
-        /// Cancellation is cooperative and stops before I/O write-back.
+        /// Cancellation is honored before the background conversion task starts;
+        /// once the synchronous conversion is running, it continues to completion.
         /// </param>
         /// <returns>
         /// A task that represents the asynchronous conversion operation.
@@ -871,6 +887,7 @@ namespace OpenccNetLib
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
             return Task.Run(
                 () => { ConvertOfficeFile(inputPath, outputPath, parsed, converter, punctuation, keepFont); },

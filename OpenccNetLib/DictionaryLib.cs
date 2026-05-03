@@ -113,29 +113,113 @@ namespace OpenccNetLib
     }
 
     /// <summary>
-    /// Holds all conversion dictionaries for different OpenCC conversion types.
-    /// Each property represents a specific conversion mapping.
+    /// Holds all dictionary tables used by the OpenCC conversion engine.
     /// </summary>
+    /// <remarks>
+    /// This type is a mutable data-transfer container for built-in dictionaries,
+    /// custom dictionary loading, and serialization scenarios. The snake_case
+    /// property names are part of the public API and match the dictionary payload
+    /// names used by OpenccNet and related packages.
+    /// <para>
+    /// Most consumers do not need to construct this type manually. Use
+    /// <see cref="DictionaryLib.Provider"/> for the built-in dictionary,
+    /// <see cref="DictionaryLib.FromDicts(string)"/> or
+    /// <see cref="DictionaryLib.FromJson(string)"/> to load dictionary data, and
+    /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/> to activate a
+    /// custom dictionary set.
+    /// </para>
+    /// </remarks>
     // ReSharper disable InconsistentNaming
     public sealed class DictionaryMaxlength
     {
+        /// <summary>
+        /// Simplified-to-Traditional character mappings.
+        /// </summary>
         public DictWithMaxLength st_characters { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Simplified-to-Traditional phrase mappings.
+        /// </summary>
         public DictWithMaxLength st_phrases { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Simplified character mappings.
+        /// </summary>
         public DictWithMaxLength ts_characters { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Simplified phrase mappings.
+        /// </summary>
         public DictWithMaxLength ts_phrases { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Taiwan phrase mappings.
+        /// </summary>
         public DictWithMaxLength tw_phrases { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Taiwan-to-Traditional phrase mappings.
+        /// </summary>
         public DictWithMaxLength tw_phrases_rev { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Taiwan character variant mappings.
+        /// </summary>
         public DictWithMaxLength tw_variants { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Taiwan-to-Traditional character variant mappings.
+        /// </summary>
         public DictWithMaxLength tw_variants_rev { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Taiwan-to-Traditional phrase variant mappings.
+        /// </summary>
         public DictWithMaxLength tw_variants_rev_phrases { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Hong Kong character variant mappings.
+        /// </summary>
         public DictWithMaxLength hk_variants { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Hong Kong-to-Traditional character variant mappings.
+        /// </summary>
         public DictWithMaxLength hk_variants_rev { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Hong Kong-to-Traditional phrase variant mappings.
+        /// </summary>
         public DictWithMaxLength hk_variants_rev_phrases { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional Kyujitai-to-Japanese Shinjitai character mappings.
+        /// </summary>
         public DictWithMaxLength jps_characters { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional Kyujitai-to-Japanese Shinjitai phrase mappings.
+        /// </summary>
         public DictWithMaxLength jps_phrases { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Japanese character variant mappings.
+        /// </summary>
         public DictWithMaxLength jp_variants { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Japanese variant-to-Traditional character mappings.
+        /// </summary>
         public DictWithMaxLength jp_variants_rev { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Simplified-to-Traditional punctuation mappings.
+        /// </summary>
         public DictWithMaxLength st_punctuations { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Simplified punctuation mappings.
+        /// </summary>
         public DictWithMaxLength ts_punctuations { get; set; } = new DictWithMaxLength();
     }
     // ReSharper restore InconsistentNaming
@@ -184,7 +268,7 @@ namespace OpenccNetLib
         // --------------------------------------------------------------------------------
 
         /// <summary>
-        /// Global cache for precomputed <see cref="DictRefs"/> instances used by all  
+        /// Global cache for precomputed <see cref="DictRefs"/> instances used by all
         /// OpenCC conversions.
         /// </summary>
         /// <remarks>
@@ -200,8 +284,8 @@ namespace OpenccNetLib
         /// <para>
         /// By default, the cache is initialized with a provider delegate that returns  
         /// the lazily loaded built-in dictionary (<see cref="Provider"/>).  
-        /// Custom dictionaries can be applied by replacing this cache via  
-        /// <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or  
+        /// Custom dictionaries can be applied through
+        /// <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or
         /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/>.
         /// </para>
         /// <para>
@@ -209,7 +293,17 @@ namespace OpenccNetLib
         /// treating the cache and its provider as a single atomic unit.
         /// </para>
         /// </remarks>
-        public static ConversionPlanCache PlanCache = new ConversionPlanCache(() => Provider);
+        private static ConversionPlanCache _planCache = new ConversionPlanCache(() => Provider);
+
+        /// <summary>
+        /// Gets the active global cache for precomputed conversion plans.
+        /// </summary>
+        /// <remarks>
+        /// The cache instance is replaced only by the dictionary-provider APIs on this
+        /// type. This keeps provider swaps atomic and prevents external code from
+        /// publishing a null or inconsistent cache.
+        /// </remarks>
+        public static ConversionPlanCache PlanCache => Volatile.Read(ref _planCache);
 
         // --------------------------------------------------------------------------------
         // Public accessors and provider management
@@ -253,8 +347,8 @@ namespace OpenccNetLib
         /// Note that the active provider delegate is lightweight and does not own any
         /// cached state. All derived lookup structures and starter-union caches are owned
         /// by <see cref="PlanCache"/>. To fully switch dictionary sources for future
-        /// conversions, the global <see cref="PlanCache"/> should be replaced via the
-        /// appropriate provider-setting APIs.
+        /// conversions, call <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or
+        /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/>.
         /// </para>
         /// <para>
         /// This method does not imply atomicity or synchronization guarantees beyond those
@@ -337,8 +431,8 @@ namespace OpenccNetLib
             // publish a fresh cache (empty, consistent)
             var newCache = new ConversionPlanCache(provider);
 
-            // Replace the global cache with a new instance using the new provider
-            Interlocked.Exchange(ref PlanCache, newCache);
+            // Replace the global cache with a new instance using the new provider.
+            Interlocked.Exchange(ref _planCache, newCache);
         }
 
         /// <summary>

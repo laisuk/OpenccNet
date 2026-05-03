@@ -19,6 +19,25 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 * Public APIs for CBOR/JSON dictionary loading remain **unchanged and fully backward compatible**.
 * All existing GUI applications continue to work **without any changes or impact**.
 
+### Fixed
+
+* Made `OfficeDocConverter.SupportedFormats` read-only so downstream code cannot mutate the global supported-format
+  list at runtime. `IsSupportedFormat()` still performs case-insensitive validation.
+* Changed `DictionaryLib.PlanCache` from a mutable public field to a get-only public property backed by an internal
+  cache field, preserving read access while preventing external replacement with a null or inconsistent cache.
+* Updated async Office/EPUB conversion documentation to accurately describe cancellation behavior. Cancellation is
+  honored before the background conversion task starts; once the synchronous conversion is running, it continues to
+  completion.
+* Added explicit pre-start cancellation checks to `ConvertOfficeBytesAsync()` and `ConvertOfficeFileAsync()` overloads.
+
+### Documentation
+
+* Added missing XML `<param>` and `<returns>` documentation for public conversion helpers such as `S2Tw()`,
+  `S2Twp()`, `S2Hk()`, `T2Hk()`, `Jp2T()`, `St()`, and `Ts()`.
+* Added XML documentation for `DictionaryMaxlength` and all existing snake_case dictionary properties.
+* Clarified that `DictionaryMaxlength` is a mutable DTO for built-in/custom dictionary data, and that its snake_case
+  property names are intentional public API for compatibility with the OpenccNet ecosystem.
+
 ---
 
 ## [1.4.2] - 2026-04-08
