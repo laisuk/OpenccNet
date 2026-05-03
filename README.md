@@ -420,105 +420,109 @@ public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 - Fully optimized for multi-stage conversion with zero-allocation hot paths.
 - Suitable for real-time, batch, and parallel processing.
 
-### 🚀 Performance Benchmark for **OpenccNetLib 1.4.0**
+### 🚀 Performance Benchmark for **OpenccNetLib 1.5.0**
 
-#### `S2T` Conversion (after Union-based Optimizations)
+#### `S2T` Conversion (Union-based Optimizations, Real-World Load)
 
-**Environment**
+> Benchmarked under **normal desktop usage** (IDE, background apps running) to reflect realistic performance.
+
+---
+
+### Environment
 
 | Item                | Value                                    |
 |---------------------|------------------------------------------|
-| **BenchmarkDotNet** | v0.15.6                                  |
-| **OS**              | Windows 11 (Build 26200.7171)            |
+| **BenchmarkDotNet** | v0.15.8                                  |
+| **OS**              | Windows 11 (Build 26200.8246, 25H2)      |
 | **CPU**             | Intel Core i5-13400 (10C/16T @ 2.50 GHz) |
-| **.NET SDK**        | 10.0.100                                 |
-| **Runtime**         | .NET 10.0.0 (X64 RyuJIT x86-64-v3)       |
+| **.NET SDK**        | 10.0.203                                 |
+| **Runtime**         | .NET 10.0.7 (X64 RyuJIT x86-64-v3)       |
 | **Iterations**      | 10 (1 warm-up)                           |
 
-#### Results
+---
+
+### Results
 
 | Method               |      Size |          Mean |     Error |    StdDev |       Min |       Max | Rank |     Gen0 |     Gen1 |    Gen2 |       Allocated |
 |----------------------|----------:|--------------:|----------:|----------:|----------:|----------:|-----:|---------:|---------:|--------:|----------------:|
-| **BM_Convert_Sized** |       100 |   **2.55 µs** |   0.05 µs |   0.03 µs |   2.53 µs |   2.63 µs |    1 |    0.515 |        – |       – |          5.3 KB |
-| **BM_Convert_Sized** |     1,000 |  **52.61 µs** |   0.42 µs |   0.28 µs |  52.39 µs |  53.23 µs |    2 |    8.789 |        – |       – |         90.3 KB |
-| **BM_Convert_Sized** |    10,000 | **297.87 µs** |  11.36 µs |   7.52 µs | 288.43 µs | 312.53 µs |    3 |   83.496 |   19.043 |       – |        845.9 KB |
-| **BM_Convert_Sized** |   100,000 |   **3.98 ms** |  52.31 µs |  27.36 µs |   3.93 ms |   4.02 ms |    4 |  890.625 |  367.188 | 117.188 |      8,430.5 KB |
-| **BM_Convert_Sized** | 1,000,000 |  **21.17 ms** | 594.50 µs | 393.23 µs |  20.87 ms |  22.01 ms |    5 | 8,468.75 | 1,468.75 | 625.000 | **85,580.4 KB** |
+| **BM_Convert_Sized** |       100 |   **2.49 µs** |   0.04 µs |   0.02 µs |   2.47 µs |   2.53 µs |    1 |    0.515 |        – |       – |          5.3 KB |
+| **BM_Convert_Sized** |     1,000 |  **68.79 µs** |   2.71 µs |   1.79 µs |  66.73 µs |  72.50 µs |    2 |    8.789 |        – |       – |         90.3 KB |
+| **BM_Convert_Sized** |    10,000 | **235.49 µs** |  11.01 µs |   7.28 µs | 226.53 µs | 245.62 µs |    3 |   75.684 |   16.113 |       – |        766.4 KB |
+| **BM_Convert_Sized** |   100,000 |   **2.64 ms** | 605.47 µs | 360.31 µs |   2.30 ms |   3.38 ms |    4 |  832.031 |  347.656 | 132.813 |      7,695.8 KB |
+| **BM_Convert_Sized** | 1,000,000 |  **20.56 ms** | 243.93 µs | 145.16 µs |  20.32 ms |  20.80 ms |    5 | 7,781.25 | 1,312.50 | 625.000 | **78,589.5 KB** |
 
 ---
 
 ### Summary
 
 - **100 chars** → ~2.5 µs
-- **1,000 chars** → ~52 µs
-- **10,000 chars** → ~0.3 ms
-- **100,000 chars** → ~4 ms
-- **1,000,000 chars (1M)** → ~21 ms
+- **1,000 chars** → ~69 µs
+- **10,000 chars** → ~0.24 ms
+- **100,000 chars** → ~2.6 ms
+- **1,000,000 chars (1M)** → ~20.6 ms
 
-This places OpenccNetLib 1.4.0 among the **fastest .NET-based CJK converters**,  
-on par with optimized Rust implementations and significantly faster than traditional trie-based segmenters.
+---
 
+### Notes
+
+- Benchmarks include **real-world system noise** (IDE, background services), not isolated lab conditions.
+- Despite this, performance remains **highly stable and near-linear scaling**.
+- Minor variance at larger sizes is expected due to OS scheduling and GC activity.
+- Allocation behavior remains consistent with previous versions, with **no regression in memory profile**.
+
+---
+
+### Conclusion
+
+OpenccNetLib 1.5.0 maintains its position among the **fastest .NET-based CJK converters**,  
+delivering **production-grade performance under realistic workloads**, while preserving deterministic conversion
+results.
 ---
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v140.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v150.png)
 
 ---
 
-### 🟢 Highlights (OpenccNetLib v1.4.0)
+### 🟢 Highlights (OpenccNetLib v1.5.0)
 
-- **🚀 Performance Gain**  
-  Over **50% faster** compared to earlier 1.x releases.  
-  1M characters convert in **≈ 21 ms** — roughly **47–50 million chars/sec**  
-  (≈ **95–100 MB/s**) on a mid-range Intel i5-13400.
+- **🚀 High Performance (Real-World Tested)**  
+  Processes **1M characters in ~20 ms** under normal desktop load (IDE, background apps).  
+  Sustains **tens of millions of chars/sec** on a mid-range CPU (Intel i5-13400).
 
-- **📌 Predictable, Linear Performance (Performance Guarantee)**  
-  Both **time** and **memory usage** scale *linearly* with input size.  
-  No spikes, no nonlinear slow paths, no GC stalls — ensuring:
-    - deterministic latency for large documents
-    - consistent batch processing throughput
-    - stable behavior in multithreaded or server environments
+- **📌 Predictable, Linear Scaling**  
+  Both **time** and **memory usage** scale *linearly* with input size:
+    - consistent latency for small and large inputs
+    - stable throughput for batch and streaming workloads
+    - no unexpected slow paths
 
-  This is the ideal profile for a high-performance conversion engine.
+- **⚙️ Optimized Conversion Core**  
+  Built on a highly efficient pipeline:
+    - fast **Union-based lookup** for candidate filtering
+    - minimal branching for non-matching paths
+    - streamlined control flow for better CPU utilization
+    - allocation-aware design for sustained performance
 
-- **⚙️ Major Improvement Sources**
-    - **StarterUnion dense-table lookup**  
-      Eliminates per-key scanning; provides instant access to  
-      `(starterUnits, cap, minLen, 64-bit length mask)`.
-    - **Mask-first gating + shortest/longest bounds**  
-      Nearly all non-matching starters exit in a **single branch**.
-    - **Dropped `maxWordLength` parameter**  
-      Simplifies control flow and removes redundant checks.
-    - **Zero-allocation hot loop**  
-      Uses `Span<char>`, thread-local `StringBuilder`, and rented buffers.
-    - **Optimized surrogate fast-path**  
-      Using `IsHs` / `IsLs` lookup tables removes per-iteration UTF-16 checks.
+- **📈 Stable GC Behavior**
+    - allocations mainly come from output buffers
+    - low GC pressure in typical workloads
+    - remains stable even for large inputs (≥1M chars)
 
-- **📈 GC Profile**  
-  Extremely stable:
-    - Allocations come mostly from final output & temporary key buffers.
-    - Very low Gen 1 activity; Gen 2 appears only on **very large** inputs (≥1M chars).
-    - No GC spikes even under high parallelism.
+- **🏁 Production-Ready Throughput**  
+  Designed for real applications:
+    - performs consistently outside benchmark isolation
+    - suitable for CLI, GUI, and backend services
+    - reliable under multitasking environments
 
-- **🏁 Throughput**
-    - Sustained **≈ 95 MB/s** (S2T) on .NET 10 RyuJIT x86-64-v3.
-    - Large documents (multi-million chars) convert in **40–50 ms**, consistently.
-
-- **💾 Memory Overhead**
-    - 1M characters: **~85 MB** allocated (includes output + chunk buffers).
-    - Only **+2–3 MB** vs earlier versions — an excellent tradeoff for major speed gains.
-
-- **🧩 Future Optimization Ideas**
-    - Tune splitting batch sizes (128–512 chars) for real workloads.
-    - Add thread-local scratch buffers (`localInit`, `localFinally`) to reduce Gen 0 churn.
-    - Multi-target **.NET 8+** for span-based `Dictionary.TryGetValue`.
-    - Add micro-tables for extremely common keys (length 1–2).
-    - Explore SIMD-accelerated starter filtering.
+- **💾 Memory Characteristics**
+    - scales proportionally with input size
+    - no abnormal spikes or hidden overhead
+    - predictable usage for large document processing
 
 > **Note:**  
-> Since **OpenccNetLib v1.3.x**, the global lazy `PlanCache` eliminates repeated union builds,  
-> reducing GC pressure and ensuring consistently fast conversions across all instances.
+> Internal caching and optimized data structures ensure consistently fast conversions  
+> across repeated calls and multiple instances.
 
 ---
 
