@@ -27,7 +27,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestFromJson()
     {
-        var dict = DictionaryLib.FromJson();
+        var dict = DictionaryLib.FromJson("Data/dictionary_maxlength.json");
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
     }
@@ -35,7 +35,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestFromCbor()
     {
-        var dict = DictionaryLib.FromCbor();
+        var dict = DictionaryLib.FromCbor("Data/dictionary_maxlength.cbor");
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
     }

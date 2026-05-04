@@ -24,6 +24,14 @@
       <None Update="滕王阁序.docx">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
+      <None Update="data\dictionary_maxlength.cbor">
+        <Pack>false</Pack>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+      <None Update="data\dictionary_maxlength.json">
+        <Pack>false</Pack>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>
