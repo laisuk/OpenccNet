@@ -518,29 +518,63 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads the dictionary from a JSON file.
+        /// Loads a <see cref="DictionaryMaxlength"/> instance from a JSON file.
+        ///
+        /// The JSON payload is deserialized and normalized through
+        /// <see cref="EnsureDerivedMetadata(DictionaryMaxlength)"/> to restore any
+        /// derived lookup metadata required by the hot conversion paths.
+        ///
+        /// This method is intended primarily for debugging, development,
+        /// interoperability, or external dictionary generation workflows.
+        /// Production applications should prefer the default embedded Zstd dictionaries
+        /// for best reliability and deployment simplicity.
         /// </summary>
-        /// <param name="relativePath">Relative path to the JSON file.</param>
-        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
-        public static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")
+        /// <param name="relativePath">
+        /// Relative path to the JSON dictionary file.
+        /// Defaults to <c>dicts/dictionary_maxlength.json</c>.
+        /// </param>
+        /// <returns>
+        /// The deserialized and normalized
+        /// <see cref="DictionaryMaxlength"/> instance.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="relativePath"/> is null or empty.
+        /// </exception>
+        /// <exception cref="FileNotFoundException">
+        /// Thrown when the JSON dictionary file does not exist.
+        /// </exception>
+        /// <exception cref="JsonException">
+        /// Thrown when the JSON payload is invalid or cannot be deserialized.
+        /// </exception>
+        /// <exception cref="IOException">
+        /// Thrown when the file cannot be opened or read.
+        /// </exception>
+        public static DictionaryMaxlength FromJson(
+            string relativePath = "dicts/dictionary_maxlength.json")
         {
-            try
+            if (string.IsNullOrEmpty(relativePath))
             {
-                var baseDir = AppContext.BaseDirectory;
-                var fullPath = Path.Combine(baseDir, relativePath);
-
-                if (!File.Exists(fullPath))
-                    throw new FileNotFoundException($"JSON dictionary file not found: {fullPath}");
-
-                using (var stream = File.OpenRead(fullPath))
-                {
-                    var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(stream);
-                    return EnsureDerivedMetadata(instance);
-                }
+                throw new ArgumentException(
+                    "Path must not be null or empty.",
+                    nameof(relativePath));
             }
-            catch (Exception ex)
+
+            var baseDir = AppContext.BaseDirectory;
+            var fullPath = Path.Combine(baseDir, relativePath);
+
+            if (!File.Exists(fullPath))
             {
-                throw new InvalidOperationException("Failed to load dictionary from JSON.", ex);
+                throw new FileNotFoundException(
+                    "JSON dictionary file not found.",
+                    fullPath);
+            }
+
+            using (var stream = File.OpenRead(fullPath))
+            {
+                var instance =
+                    JsonSerializer.Deserialize<DictionaryMaxlength>(stream);
+
+                return EnsureDerivedMetadata(instance);
             }
         }
 

@@ -6,6 +6,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.5.1-beta1] - 2026-05-09
+
+### Changed
+
+- Refactored `DictionaryLib.FromJson()` to preserve original exception types instead of wrapping all failures in
+  `InvalidOperationException`.
+- `FromJson()` now behaves consistently with `FromCbor()` for file loading and error handling.
+- Missing external JSON/CBOR dictionary files can now be cleanly detected via `FileNotFoundException`, allowing
+  applications to safely fall back to the embedded default Zstd dictionaries.
+- Corrupted or invalid JSON/CBOR payloads now surface their real exceptions directly instead of being silently wrapped,
+  making custom dictionary validation and debugging clearer for advanced users.
+- Improved XML documentation for `DictionaryLib.FromJson()` including explicit exception contracts and normalization
+  behavior.
+
+---
+
 ## [1.5.0] - 2026-05-07
 
 ### Changed
