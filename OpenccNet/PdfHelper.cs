@@ -138,7 +138,7 @@ namespace OpenccNet
                     {
                         var percent = (int)((double)i / total * 100);
                         statusCallback?.Invoke(
-                            $"Loading PDF {BuildProgressBar(percent),-16} {percent,3}%");
+                            $"Loading PDF {BuildProgressBar(percent)} {percent,3}%");
                     }
 
                     var page = document.GetPage(i);
@@ -172,13 +172,13 @@ namespace OpenccNet
             percent = Math.Clamp(percent, 0, 100);
             var filled = (int)((long)percent * width / 100);
 
-            var sb = new StringBuilder(width * 4 + 8);
-            sb.Append("[ ");
+            var sb = new StringBuilder(width * 4 + 2);
+            sb.Append('[');
 
             for (var i = 0; i < filled; i++) sb.Append("🟩");
             for (var i = filled; i < width; i++) sb.Append("🟨");
 
-            sb.Append(" ]");
+            sb.Append(']');
             return sb.ToString();
         }
     }
