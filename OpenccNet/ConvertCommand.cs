@@ -134,17 +134,19 @@ internal static class ConvertCommand
             return await File.ReadAllTextAsync(inputFile, Encoding.GetEncoding(inputEncoding));
         }
 
-        lock (ConsoleLock)
+        if (!Console.IsInputRedirected)
         {
-            Console.Error.WriteLine(
-                "Input text to convert, <Ctrl+Z> (Windows) or <Ctrl+D> (Unix) then Enter to submit:");
+            lock (ConsoleLock)
+            {
+                Console.Error.WriteLine(
+                    "Input text to convert, <Ctrl+Z> (Windows) or <Ctrl+D> (Unix) then Enter to submit:");
+            }
         }
 
         var encoding = Encoding.GetEncoding(inputEncoding);
         using var reader = new StreamReader(Console.OpenStandardInput(), encoding);
         return await reader.ReadToEndAsync();
     }
-
 
     private static async Task WriteOutputAsync(string? outputFile, string content, string encodingName)
     {
@@ -164,6 +166,15 @@ internal static class ConvertCommand
         if (!string.IsNullOrEmpty(outputFile))
             await File.WriteAllTextAsync(outputFile, content, encoding);
         else
-            Console.WriteLine(content);
+        {
+            Console.Write(content);
+
+            if (!Console.IsOutputRedirected &&
+                !string.IsNullOrEmpty(content) &&
+                !content.EndsWith('\n'))
+            {
+                Console.WriteLine();
+            }
+        }
     }
 }

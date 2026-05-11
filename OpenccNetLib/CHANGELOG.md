@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.5.1-beta1] - 2026-05-09
+## [1.5.1-beta1] - 2026-05-12
 
 ### Changed
 
@@ -19,6 +19,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   making custom dictionary validation and debugging clearer for advanced users.
 - Improved XML documentation for `DictionaryLib.FromJson()` including explicit exception contracts and normalization
   behavior.
+- Update dictionary data.
 
 ---
 
