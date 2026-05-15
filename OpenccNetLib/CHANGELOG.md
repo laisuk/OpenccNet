@@ -16,18 +16,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added strict dictionary slot validation to preserve the OpenCC lexicon contract and prevent unsupported custom slots.
 - Added custom dictionary tests covering append mode, conversion behavior, metadata rebuilding, and invalid slot
   rejection.
+- Added optional `DictionaryMaxlength dictionary = null` parameters to dictionary serialization helpers:
+  `SerializeToJson()`, `SerializeToJsonUnescaped()`, `SaveCbor()`, `ToCborBytes()`, and `SaveJsonCompressed()`.
 
 ### Changed
 
 - Refactored `DictionaryLib.FromJson()` to preserve original exception types instead of wrapping all failures in
   `InvalidOperationException`.
+- Refactored dictionary serialization helpers so callers can serialize an already loaded or customized
+  `DictionaryMaxlength` instance without reloading from the default text dictionaries.
 - `FromJson()` now behaves consistently with `FromCbor()` for file loading and error handling.
+- `FromJson()` and the internal Zstd loader now support both absolute paths and paths relative to
+  `AppContext.BaseDirectory`.
 - Missing external JSON/CBOR dictionary files can now be cleanly detected via `FileNotFoundException`, allowing
   applications to safely fall back to the embedded default Zstd dictionaries.
 - Corrupted or invalid JSON/CBOR payloads now surface their real exceptions directly instead of being silently wrapped,
   making custom dictionary validation and debugging clearer for advanced users.
-- Improved XML documentation for `DictionaryLib.FromJson()` including explicit exception contracts and normalization
-  behavior.
+- Improved XML documentation across `DictionaryLib`, including dictionary metadata, custom dictionary loading,
+  serialization overloads, path handling, exception contracts, and normalization behavior.
 - Custom dictionary loading now fully complies with the existing OpenCC dictionary slot structure instead of introducing
   generic dynamic dictionary slots, keeping `DictionaryMaxlength`, `DictRefs`, and future acceleration structures
   stable.

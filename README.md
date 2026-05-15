@@ -694,6 +694,97 @@ supported configurations:
 
 ---
 
+#### 📚 Dictionary Provider APIs
+
+OpenccNetLib exposes dictionary provider APIs for advanced scenarios such as custom dictionaries, generated dictionary
+artifacts, test fixtures, and tooling. Most applications can use the built-in dictionary without calling these APIs.
+
+##### `Opencc` dictionary activation helpers
+
+- `static void UseCustomDictionary(DictionaryMaxlength customDictionary)`
+  Sets the active conversion dictionary provider to a custom `DictionaryMaxlength` instance and clears cached conversion
+  plans. Call this before creating converters that should use the custom dictionary.
+
+- `static void UseDefaultDictionary()`
+  Restores the active provider to the built-in dictionary and clears cached conversion plans.
+
+- `static void UseDictionaryFromPath(string dictionaryRelativePath)`
+  Loads OpenCC text dictionary files with `DictionaryLib.FromDicts(dictionaryRelativePath)` and activates the result.
+
+- `static void UseDictionaryFromJsonString(string jsonString)`
+  Deserializes a `DictionaryMaxlength` JSON payload and activates it as the custom dictionary provider.
+
+##### `DictionaryLib` provider and cache APIs
+
+- `static DictionaryMaxlength Provider { get; }`
+  Returns the shared built-in dictionary instance.
+
+- `static ConversionPlanCache PlanCache { get; }`
+  Returns the active global conversion plan cache.
+
+- `static DictionaryMaxlength GetActiveProvider()`
+  Returns the dictionary instance currently supplied by the active provider delegate.
+
+- `static DictionaryMaxlength New()`
+  Returns the built-in dictionary and resets the active provider to the built-in dictionary.
+
+- `static void SetDictionaryProvider(DictionaryMaxlength dictionary)`
+  Sets the active dictionary provider to a fixed `DictionaryMaxlength` instance and publishes a fresh plan cache.
+
+- `static void ResetDictionaryProviderToDefault()`
+  Restores the active dictionary provider to the built-in dictionary and publishes a fresh plan cache.
+
+##### `DictionaryLib` loading APIs
+
+- `static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<string, string> overrides = null, IDictionary<string, string> appends = null)`
+  Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
+
+- `static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")`
+  Loads and normalizes a JSON dictionary payload.
+
+- `static DictionaryMaxlength DeserializedFromJson(string path)`
+  Compatibility wrapper around `FromJson(path)`.
+
+- `static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")`
+  Loads and normalizes a CBOR dictionary payload.
+
+- `static DictionaryMaxlength LoadJsonCompressed(string path)`
+  Loads and normalizes a Zstandard-compressed JSON dictionary payload.
+
+##### `DictionaryLib` serialization APIs
+
+The serialization helpers accept an optional `DictionaryMaxlength dictionary = null` parameter. When omitted, they load
+from the default OpenCC text dictionary sources with `FromDicts()`.
+
+- `static void SerializeToJson(string path, DictionaryMaxlength dictionary = null)`
+  Writes a dictionary to indented JSON.
+
+- `static void SerializeToJsonUnescaped(string path, DictionaryMaxlength dictionary = null)`
+  Writes indented UTF-8 JSON without escaping non-ASCII characters.
+
+- `static void SaveCbor(string path, DictionaryMaxlength dictionary = null)`
+  Writes a dictionary as CBOR.
+
+- `static byte[] ToCborBytes(DictionaryMaxlength dictionary = null)`
+  Returns a CBOR-encoded dictionary payload.
+
+- `static void SaveJsonCompressed(string path, DictionaryMaxlength dictionary = null)`
+  Writes a dictionary as Zstandard-compressed JSON.
+
+```csharp
+var dict = DictionaryLib.FromDicts(
+    appends: new Dictionary<string, string>
+    {
+        ["st_phrases"] = "./UserDict.txt"
+    });
+
+DictionaryLib.SerializeToJson("./custom-dictionary.json", dict);
+DictionaryLib.SaveCbor("./custom-dictionary.cbor", dict);
+DictionaryLib.SaveJsonCompressed("./custom-dictionary.zstd", dict);
+```
+
+---
+
 ##### Notes
 
 - All configuration inputs ultimately resolve to a single internal

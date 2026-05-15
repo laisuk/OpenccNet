@@ -18,10 +18,13 @@ internal static class DictgenCommand
 
         formatOption.Validators.Add(result =>
         {
-            var value = result.GetValueOrDefault<string>().ToLowerInvariant();
+            var value = result.GetValueOrDefault<string>()
+                .ToLowerInvariant();
+
             if (value is not ("zstd" or "cbor" or "json"))
             {
-                result.AddError("Format must be one of: zstd, cbor, json.");
+                result.AddError(
+                    "Format must be one of: zstd, cbor, json.");
             }
         });
 
@@ -69,24 +72,56 @@ internal static class DictgenCommand
             var defaultOutput = $"dictionary_maxlength.{format}";
             var outputFile = string.IsNullOrWhiteSpace(output) ? defaultOutput : output;
 
-            Console.WriteLine($"{Blue}Generating dictionary from '{baseDir}'...{Reset}");
+            var resolvedBaseDir = Path.IsPathRooted(baseDir)
+                ? baseDir
+                : Path.Combine(AppContext.BaseDirectory, baseDir);
+
+            Console.WriteLine(
+                $"{Blue}Loading dictionaries from '{resolvedBaseDir}'...{Reset}");
+
+            if (!Directory.Exists(resolvedBaseDir))
+            {
+                Console.Error.WriteLine(
+                    $"❌ Dictionary base directory not found: {resolvedBaseDir}");
+                return 1;
+            }
+
+            DictionaryMaxlength dict;
+
+            try
+            {
+                dict = DictionaryLib.FromDicts(resolvedBaseDir);
+            }
+            catch (FileNotFoundException ex)
+            {
+                Console.Error.WriteLine($"❌ {ex.Message}");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"❌ Failed to load dictionaries: {ex.Message}");
+                return 1;
+            }
 
             switch (format.ToLowerInvariant())
             {
                 case "zstd":
-                    DictionaryLib.SaveJsonCompressed(outputFile);
+                    DictionaryLib.SaveJsonCompressed(outputFile, dict);
                     break;
                 case "cbor":
-                    DictionaryLib.SaveCbor(outputFile);
+                    DictionaryLib.SaveCbor(outputFile, dict);
                     break;
                 case "json":
                     if (unescape)
                     {
-                        DictionaryLib.SerializeToJsonUnescaped(outputFile);
+                        DictionaryLib.SerializeToJsonUnescaped(outputFile, dict);
                         Console.WriteLine("(writing unescaped Unicode JSON with surrogate fix)");
                     }
                     else
-                        DictionaryLib.SerializeToJson(outputFile);
+                    {
+                        DictionaryLib.SerializeToJson(outputFile, dict);
+                    }
 
                     break;
                 default:

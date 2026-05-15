@@ -15,7 +15,7 @@ using ZstdSharp;
 namespace OpenccNetLib
 {
     /// <summary>
-    /// Represents a dictionary with string keys and values, and tracks the maximum key length.
+    /// Represents a dictionary with string keys and values plus derived key-length metadata.
     /// Used for efficient word/phrase lookup in OpenCC conversion.
     /// </summary>
     public class DictWithMaxLength
@@ -55,7 +55,7 @@ namespace OpenccNetLib
         public HashSet<int> LongLengths { get; set; }
 
         /// <summary>
-        /// Per-starter mask of key lengths (1 to =64) present for that starter.
+        /// Per-starter mask of key lengths (1 to 64) present for that starter.
         /// Key is UTF-16 starter:
         ///  - 1-char for BMP
         ///  - 2-char for surrogate-pair (high+low)
@@ -79,7 +79,11 @@ namespace OpenccNetLib
         /// <summary>
         /// Determines whether the dictionary contains any key with the specified length.
         /// </summary>
-        /// <param name="length">Target key length (in UTF-16 code units).</param>
+        /// <param name="length">Target key length in UTF-16 code units.</param>
+        /// <returns>
+        /// <see langword="true"/> if the dictionary contains at least one key with
+        /// the specified length; otherwise, <see langword="false"/>.
+        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool SupportsLength(int length)
         {
@@ -97,8 +101,15 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Sets the length metadata that was precomputed during dictionary load.
+        /// Sets the key-length metadata that was precomputed during dictionary load
+        /// or rebuilt after dictionary mutation.
         /// </summary>
+        /// <param name="mask">
+        /// Bitmask for key lengths from 1 through 64 UTF-16 code units.
+        /// </param>
+        /// <param name="longLengths">
+        /// Optional set of key lengths greater than 64 UTF-16 code units.
+        /// </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetLengthMetadata(ulong mask, HashSet<int> longLengths)
         {
@@ -493,27 +504,51 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads the dictionary from a Zstd-compressed JSON file.
+        /// Loads the bundled dictionary from a Zstd-compressed JSON file.
         /// </summary>
-        /// <param name="relativePath">Relative path to the Zstd file.</param>
-        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
-        private static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")
+        /// <param name="relativePath">
+        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
+        /// path to the Zstandard-compressed JSON dictionary file.
+        /// </param>
+        /// <returns>
+        /// The deserialized and normalized <see cref="DictionaryMaxlength"/> instance.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="relativePath"/> is null, empty, or whitespace.
+        /// </exception>
+        /// <exception cref="FileNotFoundException">
+        /// Thrown when the Zstandard dictionary file does not exist.
+        /// </exception>
+        private static DictionaryMaxlength FromZstd(
+            string relativePath = "dicts/dictionary_maxlength.zstd")
         {
-            try
+            if (string.IsNullOrWhiteSpace(relativePath))
             {
-                var baseDir = AppContext.BaseDirectory;
-                var fullPath = Path.Combine(baseDir, relativePath);
-
-                using (var inputStream = File.OpenRead(fullPath))
-                using (var decompressionStream = new DecompressionStream(inputStream))
-                {
-                    var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(decompressionStream);
-                    return EnsureDerivedMetadata(instance);
-                }
+                throw new ArgumentException(
+                    "Path must not be null or empty.",
+                    nameof(relativePath));
             }
-            catch (Exception ex)
+
+            var fullPath = Path.IsPathRooted(relativePath)
+                ? relativePath
+                : Path.Combine(AppContext.BaseDirectory, relativePath);
+
+            if (!File.Exists(fullPath))
             {
-                throw new InvalidOperationException("Failed to load dictionary from Zstd.", ex);
+                throw new FileNotFoundException(
+                    "Zstd dictionary file not found.",
+                    fullPath);
+            }
+
+            using (var inputStream = File.OpenRead(fullPath))
+            using (var decompressionStream =
+                   new DecompressionStream(inputStream))
+            {
+                var instance =
+                    JsonSerializer.Deserialize<DictionaryMaxlength>(
+                        decompressionStream);
+
+                return EnsureDerivedMetadata(instance);
             }
         }
 
@@ -530,7 +565,8 @@ namespace OpenccNetLib
         /// for best reliability and deployment simplicity.
         /// </summary>
         /// <param name="relativePath">
-        /// Relative path to the JSON dictionary file.
+        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
+        /// path to the JSON dictionary file.
         /// Defaults to <c>dicts/dictionary_maxlength.json</c>.
         /// </param>
         /// <returns>
@@ -552,15 +588,16 @@ namespace OpenccNetLib
         public static DictionaryMaxlength FromJson(
             string relativePath = "dicts/dictionary_maxlength.json")
         {
-            if (string.IsNullOrEmpty(relativePath))
+            if (string.IsNullOrWhiteSpace(relativePath))
             {
                 throw new ArgumentException(
                     "Path must not be null or empty.",
                     nameof(relativePath));
             }
 
-            var baseDir = AppContext.BaseDirectory;
-            var fullPath = Path.Combine(baseDir, relativePath);
+            var fullPath = Path.IsPathRooted(relativePath)
+                ? relativePath
+                : Path.Combine(AppContext.BaseDirectory, relativePath);
 
             if (!File.Exists(fullPath))
             {
@@ -579,16 +616,33 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Serializes the current dictionary (from text files) to a JSON file.
+        /// Serializes a <see cref="DictionaryMaxlength"/> instance to a JSON file.
+        ///
+        /// <para>
+        /// If no dictionary instance is provided, the dictionary is loaded from the
+        /// default OpenCC text dictionary sources via <see cref="FromDicts"/>.
+        /// </para>
         /// </summary>
-        /// <param name="path">The output file path.</param>
-        public static void SerializeToJson(string path)
+        /// <param name="path">
+        /// Output JSON file path.
+        /// </param>
+        /// <param name="dictionary">
+        /// Optional preloaded dictionary instance to serialize.
+        /// </param>
+        public static void SerializeToJson(
+            string path,
+            DictionaryMaxlength dictionary = null)
         {
-            File.WriteAllText(path, JsonSerializer.Serialize(FromDicts(),
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                }));
+            var instance = dictionary ?? FromDicts();
+
+            File.WriteAllText(
+                path,
+                JsonSerializer.Serialize(
+                    instance,
+                    new JsonSerializerOptions
+                    {
+                        WriteIndented = true
+                    }));
         }
 
         /// <summary>
@@ -637,10 +691,13 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Serializes the current dictionary (from text files) to a JSON file
+        /// Serializes a dictionary to a JSON file
         /// without escaping non-ASCII characters.
         /// </summary>
         /// <param name="path">The output file path.</param>
+        /// <param name="dictionary">
+        /// Optional preloaded dictionary instance to serialize.
+        /// </param>
         /// <remarks>
         /// <para>
         /// This method writes human-readable JSON where Chinese, Japanese, Korean, or other
@@ -656,7 +713,9 @@ namespace OpenccNetLib
         /// The resulting file is written in UTF-8 encoding without a BOM marker.
         /// </para>
         /// </remarks>
-        public static void SerializeToJsonUnescaped(string path)
+        public static void SerializeToJsonUnescaped(
+            string path,
+            DictionaryMaxlength dictionary = null)
         {
             var options = new JsonSerializerOptions
             {
@@ -664,17 +723,29 @@ namespace OpenccNetLib
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
 
-            var json = JsonSerializer.Serialize(FromDicts(), options);
-            json = DecodeJsonSurrogatePairs(json); // convert remaining surrogate pairs
+            var instance = dictionary ?? FromDicts();
 
-            File.WriteAllText(path, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var json = JsonSerializer.Serialize(instance, options);
+
+            // Convert remaining UTF-16 surrogate escape pairs into readable Unicode
+            json = DecodeJsonSurrogatePairs(json);
+
+            File.WriteAllText(
+                path,
+                json,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         }
 
         /// <summary>
-        /// Loads the dictionary from a JSON file at the specified path.
+        /// Loads and normalizes a dictionary from a JSON file at the specified path.
         /// </summary>
-        /// <param name="path">The path to the JSON file.</param>
-        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
+        /// <param name="path">
+        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
+        /// path to the JSON dictionary file.
+        /// </param>
+        /// <returns>
+        /// The deserialized and normalized <see cref="DictionaryMaxlength"/> instance.
+        /// </returns>
         public static DictionaryMaxlength DeserializedFromJson(string path)
         {
             return FromJson(path);
@@ -973,8 +1044,8 @@ namespace OpenccNetLib
         /// <see cref="DictionaryMaxlength"/> instance.
         /// </summary>
         /// <param name="relativeBaseDir">
-        /// Relative directory containing the base OpenCC dictionary text files.
-        /// Defaults to the built-in <c>dicts</c> directory.
+        /// Directory containing the base OpenCC dictionary text files, resolved under
+        /// <see cref="AppContext.BaseDirectory"/>. Defaults to <c>dicts</c>.
         /// </param>
         /// <param name="overrides">
         /// Optional dictionary slot -> file path mapping used to fully replace
@@ -1079,11 +1150,21 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads a dictionary from a text file, extracting key-value pairs and tracking the maximum key length.
-        /// Each line should be tab-separated: key[TAB]value.
+        /// Loads a dictionary from a UTF-8-compatible OpenCC text dictionary file.
+        ///
+        /// Each data line is tab-separated as <c>key[TAB]value</c>. Blank lines and
+        /// lines beginning with <c>#</c> are ignored. If the value contains aliases or
+        /// comments separated by spaces, only the first value token is used. Duplicate
+        /// keys use late-comer wins behavior.
         /// </summary>
         /// <param name="path">The path to the dictionary text file.</param>
-        /// <returns>A <see cref="DictWithMaxLength"/> instance with loaded data.</returns>
+        /// <returns>
+        /// A <see cref="DictWithMaxLength"/> instance with loaded data and rebuilt
+        /// length/starter metadata.
+        /// </returns>
+        /// <exception cref="FileNotFoundException">
+        /// Thrown when the dictionary text file does not exist.
+        /// </exception>
         private static DictWithMaxLength LoadFile(string path)
         {
             var dict = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -1266,7 +1347,8 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Rebuilds derived metadata for a single dictionary when it is missing or incomplete.
+        /// Ensures derived metadata for a single dictionary exists when it is missing
+        /// or incomplete.
         /// </summary>
         private static void EnsureDictionaryMetadata(DictWithMaxLength d)
         {
@@ -1328,10 +1410,14 @@ namespace OpenccNetLib
         /// all derived dictionary metadata is present before returning the instance.
         /// </summary>
         /// <param name="relativePath">
-        /// Relative path under <see cref="AppContext.BaseDirectory"/> to the CBOR file.
+        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
+        /// path to the CBOR file.
         /// Default: <c>dicts/dictionary_maxlength.cbor</c>.
         /// </param>
         /// <returns>The hydrated <see cref="DictionaryMaxlength"/> instance.</returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="relativePath"/> is null or empty.
+        /// </exception>
         /// <exception cref="FileNotFoundException">If the CBOR file cannot be found.</exception>
         /// <exception cref="IOException">If the CBOR file cannot be read.</exception>
         public static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")
@@ -1360,9 +1446,15 @@ namespace OpenccNetLib
         /// Serializes the dictionary to CBOR format and saves it to a file.
         /// </summary>
         /// <param name="path">The output file path.</param>
-        public static void SaveCbor(string path)
+        /// <param name="dictionary">
+        /// Optional preloaded dictionary instance to serialize.
+        /// </param>
+        public static void SaveCbor(
+            string path,
+            DictionaryMaxlength dictionary = null)
         {
-            var instance = (FromDicts());
+            var instance = dictionary ?? FromDicts();
+
             var cbor = CBORObject.FromObject(instance);
             File.WriteAllBytes(path, cbor.EncodeToBytes());
         }
@@ -1370,19 +1462,32 @@ namespace OpenccNetLib
         /// <summary>
         /// Serializes the dictionary to CBOR format and returns the bytes.
         /// </summary>
+        /// <param name="dictionary">
+        /// Optional preloaded dictionary instance to serialize.
+        /// </param>
         /// <returns>CBOR-encoded byte array.</returns>
-        public static byte[] ToCborBytes()
+        public static byte[] ToCborBytes(
+            DictionaryMaxlength dictionary = null)
         {
-            return CBORObject.FromObject(FromDicts()).EncodeToBytes();
+            return CBORObject
+                .FromObject(dictionary ?? FromDicts())
+                .EncodeToBytes();
         }
 
         /// <summary>
         /// Serializes the dictionary to JSON, compresses it with Zstd, and saves to a file.
         /// </summary>
         /// <param name="path">The output file path.</param>
-        public static void SaveJsonCompressed(string path)
+        /// <param name="dictionary">
+        /// Optional preloaded dictionary instance to serialize.
+        /// </param>
+        public static void SaveJsonCompressed(
+            string path,
+            DictionaryMaxlength dictionary = null)
         {
-            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(FromDicts());
+            var instance = dictionary ?? FromDicts();
+
+            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(instance);
 
             using (var compressor = new Compressor(19))
             {
@@ -1392,7 +1497,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads the dictionary from a Zstd-compressed JSON file.
+        /// Loads and normalizes the dictionary from a Zstd-compressed JSON file.
         /// </summary>
         /// <param name="path">The path to the compressed file.</param>
         /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>

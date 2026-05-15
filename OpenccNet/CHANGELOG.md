@@ -7,13 +7,18 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.5.1-beta1] - 2026-05-12
+## [1.5.1-beta1] - 2026-05-15
 
 ### Changed
 
 - Subcommand `convert` now preserves original stdout newline behavior during piped or redirected output.
 - Improved CLI stream handling by separating conversion payload (`stdout`) from prompts and status messages (`stderr`).
 - Interactive stdin prompt is now shown only for terminal sessions and suppressed for redirected/piped input.
+- Enhanced `dictgen --base-dir` handling to resolve relative paths from `AppContext.BaseDirectory`, accept absolute
+  paths, validate the source directory before generation, and report missing dictionary files cleanly.
+- `dictgen` now loads the source dictionaries once and passes the resulting `DictionaryMaxlength` instance into the
+  selected output writer, ensuring `zstd`, `cbor`, `json`, and `json --unescape` outputs are generated from the same
+  resolved dictionary set.
 
 ---
 
