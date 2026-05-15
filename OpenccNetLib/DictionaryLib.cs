@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
+// using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -123,7 +123,7 @@ namespace OpenccNetLib
     /// <para>
     /// Most consumers do not need to construct this type manually. Use
     /// <see cref="DictionaryLib.Provider"/> for the built-in dictionary,
-    /// <see cref="DictionaryLib.FromDicts(string)"/> or
+    /// <see cref="DictionaryLib.FromDicts(string,IDictionary{string,string},IDictionary{string,string})"/> or
     /// <see cref="DictionaryLib.FromJson(string)"/> to load dictionary data, and
     /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/> to activate a
     /// custom dictionary set.
@@ -680,86 +680,402 @@ namespace OpenccNetLib
             return FromJson(path);
         }
 
+        #region FromDicts
+
         /// <summary>
-        /// Loads all dictionary files from the specified directory and constructs a <see cref="DictionaryMaxlength"/> instance.
+        /// Maps internal OpenCC dictionary slot names to their default
+        /// dictionary text file names.
+        ///
+        /// <para>
+        /// These slot names form the stable internal dictionary contract used by
+        /// <see cref="DictionaryMaxlength"/>, <c>DictRefs</c>, starter indexes,
+        /// and future acceleration structures such as <c>StarterUnion</c>
+        /// and <c>UnionCache</c>.
+        /// </para>
+        ///
+        /// <para>
+        /// Custom dictionaries must attach to one of these existing slots through
+        /// append or override operations. Arbitrary dynamic slots are intentionally
+        /// not supported in order to preserve OpenCC-compatible dictionary topology
+        /// and deterministic conversion behavior.
+        /// </para>
         /// </summary>
-        /// <param name="relativeBaseDir">Relative directory containing dictionary text files.</param>
-        /// <returns>A fully populated <see cref="DictionaryMaxlength"/> instance.</returns>
+        private static readonly Dictionary<string, string> SlotFiles =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["st_characters"] = "STCharacters.txt",
+                ["st_phrases"] = "STPhrases.txt",
+                ["ts_characters"] = "TSCharacters.txt",
+                ["ts_phrases"] = "TSPhrases.txt",
+                ["tw_phrases"] = "TWPhrases.txt",
+                ["tw_phrases_rev"] = "TWPhrasesRev.txt",
+                ["tw_variants"] = "TWVariants.txt",
+                ["tw_variants_rev"] = "TWVariantsRev.txt",
+                ["tw_variants_rev_phrases"] = "TWVariantsRevPhrases.txt",
+                ["hk_variants"] = "HKVariants.txt",
+                ["hk_variants_rev"] = "HKVariantsRev.txt",
+                ["hk_variants_rev_phrases"] = "HKVariantsRevPhrases.txt",
+                ["jps_characters"] = "JPShinjitaiCharacters.txt",
+                ["jps_phrases"] = "JPShinjitaiPhrases.txt",
+                ["jp_variants"] = "JPVariants.txt",
+                ["jp_variants_rev"] = "JPVariantsRev.txt",
+                ["st_punctuations"] = "STPunctuations.txt",
+                ["ts_punctuations"] = "TSPunctuations.txt"
+            };
+
+        /// <summary>
+        /// Resolves a user-provided dictionary file path into a normalized absolute path.
+        ///
+        /// <para>
+        /// Relative paths are resolved against the current working directory,
+        /// allowing command-line tools and applications to load custom dictionaries
+        /// from user-controlled locations.
+        /// </para>
+        ///
+        /// <para>
+        /// Absolute paths are returned unchanged.
+        /// </para>
+        ///
+        /// <para>
+        /// This helper intentionally does not validate file existence. File loading
+        /// and exception behavior are handled by the centralized dictionary loading
+        /// pipeline.
+        /// </para>
+        /// </summary>
+        /// <param name="path">
+        /// User-provided dictionary file path.
+        /// </param>
+        /// <returns>
+        /// A normalized absolute dictionary file path.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The provided path is null, empty, or whitespace.
+        /// </exception>
+        private static string ResolveUserPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("Path must not be null or empty.", nameof(path));
+
+            return Path.IsPathRooted(path)
+                ? path
+                : Path.GetFullPath(path);
+        }
+
+        /// <summary>
+        /// Retrieves a dictionary slot from a <see cref="DictionaryMaxlength"/>
+        /// instance using its stable OpenCC slot name.
+        ///
+        /// <para>
+        /// This helper centralizes slot resolution for append, override,
+        /// normalization, and future acceleration workflows.
+        /// </para>
+        ///
+        /// <para>
+        /// Slot names form part of the internal OpenCC dictionary contract used by
+        /// <c>DictRefs</c>, starter indexes, and future acceleration structures such
+        /// as <c>StarterUnion</c> and <c>UnionCache</c>.
+        /// </para>
+        ///
+        /// <para>
+        /// Only predefined OpenCC-compatible slots are supported. Arbitrary dynamic
+        /// slots are intentionally rejected in order to preserve deterministic
+        /// conversion behavior and stable dictionary topology.
+        /// </para>
+        /// </summary>
+        /// <param name="d">
+        /// Target <see cref="DictionaryMaxlength"/> instance.
+        /// </param>
+        /// <param name="slot">
+        /// OpenCC dictionary slot name.
+        /// </param>
+        /// <returns>
+        /// The resolved <see cref="DictWithMaxLength"/> dictionary slot.
+        /// </returns>
+        /// <exception cref="ArgumentException">
+        /// The specified slot name is not a supported OpenCC dictionary slot.
+        /// </exception>
+        private static DictWithMaxLength GetSlot(DictionaryMaxlength d, string slot)
+        {
+            switch (slot)
+            {
+                case "st_characters": return d.st_characters;
+                case "st_phrases": return d.st_phrases;
+                case "ts_characters": return d.ts_characters;
+                case "ts_phrases": return d.ts_phrases;
+                case "tw_phrases": return d.tw_phrases;
+                case "tw_phrases_rev": return d.tw_phrases_rev;
+                case "tw_variants": return d.tw_variants;
+                case "tw_variants_rev": return d.tw_variants_rev;
+                case "tw_variants_rev_phrases": return d.tw_variants_rev_phrases;
+                case "hk_variants": return d.hk_variants;
+                case "hk_variants_rev": return d.hk_variants_rev;
+                case "hk_variants_rev_phrases": return d.hk_variants_rev_phrases;
+                case "jps_characters": return d.jps_characters;
+                case "jps_phrases": return d.jps_phrases;
+                case "jp_variants": return d.jp_variants;
+                case "jp_variants_rev": return d.jp_variants_rev;
+                case "st_punctuations": return d.st_punctuations;
+                case "ts_punctuations": return d.ts_punctuations;
+                default:
+                    throw new ArgumentException("Unknown dictionary slot: " + slot, nameof(slot));
+            }
+        }
+
+        /// <summary>
+        /// Replaces a dictionary slot inside a <see cref="DictionaryMaxlength"/>
+        /// instance using a stable OpenCC slot name.
+        ///
+        /// <para>
+        /// This helper centralizes slot assignment for base dictionary loading,
+        /// override operations, normalization workflows, and future acceleration
+        /// pipelines.
+        /// </para>
+        ///
+        /// <para>
+        /// Slot names form part of the internal OpenCC dictionary contract used by
+        /// <c>DictRefs</c>, starter indexes, and future acceleration structures such
+        /// as <c>StarterUnion</c> and <c>UnionCache</c>.
+        /// </para>
+        ///
+        /// <para>
+        /// Only predefined OpenCC-compatible slots are supported. Arbitrary dynamic
+        /// slots are intentionally rejected in order to preserve deterministic
+        /// conversion behavior, stable dictionary topology, and consistent metadata
+        /// generation.
+        /// </para>
+        /// </summary>
+        /// <param name="d">
+        /// Target <see cref="DictionaryMaxlength"/> instance.
+        /// </param>
+        /// <param name="slot">
+        /// OpenCC dictionary slot name.
+        /// </param>
+        /// <param name="value">
+        /// Replacement dictionary value.
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// The specified slot name is not a supported OpenCC dictionary slot.
+        /// </exception>
+        private static void SetSlot(DictionaryMaxlength d, string slot, DictWithMaxLength value)
+        {
+            switch (slot)
+            {
+                case "st_characters": d.st_characters = value; break;
+                case "st_phrases": d.st_phrases = value; break;
+                case "ts_characters": d.ts_characters = value; break;
+                case "ts_phrases": d.ts_phrases = value; break;
+                case "tw_phrases": d.tw_phrases = value; break;
+                case "tw_phrases_rev": d.tw_phrases_rev = value; break;
+                case "tw_variants": d.tw_variants = value; break;
+                case "tw_variants_rev": d.tw_variants_rev = value; break;
+                case "tw_variants_rev_phrases": d.tw_variants_rev_phrases = value; break;
+                case "hk_variants": d.hk_variants = value; break;
+                case "hk_variants_rev": d.hk_variants_rev = value; break;
+                case "hk_variants_rev_phrases": d.hk_variants_rev_phrases = value; break;
+                case "jps_characters": d.jps_characters = value; break;
+                case "jps_phrases": d.jps_phrases = value; break;
+                case "jp_variants": d.jp_variants = value; break;
+                case "jp_variants_rev": d.jp_variants_rev = value; break;
+                case "st_punctuations": d.st_punctuations = value; break;
+                case "ts_punctuations": d.ts_punctuations = value; break;
+                default:
+                    throw new ArgumentException("Unknown dictionary slot: " + slot, nameof(slot));
+            }
+        }
+
+        /// <summary>
+        /// Appends custom dictionary entries into an existing OpenCC dictionary slot.
+        ///
+        /// <para>
+        /// Custom entries are loaded through the centralized dictionary loader and
+        /// merged into the target slot using "late-comer wins" behavior, meaning
+        /// appended entries override earlier mappings with the same key.
+        /// </para>
+        ///
+        /// <para>
+        /// This helper is intended for user terminology, organization-specific
+        /// vocabulary, temporary conversion fixes, and domain-specific extensions
+        /// while preserving the existing OpenCC dictionary slot topology.
+        /// </para>
+        ///
+        /// <para>
+        /// After merging, dictionary metadata is fully rebuilt to ensure that
+        /// maximum phrase lengths, starter masks, and derived acceleration metadata
+        /// remain consistent for <c>DictRefs</c>, starter indexes, and future
+        /// acceleration structures such as <c>StarterUnion</c>
+        /// and <c>UnionCache</c>.
+        /// </para>
+        /// </summary>
+        /// <param name="d">
+        /// Target <see cref="DictionaryMaxlength"/> instance.
+        /// </param>
+        /// <param name="slot">
+        /// OpenCC dictionary slot name.
+        /// </param>
+        /// <param name="path">
+        /// Path to the custom dictionary text file.
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// The specified slot name is not a supported OpenCC dictionary slot.
+        /// </exception>
+        /// <exception cref="FileNotFoundException">
+        /// The specified custom dictionary file could not be found.
+        /// </exception>
+        private static void AppendSlot(DictionaryMaxlength d, string slot, string path)
+        {
+            var target = GetSlot(d, slot);
+            var extra = LoadFile(path);
+
+            foreach (var kv in extra.Dict)
+                target.Dict[kv.Key] = kv.Value; // late-comer wins
+
+            RebuildDictionaryMetadata(target);
+        }
+
+        /// <summary>
+        /// Fully clears and rebuilds derived metadata for a dictionary slot.
+        ///
+        /// <para>
+        /// This helper is used after mutating an existing dictionary, such as after
+        /// appending custom dictionary entries into a loaded OpenCC slot.
+        /// </para>
+        ///
+        /// <para>
+        /// Unlike <c>EnsureDictionaryMetadata</c>, this method intentionally resets
+        /// existing metadata first. This guarantees that maximum phrase length,
+        /// minimum phrase length, length masks, and starter length masks are
+        /// recalculated from the final merged dictionary content.
+        /// </para>
+        ///
+        /// <para>
+        /// This is important for custom dictionary append mode because newly appended
+        /// entries may introduce longer phrases, new starter characters, or new length
+        /// buckets. Rebuilding keeps the slot safe for <c>DictRefs</c>, starter indexes,
+        /// and future acceleration structures such as <c>StarterUnion</c> and
+        /// <c>UnionCache</c>.
+        /// </para>
+        /// </summary>
+        /// <param name="d">
+        /// Dictionary slot whose derived metadata should be rebuilt.
+        /// </param>
+        private static void RebuildDictionaryMetadata(DictWithMaxLength d)
+        {
+            d.MaxLength = 0;
+            d.MinLength = 0;
+            d.SetLengthMetadata(0UL, null);
+            d.StarterLenMask = null;
+
+            EnsureDictionaryMetadata(d);
+        }
+
+        /// <summary>
+        /// Loads OpenCC dictionary text files and constructs a fully normalized
+        /// <see cref="DictionaryMaxlength"/> instance.
+        /// </summary>
+        /// <param name="relativeBaseDir">
+        /// Relative directory containing the base OpenCC dictionary text files.
+        /// Defaults to the built-in <c>dicts</c> directory.
+        /// </param>
+        /// <param name="overrides">
+        /// Optional dictionary slot -> file path mapping used to fully replace
+        /// specific OpenCC dictionary slots.
+        ///
+        /// Override files completely replace the corresponding built-in slot.
+        /// This mode is intended for advanced users maintaining proprietary or
+        /// fully customized OpenCC dictionary copies.
+        /// </param>
+        /// <param name="appends">
+        /// Optional dictionary slot -> file path mapping used to append custom
+        /// dictionary entries on top of the built-in dictionaries.
+        ///
+        /// Appended entries are loaded after the built-in dictionaries and use
+        /// "late-comer wins" behavior, meaning duplicate keys override earlier
+        /// mappings.
+        ///
+        /// This mode is recommended for user terms, company terminology,
+        /// domain-specific vocabulary, or temporary conversion adjustments.
+        /// </param>
+        /// <returns>
+        /// A fully normalized and metadata-ready
+        /// <see cref="DictionaryMaxlength"/> instance.
+        /// </returns>
         /// <remarks>
-        /// All dictionary text files under the specified directory must exist.  
-        /// If any required file is missing, this method throws a <see cref="FileNotFoundException"/>  
-        /// and does not return a partially-installed <see cref="DictionaryMaxlength"/>.  
-        /// This ensures that all OpenCC configurations remain valid and prevents  
-        /// undefined behavior during Chinese text conversion.
+        /// <para>
+        /// This method follows the OpenCC dictionary slot structure and does not
+        /// support arbitrary dynamic dictionary slots such as <c>user_dict</c>.
+        /// Custom dictionaries must attach to existing OpenCC slots such as
+        /// <c>st_phrases</c> or <c>ts_phrases</c>.
+        /// </para>
+        ///
+        /// <para>
+        /// All dictionaries are parsed through the centralized dictionary loader,
+        /// ensuring consistent normalization, maximum phrase length calculation,
+        /// and metadata rebuilding across TXT, JSON, CBOR, appended, and overridden
+        /// dictionary sources.
+        /// </para>
+        ///
+        /// <para>
+        /// All required base dictionary files under the specified directory must
+        /// exist. If any required file is missing, this method throws a
+        /// <see cref="FileNotFoundException"/> and does not return a partially
+        /// initialized <see cref="DictionaryMaxlength"/> instance.
+        /// </para>
+        ///
+        /// <para>
+        /// Unknown custom dictionary slots throw an
+        /// <see cref="ArgumentException"/> to preserve the internal OpenCC slot
+        /// contract used by <c>DictRefs</c>, starter indexes, and future
+        /// acceleration structures such as <c>StarterUnion</c> and
+        /// <c>UnionCache</c>.
+        /// </para>
         /// </remarks>
-        public static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts")
+        /// <exception cref="FileNotFoundException">
+        /// One or more required dictionary files could not be found.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// An unknown custom dictionary slot was provided.
+        /// </exception>
+        public static DictionaryMaxlength FromDicts(
+            string relativeBaseDir = "dicts",
+            IDictionary<string, string> overrides = null,
+            IDictionary<string, string> appends = null)
         {
             var baseDir = Path.Combine(AppContext.BaseDirectory, relativeBaseDir);
 
-            // Collect missing files first
-            var required = new[]
+            var instance = new DictionaryMaxlength();
+
+            foreach (var kv in SlotFiles)
             {
-                "STCharacters.txt",
-                "STPhrases.txt",
-                "TSCharacters.txt",
-                "TSPhrases.txt",
-                "TWPhrases.txt",
-                "TWPhrasesRev.txt",
-                "TWVariants.txt",
-                "TWVariantsRev.txt",
-                "TWVariantsRevPhrases.txt",
-                "HKVariants.txt",
-                "HKVariantsRev.txt",
-                "HKVariantsRevPhrases.txt",
-                "JPShinjitaiCharacters.txt",
-                "JPShinjitaiPhrases.txt",
-                "JPVariants.txt",
-                "JPVariantsRev.txt",
-                "STPunctuations.txt",
-                "TSPunctuations.txt"
-            };
+                var slot = kv.Key;
+                var file = kv.Value;
+                var path = Path.Combine(baseDir, file);
 
-            var dictPaths = required
-                .Select(name => (name, path: Path.Combine(baseDir, name)))
-                .ToArray();
-
-            var missing = dictPaths
-                .Where(p => !File.Exists(p.path))
-                .Select(p => p.name)
-                .ToList();
-
-            if (missing.Count > 0)
-            {
-                var msg = "Missing dictionary files:\n" +
-                          string.Join("\n", missing.Select(Path.GetFileName));
-                throw new FileNotFoundException(msg);
+                SetSlot(instance, slot, LoadFile(path));
             }
 
-            var instance = new DictionaryMaxlength
+            if (overrides != null)
             {
-                st_characters = LoadFile(Path.Combine(baseDir, "STCharacters.txt")),
-                st_phrases = LoadFile(Path.Combine(baseDir, "STPhrases.txt")),
-                ts_characters = LoadFile(Path.Combine(baseDir, "TSCharacters.txt")),
-                ts_phrases = LoadFile(Path.Combine(baseDir, "TSPhrases.txt")),
-                tw_phrases = LoadFile(Path.Combine(baseDir, "TWPhrases.txt")),
-                tw_phrases_rev = LoadFile(Path.Combine(baseDir, "TWPhrasesRev.txt")),
-                tw_variants = LoadFile(Path.Combine(baseDir, "TWVariants.txt")),
-                tw_variants_rev = LoadFile(Path.Combine(baseDir, "TWVariantsRev.txt")),
-                tw_variants_rev_phrases = LoadFile(Path.Combine(baseDir, "TWVariantsRevPhrases.txt")),
-                hk_variants = LoadFile(Path.Combine(baseDir, "HKVariants.txt")),
-                hk_variants_rev = LoadFile(Path.Combine(baseDir, "HKVariantsRev.txt")),
-                hk_variants_rev_phrases = LoadFile(Path.Combine(baseDir, "HKVariantsRevPhrases.txt")),
-                jps_characters = LoadFile(Path.Combine(baseDir, "JPShinjitaiCharacters.txt")),
-                jps_phrases = LoadFile(Path.Combine(baseDir, "JPShinjitaiPhrases.txt")),
-                jp_variants = LoadFile(Path.Combine(baseDir, "JPVariants.txt")),
-                jp_variants_rev = LoadFile(Path.Combine(baseDir, "JPVariantsRev.txt")),
-                st_punctuations = LoadFile(Path.Combine(baseDir, "STPunctuations.txt")),
-                ts_punctuations = LoadFile(Path.Combine(baseDir, "TSPunctuations.txt"))
-            };
+                foreach (var kv in overrides)
+                {
+                    if (!SlotFiles.ContainsKey(kv.Key))
+                        throw new ArgumentException("Unknown dictionary slot: " + kv.Key);
 
-            // RebuildAllLengthMetadata(instance);
+                    SetSlot(instance, kv.Key, LoadFile(ResolveUserPath(kv.Value)));
+                }
+            }
 
-            return instance;
+            if (appends == null) return EnsureDerivedMetadata(instance);
+            {
+                foreach (var kv in appends)
+                {
+                    if (!SlotFiles.ContainsKey(kv.Key))
+                        throw new ArgumentException("Unknown dictionary slot: " + kv.Key);
+
+                    AppendSlot(instance, kv.Key, ResolveUserPath(kv.Value));
+                }
+            }
+
+            return EnsureDerivedMetadata(instance);
         }
 
         /// <summary>
@@ -862,6 +1178,8 @@ namespace OpenccNetLib
 
             return d;
         }
+
+        #endregion // FromDicts
 
         /// <summary>
         /// Builds a per-starter key-length bitmask for the specified dictionary.

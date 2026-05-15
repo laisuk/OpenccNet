@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Text;
+using System.Text.Json;
 using PeterO.Cbor;
 using OpenccNetLib;
 
@@ -206,5 +207,75 @@ public class DictionaryLibTests
 
         Console.WriteLine($"MinLength={d.MinLength}, MaxLength={d.MaxLength}");
         Console.WriteLine("LengthMask and LongLengths validation passed for st_phrases.");
+    }
+
+    [TestMethod]
+    public void TestFromDicts_AppendsCustomStPhrase()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_st_phrases.txt");
+        File.WriteAllText(
+            customPath,
+            "# Custom company terms\n帕兰蒂尔\t帕蘭蒂爾\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            appends: new Dictionary<string, string>
+            {
+                ["st_phrases"] = customPath
+            });
+
+        Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
+        Assert.IsGreaterThanOrEqualTo("帕兰蒂尔".Length, dict.st_phrases.MaxLength);
+        Assert.IsTrue(dict.st_phrases.StarterLenMask.ContainsKey("帕"));
+    }
+
+    [TestMethod]
+    public void TestFromDicts_AppendedCustomDictWorksInConversion()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_st_phrases_convert.txt");
+        File.WriteAllText(
+            customPath,
+            "# Custom company terms\n帕兰蒂尔\t帕蘭蒂爾\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            appends: new Dictionary<string, string>
+            {
+                ["st_phrases"] = customPath
+            });
+
+        Opencc.UseCustomDictionary(dict);
+
+        try
+        {
+            var opencc = new Opencc("s2t");
+            Assert.AreEqual(
+                "帕蘭蒂爾是一家公司",
+                opencc.Convert("帕兰蒂尔是一家公司"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
+    }
+
+    [TestMethod]
+    public void TestFromDicts_RejectsUnknownCustomSlot()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_user_dict.txt");
+
+        File.WriteAllText(
+            customPath,
+            "帕兰蒂尔\t帕蘭蒂爾\n",
+            Encoding.UTF8);
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            DictionaryLib.FromDicts(
+                appends: new Dictionary<string, string>
+                {
+                    ["user_dict"] = customPath
+                }));
+
+        Assert.Contains("Unknown dictionary slot", ex.Message);
     }
 }

@@ -6,7 +6,16 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.5.1-beta1] - 2026-05-12
+## [1.5.1-beta1] - 2026-05-15
+
+### Added
+
+- Added flexible custom dictionary loading support for `DictionaryLib.FromDicts()` and related APIs.
+- Added append mode (`appends`) for loading custom user/company dictionaries on top of existing OpenCC dictionary slots.
+- Added override mode (`overrides`) for fully replacing individual OpenCC dictionary slots with custom dictionary files.
+- Added strict dictionary slot validation to preserve the OpenCC lexicon contract and prevent unsupported custom slots.
+- Added custom dictionary tests covering append mode, conversion behavior, metadata rebuilding, and invalid slot
+  rejection.
 
 ### Changed
 
@@ -19,6 +28,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   making custom dictionary validation and debugging clearer for advanced users.
 - Improved XML documentation for `DictionaryLib.FromJson()` including explicit exception contracts and normalization
   behavior.
+- Custom dictionary loading now fully complies with the existing OpenCC dictionary slot structure instead of introducing
+  generic dynamic dictionary slots, keeping `DictionaryMaxlength`, `DictRefs`, and future acceleration structures
+  stable.
+- Reused centralized dictionary normalization and metadata rebuilding logic to ensure appended and overridden
+  dictionaries
+  remain fully compatible with future `StarterUnion` / `UnionCache` optimizations.
 - Update dictionary data.
 
 ---
