@@ -181,22 +181,108 @@ int result = Opencc.ZhoCheck("汉字"); // Returns 2 for Simplified, 1 for Tradi
 Console.WriteLine(result); // Output: 2 (for Simplified)
 ```
 
-### Using a Custom Dictionary
+### User Custom Dictionaries
 
-By default, OpenccNetLib uses the built-in Zstandard-compressed lexicon.
+By default, OpenccNetLib uses the built-in Zstandard-compressed lexicon. For advanced custom dictionary workflows, load
+OpenCC text dictionaries and activate the resulting `DictionaryMaxlength` instance **before** creating an `Opencc`
+instance:
 
-You can configure a custom dictionary (`JSON`, `CBOR`, or `"baseDir/*.txt"`) **before** creating an `Opencc` instance:
+```csharp
+DictionaryMaxlength DictionaryLib.FromDicts(
+    string relativeBaseDir = "dicts",
+    IDictionary<string, string> overrides = null,
+    IDictionary<string, string> appends = null)
+```
+
+OpenccNetLib follows the OpenCC lexicon structure. Custom dictionaries must attach to existing OpenCC dictionary slots
+such as `st_phrases` or `ts_phrases`; dynamic generic slots such as `user_dict` are intentionally rejected. Preserving
+the OpenCC dictionary topology keeps `DictionaryMaxlength`, `DictRefs`, starter indexes, and future acceleration
+structures such as `StarterUnion` and `UnionCache` deterministic and compatible. All custom dictionaries are normalized
+through the centralized dictionary loading pipeline, so appended and overridden dictionaries rebuild the same metadata
+as built-in TXT, JSON, CBOR, and Zstandard dictionary sources.
+
+#### Append custom user terms
+
+Use `appends` to load custom entries after the built-in dictionary in the selected slot. Appended entries use
+"late-comer wins" behavior, so duplicate keys override earlier built-in mappings.
 
 ```csharp
 using OpenccNetLib;
 
-// Initialize once, using dictionaries from "./dicts/" (baseDir)
-Opencc.UseCustomDictionary(DictionaryLib.FromDicts());
+var dict = DictionaryLib.FromDicts(
+    appends: new Dictionary<string, string>
+    {
+        ["st_phrases"] = "./UserDict.txt"
+    });
 
-var opencc = new Opencc("s2t"); // Simplified to Traditional
-string traditional = opencc.Convert("汉字转换测试");
-Console.WriteLine(traditional); // Output: 漢字轉換測試
+Opencc.UseCustomDictionary(dict);
+
+var opencc = new Opencc("s2t");
+Console.WriteLine(opencc.Convert("帕兰蒂尔是一家公司"));
 ```
+
+#### Override an entire slot
+
+Use `overrides` only when replacing the full content of an OpenCC dictionary slot with a complete custom dictionary.
+
+```csharp
+using OpenccNetLib;
+
+var dict = DictionaryLib.FromDicts(
+    overrides: new Dictionary<string, string>
+    {
+        ["st_phrases"] = "./company/STPhrases.txt"
+    });
+
+Opencc.UseCustomDictionary(dict);
+```
+
+#### Custom dictionary file format
+
+Custom dictionary files are UTF-8 text files. Each entry is written as `phrase<TAB>translation`; blank lines are
+ignored,
+comments are supported, and duplicate keys use late-comer wins behavior.
+
+```text
+# Company terminology
+帕兰蒂尔	帕蘭蒂爾
+人工智能	人工智慧
+```
+
+#### Supported dictionary slots
+
+| Slot Name                 | Default File                |
+|---------------------------|-----------------------------|
+| `st_characters`           | `STCharacters.txt`          |
+| `st_phrases`              | `STPhrases.txt`             |
+| `ts_characters`           | `TSCharacters.txt`          |
+| `ts_phrases`              | `TSPhrases.txt`             |
+| `tw_phrases`              | `TWPhrases.txt`             |
+| `tw_phrases_rev`          | `TWPhrasesRev.txt`          |
+| `tw_variants`             | `TWVariants.txt`            |
+| `tw_variants_rev`         | `TWVariantsRev.txt`         |
+| `tw_variants_rev_phrases` | `TWVariantsRevPhrases.txt`  |
+| `hk_variants`             | `HKVariants.txt`            |
+| `hk_variants_rev`         | `HKVariantsRev.txt`         |
+| `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`  |
+| `jps_characters`          | `JPShinjitaiCharacters.txt` |
+| `jps_phrases`             | `JPShinjitaiPhrases.txt`    |
+| `jp_variants`             | `JPVariants.txt`            |
+| `jp_variants_rev`         | `JPVariantsRev.txt`         |
+| `st_punctuations`         | `STPunctuations.txt`        |
+| `ts_punctuations`         | `TSPunctuations.txt`        |
+
+#### Recommended usage
+
+Use `appends` for company terms, product names, domain vocabulary, and temporary conversion fixes. Use `overrides` only
+when maintaining a full proprietary replacement dictionary. Prefer following the upstream OpenCC lexicon structure
+whenever possible.
+
+#### Why no `user_dict` slot?
+
+OpenccNetLib intentionally preserves the OpenCC dictionary topology. Generic dynamic slots complicate conversion
+contracts, `DictRefs`, starter indexes, and future acceleration structures. Existing OpenCC slots already provide
+deterministic and extensible customization points.
 
 ---
 
