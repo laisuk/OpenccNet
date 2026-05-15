@@ -196,10 +196,10 @@ DictionaryMaxlength DictionaryLib.FromDicts(
 
 OpenccNetLib follows the OpenCC lexicon structure. Custom dictionaries must attach to existing OpenCC dictionary slots
 such as `st_phrases` or `ts_phrases`; dynamic generic slots such as `user_dict` are intentionally rejected. Preserving
-the OpenCC dictionary topology keeps `DictionaryMaxlength`, `DictRefs`, starter indexes, and future acceleration
-structures such as `StarterUnion` and `UnionCache` deterministic and compatible. All custom dictionaries are normalized
-through the centralized dictionary loading pipeline, so appended and overridden dictionaries rebuild the same metadata
-as built-in TXT, JSON, CBOR, and Zstandard dictionary sources.
+the OpenCC dictionary topology keeps `DictionaryMaxlength`, `DictRefs`, starter indexes, `StarterUnion`, and the
+conversion plan/union caches deterministic and compatible. All custom dictionaries are normalized through the
+centralized dictionary loading pipeline, so appended and overridden dictionaries rebuild the same metadata as built-in
+TXT, JSON, CBOR, and Zstandard dictionary sources.
 
 #### Append custom user terms
 
@@ -281,8 +281,8 @@ whenever possible.
 #### Why no `user_dict` slot?
 
 OpenccNetLib intentionally preserves the OpenCC dictionary topology. Generic dynamic slots complicate conversion
-contracts, `DictRefs`, starter indexes, and future acceleration structures. Existing OpenCC slots already provide
-deterministic and extensible customization points.
+contracts, `DictRefs`, starter indexes, `StarterUnion`, and the conversion plan/union caches. Existing OpenCC slots
+already provide deterministic and extensible customization points.
 
 ---
 
