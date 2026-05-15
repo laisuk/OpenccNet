@@ -736,8 +736,9 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 
 ##### `DictionaryLib` loading APIs
 
-- `static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<string, string> overrides = null, IDictionary<string, string> appends = null)`
-  Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
+-
+`static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<string, string> overrides = null, IDictionary<string, string> appends = null)`
+Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
 
 - `static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")`
   Loads and normalizes a JSON dictionary payload.
