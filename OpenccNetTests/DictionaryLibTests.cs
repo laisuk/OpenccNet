@@ -10,6 +10,16 @@ public class DictionaryLibTests
 {
     private const string OutputDir = "test_output";
 
+    private static void AssertMetadataValid(DictWithMaxLength d)
+    {
+        Assert.IsGreaterThan(0, d.Count);
+        Assert.IsGreaterThan(0, d.MaxLength);
+        Assert.IsGreaterThan(0, d.MinLength);
+        Assert.IsTrue(d.MinLength <= d.MaxLength);
+        Assert.AreNotEqual((ulong)0, d.LengthMask);
+        Assert.IsTrue(d.StarterLenMask is { Count: > 0 });
+    }
+
     [TestInitialize]
     public void Init()
     {
@@ -219,14 +229,55 @@ public class DictionaryLibTests
             Encoding.UTF8);
 
         var dict = DictionaryLib.FromDicts(
-            appends: new Dictionary<string, string>
+            appends: new Dictionary<DictSlot, string>
             {
-                ["st_phrases"] = customPath
+                [DictSlot.STPhrases] = customPath
             });
 
         Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
         Assert.IsGreaterThanOrEqualTo("帕兰蒂尔".Length, dict.st_phrases.MaxLength);
         Assert.IsTrue(dict.st_phrases.StarterLenMask.ContainsKey("帕"));
+        AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestFromDicts_AppendsCustomStPhraseDuplicateKeyCustomValueWins()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_st_phrases_duplicate.txt");
+        File.WriteAllText(
+            customPath,
+            "# Duplicate built-in key should use custom value\nSQL注入\t客製SQL注入\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            appends: new Dictionary<DictSlot, string>
+            {
+                [DictSlot.STPhrases] = customPath
+            });
+
+        Assert.AreEqual("客製SQL注入", dict.st_phrases.Dict["SQL注入"]);
+        AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestFromDicts_OverridesStPhrasesReplacesWholeSlot()
+    {
+        var customPath = Path.Combine(OutputDir, "override_st_phrases.txt");
+        File.WriteAllText(
+            customPath,
+            "帕兰蒂尔\t帕蘭蒂爾\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            overrides: new Dictionary<DictSlot, string>
+            {
+                [DictSlot.STPhrases] = customPath
+            });
+
+        Assert.AreEqual(1, dict.st_phrases.Count);
+        Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
+        Assert.IsFalse(dict.st_phrases.Dict.ContainsKey("SQL注入"));
+        AssertMetadataValid(dict.st_phrases);
     }
 
     [TestMethod]
@@ -239,9 +290,9 @@ public class DictionaryLibTests
             Encoding.UTF8);
 
         var dict = DictionaryLib.FromDicts(
-            appends: new Dictionary<string, string>
+            appends: new Dictionary<DictSlot, string>
             {
-                ["st_phrases"] = customPath
+                [DictSlot.STPhrases] = customPath
             });
 
         Opencc.UseCustomDictionary(dict);
@@ -260,7 +311,7 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
-    public void TestFromDicts_RejectsUnknownCustomSlot()
+    public void TestFromDicts_RejectsInvalidCustomSlot()
     {
         var customPath = Path.Combine(OutputDir, "custom_user_dict.txt");
 
@@ -271,9 +322,9 @@ public class DictionaryLibTests
 
         var ex = Assert.Throws<ArgumentException>(() =>
             DictionaryLib.FromDicts(
-                appends: new Dictionary<string, string>
+                appends: new Dictionary<DictSlot, string>
                 {
-                    ["user_dict"] = customPath
+                    [(DictSlot)9999] = customPath
                 }));
 
         Assert.Contains("Unknown dictionary slot", ex.Message);

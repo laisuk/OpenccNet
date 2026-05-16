@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Added flexible custom dictionary loading support for `DictionaryLib.FromDicts()` and related APIs.
+- Added public `DictSlot` enum for strongly typed custom dictionary slot selection.
 - Added append mode (`appends`) for loading custom user/company dictionaries on top of existing OpenCC dictionary slots.
 - Added override mode (`overrides`) for fully replacing individual OpenCC dictionary slots with custom dictionary files.
 - Added strict dictionary slot validation to preserve the OpenCC lexicon contract and prevent unsupported custom slots.
@@ -25,6 +26,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   `InvalidOperationException`.
 - Refactored dictionary serialization helpers so callers can serialize an already loaded or customized
   `DictionaryMaxlength` instance without reloading from the default text dictionaries.
+- Refactored custom dictionary `overrides` and `appends` keys from string slot names to strongly typed `DictSlot`
+  values before `v1.5.1-beta1` publication, so no published API compatibility is broken.
 - `FromJson()` now behaves consistently with `FromCbor()` for file loading and error handling.
 - `FromJson()` and the internal Zstd loader now support both absolute paths and paths relative to
   `AppContext.BaseDirectory`.

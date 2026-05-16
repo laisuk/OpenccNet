@@ -190,12 +190,13 @@ instance:
 ```csharp
 DictionaryMaxlength DictionaryLib.FromDicts(
     string relativeBaseDir = "dicts",
-    IDictionary<string, string> overrides = null,
-    IDictionary<string, string> appends = null)
+    IDictionary<DictSlot, string> overrides = null,
+    IDictionary<DictSlot, string> appends = null)
 ```
 
 OpenccNetLib follows the OpenCC lexicon structure. Custom dictionaries must attach to existing OpenCC dictionary slots
-such as `st_phrases` or `ts_phrases`; dynamic generic slots such as `user_dict` are intentionally rejected. Preserving
+such as `DictSlot.STPhrases` or `DictSlot.TSPhrases`; dynamic generic slots such as `user_dict` are intentionally
+rejected. Preserving
 the OpenCC dictionary topology keeps `DictionaryMaxlength`, `DictRefs`, starter indexes, `StarterUnion`, and the
 conversion plan/union caches deterministic and compatible. All custom dictionaries are normalized through the
 centralized dictionary loading pipeline, so appended and overridden dictionaries rebuild the same metadata as built-in
@@ -210,9 +211,9 @@ Use `appends` to load custom entries after the built-in dictionary in the select
 using OpenccNetLib;
 
 var dict = DictionaryLib.FromDicts(
-    appends: new Dictionary<string, string>
+    appends: new Dictionary<DictSlot, string>
     {
-        ["st_phrases"] = "./UserDict.txt"
+        [DictSlot.STPhrases] = "./UserDict.txt"
     });
 
 Opencc.UseCustomDictionary(dict);
@@ -229,9 +230,9 @@ Use `overrides` only when replacing the full content of an OpenCC dictionary slo
 using OpenccNetLib;
 
 var dict = DictionaryLib.FromDicts(
-    overrides: new Dictionary<string, string>
+    overrides: new Dictionary<DictSlot, string>
     {
-        ["st_phrases"] = "./company/STPhrases.txt"
+        [DictSlot.STPhrases] = "./company/STPhrases.txt"
     });
 
 Opencc.UseCustomDictionary(dict);
@@ -249,28 +250,41 @@ comments are supported, and duplicate keys use late-comer wins behavior.
 人工智能	人工智慧
 ```
 
+Short append example:
+
+```csharp
+var dictionary = DictionaryLib.FromDicts(
+    appends: new Dictionary<DictSlot, string>
+    {
+        [DictSlot.STPhrases] = "custom-st-phrases.txt"
+    });
+
+Opencc.UseCustomDictionary(dictionary);
+var opencc = new Opencc("s2t");
+```
+
 #### Supported dictionary slots
 
-| Slot Name                 | Default File                |
-|---------------------------|-----------------------------|
-| `st_characters`           | `STCharacters.txt`          |
-| `st_phrases`              | `STPhrases.txt`             |
-| `ts_characters`           | `TSCharacters.txt`          |
-| `ts_phrases`              | `TSPhrases.txt`             |
-| `tw_phrases`              | `TWPhrases.txt`             |
-| `tw_phrases_rev`          | `TWPhrasesRev.txt`          |
-| `tw_variants`             | `TWVariants.txt`            |
-| `tw_variants_rev`         | `TWVariantsRev.txt`         |
-| `tw_variants_rev_phrases` | `TWVariantsRevPhrases.txt`  |
-| `hk_variants`             | `HKVariants.txt`            |
-| `hk_variants_rev`         | `HKVariantsRev.txt`         |
-| `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`  |
-| `jps_characters`          | `JPShinjitaiCharacters.txt` |
-| `jps_phrases`             | `JPShinjitaiPhrases.txt`    |
-| `jp_variants`             | `JPVariants.txt`            |
-| `jp_variants_rev`         | `JPVariantsRev.txt`         |
-| `st_punctuations`         | `STPunctuations.txt`        |
-| `ts_punctuations`         | `TSPunctuations.txt`        |
+| DictSlot                        | Serialization Field       | Default File                |
+|---------------------------------|---------------------------|-----------------------------|
+| `DictSlot.STCharacters`         | `st_characters`           | `STCharacters.txt`          |
+| `DictSlot.STPhrases`            | `st_phrases`              | `STPhrases.txt`             |
+| `DictSlot.STPunctuations`       | `st_punctuations`         | `STPunctuations.txt`        |
+| `DictSlot.TSCharacters`         | `ts_characters`           | `TSCharacters.txt`          |
+| `DictSlot.TSPhrases`            | `ts_phrases`              | `TSPhrases.txt`             |
+| `DictSlot.TSPunctuations`       | `ts_punctuations`         | `TSPunctuations.txt`        |
+| `DictSlot.TWPhrases`            | `tw_phrases`              | `TWPhrases.txt`             |
+| `DictSlot.TWPhrasesRev`         | `tw_phrases_rev`          | `TWPhrasesRev.txt`          |
+| `DictSlot.TWVariants`           | `tw_variants`             | `TWVariants.txt`            |
+| `DictSlot.TWVariantsRev`        | `tw_variants_rev`         | `TWVariantsRev.txt`         |
+| `DictSlot.TWVariantsRevPhrases` | `tw_variants_rev_phrases` | `TWVariantsRevPhrases.txt`  |
+| `DictSlot.HKVariants`           | `hk_variants`             | `HKVariants.txt`            |
+| `DictSlot.HKVariantsRev`        | `hk_variants_rev`         | `HKVariantsRev.txt`         |
+| `DictSlot.HKVariantsRevPhrases` | `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`  |
+| `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt` |
+| `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`    |
+| `DictSlot.JPVariants`           | `jp_variants`             | `JPVariants.txt`            |
+| `DictSlot.JPVariantsRev`        | `jp_variants_rev`         | `JPVariantsRev.txt`         |
 
 #### Recommended usage
 
@@ -737,7 +751,8 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 ##### `DictionaryLib` loading APIs
 
 -
-`static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<string, string> overrides = null, IDictionary<string, string> appends = null)`
+
+`static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<DictSlot, string> overrides = null, IDictionary<DictSlot, string> appends = null)`
 Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
 
 - `static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")`
@@ -774,9 +789,9 @@ from the default OpenCC text dictionary sources with `FromDicts()`.
 
 ```csharp
 var dict = DictionaryLib.FromDicts(
-    appends: new Dictionary<string, string>
+    appends: new Dictionary<DictSlot, string>
     {
-        ["st_phrases"] = "./UserDict.txt"
+        [DictSlot.STPhrases] = "./UserDict.txt"
     });
 
 DictionaryLib.SerializeToJson("./custom-dictionary.json", dict);

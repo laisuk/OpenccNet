@@ -134,7 +134,7 @@ namespace OpenccNetLib
     /// <para>
     /// Most consumers do not need to construct this type manually. Use
     /// <see cref="DictionaryLib.Provider"/> for the built-in dictionary,
-    /// <see cref="DictionaryLib.FromDicts(string,IDictionary{string,string},IDictionary{string,string})"/> or
+    /// <see cref="DictionaryLib.FromDicts(string,IDictionary{DictSlot,string},IDictionary{DictSlot,string})"/> or
     /// <see cref="DictionaryLib.FromJson(string)"/> to load dictionary data, and
     /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/> to activate a
     /// custom dictionary set.
@@ -771,27 +771,27 @@ namespace OpenccNetLib
         /// and deterministic conversion behavior.
         /// </para>
         /// </summary>
-        private static readonly Dictionary<string, string> SlotFiles =
-            new Dictionary<string, string>(StringComparer.Ordinal)
+        private static readonly Dictionary<DictSlot, string> SlotFiles =
+            new Dictionary<DictSlot, string>
             {
-                ["st_characters"] = "STCharacters.txt",
-                ["st_phrases"] = "STPhrases.txt",
-                ["ts_characters"] = "TSCharacters.txt",
-                ["ts_phrases"] = "TSPhrases.txt",
-                ["tw_phrases"] = "TWPhrases.txt",
-                ["tw_phrases_rev"] = "TWPhrasesRev.txt",
-                ["tw_variants"] = "TWVariants.txt",
-                ["tw_variants_rev"] = "TWVariantsRev.txt",
-                ["tw_variants_rev_phrases"] = "TWVariantsRevPhrases.txt",
-                ["hk_variants"] = "HKVariants.txt",
-                ["hk_variants_rev"] = "HKVariantsRev.txt",
-                ["hk_variants_rev_phrases"] = "HKVariantsRevPhrases.txt",
-                ["jps_characters"] = "JPShinjitaiCharacters.txt",
-                ["jps_phrases"] = "JPShinjitaiPhrases.txt",
-                ["jp_variants"] = "JPVariants.txt",
-                ["jp_variants_rev"] = "JPVariantsRev.txt",
-                ["st_punctuations"] = "STPunctuations.txt",
-                ["ts_punctuations"] = "TSPunctuations.txt"
+                [DictSlot.STCharacters] = "STCharacters.txt",
+                [DictSlot.STPhrases] = "STPhrases.txt",
+                [DictSlot.STPunctuations] = "STPunctuations.txt",
+                [DictSlot.TSCharacters] = "TSCharacters.txt",
+                [DictSlot.TSPhrases] = "TSPhrases.txt",
+                [DictSlot.TSPunctuations] = "TSPunctuations.txt",
+                [DictSlot.TWPhrases] = "TWPhrases.txt",
+                [DictSlot.TWPhrasesRev] = "TWPhrasesRev.txt",
+                [DictSlot.TWVariants] = "TWVariants.txt",
+                [DictSlot.TWVariantsRev] = "TWVariantsRev.txt",
+                [DictSlot.TWVariantsRevPhrases] = "TWVariantsRevPhrases.txt",
+                [DictSlot.HKVariants] = "HKVariants.txt",
+                [DictSlot.HKVariantsRev] = "HKVariantsRev.txt",
+                [DictSlot.HKVariantsRevPhrases] = "HKVariantsRevPhrases.txt",
+                [DictSlot.JPSCharacters] = "JPShinjitaiCharacters.txt",
+                [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt",
+                [DictSlot.JPVariants] = "JPVariants.txt",
+                [DictSlot.JPVariantsRev] = "JPVariantsRev.txt"
             };
 
         /// <summary>
@@ -865,28 +865,28 @@ namespace OpenccNetLib
         /// <exception cref="ArgumentException">
         /// The specified slot name is not a supported OpenCC dictionary slot.
         /// </exception>
-        private static DictWithMaxLength GetSlot(DictionaryMaxlength d, string slot)
+        private static DictWithMaxLength GetSlot(DictionaryMaxlength d, DictSlot slot)
         {
             switch (slot)
             {
-                case "st_characters": return d.st_characters;
-                case "st_phrases": return d.st_phrases;
-                case "ts_characters": return d.ts_characters;
-                case "ts_phrases": return d.ts_phrases;
-                case "tw_phrases": return d.tw_phrases;
-                case "tw_phrases_rev": return d.tw_phrases_rev;
-                case "tw_variants": return d.tw_variants;
-                case "tw_variants_rev": return d.tw_variants_rev;
-                case "tw_variants_rev_phrases": return d.tw_variants_rev_phrases;
-                case "hk_variants": return d.hk_variants;
-                case "hk_variants_rev": return d.hk_variants_rev;
-                case "hk_variants_rev_phrases": return d.hk_variants_rev_phrases;
-                case "jps_characters": return d.jps_characters;
-                case "jps_phrases": return d.jps_phrases;
-                case "jp_variants": return d.jp_variants;
-                case "jp_variants_rev": return d.jp_variants_rev;
-                case "st_punctuations": return d.st_punctuations;
-                case "ts_punctuations": return d.ts_punctuations;
+                case DictSlot.STCharacters: return d.st_characters;
+                case DictSlot.STPhrases: return d.st_phrases;
+                case DictSlot.STPunctuations: return d.st_punctuations;
+                case DictSlot.TSCharacters: return d.ts_characters;
+                case DictSlot.TSPhrases: return d.ts_phrases;
+                case DictSlot.TSPunctuations: return d.ts_punctuations;
+                case DictSlot.TWPhrases: return d.tw_phrases;
+                case DictSlot.TWPhrasesRev: return d.tw_phrases_rev;
+                case DictSlot.TWVariants: return d.tw_variants;
+                case DictSlot.TWVariantsRev: return d.tw_variants_rev;
+                case DictSlot.TWVariantsRevPhrases: return d.tw_variants_rev_phrases;
+                case DictSlot.HKVariants: return d.hk_variants;
+                case DictSlot.HKVariantsRev: return d.hk_variants_rev;
+                case DictSlot.HKVariantsRevPhrases: return d.hk_variants_rev_phrases;
+                case DictSlot.JPSCharacters: return d.jps_characters;
+                case DictSlot.JPSPhrases: return d.jps_phrases;
+                case DictSlot.JPVariants: return d.jp_variants;
+                case DictSlot.JPVariantsRev: return d.jp_variants_rev;
                 default:
                     throw new ArgumentException("Unknown dictionary slot: " + slot, nameof(slot));
             }
@@ -927,28 +927,28 @@ namespace OpenccNetLib
         /// <exception cref="ArgumentException">
         /// The specified slot name is not a supported OpenCC dictionary slot.
         /// </exception>
-        private static void SetSlot(DictionaryMaxlength d, string slot, DictWithMaxLength value)
+        private static void SetSlot(DictionaryMaxlength d, DictSlot slot, DictWithMaxLength value)
         {
             switch (slot)
             {
-                case "st_characters": d.st_characters = value; break;
-                case "st_phrases": d.st_phrases = value; break;
-                case "ts_characters": d.ts_characters = value; break;
-                case "ts_phrases": d.ts_phrases = value; break;
-                case "tw_phrases": d.tw_phrases = value; break;
-                case "tw_phrases_rev": d.tw_phrases_rev = value; break;
-                case "tw_variants": d.tw_variants = value; break;
-                case "tw_variants_rev": d.tw_variants_rev = value; break;
-                case "tw_variants_rev_phrases": d.tw_variants_rev_phrases = value; break;
-                case "hk_variants": d.hk_variants = value; break;
-                case "hk_variants_rev": d.hk_variants_rev = value; break;
-                case "hk_variants_rev_phrases": d.hk_variants_rev_phrases = value; break;
-                case "jps_characters": d.jps_characters = value; break;
-                case "jps_phrases": d.jps_phrases = value; break;
-                case "jp_variants": d.jp_variants = value; break;
-                case "jp_variants_rev": d.jp_variants_rev = value; break;
-                case "st_punctuations": d.st_punctuations = value; break;
-                case "ts_punctuations": d.ts_punctuations = value; break;
+                case DictSlot.STCharacters: d.st_characters = value; break;
+                case DictSlot.STPhrases: d.st_phrases = value; break;
+                case DictSlot.STPunctuations: d.st_punctuations = value; break;
+                case DictSlot.TSCharacters: d.ts_characters = value; break;
+                case DictSlot.TSPhrases: d.ts_phrases = value; break;
+                case DictSlot.TSPunctuations: d.ts_punctuations = value; break;
+                case DictSlot.TWPhrases: d.tw_phrases = value; break;
+                case DictSlot.TWPhrasesRev: d.tw_phrases_rev = value; break;
+                case DictSlot.TWVariants: d.tw_variants = value; break;
+                case DictSlot.TWVariantsRev: d.tw_variants_rev = value; break;
+                case DictSlot.TWVariantsRevPhrases: d.tw_variants_rev_phrases = value; break;
+                case DictSlot.HKVariants: d.hk_variants = value; break;
+                case DictSlot.HKVariantsRev: d.hk_variants_rev = value; break;
+                case DictSlot.HKVariantsRevPhrases: d.hk_variants_rev_phrases = value; break;
+                case DictSlot.JPSCharacters: d.jps_characters = value; break;
+                case DictSlot.JPSPhrases: d.jps_phrases = value; break;
+                case DictSlot.JPVariants: d.jp_variants = value; break;
+                case DictSlot.JPVariantsRev: d.jp_variants_rev = value; break;
                 default:
                     throw new ArgumentException("Unknown dictionary slot: " + slot, nameof(slot));
             }
@@ -992,7 +992,7 @@ namespace OpenccNetLib
         /// <exception cref="FileNotFoundException">
         /// The specified custom dictionary file could not be found.
         /// </exception>
-        private static void AppendSlot(DictionaryMaxlength d, string slot, string path)
+        private static void AppendSlot(DictionaryMaxlength d, DictSlot slot, string path)
         {
             var target = GetSlot(d, slot);
             var extra = LoadFile(path);
@@ -1108,8 +1108,8 @@ namespace OpenccNetLib
         /// </exception>
         public static DictionaryMaxlength FromDicts(
             string relativeBaseDir = "dicts",
-            IDictionary<string, string> overrides = null,
-            IDictionary<string, string> appends = null)
+            IDictionary<DictSlot, string> overrides = null,
+            IDictionary<DictSlot, string> appends = null)
         {
             var baseDir = Path.Combine(AppContext.BaseDirectory, relativeBaseDir);
 
