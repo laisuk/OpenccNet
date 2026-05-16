@@ -135,7 +135,7 @@ internal static class DictgenCommand
 
         return dictGenCommand;
     }
-    
+
     private static string ResolveUserPath(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
