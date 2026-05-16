@@ -72,9 +72,7 @@ internal static class DictgenCommand
             var defaultOutput = $"dictionary_maxlength.{format}";
             var outputFile = string.IsNullOrWhiteSpace(output) ? defaultOutput : output;
 
-            var resolvedBaseDir = Path.IsPathRooted(baseDir)
-                ? baseDir
-                : Path.Combine(AppContext.BaseDirectory, baseDir);
+            var resolvedBaseDir = ResolveUserPath(baseDir);
 
             Console.WriteLine(
                 $"{Blue}Loading dictionaries from '{resolvedBaseDir}'...{Reset}");
@@ -136,5 +134,18 @@ internal static class DictgenCommand
         });
 
         return dictGenCommand;
+    }
+    
+    private static string ResolveUserPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Path must not be null or empty.", nameof(path));
+
+        path = path.Trim();
+
+        if (!Path.IsPathRooted(path))
+            path = Path.Combine(AppContext.BaseDirectory, path);
+
+        return Path.GetFullPath(path);
     }
 }

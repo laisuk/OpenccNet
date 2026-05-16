@@ -795,16 +795,15 @@ namespace OpenccNetLib
             };
 
         /// <summary>
-        /// Resolves a user-provided dictionary file path into a normalized absolute path.
+        /// Resolves a user-provided dictionary path into a normalized absolute path.
         ///
         /// <para>
-        /// Relative paths are resolved against the current working directory,
-        /// allowing command-line tools and applications to load custom dictionaries
-        /// from user-controlled locations.
+        /// Relative paths are resolved against <see cref="AppContext.BaseDirectory"/>,
+        /// matching the built-in dictionary loading behavior.
         /// </para>
         ///
         /// <para>
-        /// Absolute paths are returned unchanged.
+        /// Absolute paths are normalized with <see cref="Path.GetFullPath(string)"/>.
         /// </para>
         ///
         /// <para>
@@ -814,10 +813,10 @@ namespace OpenccNetLib
         /// </para>
         /// </summary>
         /// <param name="path">
-        /// User-provided dictionary file path.
+        /// User-provided dictionary file or directory path.
         /// </param>
         /// <returns>
-        /// A normalized absolute dictionary file path.
+        /// A normalized absolute dictionary path.
         /// </returns>
         /// <exception cref="ArgumentException">
         /// The provided path is null, empty, or whitespace.
@@ -825,11 +824,20 @@ namespace OpenccNetLib
         private static string ResolveUserPath(string path)
         {
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("Path must not be null or empty.", nameof(path));
+                throw new ArgumentException(
+                    "Path must not be null or empty.",
+                    nameof(path));
 
-            return Path.IsPathRooted(path)
-                ? path
-                : Path.GetFullPath(path);
+            path = path.Trim();
+
+            path = path.Replace(
+                Path.AltDirectorySeparatorChar,
+                Path.DirectorySeparatorChar);
+
+            return Path.GetFullPath(
+                Path.IsPathRooted(path)
+                    ? path
+                    : Path.Combine(AppContext.BaseDirectory, path));
         }
 
         /// <summary>
@@ -1111,7 +1119,7 @@ namespace OpenccNetLib
             IDictionary<DictSlot, string> overrides = null,
             IDictionary<DictSlot, string> appends = null)
         {
-            var baseDir = Path.Combine(AppContext.BaseDirectory, relativeBaseDir);
+            var baseDir = ResolveUserPath(relativeBaseDir);
 
             var instance = new DictionaryMaxlength();
 
