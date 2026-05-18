@@ -183,9 +183,8 @@ Console.WriteLine(result); // Output: 2 (for Simplified)
 
 ### User Custom Dictionaries
 
-By default, OpenccNetLib uses the built-in Zstandard-compressed lexicon. For advanced custom dictionary workflows, load
-OpenCC text dictionaries and activate the resulting `DictionaryMaxlength` instance **before** creating an `Opencc`
-instance:
+By default, OpenccNetLib uses the built-in Zstandard-compressed lexicon. For advanced custom dictionary workflows, build
+or customize a `DictionaryMaxlength` instance, then activate it **before** creating `Opencc` instances.
 
 ```csharp
 DictionaryMaxlength DictionaryLib.FromDicts(
@@ -196,24 +195,24 @@ DictionaryMaxlength DictionaryLib.FromDicts(
 
 OpenccNetLib follows the OpenCC lexicon structure. Custom dictionaries must attach to existing OpenCC dictionary slots
 such as `DictSlot.STPhrases` or `DictSlot.TSPhrases`; dynamic generic slots such as `user_dict` are intentionally
-rejected. Preserving
-the OpenCC dictionary topology keeps `DictionaryMaxlength`, `DictRefs`, starter indexes, `StarterUnion`, and the
-conversion plan/union caches deterministic and compatible. All custom dictionaries are normalized through the
-centralized dictionary loading pipeline, so appended and overridden dictionaries rebuild the same metadata as built-in
-TXT, JSON, CBOR, and Zstandard dictionary sources.
+rejected. Preserving the OpenCC dictionary topology keeps dictionary metadata, lookup acceleration structures, and
+runtime plans deterministic and compatible.
 
-#### Append custom user terms
+#### File-level customization
+
+Use `DictionaryLib.FromDicts()` when custom files should be applied while loading the OpenCC text dictionaries.
 
 Use `appends` to load custom entries after the built-in dictionary in the selected slot. Appended entries use
 "late-comer wins" behavior, so duplicate keys override earlier built-in mappings.
 
 ```csharp
+using System.Collections.Generic;
 using OpenccNetLib;
 
 var dict = DictionaryLib.FromDicts(
     appends: new Dictionary<DictSlot, string>
     {
-        [DictSlot.STPhrases] = "./UserDict.txt"
+        [DictSlot.STPhrases] = "custom_st_phrases.txt"
     });
 
 Opencc.UseCustomDictionary(dict);
@@ -237,6 +236,59 @@ var dict = DictionaryLib.FromDicts(
 
 Opencc.UseCustomDictionary(dict);
 ```
+
+#### Post-load customization
+
+Use `DictionaryLib.WithCustomDicts()` when you already have a loaded `DictionaryMaxlength` provider and want to apply
+additional slot-level changes.
+
+```csharp
+using System.Collections.Generic;
+using OpenccNetLib;
+
+var dict = DictionaryLib.New();
+
+DictionaryLib.WithCustomDicts(
+    dict,
+    new CustomDictSpec[]
+    {
+        new CustomDictSpec
+        {
+            Slot = DictSlot.STPhrases,
+            Mode = CustomDictMode.Append,
+            Paths = new[] { "company_terms.txt", "product_terms.txt" },
+            Pairs = new Dictionary<string, string>
+            {
+                ["帕兰蒂尔"] = "帕蘭蒂爾"
+            }
+        }
+    });
+
+Opencc.UseCustomDictionary(dict);
+var opencc = new Opencc("s2t");
+```
+
+Post-load customization works with any already loaded provider, including `DictionaryLib.New()`, `FromDicts()`,
+`FromJson()`, `FromCbor()`, or another customized `DictionaryMaxlength` instance.
+
+Each `CustomDictSpec` targets one slot. `Paths` is optional and can contain multiple custom dictionary files. `Pairs` is
+optional and contains in-memory entries. At least one of `Paths` or `Pairs` must be supplied. When both are supplied,
+files are applied first in array order, then pairs are applied; later duplicate keys overwrite earlier entries, so pairs
+win over file entries.
+
+`CustomDictMode.Append` merges into the existing slot. `CustomDictMode.Override` replaces the whole target slot with the
+merged result from that spec. Dictionary metadata and lookup acceleration structures are rebuilt automatically after
+customization.
+
+| API                       | Description                                    |
+|---------------------------|------------------------------------------------|
+| `DictSlot`                | Strongly typed OpenCC dictionary slot selector |
+| `CustomDictSpec.Slot`     | Target slot                                    |
+| `CustomDictSpec.Paths`    | Custom dictionary files                        |
+| `CustomDictSpec.Pairs`    | In-memory dictionary entries                   |
+| `CustomDictSpec.Mode`     | `Append` or `Override`                         |
+| `CustomDictMode.Append`   | Merge into the existing slot                   |
+| `CustomDictMode.Override` | Replace the whole slot                         |
 
 #### Custom dictionary file format
 
@@ -291,6 +343,17 @@ var opencc = new Opencc("s2t");
 Use `appends` for company terms, product names, domain vocabulary, and temporary conversion fixes. Use `overrides` only
 when maintaining a full proprietary replacement dictionary. Prefer following the upstream OpenCC lexicon structure
 whenever possible.
+
+Call `Opencc.UseCustomDictionary(dict)` once during application startup, before constructing `Opencc` instances. The
+chosen dictionary should be treated as the application's single source of truth. Do not hot-swap the global dictionary
+provider while existing `Opencc` instances are still active; if the provider must change, set the new provider and then
+discard and recreate existing `Opencc` instances.
+
+This global provider design is intentional for performance: dictionary data, metadata, `StarterUnion` / `UnionCache`
+acceleration structures, and runtime plans can be shared instead of duplicated per `Opencc` instance. Normal
+applications
+usually need only one custom provider. Unit tests that mutate the global provider should not run in parallel with tests
+expecting the default provider.
 
 #### Why no `user_dict` slot?
 
@@ -717,7 +780,9 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 
 - `static void UseCustomDictionary(DictionaryMaxlength customDictionary)`
   Sets the active conversion dictionary provider to a custom `DictionaryMaxlength` instance and clears cached conversion
-  plans. Call this before creating converters that should use the custom dictionary.
+  plans. Call this once during application startup, before creating converters that should use the custom dictionary.
+  Treat the chosen dictionary as the shared application provider; if it must change, recreate existing `Opencc`
+  instances after setting the new provider.
 
 - `static void UseDefaultDictionary()`
   Restores the active provider to the built-in dictionary and clears cached conversion plans.
@@ -754,6 +819,10 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 
 `static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<DictSlot, string> overrides = null, IDictionary<DictSlot, string> appends = null)`
 Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
+
+- `static DictionaryMaxlength WithCustomDicts(DictionaryMaxlength dict, IEnumerable<CustomDictSpec> specs)`
+  Applies post-load customization to an already loaded dictionary provider. Each spec targets one `DictSlot`, reads
+  optional `Paths` and/or `Pairs`, and applies them with `CustomDictMode.Append` or `CustomDictMode.Override`.
 
 - `static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")`
   Loads and normalizes a JSON dictionary payload.
