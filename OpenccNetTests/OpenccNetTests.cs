@@ -210,6 +210,7 @@ public class OpenccNetTests
     }
 
     [TestMethod]
+    [DoNotParallelize]
     public void UseCustomDictionary()
     {
         Opencc.UseCustomDictionary(DictionaryLib.FromDicts());

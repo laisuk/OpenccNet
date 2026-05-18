@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-// using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -1269,6 +1268,192 @@ namespace OpenccNetLib
         }
 
         #endregion // FromDicts
+
+        #region Post Load Custom Dictionary
+
+        /// <summary>
+        /// Applies post-load custom dictionary modifications to an existing
+        /// <see cref="DictionaryMaxlength"/> instance.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method allows additional custom dictionary files and/or in-memory
+        /// dictionary pairs to be appended to or override specific OpenCC dictionary
+        /// slots after the base dictionary has already been loaded.
+        /// </para>
+        ///
+        /// <para>
+        /// Unlike <see cref="FromDicts"/>, which injects custom dictionaries during
+        /// initial dictionary construction, this method operates on an already-loaded
+        /// dictionary instance from any provider, including:
+        /// </para>
+        ///
+        /// <list type="bullet">
+        /// <item><description>default built-in dictionaries</description></item>
+        /// <item><description>Zstd dictionaries</description></item>
+        /// <item><description>CBOR dictionaries</description></item>
+        /// <item><description>JSON dictionaries</description></item>
+        /// <item><description>pure file-based dictionaries created through <see cref="FromDicts"/></description></item>
+        /// </list>
+        ///
+        /// <para>
+        /// Custom dictionary specifications are applied sequentially in enumeration
+        /// order. Within a single <see cref="CustomDictSpec"/>:
+        /// </para>
+        ///
+        /// <list type="number">
+        /// <item><description>Dictionary files are applied in array order.</description></item>
+        /// <item><description>In-memory pairs are applied after files.</description></item>
+        /// <item><description>Later entries overwrite earlier duplicate keys.</description></item>
+        /// </list>
+        ///
+        /// <para>
+        /// In <see cref="CustomDictMode.Override"/> mode, the final merged result
+        /// replaces the entire target slot.
+        /// </para>
+        ///
+        /// <para>
+        /// Dictionary metadata such as maximum phrase lengths and starter lookup
+        /// caches are automatically rebuilt after customization.
+        /// </para>
+        /// </remarks>
+        /// <param name="dict">
+        /// Target dictionary instance to customize.
+        /// </param>
+        /// <param name="specs">
+        /// Custom dictionary specifications describing which slots to modify
+        /// and how custom entries should be applied.
+        /// </param>
+        /// <returns>
+        /// The same <see cref="DictionaryMaxlength"/> instance after customization.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="dict"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// A custom dictionary specification is invalid, contains no dictionary
+        /// source, or references an unknown dictionary slot.
+        /// </exception>
+        public static DictionaryMaxlength WithCustomDicts(
+            DictionaryMaxlength dict,
+            IEnumerable<CustomDictSpec> specs)
+        {
+            if (dict == null)
+                throw new ArgumentNullException(nameof(dict));
+
+            if (specs == null)
+                return EnsureDerivedMetadata(dict);
+
+            foreach (var spec in specs)
+            {
+                if (spec == null)
+                    continue;
+
+                ApplyCustomDictSpec(dict, spec);
+            }
+
+            return EnsureDerivedMetadata(dict);
+        }
+
+        /// <summary>
+        /// Applies a single <see cref="CustomDictSpec"/> to a target
+        /// <see cref="DictionaryMaxlength"/> instance.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is the internal core implementation behind
+        /// <see cref="WithCustomDicts"/>.
+        /// </para>
+        ///
+        /// <para>
+        /// Depending on <see cref="CustomDictMode"/>, custom dictionary entries
+        /// are either appended to the existing slot or used to replace the entire
+        /// slot.
+        /// </para>
+        ///
+        /// <para>
+        /// When both dictionary files and in-memory pairs are provided:
+        /// </para>
+        ///
+        /// <list type="number">
+        /// <item><description>Files are loaded and applied in array order.</description></item>
+        /// <item><description>Pairs are applied after files.</description></item>
+        /// <item><description>Later entries overwrite earlier duplicate keys.</description></item>
+        /// </list>
+        ///
+        /// <para>
+        /// In <see cref="CustomDictMode.Override"/> mode, a temporary slot is built,
+        /// fully populated, and then atomically replaces the original slot after
+        /// metadata reconstruction completes.
+        /// </para>
+        ///
+        /// <para>
+        /// Slot metadata such as maximum phrase lengths and starter lookup caches
+        /// are rebuilt automatically before the slot becomes visible to callers.
+        /// </para>
+        /// </remarks>
+        /// <param name="dict">
+        /// Target dictionary instance to modify.
+        /// </param>
+        /// <param name="spec">
+        /// Custom dictionary specification describing the target slot,
+        /// dictionary sources, and merge behavior.
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// The specification references an unknown slot, contains no dictionary
+        /// source, or contains an invalid dictionary path.
+        /// </exception>
+        private static void ApplyCustomDictSpec(
+            DictionaryMaxlength dict,
+            CustomDictSpec spec)
+        {
+            if (!SlotFiles.ContainsKey(spec.Slot))
+                throw new ArgumentException("Unknown dictionary slot: " + spec.Slot, nameof(spec));
+
+            var hasPaths = spec.Paths != null && spec.Paths.Length > 0;
+            var hasPairs = spec.Pairs != null && spec.Pairs.Count > 0;
+
+            if (!hasPaths && !hasPairs)
+                throw new ArgumentException(
+                    "CustomDictSpec must provide at least one dictionary source: Paths or Pairs.",
+                    nameof(spec));
+
+            var target = spec.Mode == CustomDictMode.Override
+                ? new DictWithMaxLength { Dict = new Dictionary<string, string>(StringComparer.Ordinal) }
+                : GetSlot(dict, spec.Slot);
+
+            if (hasPaths)
+            {
+                foreach (var path in spec.Paths)
+                {
+                    if (string.IsNullOrWhiteSpace(path))
+                        throw new ArgumentException("Custom dictionary path must not be null or empty.", nameof(spec));
+
+                    var extra = LoadFile(ResolveUserPath(path));
+
+                    foreach (var kv in extra.Dict)
+                        target.Dict[kv.Key] = kv.Value;
+                }
+            }
+
+            if (hasPairs)
+            {
+                foreach (var kv in spec.Pairs)
+                {
+                    if (string.IsNullOrEmpty(kv.Key))
+                        continue;
+
+                    target.Dict[kv.Key] = kv.Value ?? string.Empty;
+                }
+            }
+
+            RebuildDictionaryMetadata(target);
+
+            if (spec.Mode == CustomDictMode.Override)
+                SetSlot(dict, spec.Slot, target);
+        }
+
+        #endregion // Post Load Custom Dictionary
 
         /// <summary>
         /// Builds a per-starter key-length bitmask for the specified dictionary.

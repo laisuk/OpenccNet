@@ -6,6 +6,7 @@ using OpenccNetLib;
 namespace OpenccNetTests;
 
 [TestClass]
+[DoNotParallelize]
 public class DictionaryLibTests
 {
     private const string OutputDir = "test_output";
@@ -15,7 +16,7 @@ public class DictionaryLibTests
         Assert.IsGreaterThan(0, d.Count);
         Assert.IsGreaterThan(0, d.MaxLength);
         Assert.IsGreaterThan(0, d.MinLength);
-        Assert.IsTrue(d.MinLength <= d.MaxLength);
+        Assert.IsLessThanOrEqualTo(d.MaxLength, d.MinLength);
         Assert.AreNotEqual((ulong)0, d.LengthMask);
         Assert.IsTrue(d.StarterLenMask is { Count: > 0 });
     }
@@ -219,6 +220,8 @@ public class DictionaryLibTests
         Console.WriteLine("LengthMask and LongLengths validation passed for st_phrases.");
     }
 
+    // File level Custom dictionary test
+
     [TestMethod]
     public void TestFromDicts_AppendsCustomStPhrase()
     {
@@ -325,6 +328,193 @@ public class DictionaryLibTests
                 appends: new Dictionary<DictSlot, string>
                 {
                     [(DictSlot)9999] = customPath
+                }));
+
+        Assert.Contains("Unknown dictionary slot", ex.Message);
+    }
+
+    // Post-load custom dictionary test
+
+    [TestMethod]
+    public void TestWithCustomDicts_AppendsCustomStPhraseFromPairs()
+    {
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            [
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.STPhrases,
+                    Mode = CustomDictMode.Append,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["帕兰蒂尔"] = "帕蘭蒂爾"
+                    }
+                }
+            ]);
+
+        Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
+        Assert.IsTrue(dict.st_phrases.StarterLenMask.ContainsKey("帕"));
+        AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_AppendsCustomStPhraseFromFile()
+    {
+        var customPath = Path.Combine(OutputDir, "post_load_custom_st_phrases.txt");
+        File.WriteAllText(
+            customPath,
+            "# Custom company terms\n帕兰蒂尔\t帕蘭蒂爾\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.STPhrases,
+                    Mode = CustomDictMode.Append,
+                    Paths = new[] { customPath }
+                }
+            });
+
+        Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
+        AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_AppendsPathsThenPairsPairsWin()
+    {
+        var customPath = Path.Combine(OutputDir, "post_load_paths_then_pairs.txt");
+        File.WriteAllText(
+            customPath,
+            "帕兰蒂尔\t檔案值\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.STPhrases,
+                    Mode = CustomDictMode.Append,
+                    Paths = new[] { customPath },
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["帕兰蒂尔"] = "記憶體值"
+                    }
+                }
+            });
+
+        Assert.AreEqual("記憶體值", dict.st_phrases.Dict["帕兰蒂尔"]);
+        AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_OverrideReplacesWholeSlot()
+    {
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.STPhrases,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["帕兰蒂尔"] = "帕蘭蒂爾"
+                    }
+                }
+            });
+
+        Assert.AreEqual(1, dict.st_phrases.Count);
+        Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
+        Assert.IsFalse(dict.st_phrases.Dict.ContainsKey("SQL注入"));
+        AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_AppendedCustomDictWorksInConversion()
+    {
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.STPhrases,
+                    Mode = CustomDictMode.Append,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["帕兰蒂尔"] = "帕蘭蒂爾"
+                    }
+                }
+            });
+
+        Opencc.UseCustomDictionary(dict);
+
+        try
+        {
+            var opencc = new Opencc("s2t");
+            Assert.AreEqual(
+                "帕蘭蒂爾是一家公司",
+                opencc.Convert("帕兰蒂尔是一家公司"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_RejectsEmptySpec()
+    {
+        var dict = DictionaryLib.New();
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            DictionaryLib.WithCustomDicts(
+                dict,
+                new[]
+                {
+                    new CustomDictSpec
+                    {
+                        Slot = DictSlot.STPhrases
+                    }
+                }));
+
+        Assert.Contains("must provide at least one dictionary source", ex.Message);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_RejectsInvalidCustomSlot()
+    {
+        var dict = DictionaryLib.New();
+
+        var ex = Assert.Throws<ArgumentException>(() =>
+            DictionaryLib.WithCustomDicts(
+                dict,
+                new[]
+                {
+                    new CustomDictSpec
+                    {
+                        Slot = (DictSlot)9999,
+                        Pairs = new Dictionary<string, string>
+                        {
+                            ["帕兰蒂尔"] = "帕蘭蒂爾"
+                        }
+                    }
                 }));
 
         Assert.Contains("Unknown dictionary slot", ex.Message);

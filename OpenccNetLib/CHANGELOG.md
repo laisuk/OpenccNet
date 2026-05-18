@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.5.1-beta1] - 2026-05-15
+## [1.5.1-beta1] - Unreleased
 
 ### Added
 
@@ -14,9 +14,29 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added public `DictSlot` enum for strongly typed custom dictionary slot selection.
 - Added append mode (`appends`) for loading custom user/company dictionaries on top of existing OpenCC dictionary slots.
 - Added override mode (`overrides`) for fully replacing individual OpenCC dictionary slots with custom dictionary files.
+- Added post-load custom dictionary customization through `DictionaryLib.WithCustomDicts()`.
+- Added public `CustomDictSpec` and `CustomDictMode` APIs for strongly typed post-load dictionary customization.
+- Added support for applying custom dictionary files (`Paths`) and in-memory dictionary pairs (`Pairs`) to existing
+  dictionary instances.
+- Added support for sequential custom dictionary layering:
+    - files applied in array order
+    - in-memory pairs applied after files
+    - later entries overwrite earlier duplicate keys
+- Added support for post-load append and override customization on dictionaries loaded from:
+    - default built-in dictionaries
+    - Zstd dictionaries
+    - CBOR dictionaries
+    - JSON dictionaries
+    - pure file-based dictionaries created through `FromDicts()`
 - Added strict dictionary slot validation to preserve the OpenCC lexicon contract and prevent unsupported custom slots.
-- Added custom dictionary tests covering append mode, conversion behavior, metadata rebuilding, and invalid slot
-  rejection.
+- Added custom dictionary tests covering:
+    - append mode
+    - override mode
+    - file + in-memory pair precedence
+    - conversion behavior
+    - metadata rebuilding
+    - invalid slot rejection
+    - empty specification rejection
 - Added optional `DictionaryMaxlength dictionary = null` parameters to dictionary serialization helpers:
   `SerializeToJson()`, `SerializeToJsonUnescaped()`, `SaveCbor()`, `ToCborBytes()`, and `SaveJsonCompressed()`.
 
@@ -28,6 +48,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   `DictionaryMaxlength` instance without reloading from the default text dictionaries.
 - Refactored custom dictionary `overrides` and `appends` keys from string slot names to strongly typed `DictSlot`
   values before `v1.5.1-beta1` publication, so no published API compatibility is broken.
+- Refactored custom dictionary infrastructure to reuse the same normalization and metadata rebuilding pipeline across
+  both file-level (`FromDicts`) and post-load (`WithCustomDicts`) customization workflows.
+- Refactored post-load customization so custom dictionary layering remains fully compatible with future
+  `StarterUnion` / `UnionCache` acceleration structures.
 - `FromJson()` now behaves consistently with `FromCbor()` for file loading and error handling.
 - `FromJson()` and the internal Zstd loader now support both absolute paths and paths relative to
   `AppContext.BaseDirectory`.
@@ -36,13 +60,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Corrupted or invalid JSON/CBOR payloads now surface their real exceptions directly instead of being silently wrapped,
   making custom dictionary validation and debugging clearer for advanced users.
 - Improved XML documentation across `DictionaryLib`, including dictionary metadata, custom dictionary loading,
-  serialization overloads, path handling, exception contracts, and normalization behavior.
+  post-load customization, serialization overloads, path handling, exception contracts, and normalization behavior.
 - Custom dictionary loading now fully complies with the existing OpenCC dictionary slot structure instead of introducing
   generic dynamic dictionary slots, keeping `DictionaryMaxlength`, `DictRefs`, and future acceleration structures
   stable.
-- Reused centralized dictionary normalization and metadata rebuilding logic to ensure appended and overridden
-  dictionaries
-  remain fully compatible with future `StarterUnion` / `UnionCache` optimizations.
+- Reused the existing centralized dictionary normalization and metadata rebuilding pipeline to keep appended and
+  overridden dictionaries fully compatible with the current `StarterUnion` / `UnionCache` acceleration system.
 - Update dictionary data.
 
 ---
