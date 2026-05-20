@@ -22,6 +22,15 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+[1.5.1] - 2026-05-20
+
+### Changed
+
+- Update OpenccNetLib to v1.5.1
+- `dictgen` subcommand code refinement.
+
+---
+
 [1.5.0] - 2026-05-07
 
 ### Changed
