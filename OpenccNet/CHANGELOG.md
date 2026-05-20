@@ -7,7 +7,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.5.1-beta1] - 2026-05-15
+## [1.5.1] - 2026-05-20
 
 ### Changed
 
@@ -19,15 +19,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 - `dictgen` now loads the source dictionaries once and passes the resulting `DictionaryMaxlength` instance into the
   selected output writer, ensuring `zstd`, `cbor`, `json`, and `json --unescape` outputs are generated from the same
   resolved dictionary set.
-
----
-
-[1.5.1] - 2026-05-20
-
-### Changed
-
 - Update OpenccNetLib to v1.5.1
-- `dictgen` subcommand code refinement.
 
 ---
 
