@@ -280,6 +280,56 @@ win over file entries.
 merged result from that spec. Dictionary metadata and lookup acceleration structures are rebuilt automatically after
 customization.
 
+#### Exact in-memory fallback pairs
+
+Use `CustomDictSpec.Pairs` for small, exact in-memory fallback pairs when an application needs project-local conversion
+patches without restructuring the built-in OpenCC dictionary files.
+
+This is especially useful for tofu-risk or CJK Extension Unicode cases where some target platforms may not render newer
+characters correctly. Applications can provide temporary alternate mappings while keeping the built-in dictionary
+topology
+unchanged.
+
+```csharp
+using System.Collections.Generic;
+using OpenccNetLib;
+
+var dict = DictionaryLib.New();
+
+DictionaryLib.WithCustomDicts(
+    dict,
+    new CustomDictSpec[]
+    {
+        new CustomDictSpec
+        {
+            Slot = DictSlot.STPhrases,
+            Mode = CustomDictMode.Append,
+            Pairs = new Dictionary<string, string>
+            {
+                // Project-local fallback pairs for tofu-risk / Extension Unicode cases.
+                // Keep these patches small, explicit, and easy to remove later.
+                ["骖𬴂"] = "驂騑",
+                ["𫜩合"] = "齧合",
+                ["𫜩蘗吞针"] = "齧蘗吞針",
+
+                // Normal custom phrase pairs may be mixed in as well.
+                ["帕兰蒂尔"] = "帕蘭蒂爾"
+            }
+        }
+    });
+
+Opencc.UseCustomDictionary(dict);
+
+var opencc = new Opencc("s2t");
+
+Console.WriteLine(opencc.Convert("骖𬴂"));
+Console.WriteLine(opencc.Convert("𫜩合"));
+Console.WriteLine(opencc.Convert("帕兰蒂尔"));
+```
+
+This keeps the core dictionary structure unchanged while still allowing applications to patch specific high-risk entries
+at load time.
+
 | API                       | Description                                    |
 |---------------------------|------------------------------------------------|
 | `DictSlot`                | Strongly typed OpenCC dictionary slot selector |
