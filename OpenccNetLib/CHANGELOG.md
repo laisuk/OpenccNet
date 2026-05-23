@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.5.1] - 2026-05-20
+## [1.5.1] - 2026-05-23
 
 ### Added
 
@@ -66,7 +66,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   stable.
 - Reused the existing centralized dictionary normalization and metadata rebuilding pipeline to keep appended and
   overridden dictionaries fully compatible with the current `StarterUnion` / `UnionCache` acceleration system.
-- Update dictionary data.
+- Update and optimize dictionary data.
 
 ---
 
