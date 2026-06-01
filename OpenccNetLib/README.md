@@ -176,7 +176,11 @@ In most case, it is auto-set when package added from `Nuget`:
 ### Using Custom Dictionary
 
 Library default is zstd compressed dictionary Lexicon.
-It can be changed to custom dictionary (`JSON`, `CBOR` or `"baseDir/*.txt"`) prior to instantiate `Opencc()`:
+It can be changed to custom dictionary (`JSON`, `CBOR` or `"baseDir/*.txt"`) prior to instantiate `Opencc()`.
+Custom dictionaries attach to existing `DictSlot` values and can append to or override those slots. Regional variant
+phrase slots are supported too: `DictSlot.TWVariantsPhrases` is applied before `DictSlot.TWVariants`, and
+`DictSlot.HKVariantsPhrases` is applied before `DictSlot.HKVariants`, so phrase exceptions win before character-level
+regional variant mappings.
 
 ```csharp
 using OpenccNetLib;

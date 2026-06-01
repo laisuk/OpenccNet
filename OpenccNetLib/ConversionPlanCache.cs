@@ -84,9 +84,9 @@ namespace OpenccNetLib
             TwPhrasesOnly,
 
             /// <summary>
-            /// Taiwan variants only (character-level).
+            /// Taiwan forward variant pair: phrase variants + character variants.
             /// </summary>
-            TwVariantsOnly,
+            TwVariantsPair,
 
             /// <summary>
             /// Taiwan reverse phrases only.
@@ -105,9 +105,9 @@ namespace OpenccNetLib
 
             // --- Hong Kong-specific ---
             /// <summary>
-            /// Hong Kong variants only (character-level).
+            /// Hong Kong forward variant pair: phrase variants + character variants.
             /// </summary>
-            HkVariantsOnly,
+            HkVariantsPair,
 
             /// <summary>
             /// Hong Kong reverse pair: variant reverse phrases + variant reverse characters.
@@ -259,7 +259,7 @@ namespace OpenccNetLib
                 case OpenccConfig.S2Tw:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r2);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsPair, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
@@ -274,7 +274,7 @@ namespace OpenccNetLib
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
                     var u2 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r2);
-                    var u3 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r3);
+                    var u3 = GetOrAddUnionFor(d, UnionKey.TwVariantsPair, out var r3);
                     return new DictRefs(r1, u1).WithRound2(r2, u2).WithRound3(r3, u3);
                 }
 
@@ -288,7 +288,7 @@ namespace OpenccNetLib
                 case OpenccConfig.S2Hk:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.HkVariantsOnly, out var r2);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.HkVariantsPair, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
@@ -301,14 +301,14 @@ namespace OpenccNetLib
 
                 case OpenccConfig.T2Tw:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r1);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwVariantsPair, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
                 case OpenccConfig.T2Twp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsOnly, out var r2);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsPair, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
@@ -327,7 +327,7 @@ namespace OpenccNetLib
 
                 case OpenccConfig.T2Hk:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.HkVariantsOnly, out var r1);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.HkVariantsPair, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
@@ -488,8 +488,12 @@ namespace OpenccNetLib
                 case UnionKey.TwPhrasesOnly:
                     return new[] { d.tw_phrases };
 
-                case UnionKey.TwVariantsOnly:
-                    return new[] { d.tw_variants };
+                case UnionKey.TwVariantsPair:
+                    return new[]
+                    {
+                        d.tw_variants_phrases,
+                        d.tw_variants
+                    };
 
                 case UnionKey.TwPhrasesRevOnly:
                     return new[] { d.tw_phrases_rev };
@@ -510,8 +514,12 @@ namespace OpenccNetLib
                     };
 
                 // --- HK ---
-                case UnionKey.HkVariantsOnly:
-                    return new[] { d.hk_variants };
+                case UnionKey.HkVariantsPair:
+                    return new[]
+                    {
+                        d.hk_variants_phrases,
+                        d.hk_variants
+                    };
 
                 case UnionKey.HkRevPair:
                     return new[]

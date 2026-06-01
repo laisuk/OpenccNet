@@ -178,6 +178,11 @@ namespace OpenccNetLib
         public DictWithMaxLength tw_variants { get; set; } = new DictWithMaxLength();
 
         /// <summary>
+        /// Traditional-to-Taiwan phrase variant mappings applied before character variants.
+        /// </summary>
+        public DictWithMaxLength tw_variants_phrases { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
         /// Taiwan-to-Traditional character variant mappings.
         /// </summary>
         public DictWithMaxLength tw_variants_rev { get; set; } = new DictWithMaxLength();
@@ -191,6 +196,11 @@ namespace OpenccNetLib
         /// Traditional-to-Hong Kong character variant mappings.
         /// </summary>
         public DictWithMaxLength hk_variants { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
+        /// Traditional-to-Hong Kong phrase variant mappings applied before character variants.
+        /// </summary>
+        public DictWithMaxLength hk_variants_phrases { get; set; } = new DictWithMaxLength();
 
         /// <summary>
         /// Hong Kong-to-Traditional character variant mappings.
@@ -782,9 +792,11 @@ namespace OpenccNetLib
                 [DictSlot.TWPhrases] = "TWPhrases.txt",
                 [DictSlot.TWPhrasesRev] = "TWPhrasesRev.txt",
                 [DictSlot.TWVariants] = "TWVariants.txt",
+                [DictSlot.TWVariantsPhrases] = "TWVariantsPhrases.txt",
                 [DictSlot.TWVariantsRev] = "TWVariantsRev.txt",
                 [DictSlot.TWVariantsRevPhrases] = "TWVariantsRevPhrases.txt",
                 [DictSlot.HKVariants] = "HKVariants.txt",
+                [DictSlot.HKVariantsPhrases] = "HKVariantsPhrases.txt",
                 [DictSlot.HKVariantsRev] = "HKVariantsRev.txt",
                 [DictSlot.HKVariantsRevPhrases] = "HKVariantsRevPhrases.txt",
                 [DictSlot.JPSCharacters] = "JPShinjitaiCharacters.txt",
@@ -885,9 +897,11 @@ namespace OpenccNetLib
                 case DictSlot.TWPhrases: return d.tw_phrases;
                 case DictSlot.TWPhrasesRev: return d.tw_phrases_rev;
                 case DictSlot.TWVariants: return d.tw_variants;
+                case DictSlot.TWVariantsPhrases: return d.tw_variants_phrases;
                 case DictSlot.TWVariantsRev: return d.tw_variants_rev;
                 case DictSlot.TWVariantsRevPhrases: return d.tw_variants_rev_phrases;
                 case DictSlot.HKVariants: return d.hk_variants;
+                case DictSlot.HKVariantsPhrases: return d.hk_variants_phrases;
                 case DictSlot.HKVariantsRev: return d.hk_variants_rev;
                 case DictSlot.HKVariantsRevPhrases: return d.hk_variants_rev_phrases;
                 case DictSlot.JPSCharacters: return d.jps_characters;
@@ -947,9 +961,11 @@ namespace OpenccNetLib
                 case DictSlot.TWPhrases: d.tw_phrases = value; break;
                 case DictSlot.TWPhrasesRev: d.tw_phrases_rev = value; break;
                 case DictSlot.TWVariants: d.tw_variants = value; break;
+                case DictSlot.TWVariantsPhrases: d.tw_variants_phrases = value; break;
                 case DictSlot.TWVariantsRev: d.tw_variants_rev = value; break;
                 case DictSlot.TWVariantsRevPhrases: d.tw_variants_rev_phrases = value; break;
                 case DictSlot.HKVariants: d.hk_variants = value; break;
+                case DictSlot.HKVariantsPhrases: d.hk_variants_phrases = value; break;
                 case DictSlot.HKVariantsRev: d.hk_variants_rev = value; break;
                 case DictSlot.HKVariantsRevPhrases: d.hk_variants_rev_phrases = value; break;
                 case DictSlot.JPSCharacters: d.jps_characters = value; break;
@@ -1517,6 +1533,12 @@ namespace OpenccNetLib
             if (instance == null)
                 throw new InvalidOperationException("Deserialized dictionary instance was null.");
 
+            if (instance.tw_variants_phrases == null)
+                instance.tw_variants_phrases = new DictWithMaxLength();
+
+            if (instance.hk_variants_phrases == null)
+                instance.hk_variants_phrases = new DictWithMaxLength();
+
             EnsureDictionaryMetadata(instance.st_characters);
             EnsureDictionaryMetadata(instance.st_phrases);
             EnsureDictionaryMetadata(instance.ts_characters);
@@ -1524,9 +1546,11 @@ namespace OpenccNetLib
             EnsureDictionaryMetadata(instance.tw_phrases);
             EnsureDictionaryMetadata(instance.tw_phrases_rev);
             EnsureDictionaryMetadata(instance.tw_variants);
+            EnsureDictionaryMetadata(instance.tw_variants_phrases);
             EnsureDictionaryMetadata(instance.tw_variants_rev);
             EnsureDictionaryMetadata(instance.tw_variants_rev_phrases);
             EnsureDictionaryMetadata(instance.hk_variants);
+            EnsureDictionaryMetadata(instance.hk_variants_phrases);
             EnsureDictionaryMetadata(instance.hk_variants_rev);
             EnsureDictionaryMetadata(instance.hk_variants_rev_phrases);
             EnsureDictionaryMetadata(instance.jps_characters);

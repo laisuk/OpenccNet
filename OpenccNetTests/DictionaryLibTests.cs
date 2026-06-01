@@ -37,6 +37,54 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
+    public void TestFromDicts_LoadsForwardVariantPhraseSlots()
+    {
+        var dict = DictionaryLib.FromDicts();
+
+        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.TWVariantsPhrases));
+        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKVariantsPhrases));
+        AssertMetadataValid(dict.tw_variants_phrases);
+        AssertMetadataValid(dict.hk_variants_phrases);
+    }
+
+    [TestMethod]
+    public void TestProvider_LoadsForwardVariantPhraseSlotsFromZstd()
+    {
+        var dict = DictionaryLib.Provider;
+
+        AssertMetadataValid(dict.tw_variants_phrases);
+        AssertMetadataValid(dict.hk_variants_phrases);
+    }
+
+    [TestMethod]
+    public void TestFromDicts_RequiresForwardVariantPhraseSlots()
+    {
+        var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
+
+        foreach (var missingFile in new[] { "TWVariantsPhrases.txt", "HKVariantsPhrases.txt" })
+        {
+            var tempDir = Path.Combine(OutputDir, "dicts_missing_" + Path.GetFileNameWithoutExtension(missingFile));
+
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, recursive: true);
+
+            Directory.CreateDirectory(tempDir);
+
+            foreach (var sourceFile in Directory.GetFiles(sourceDir))
+            {
+                var fileName = Path.GetFileName(sourceFile);
+                if (fileName == missingFile)
+                    continue;
+
+                File.Copy(sourceFile, Path.Combine(tempDir, fileName));
+            }
+
+            var ex = Assert.Throws<FileNotFoundException>(() => DictionaryLib.FromDicts(tempDir));
+            StringAssert.Contains(ex.Message, missingFile);
+        }
+    }
+
+    [TestMethod]
     public void TestFromJson()
     {
         var dict = DictionaryLib.FromJson("Data/dictionary_maxlength.json");
@@ -166,6 +214,8 @@ public class DictionaryLibTests
         var content = File.ReadAllText(jsonPath);
         var json = JsonDocument.Parse(content);
         Assert.IsTrue(json.RootElement.TryGetProperty("ts_phrases", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("tw_variants_phrases", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("hk_variants_phrases", out _));
     }
 
     [TestMethod]
@@ -241,6 +291,26 @@ public class DictionaryLibTests
         Assert.IsGreaterThanOrEqualTo("帕兰蒂尔".Length, dict.st_phrases.MaxLength);
         Assert.IsTrue(dict.st_phrases.StarterLenMask.ContainsKey("帕"));
         AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestFromDicts_AppendsCustomTwVariantPhrase()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_tw_variant_phrases.txt");
+        File.WriteAllText(
+            customPath,
+            "測試片語\t測試片語\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            appends: new Dictionary<DictSlot, string>
+            {
+                [DictSlot.TWVariantsPhrases] = customPath
+            });
+
+        Assert.AreEqual("測試片語", dict.tw_variants_phrases.Dict["測試片語"]);
+        Assert.IsTrue(dict.tw_variants_phrases.StarterLenMask.ContainsKey("測"));
+        AssertMetadataValid(dict.tw_variants_phrases);
     }
 
     [TestMethod]
@@ -441,6 +511,65 @@ public class DictionaryLibTests
         Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
         Assert.IsFalse(dict.st_phrases.Dict.ContainsKey("SQL注入"));
         AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_OverrideReplacesHkVariantPhraseSlot()
+    {
+        var dict = DictionaryLib.FromDicts();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.HKVariantsPhrases,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["無線新聞"] = "無綫新聞"
+                    }
+                }
+            });
+
+        Assert.AreEqual(1, dict.hk_variants_phrases.Count);
+        Assert.AreEqual("無綫新聞", dict.hk_variants_phrases.Dict["無線新聞"]);
+        AssertMetadataValid(dict.hk_variants_phrases);
+    }
+
+    [TestMethod]
+    public void TestTwVariantPhraseAppliesBeforeCharacterVariant()
+    {
+        var dict = DictionaryLib.FromDicts();
+        Opencc.UseCustomDictionary(dict);
+
+        try
+        {
+            var opencc = new Opencc("t2tw");
+            Assert.AreEqual("喫茶小舖", opencc.Convert("喫茶小舖"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
+    }
+
+    [TestMethod]
+    public void TestHkVariantPhraseAppliesBeforeCharacterVariant()
+    {
+        var dict = DictionaryLib.FromDicts();
+        Opencc.UseCustomDictionary(dict);
+
+        try
+        {
+            var opencc = new Opencc("t2hk");
+            Assert.AreEqual("喫茶小舖", opencc.Convert("喫茶小舖"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
     }
 
     [TestMethod]

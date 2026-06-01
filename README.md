@@ -198,6 +198,11 @@ such as `DictSlot.STPhrases` or `DictSlot.TSPhrases`; dynamic generic slots such
 rejected. Preserving the OpenCC dictionary topology keeps dictionary metadata, lookup acceleration structures, and
 runtime plans deterministic and compatible.
 
+Regional variant phrase slots are also customizable. `DictSlot.TWVariantsPhrases` is applied before
+`DictSlot.TWVariants`, and `DictSlot.HKVariantsPhrases` is applied before `DictSlot.HKVariants`, so phrase exceptions
+can protect a full term from later character-level regional variant mappings. These slots can be used with both append
+and override custom dictionary APIs.
+
 #### File-level customization
 
 Use `DictionaryLib.FromDicts()` when custom files should be applied while loading the OpenCC text dictionaries.
@@ -212,7 +217,8 @@ using OpenccNetLib;
 var dict = DictionaryLib.FromDicts(
     appends: new Dictionary<DictSlot, string>
     {
-        [DictSlot.STPhrases] = "custom_st_phrases.txt"
+        [DictSlot.STPhrases] = "custom_st_phrases.txt",
+        [DictSlot.TWVariantsPhrases] = "custom_tw_variant_phrases.txt"
     });
 
 Opencc.UseCustomDictionary(dict);
@@ -378,9 +384,11 @@ var opencc = new Opencc("s2t");
 | `DictSlot.TWPhrases`            | `tw_phrases`              | `TWPhrases.txt`             |
 | `DictSlot.TWPhrasesRev`         | `tw_phrases_rev`          | `TWPhrasesRev.txt`          |
 | `DictSlot.TWVariants`           | `tw_variants`             | `TWVariants.txt`            |
+| `DictSlot.TWVariantsPhrases`    | `tw_variants_phrases`     | `TWVariantsPhrases.txt`     |
 | `DictSlot.TWVariantsRev`        | `tw_variants_rev`         | `TWVariantsRev.txt`         |
 | `DictSlot.TWVariantsRevPhrases` | `tw_variants_rev_phrases` | `TWVariantsRevPhrases.txt`  |
 | `DictSlot.HKVariants`           | `hk_variants`             | `HKVariants.txt`            |
+| `DictSlot.HKVariantsPhrases`    | `hk_variants_phrases`     | `HKVariantsPhrases.txt`     |
 | `DictSlot.HKVariantsRev`        | `hk_variants_rev`         | `HKVariantsRev.txt`         |
 | `DictSlot.HKVariantsRevPhrases` | `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`  |
 | `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt` |

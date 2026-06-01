@@ -72362,6 +72362,24 @@
     },
     "Count": 39
   },
+  "tw_variants_phrases": {
+    "Dict": {
+      "喫茶小舖": "喫茶小舖",
+      "牛驥同一皁": "牛驥同一皁",
+      "牛驥同皁": "牛驥同皁",
+      "純喫茶": "純喫茶"
+    },
+    "MaxLength": 5,
+    "MinLength": 3,
+    "LengthMask": 28,
+    "LongLengths": null,
+    "StarterLenMask": {
+      "喫": 8,
+      "牛": 24,
+      "純": 4
+    },
+    "Count": 4
+  },
   "tw_variants_rev": {
     "Dict": {
       "偽": "僞",
@@ -74003,6 +74021,27 @@
       "鰮": 1
     },
     "Count": 63
+  },
+  "hk_variants_phrases": {
+    "Dict": {
+      "喫茶小舖": "喫茶小舖",
+      "無線新聞": "無綫新聞",
+      "無線新聞台": "無綫新聞台",
+      "牛驥同一皁": "牛驥同一皁",
+      "牛驥同皁": "牛驥同皁",
+      "純喫茶": "純喫茶"
+    },
+    "MaxLength": 5,
+    "MinLength": 3,
+    "LengthMask": 28,
+    "LongLengths": null,
+    "StarterLenMask": {
+      "喫": 8,
+      "無": 24,
+      "牛": 24,
+      "純": 4
+    },
+    "Count": 6
   },
   "hk_variants_rev": {
     "Dict": {

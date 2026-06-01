@@ -6,6 +6,42 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.5.2] - Unreleased
+
+### Added
+
+- Added forward regional phrase dictionary slots:
+    - `DictSlot.TWVariantsPhrases` / `tw_variants_phrases` / `TWVariantsPhrases.txt`
+    - `DictSlot.HKVariantsPhrases` / `hk_variants_phrases` / `HKVariantsPhrases.txt`
+- Added full loading, metadata normalization, JSON/CBOR/Zstd serialization, and custom dictionary append/override
+  support for the new Taiwan and Hong Kong phrase variant slots.
+- Added tests covering strict loading of the new required dictionary files, enum availability, Zstd provider hydration,
+  JSON field emission, custom dictionary append/override behavior, and phrase-before-character conversion ordering.
+
+### Changed
+
+- Updated Taiwan and Hong Kong forward regional variant conversion plans so phrase variant dictionaries are applied
+  before character-level variant dictionaries:
+    - `tw_variants_phrases` before `tw_variants`
+    - `hk_variants_phrases` before `hk_variants`
+- Renamed internal conversion-plan union keys from `TwVariantsOnly` / `HkVariantsOnly` to
+  `TwVariantsPair` / `HkVariantsPair` to reflect that these stages now include both phrase and character variant slots.
+- Regenerated the bundled `dictionary_maxlength.zstd` dictionary artifact with the new phrase slots included.
+
+### Fixed
+
+- Ensured missing `TWVariantsPhrases.txt` or `HKVariantsPhrases.txt` fails during strict text dictionary loading,
+  matching the behavior of other required OpenCC dictionary files.
+- Preserved compatibility with older serialized dictionary payloads by normalizing missing new phrase-slot fields to
+  empty dictionary slots during JSON/CBOR/Zstd deserialization.
+
+### Documentation
+
+- Updated README custom dictionary guidance and slot tables to document the new phrase variant slots and clarify that
+  regional phrase slots are applied before character/regional variant slots.
+
+---
+
 ## [1.5.1] - 2026-05-25
 
 ### Added
