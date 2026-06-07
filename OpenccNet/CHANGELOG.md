@@ -7,6 +7,25 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.5.2] - Unreleased
+
+### Added
+
+- Added optional DeTofu display-compatibility fallback support for rare non-BMP CJK extension characters.
+- Added `DeTofuLevel`, `DeTofuMap`, `OpenCC.DeTofu(...)`, and `OpenCC.DeTofuWithCustomFile(...)`.
+- Added support for loading custom DeTofu fallback mappings from UTF-8 text files.
+- Added support for post-load DeTofu customization through custom fallback pairs and custom fallback files.
+- Added CLI support for `--detofu` and `--detofu-file`.
+- Added XML documentation, examples, and contract documentation for DeTofu APIs.
+
+### Notes
+
+- DeTofu is a display-compatibility pass and does not modify OpenCC conversion dictionaries, phrase matching, regional variant selection, script detection, or punctuation conversion.
+- Custom fallback files and custom fallback pairs override built-in mappings when the same tofu-risk character is provided.
+- Characters without a built-in or custom fallback mapping are preserved unchanged, even when they belong to an enabled CJK extension block.
+
+---
+
 ## [1.5.1] - 2026-05-25
 
 ### Changed

@@ -64,15 +64,60 @@ internal static class ConvertCommand
             Description = "Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS"
         };
 
+        var deTofuOption = new Option<string?>("--detofu")
+        {
+            Arity = ArgumentArity.ZeroOrOne,
+            Description =
+                "Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i"
+        };
+
+        deTofuOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>();
+
+            if (string.IsNullOrWhiteSpace(value)) return;
+            try
+            {
+                DeTofu.ParseLevel(value);
+            }
+            catch (ArgumentException ex)
+            {
+                result.AddError(ex.Message);
+            }
+        });
+
+        deTofuOption.DefaultValueFactory = _ => null;
+
+        var deTofuFileOption = new Option<string?>("--detofu-file")
+        {
+            Arity = ArgumentArity.ExactlyOne,
+            Description =
+                "Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires --detofu)"
+        };
+
         var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
         {
             inputFileOption,
             outputFileOption,
             configOption,
             punctOption,
+            deTofuOption,
+            deTofuFileOption,
             inputEncodingOption,
             outputEncodingOption,
         };
+
+        convertCommand.Validators.Add(result =>
+        {
+            var deTofu = result.GetValue(deTofuOption);
+            var deTofuFile = result.GetValue(deTofuFileOption);
+
+            if (!string.IsNullOrWhiteSpace(deTofuFile) &&
+                string.IsNullOrWhiteSpace(deTofu))
+            {
+                result.AddError("--detofu-file requires --detofu.");
+            }
+        });
 
         convertCommand.SetAction(async (pr, _) =>
         {
@@ -80,13 +125,16 @@ internal static class ConvertCommand
             var outputFile = pr.GetValue(outputFileOption);
             var config = pr.GetValue(configOption)!;
             var punct = pr.GetValue(punctOption);
+            var deTofu = pr.GetValue(deTofuOption);
+            var deTofuFile = pr.GetValue(deTofuFileOption);
             var inputEnc = pr.GetValue(inputEncodingOption)!;
             var outputEnc = pr.GetValue(outputEncodingOption)!;
 
             return await RunConversionAsync(
-                inputFile, outputFile, config, punct, inputEnc, outputEnc
+                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile
             );
         });
+
 
         return convertCommand;
     }
@@ -97,7 +145,9 @@ internal static class ConvertCommand
         string config,
         bool punct,
         string inputEncoding,
-        string outputEncoding)
+        string outputEncoding,
+        string? deTofu,
+        string? deTofuFile)
     {
         try
         {
@@ -105,6 +155,16 @@ internal static class ConvertCommand
             var opencc = new Opencc(config);
             var inputStr = await ReadInputAsync(inputFile, inputEncoding);
             var outputStr = opencc.Convert(inputStr, punct);
+
+            if (!string.IsNullOrWhiteSpace(deTofu))
+            {
+                var level = DeTofu.ParseLevel(deTofu);
+
+                outputStr = string.IsNullOrWhiteSpace(deTofuFile)
+                    ? opencc.DeTofu(outputStr, level)
+                    : opencc.DeTofuWithCustomFile(outputStr, level, deTofuFile);
+            }
+
             await WriteOutputAsync(outputFile, outputStr, outputEncoding);
 
             var inFrom = inputFile ?? "<stdin>";
