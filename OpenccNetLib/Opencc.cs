@@ -1886,7 +1886,7 @@ namespace OpenccNetLib
         #region DeTofu Region
 
         /// <summary>
-        /// Converts non-BMP CJK extension characters to display-safe fallbacks.
+        /// Applies DeTofu display-compatible fallbacks to mapped rare CJK extension characters.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -1896,11 +1896,11 @@ namespace OpenccNetLib
         /// non-BMP CJK extension characters may render as tofu boxes (□) or missing-glyph placeholders.
         /// </para>
         /// <para>
-        /// Detofu is a display compatibility pass. It does not modify OpenCC conversion dictionaries,
+        /// DeTofu is a display compatibility pass. It does not modify OpenCC conversion dictionaries,
         /// phrase matching, regional variant selection, script detection, or punctuation conversion.
         /// </para>
         /// <para>
-        /// For converted text, apply detofu after <c>Convert(...)</c>.
+        /// For converted text, apply DeTofu after <c>Convert(...)</c>.
         /// </para>
         /// <para>
         /// The <paramref name="level"/> parameter controls which CJK Extension blocks are replaced:
@@ -1909,41 +1909,61 @@ namespace OpenccNetLib
         /// </para>
         /// <para>
         /// Characters without a built-in or custom fallback mapping are preserved unchanged, even when
-        /// they belong to an enabled CJK extension block.
+        /// they belong to an enabled CJK extension block. DeTofu never replaces unknown characters
+        /// with <c>?</c>, <c>□</c>, <c>�</c>, or empty text.
         /// </para>
         /// </remarks>
-        /// <param name="text">The input text.</param>
-        /// <param name="level">The detofu extension threshold.</param>
-        /// <returns>The detofu-processed text.</returns>
+        /// <param name="text">The input text. A <see langword="null"/> value is treated as empty text.</param>
+        /// <param name="level">The threshold-based DeTofu extension level.</param>
+        /// <returns>Text with mapped tofu-risk characters replaced and unmapped characters preserved.</returns>
         public string DeTofu(string text, DeTofuLevel level)
         {
             return OpenccNetLib.DeTofu.Convert(text, level);
         }
 
         /// <summary>
-        /// Converts non-BMP CJK extension characters using the built-in detofu mappings plus a
-        /// user-supplied fallback file.
+        /// Applies DeTofu display-compatible fallbacks using the built-in mappings plus a custom fallback file.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Custom mappings are merged with the built-in table. If the same tofu-risk character exists
-        /// in both sources, the custom file takes precedence.
+        /// This is a convenience wrapper around
+        /// <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>,
+        /// <see cref="DeTofuMap.WithCustomFile(string)"/>, and
+        /// <see cref="DeTofuMap.Convert(string)"/>.
+        /// Built-in mappings are loaded from <c>dicts/TSCharactersTofu.txt</c>.
+        /// </para>
+        /// <para>
+        /// Custom mappings are applied after the built-in table. If the same tofu-risk character exists
+        /// in both sources, the custom file mapping takes precedence.
         /// </para>
         /// <para>
         /// The fallback file must be UTF-8 text with one mapping per line:
         /// </para>
         /// <code>
-        /// tofu_char<TAB/>fallback_char<TAB/>extension
+        /// tofu_char&lt;TAB&gt;fallback_char&lt;TAB&gt;extension
         /// </code>
         /// <para>
         /// The extension column accepts either the compact form <c>B</c>–<c>I</c> or the legacy form
         /// <c>ExtB</c>–<c>ExtI</c>. Lines beginning with <c>#</c> and blank lines are ignored.
         /// </para>
+        /// <para>
+        /// Characters without a built-in or custom fallback mapping are preserved unchanged. DeTofu
+        /// never replaces unknown characters with <c>?</c>, <c>□</c>, <c>�</c>, or empty text.
+        /// </para>
         /// </remarks>
-        /// <param name="text">The input text.</param>
-        /// <param name="level">The detofu extension threshold.</param>
-        /// <param name="path">Path to a UTF-8 custom detofu fallback file.</param>
-        /// <returns>The detofu-processed text.</returns>
+        /// <param name="text">The input text. A <see langword="null"/> value is treated as empty text.</param>
+        /// <param name="level">The threshold-based DeTofu extension level.</param>
+        /// <param name="path">Path to a UTF-8 custom DeTofu fallback file.</param>
+        /// <returns>Text with mapped tofu-risk characters replaced and unmapped characters preserved.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="path"/> is <see langword="null"/>.
+        /// </exception>
+        /// <exception cref="System.IO.IOException">
+        /// The custom fallback file cannot be read.
+        /// </exception>
+        /// <exception cref="UnauthorizedAccessException">
+        /// The caller does not have permission to read the custom fallback file.
+        /// </exception>
         public string DeTofuWithCustomFile(string text, DeTofuLevel level, string path)
         {
             return DeTofuMap

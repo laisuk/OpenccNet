@@ -162,6 +162,115 @@ opencc.S2T("汉字");
 // ...and more
 ```
 
+### DeTofu Display Compatibility
+
+DeTofu is an optional display-compatibility pass for rare non-BMP CJK extension characters. Some systems, browsers,
+document viewers, e-book readers, and mobile platforms do not have complete font coverage for these characters, so they
+may render as tofu boxes or missing glyphs.
+
+DeTofu is **not** OpenCC linguistic conversion. It does not modify dictionaries, phrase matching, regional variants,
+script detection, or punctuation conversion. For converted text, the recommended order is:
+
+1. Run normal OpenCC conversion with `Convert(...)`.
+2. Run DeTofu on the converted result.
+
+Normal OpenCC conversion:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc(OpenccConfig.S2T);
+string converted = cc.Convert("汉字转换测试");
+Console.WriteLine(converted);
+// Output: 漢字轉換測試
+```
+
+OpenCC conversion followed by DeTofu:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc(OpenccConfig.T2S);
+string converted = cc.Convert("驂𬴂");
+string displaySafe = cc.DeTofu(converted, DeTofuLevel.ExtB);
+
+Console.WriteLine(displaySafe);
+```
+
+Direct utility usage:
+
+```csharp
+using OpenccNetLib;
+
+string displaySafe = DeTofu.Convert("驂𬴂", DeTofuLevel.ExtB);
+Console.WriteLine(displaySafe);
+```
+
+Reusable map usage:
+
+```csharp
+using System.Collections.Generic;
+using OpenccNetLib;
+
+var map = DeTofuMap
+    .Builtin(DeTofuLevel.ExtB)
+    .WithCustomPairs(new[]
+    {
+        new KeyValuePair<string, string>("𣭲", "氄")
+    });
+
+string displaySafe = map.Convert("𣭲");
+Console.WriteLine(displaySafe);
+```
+
+Custom fallback file usage:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc(OpenccConfig.T2S);
+string converted = cc.Convert("驂𬴂");
+string displaySafe = cc.DeTofuWithCustomFile(
+    converted,
+    DeTofuLevel.ExtB,
+    "dicts/custom-tofu.txt");
+
+Console.WriteLine(displaySafe);
+```
+
+Fallback files are UTF-8 text files with one mapping per line:
+
+```text
+tofu_char<TAB>fallback_char<TAB>extension
+```
+
+Example:
+
+```text
+𣭲	氄	B
+```
+
+The extension column accepts compact `B`-`I` values and legacy `ExtB`-`ExtI` values.
+
+Built-in mappings are loaded from `dicts/TSCharactersTofu.txt`. Custom files and custom pairs are applied after the
+built-in mappings, and later mappings override earlier mappings when the same tofu-risk character is provided.
+
+Characters without built-in or custom fallback mappings are preserved unchanged, even if they belong to an enabled CJK
+extension block. DeTofu is non-destructive: it never replaces unknown characters with `?`, `□`, `�`, or empty text.
+
+`DeTofuLevel` is threshold-based:
+
+| Level              | Replacement threshold |
+|--------------------|-----------------------|
+| `DeTofuLevel.ExtB` | ExtB and above        |
+| `DeTofuLevel.ExtC` | ExtC and above        |
+| `DeTofuLevel.ExtD` | ExtD and above        |
+| `DeTofuLevel.ExtE` | ExtE and above        |
+| `DeTofuLevel.ExtF` | ExtF and above        |
+| `DeTofuLevel.ExtG` | ExtG and above        |
+| `DeTofuLevel.ExtH` | ExtH and above        |
+| `DeTofuLevel.ExtI` | ExtI only             |
+
 ### Error Handling
 
 If an error occurs (e.g., invalid config), use:

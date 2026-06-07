@@ -17,6 +17,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   support for the new Taiwan and Hong Kong phrase variant slots.
 - Added tests covering strict loading of the new required dictionary files, enum availability, Zstd provider hydration,
   JSON field emission, custom dictionary append/override behavior, and phrase-before-character conversion ordering.
+- Added DeTofu display-compatibility support for rare non-BMP CJK extension characters that may render as tofu boxes
+  or missing glyphs on systems with incomplete font coverage.
+- Added public DeTofu APIs:
+    - `DeTofuLevel`
+    - `DeTofu.Convert(...)`
+    - `DeTofuMap.Builtin(...)`
+    - `DeTofuMap.WithCustomPairs(...)`
+    - `DeTofuMap.WithCustomFile(...)`
+    - `DeTofuMap.Convert(...)`
+    - `Opencc.DeTofu(...)`
+    - `Opencc.DeTofuWithCustomFile(...)`
+- Added support for built-in DeTofu mappings loaded from `dicts/TSCharactersTofu.txt`, with custom fallback files and
+  custom pairs applied afterward so later mappings override earlier mappings for the same tofu-risk character.
+- Added threshold-based DeTofu extension levels where `ExtB` means Extension B and above, `ExtC` means Extension C and
+  above, and `ExtI` means Extension I only.
 
 ### Changed
 
@@ -42,6 +57,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Updated README custom dictionary guidance and slot tables to document the new phrase variant slots and clarify that
   regional phrase slots are applied before character/regional variant slots.
+- Added README and XML documentation for DeTofu usage, fallback file format
+  (`tofu_char<TAB>fallback_char<TAB>extension`), custom override behavior, and the non-destructive preservation contract
+  for unmapped characters.
 
 ---
 
