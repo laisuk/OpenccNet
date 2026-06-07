@@ -1,4 +1,5 @@
-﻿using OpenccNetLib;
+﻿using System.Text;
+using OpenccNetLib;
 
 namespace OpenccNetTests;
 
@@ -259,5 +260,82 @@ public class OpenccNetTests
         Assert.AreEqual("hk2t", OpenccConfig.Hk2T.ToCanonicalName());
         Assert.AreEqual("t2jp", OpenccConfig.T2Jp.ToCanonicalName());
         Assert.AreEqual("jp2t", OpenccConfig.Jp2T.ToCanonicalName());
+    }
+
+    [TestMethod]
+    public void TestDeTofuBuiltin()
+    {
+        var cc = new Opencc();
+
+        var output = cc.DeTofu("骖𬴂", DeTofuLevel.ExtB);
+
+        Assert.AreEqual("骖騑", output);
+    }
+
+    [TestMethod]
+    public void TestDeTofuPreservesUnmappedCharacter()
+    {
+        var cc = new Opencc();
+
+        var output = cc.DeTofu("𱁬", DeTofuLevel.ExtB);
+
+        Assert.AreEqual("𱁬", output);
+    }
+
+    [TestMethod]
+    public void TestOpenccT2SDeTofu()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        var output = cc.DeTofu(
+            cc.Convert(
+                "儼驂騑於上路，訪風景於崇阿"),
+            DeTofuLevel.ExtB);
+
+        Assert.AreEqual(
+            "俨骖騑于上路，访风景于崇阿",
+            output);
+    }
+
+    [TestMethod]
+    public void TestDeTofuWithCustomFileOverridesBuiltin()
+    {
+        var path = Path.GetTempFileName();
+
+        File.WriteAllText(
+            path,
+            "𣭲\t氂\tB\n",
+            Encoding.UTF8);
+
+        try
+        {
+            var cc = new Opencc();
+
+            var output = cc.DeTofuWithCustomFile(
+                "𣭲毛",
+                DeTofuLevel.ExtB,
+                path);
+
+            Assert.AreEqual("氂毛", output);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [TestMethod]
+    public void TestOpenccT2SDetofuPreservesUnmappedCharacter()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        var output = cc.DeTofu(
+            cc.Convert(
+                "儼驂騑於上路，訪風景於崇阿，𱁬"),
+            DeTofuLevel.ExtB);
+
+        Assert.AreEqual(
+            "俨骖騑于上路，访风景于崇阿，𱁬",
+            output);
     }
 }
