@@ -103,6 +103,11 @@ namespace OpenccNetLib
             /// </summary>
             Tw2SpR1TwRevTriple,
 
+            /// <summary>
+            /// Simplified → Taiwan phrases round-2 triple: phrases + variant phrases + variants.
+            /// </summary>
+            S2TwpR2TwTriple,
+
             // --- Hong Kong-specific ---
             /// <summary>
             /// Hong Kong forward variant pair: phrase variants + character variants.
@@ -222,9 +227,11 @@ namespace OpenccNetLib
         /// Some configurations (for example, <c>S2Tw</c>, <c>Tw2S</c>, <c>Hk2S</c>)
         /// consist of two sequential rounds of dictionary application, while
         /// others (such as <c>S2T</c> and <c>T2S</c>) require only one round.
-        /// Complex conversions like <c>S2Twp</c> and <c>Tw2Sp</c> may involve
-        /// three rounds.  Each round is represented by its corresponding
-        /// <see cref="UnionKey"/> entry.
+        /// Complex conversions such as <c>S2Twp</c> and <c>Tw2Sp</c> use
+        /// two sequential rounds.  Each round is represented by its corresponding
+        /// <see cref="UnionKey"/> entry. For <c>S2Twp</c>, round 1 converts
+        /// Simplified Chinese to Traditional Chinese, and round 2 performs
+        /// Taiwan phrase and variant normalization.
         /// </para>
         /// </remarks>
         /// <param name="config">
@@ -273,9 +280,8 @@ namespace OpenccNetLib
                 case OpenccConfig.S2Twp:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r2);
-                    var u3 = GetOrAddUnionFor(d, UnionKey.TwVariantsPair, out var r3);
-                    return new DictRefs(r1, u1).WithRound2(r2, u2).WithRound3(r3, u3);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.S2TwpR2TwTriple, out var r2);
+                    return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.Tw2Sp:
@@ -511,6 +517,14 @@ namespace OpenccNetLib
                         d.tw_phrases_rev,
                         d.tw_variants_rev_phrases,
                         d.tw_variants_rev
+                    };
+
+                case UnionKey.S2TwpR2TwTriple:
+                    return new[]
+                    {
+                        d.tw_phrases,
+                        d.tw_variants_phrases,
+                        d.tw_variants
                     };
 
                 // --- HK ---

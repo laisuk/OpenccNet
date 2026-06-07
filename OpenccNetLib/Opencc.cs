@@ -1626,7 +1626,8 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Converts Simplified Chinese to Traditional Chinese (Taiwan standard, with phrase and variant rounds).
+        /// Converts Simplified Chinese to Traditional Chinese using two rounds:
+        /// Simplified Chinese to Traditional Chinese, then Taiwan phrase and variant normalization.
         /// </summary>
         /// <param name="inputText">The input text.</param>
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
@@ -1639,7 +1640,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Converts Traditional Chinese (Taiwan) to Simplified Chinese (with phrase and variant rounds).
+        /// Converts Traditional Chinese (Taiwan) to Simplified Chinese with Taiwan phrase and variant normalization.
         /// </summary>
         /// <param name="inputText">The input text.</param>
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
@@ -1689,7 +1690,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Converts Traditional Chinese to Taiwan Traditional Chinese (with phrase and variant rounds).
+        /// Converts Traditional Chinese to Taiwan Traditional Chinese with Taiwan phrase and variant normalization.
         /// </summary>
         /// <param name="inputText">The input text.</param>
         /// <returns>The converted text.</returns>

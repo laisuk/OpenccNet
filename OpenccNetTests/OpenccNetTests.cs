@@ -49,6 +49,16 @@ public class OpenccNetTests
     }
 
     [TestMethod]
+    public void S2TWP_AppliesTaiwanPhrasesAndVariantsInSecondRound()
+    {
+        var opencc = new Opencc("s2twp");
+        const string simplified = "软件为";
+        const string expectedTaiwan = "軟體為";
+        var actualTaiwan = opencc.S2Twp(simplified);
+        Assert.AreEqual(expectedTaiwan, actualTaiwan);
+    }
+
+    [TestMethod]
     public void TW2SP_SimpleConversion()
     {
         var opencc = new Opencc("tw2s");
