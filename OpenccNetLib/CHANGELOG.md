@@ -24,6 +24,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   before character-level variant dictionaries:
     - `tw_variants_phrases` before `tw_variants`
     - `hk_variants_phrases` before `hk_variants`
+- Refactored the `s2twp` conversion plan to match upstream OpenCC's two-round chain:
+    - round 1: Simplified Chinese to Traditional Chinese, including punctuation when enabled
+    - round 2: Taiwan phrase and variant normalization using `tw_phrases`, `tw_variants_phrases`, and `tw_variants`
 - Renamed internal conversion-plan union keys from `TwVariantsOnly` / `HkVariantsOnly` to
   `TwVariantsPair` / `HkVariantsPair` to reflect that these stages now include both phrase and character variant slots.
 - Regenerated the bundled `dictionary_maxlength.zstd` dictionary artifact with the new phrase slots included.
