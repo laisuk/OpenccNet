@@ -68,6 +68,8 @@ Console.WriteLine(traditional);
 | tw2s   | Traditional (Taiwan) → Simplified               |
 | s2twp  | Simplified → Traditional (Taiwan, phrases)      |
 | tw2sp  | Traditional (Taiwan, phrases) → Simplified      |
+| s2hkp  | Simplified → Traditional (Hong Kong phrases)    |
+| hk2sp  | Traditional (Hong Kong phrases) → Simplified    |
 | s2hk   | Simplified → Traditional (Hong Kong)            |
 | hk2s   | Traditional (Hong Kong) → Simplified            |
 | t2tw   | Traditional → Traditional (Taiwan)              |
@@ -86,6 +88,14 @@ var opencc = new Opencc("s2t");
 string result = opencc.Convert("“汉字”转换。", punctuation: true);
 Console.WriteLine(result);
 // Output: 「漢字」轉換。
+```
+
+### Example: Hong Kong Phrase Conversion
+
+```csharp
+var cc = new Opencc(OpenccConfig.S2Hkp);
+Console.WriteLine(cc.Convert("别随便录影侵犯个人隐私权"));
+// 別隨便錄影侵犯個人私隱權
 ```
 
 ### Example: Switching Config Dynamically
@@ -181,6 +191,8 @@ Custom dictionaries attach to existing `DictSlot` values and can append to or ov
 phrase slots are supported too: `DictSlot.TWVariantsPhrases` is applied before `DictSlot.TWVariants`, and
 `DictSlot.HKVariantsPhrases` is applied before `DictSlot.HKVariants`, so phrase exceptions win before character-level
 regional variant mappings.
+Direct Hong Kong phrase slots are customizable too: `DictSlot.HKPhrases` is used by `s2hkp`, and
+`DictSlot.HKPhrasesRev` is used by `hk2sp`.
 
 ```csharp
 using OpenccNetLib;
@@ -247,6 +259,8 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - `string Tw2S(string inputText, bool punctuation = false)`
 - `string S2Twp(string inputText, bool punctuation = false)`
 - `string Tw2Sp(string inputText, bool punctuation = false)`
+- `string S2Hkp(string inputText, bool punctuation = false)`
+- `string Hk2Sp(string inputText, bool punctuation = false)`
 - `string S2Hk(string inputText, bool punctuation = false)`
 - `string Hk2S(string inputText, bool punctuation = false)`
 - `string T2Tw(string inputText)`
@@ -319,7 +333,7 @@ Usage:
 Options:
   -i, --input              Read original text from file <input>
   -o, --output             Write original text to file <output>
-  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|hk2s|jp2t|t2jp
   -p, --punct              Punctuation conversion. [default: False]
   --in-enc                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
   --out-enc                Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
@@ -338,7 +352,7 @@ Usage:
 Options:
   -i, --input              Input Office document <input>
   -o, --output             Output Office document <output>
-  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|hk2s|jp2t|t2jp
   -p, --punct              Enable punctuation conversion. [default: False]
   -f, --format             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]

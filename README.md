@@ -93,6 +93,8 @@ Console.WriteLine(traditional);
 | tw2s   | Traditional (Taiwan) → Simplified               |
 | s2twp  | Simplified → Traditional (Taiwan, idioms)       |
 | tw2sp  | Traditional (Taiwan, idioms) → Simplified       |
+| s2hkp  | Simplified → Traditional (Hong Kong phrases)    |
+| hk2sp  | Traditional (Hong Kong phrases) → Simplified    |
 | s2hk   | Simplified → Traditional (Hong Kong)            |
 | hk2s   | Traditional (Hong Kong) → Simplified            |
 | t2tw   | Traditional → Traditional (Taiwan)              |
@@ -111,6 +113,14 @@ var opencc = new Opencc("s2t");
 string result = opencc.Convert("“汉字”转换。", punctuation: true);
 Console.WriteLine(result);
 // Output: 「漢字」轉換。
+```
+
+### Example: Hong Kong Phrase Conversion
+
+```csharp
+var cc = new Opencc(OpenccConfig.S2Hkp);
+Console.WriteLine(cc.Convert("别随便录影侵犯个人隐私权"));
+// 別隨便錄影侵犯個人私隱權
 ```
 
 ### Example: Switching Config Dynamically
@@ -312,6 +322,10 @@ Regional variant phrase slots are also customizable. `DictSlot.TWVariantsPhrases
 can protect a full term from later character-level regional variant mappings. These slots can be used with both append
 and override custom dictionary APIs.
 
+Direct Hong Kong phrase slots are customizable too. `DictSlot.HKPhrases` is used by `s2hkp` after
+Simplified-to-Traditional conversion, and `DictSlot.HKPhrasesRev` is used by `hk2sp` before Traditional-to-Simplified
+conversion.
+
 #### File-level customization
 
 Use `DictionaryLib.FromDicts()` when custom files should be applied while loading the OpenCC text dictionaries.
@@ -334,6 +348,50 @@ Opencc.UseCustomDictionary(dict);
 
 var opencc = new Opencc("s2t");
 Console.WriteLine(opencc.Convert("帕兰蒂尔是一家公司"));
+```
+
+Hong Kong phrase slots can be customized with the same API:
+
+```csharp
+var dict = DictionaryLib.FromDicts(
+    appends: new Dictionary<DictSlot, string>
+    {
+        [DictSlot.HKPhrases] = "custom_hk_phrases.txt"
+    });
+
+Opencc.UseCustomDictionary(dict);
+
+var cc = new Opencc(OpenccConfig.S2Hkp);
+Console.WriteLine(cc.Convert("小女孩侵犯个人隐私权"));
+// 妹丁侵犯個人私隱權
+```
+
+For in-memory pairs, apply a post-load custom spec:
+
+```csharp
+var dict = DictionaryLib.New();
+
+DictionaryLib.WithCustomDicts(
+    dict,
+    new[]
+    {
+        new CustomDictSpec
+        {
+            Slot = DictSlot.HKPhrases,
+            Mode = CustomDictMode.Append,
+            Pairs = new Dictionary<string, string>
+            {
+                ["小女孩"] = "妹丁",
+                ["動畫片"] = "卡通片"
+            }
+        }
+    });
+
+Opencc.UseCustomDictionary(dict);
+
+var cc = new Opencc(OpenccConfig.S2Hkp);
+Console.WriteLine(cc.Convert("小女孩喜欢看动画片"));
+// 妹丁喜歡看卡通片
 ```
 
 #### Override an entire slot
@@ -497,8 +555,10 @@ var opencc = new Opencc("s2t");
 | `DictSlot.TWVariantsRev`        | `tw_variants_rev`         | `TWVariantsRev.txt`         |
 | `DictSlot.TWVariantsRevPhrases` | `tw_variants_rev_phrases` | `TWVariantsRevPhrases.txt`  |
 | `DictSlot.HKVariants`           | `hk_variants`             | `HKVariants.txt`            |
+| `DictSlot.HKPhrases`            | `hk_phrases`              | `HKPhrases.txt`             |
 | `DictSlot.HKVariantsPhrases`    | `hk_variants_phrases`     | `HKVariantsPhrases.txt`     |
 | `DictSlot.HKVariantsRev`        | `hk_variants_rev`         | `HKVariantsRev.txt`         |
+| `DictSlot.HKPhrasesRev`         | `hk_phrases_rev`          | `HKPhrasesRev.txt`          |
 | `DictSlot.HKVariantsRevPhrases` | `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`  |
 | `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt` |
 | `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`    |
@@ -859,6 +919,8 @@ results.
 - `string Tw2S(string inputText, bool punctuation = false)`
 - `string S2Twp(string inputText, bool punctuation = false)`
 - `string Tw2Sp(string inputText, bool punctuation = false)`
+- `string S2Hkp(string inputText, bool punctuation = false)`
+- `string Hk2Sp(string inputText, bool punctuation = false)`
 - `string S2Hk(string inputText, bool punctuation = false)`
 - `string Hk2S(string inputText, bool punctuation = false)`
 - `string T2Tw(string inputText)`
@@ -1084,7 +1146,7 @@ Options:
   -i, --input <input>               Read original text from file <input>
   -o, --output <output>             Write original text to file <output>
   -c, --config <config> (REQUIRED)  Conversion configuration.
-                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
   -p, --punct                       Punctuation conversion.
   --detofu <detofu>                 Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i
   --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires --detofu)
@@ -1105,7 +1167,7 @@ Usage:
 Options:
   -i, --input              Input Office document <input>
   -o, --output             Output Office document <output>
-  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hk|t2s|tw2s|tw2sp|hk2s|jp2t|t2jp
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|hk2s|jp2t|t2jp
   -p, --punct              Enable punctuation conversion. [default: False]
   -f, --format             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]
@@ -1126,7 +1188,7 @@ Options:
   -i, --input <input>    Input PDF file <input.pdf>
   -o, --output <output>  Output text file <output.txt>
   -c, --config <config>  Conversion configuration.
-                         Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                         Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
   -p, --punct            Enable punctuation conversion.
   -H, --header           Add [Page x/y] headers to the extracted text.
   -r, --reflow           Reflow CJK paragraphs into continuous lines.

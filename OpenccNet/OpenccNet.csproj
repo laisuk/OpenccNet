@@ -6,10 +6,10 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
-        <Version>1.5.1</Version>  <!-- NuGet + Tool version -->
-        <AssemblyVersion>1.5.1.0</AssemblyVersion>
-        <FileVersion>1.5.1.0</FileVersion>
-        <InformationalVersion>1.5.1.0</InformationalVersion>
+        <Version>1.5.2</Version>  <!-- NuGet + Tool version -->
+        <AssemblyVersion>1.5.2.0</AssemblyVersion>
+        <FileVersion>1.5.2.0</FileVersion>
+        <InformationalVersion>1.5.2.0</InformationalVersion>
         <Copyright>© 2026 Laisuk Lai. All rights reserved.</Copyright>
         <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 

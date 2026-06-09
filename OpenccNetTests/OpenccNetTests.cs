@@ -60,12 +60,32 @@ public class OpenccNetTests
     }
 
     [TestMethod]
+    public void S2HKP_AppliesHongKongPhrasesAndVariantsInSecondRound()
+    {
+        var opencc = new Opencc("s2hkp");
+        const string simplified = "别随便录影侵犯个人隐私权";
+        const string expectedHongKong = "別隨便錄影侵犯個人私隱權";
+        var actualHongKong = opencc.S2Hkp(simplified);
+        Assert.AreEqual(expectedHongKong, actualHongKong);
+    }
+
+    [TestMethod]
     public void TW2SP_SimpleConversion()
     {
         var opencc = new Opencc("tw2s");
         const string taiwan = "軟體";
         const string expectedSimplified = "软件";
         var actualSimplified = opencc.Tw2Sp(taiwan);
+        Assert.AreEqual(expectedSimplified, actualSimplified);
+    }
+
+    [TestMethod]
+    public void HK2SP_AppliesHongKongReversePhrasesAndVariantsBeforeSimplified()
+    {
+        var opencc = new Opencc("hk2sp");
+        const string hongKong = "別隨便錄影侵犯個人私隱權";
+        const string expectedSimplified = "别随便录影侵犯个人隐私权";
+        var actualSimplified = opencc.Hk2Sp(hongKong);
         Assert.AreEqual(expectedSimplified, actualSimplified);
     }
 
@@ -247,7 +267,9 @@ public class OpenccNetTests
         Assert.AreEqual("s2tw", OpenccConfig.S2Tw.ToCanonicalName());
         Assert.AreEqual("tw2s", OpenccConfig.Tw2S.ToCanonicalName());
         Assert.AreEqual("s2twp", OpenccConfig.S2Twp.ToCanonicalName());
+        Assert.AreEqual("s2hkp", OpenccConfig.S2Hkp.ToCanonicalName());
         Assert.AreEqual("tw2sp", OpenccConfig.Tw2Sp.ToCanonicalName());
+        Assert.AreEqual("hk2sp", OpenccConfig.Hk2Sp.ToCanonicalName());
         Assert.AreEqual("s2hk", OpenccConfig.S2Hk.ToCanonicalName());
         Assert.AreEqual("hk2s", OpenccConfig.Hk2S.ToCanonicalName());
 

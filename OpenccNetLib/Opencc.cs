@@ -99,7 +99,17 @@ namespace OpenccNetLib
         /// <summary>
         /// Japanese Shinjitai → Traditional Japanese Kyujitai.
         /// </summary>
-        Jp2T
+        Jp2T,
+
+        /// <summary>
+        /// Simplified Chinese → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
+        /// </summary>
+        S2Hkp,
+
+        /// <summary>
+        /// Traditional Chinese (Hong Kong Standard, with phrases) → Simplified Chinese.
+        /// </summary>
+        Hk2Sp
     }
 
     // @Since v1.4.1
@@ -119,7 +129,9 @@ namespace OpenccNetLib
                 case OpenccConfig.S2Tw: return "s2tw";
                 case OpenccConfig.Tw2S: return "tw2s";
                 case OpenccConfig.S2Twp: return "s2twp";
+                case OpenccConfig.S2Hkp: return "s2hkp";
                 case OpenccConfig.Tw2Sp: return "tw2sp";
+                case OpenccConfig.Hk2Sp: return "hk2sp";
                 case OpenccConfig.S2Hk: return "s2hk";
                 case OpenccConfig.Hk2S: return "hk2s";
                 case OpenccConfig.T2Tw: return "t2tw";
@@ -251,7 +263,9 @@ namespace OpenccNetLib
             new ConfigEntry(OpenccConfig.S2Tw, "s2tw"),
             new ConfigEntry(OpenccConfig.Tw2S, "tw2s"),
             new ConfigEntry(OpenccConfig.S2Twp, "s2twp"),
+            new ConfigEntry(OpenccConfig.S2Hkp, "s2hkp"),
             new ConfigEntry(OpenccConfig.Tw2Sp, "tw2sp"),
+            new ConfigEntry(OpenccConfig.Hk2Sp, "hk2sp"),
             new ConfigEntry(OpenccConfig.S2Hk, "s2hk"),
             new ConfigEntry(OpenccConfig.Hk2S, "hk2s"),
             new ConfigEntry(OpenccConfig.T2Tw, "t2tw"),
@@ -1640,6 +1654,20 @@ namespace OpenccNetLib
         }
 
         /// <summary>
+        /// Converts Simplified Chinese to Hong Kong Traditional Chinese using two rounds:
+        /// Simplified Chinese to Traditional Chinese, then Hong Kong phrase and variant normalization.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
+        public string S2Hkp(string inputText, bool punctuation = false)
+        {
+            var refs = GetDictRefs(OpenccConfig.S2Hkp, punctuation);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
+        }
+
+        /// <summary>
         /// Converts Traditional Chinese (Taiwan) to Simplified Chinese with Taiwan phrase and variant normalization.
         /// </summary>
         /// <param name="inputText">The input text.</param>
@@ -1648,6 +1676,19 @@ namespace OpenccNetLib
         public string Tw2Sp(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2Sp, punctuation);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return output;
+        }
+
+        /// <summary>
+        /// Converts Hong Kong Traditional Chinese to Simplified Chinese with Hong Kong phrase and variant normalization.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to convert punctuation as well.</param>
+        /// <returns>The converted text.</returns>
+        public string Hk2Sp(string inputText, bool punctuation = false)
+        {
+            var refs = GetDictRefs(OpenccConfig.Hk2Sp, punctuation);
             var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
             return output;
         }
@@ -1790,6 +1831,8 @@ namespace OpenccNetLib
                         return S2Tw(inputText, punctuation);
                     case OpenccConfig.S2Twp:
                         return S2Twp(inputText, punctuation);
+                    case OpenccConfig.S2Hkp:
+                        return S2Hkp(inputText, punctuation);
                     case OpenccConfig.S2Hk:
                         return S2Hk(inputText, punctuation);
                     case OpenccConfig.T2S:
@@ -1804,6 +1847,8 @@ namespace OpenccNetLib
                         return Tw2S(inputText, punctuation);
                     case OpenccConfig.Tw2Sp:
                         return Tw2Sp(inputText, punctuation);
+                    case OpenccConfig.Hk2Sp:
+                        return Hk2Sp(inputText, punctuation);
                     case OpenccConfig.Tw2T:
                         return Tw2T(inputText);
                     case OpenccConfig.Tw2Tp:

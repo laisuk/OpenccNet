@@ -43,8 +43,12 @@ public class DictionaryLibTests
 
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.TWVariantsPhrases));
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKVariantsPhrases));
+        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrases));
+        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrasesRev));
         AssertMetadataValid(dict.tw_variants_phrases);
         AssertMetadataValid(dict.hk_variants_phrases);
+        AssertMetadataValid(dict.hk_phrases);
+        AssertMetadataValid(dict.hk_phrases_rev);
     }
 
     [TestMethod]
@@ -54,6 +58,8 @@ public class DictionaryLibTests
 
         AssertMetadataValid(dict.tw_variants_phrases);
         AssertMetadataValid(dict.hk_variants_phrases);
+        AssertMetadataValid(dict.hk_phrases);
+        AssertMetadataValid(dict.hk_phrases_rev);
     }
 
     [TestMethod]
@@ -61,7 +67,7 @@ public class DictionaryLibTests
     {
         var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
 
-        foreach (var missingFile in new[] { "TWVariantsPhrases.txt", "HKVariantsPhrases.txt" })
+        foreach (var missingFile in new[] { "TWVariantsPhrases.txt", "HKVariantsPhrases.txt", "HKPhrases.txt", "HKPhrasesRev.txt" })
         {
             var tempDir = Path.Combine(OutputDir, "dicts_missing_" + Path.GetFileNameWithoutExtension(missingFile));
 
@@ -215,7 +221,17 @@ public class DictionaryLibTests
         var json = JsonDocument.Parse(content);
         Assert.IsTrue(json.RootElement.TryGetProperty("ts_phrases", out _));
         Assert.IsTrue(json.RootElement.TryGetProperty("tw_variants_phrases", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("hk_phrases", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("hk_phrases_rev", out _));
         Assert.IsTrue(json.RootElement.TryGetProperty("hk_variants_phrases", out _));
+
+        var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
+        Assert.AreEqual(
+            DictionaryLib.FromDicts().hk_phrases.Count,
+            loaded.hk_phrases.Count);
+        Assert.AreEqual(
+            DictionaryLib.FromDicts().hk_phrases_rev.Count,
+            loaded.hk_phrases_rev.Count);
     }
 
     [TestMethod]
@@ -314,6 +330,26 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
+    public void TestFromDicts_AppendsCustomHkPhrase()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_hk_phrases.txt");
+        File.WriteAllText(
+            customPath,
+            "小女孩\t妹丁\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            appends: new Dictionary<DictSlot, string>
+            {
+                [DictSlot.HKPhrases] = customPath
+            });
+
+        Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
+        Assert.IsTrue(dict.hk_phrases.StarterLenMask.ContainsKey("小"));
+        AssertMetadataValid(dict.hk_phrases);
+    }
+
+    [TestMethod]
     public void TestFromDicts_AppendsCustomStPhraseDuplicateKeyCustomValueWins()
     {
         var customPath = Path.Combine(OutputDir, "custom_st_phrases_duplicate.txt");
@@ -351,6 +387,56 @@ public class DictionaryLibTests
         Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
         Assert.IsFalse(dict.st_phrases.Dict.ContainsKey("SQL注入"));
         AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestFromDicts_OverridesHkPhrasesReplacesWholeSlot()
+    {
+        var customPath = Path.Combine(OutputDir, "override_hk_phrases.txt");
+        File.WriteAllText(
+            customPath,
+            "小女孩\t妹丁\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            overrides: new Dictionary<DictSlot, string>
+            {
+                [DictSlot.HKPhrases] = customPath
+            });
+
+        Assert.AreEqual(1, dict.hk_phrases.Count);
+        Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
+        AssertMetadataValid(dict.hk_phrases);
+    }
+
+    [TestMethod]
+    public void TestFromDicts_AppendedCustomHkPhraseWorksInS2HkpConversion()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_hk_phrases_convert.txt");
+        File.WriteAllText(
+            customPath,
+            "小女孩\t妹丁\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            appends: new Dictionary<DictSlot, string>
+            {
+                [DictSlot.HKPhrases] = customPath
+            });
+
+        Opencc.UseCustomDictionary(dict);
+
+        try
+        {
+            var opencc = new Opencc("s2hkp");
+            Assert.AreEqual(
+                "妹丁侵犯個人私隱權",
+                opencc.Convert("小女孩侵犯个人隐私权"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
     }
 
     [TestMethod]
@@ -427,6 +513,78 @@ public class DictionaryLibTests
         Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
         Assert.IsTrue(dict.st_phrases.StarterLenMask.ContainsKey("帕"));
         AssertMetadataValid(dict.st_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_AppendsCustomHkPhraseFromPairs()
+    {
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            [
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.HKPhrases,
+                    Mode = CustomDictMode.Append,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["小女孩"] = "妹丁"
+                    }
+                }
+            ]);
+
+        Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
+        Assert.IsTrue(dict.hk_phrases.StarterLenMask.ContainsKey("小"));
+        AssertMetadataValid(dict.hk_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_OverridesCustomHkPhraseFromPairs()
+    {
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            [
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.HKPhrases,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["小女孩"] = "妹丁"
+                    }
+                }
+            ]);
+
+        Assert.AreEqual(1, dict.hk_phrases.Count);
+        Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
+        AssertMetadataValid(dict.hk_phrases);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_AppendsCustomHkPhraseRevFromPairs()
+    {
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            [
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.HKPhrasesRev,
+                    Mode = CustomDictMode.Append,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["妹丁"] = "小女孩"
+                    }
+                }
+            ]);
+
+        Assert.AreEqual("小女孩", dict.hk_phrases_rev.Dict["妹丁"]);
+        Assert.IsTrue(dict.hk_phrases_rev.StarterLenMask.ContainsKey("妹"));
+        AssertMetadataValid(dict.hk_phrases_rev);
     }
 
     [TestMethod]
