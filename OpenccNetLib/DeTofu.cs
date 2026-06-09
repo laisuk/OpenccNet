@@ -314,11 +314,11 @@ namespace OpenccNetLib
             Extension = extension;
         }
 
-        public string Tofu { get; private set; }
+        public string Tofu { get; }
 
-        public string Fallback { get; private set; }
+        public string Fallback { get; }
 
-        public DeTofuLevel Extension { get; private set; }
+        public DeTofuLevel Extension { get; }
     }
 
     /// <summary>
