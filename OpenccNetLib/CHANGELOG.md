@@ -35,6 +35,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
     - `DeTofuMap.Convert(...)`
     - `Opencc.DeTofu(...)`
     - `Opencc.DeTofuWithCustomFile(...)`
+    - `Opencc.DeTofuWithCustomPairs(...)`
 - Added support for built-in DeTofu mappings loaded from `dicts/TSCharactersTofu.txt`, with custom fallback files and
   custom pairs applied afterward so later mappings override earlier mappings for the same tofu-risk character.
 - Added threshold-based DeTofu extension levels where `ExtB` means Extension B and above, `ExtC` means Extension C and

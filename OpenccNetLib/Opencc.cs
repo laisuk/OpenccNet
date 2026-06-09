@@ -2017,6 +2017,53 @@ namespace OpenccNetLib
                 .Convert(text);
         }
 
+        /// <summary>
+        /// Applies DeTofu display-compatible fallbacks using the built-in mappings plus custom in-memory fallback pairs.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is a convenience wrapper around
+        /// <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>,
+        /// <see cref="DeTofuMap.WithCustomPairs(IEnumerable{KeyValuePair{string, string}})"/>,
+        /// and <see cref="DeTofuMap.Convert(string)"/>.
+        /// Built-in mappings are loaded from <c>dicts/TSCharactersTofu.txt</c>.
+        /// </para>
+        /// <para>
+        /// Custom mappings are applied after the built-in table. If the same tofu-risk character exists
+        /// in both sources, the custom pair mapping takes precedence.
+        /// </para>
+        /// <para>
+        /// Keys are tofu-risk characters and values are their display-compatible fallback characters.
+        /// Only the first Unicode scalar value from each key and value is used. Empty or
+        /// <see langword="null"/> keys and values are ignored.
+        /// </para>
+        /// <para>
+        /// Unlike file entries, direct pairs do not carry an extension column, so they are always added
+        /// to the map selected by <paramref name="level"/>.
+        /// </para>
+        /// <para>
+        /// Characters without a built-in or custom fallback mapping are preserved unchanged. DeTofu
+        /// never replaces unknown characters with <c>?</c>, <c>□</c>, <c>�</c>, or empty text.
+        /// </para>
+        /// </remarks>
+        /// <param name="text">The input text. A <see langword="null"/> value is treated as empty text.</param>
+        /// <param name="level">The threshold-based DeTofu extension level.</param>
+        /// <param name="pairs">Fallback pairs where the key is the tofu-risk character and the value is its fallback.</param>
+        /// <returns>Text with mapped tofu-risk characters replaced and unmapped characters preserved.</returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="pairs"/> is <see langword="null"/>.
+        /// </exception>
+        public string DeTofuWithCustomPairs(
+            string text,
+            DeTofuLevel level,
+            IEnumerable<KeyValuePair<string, string>> pairs)
+        {
+            return DeTofuMap
+                .Builtin(level)
+                .WithCustomPairs(pairs)
+                .Convert(text);
+        }
+
         #endregion // DeTofu
     }
 }

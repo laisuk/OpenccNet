@@ -360,4 +360,23 @@ public class OpenccNetTests
             "俨骖騑于上路，访风景于崇阿，𱁬",
             output);
     }
+
+    [TestMethod]
+    public void TestDeTofuWithCustomPairsOverridesBuiltin()
+    {
+        var cc = new Opencc();
+
+        var pairs = new Dictionary<string, string>
+        {
+            ["𣭲"] = "氂",
+            ["𬴂"] = "騑"
+        };
+
+        var output = cc.DeTofuWithCustomPairs(
+            "𣭲毛 骖𬴂",
+            DeTofuLevel.ExtB,
+            pairs);
+
+        Assert.AreEqual("氂毛 骖騑", output);
+    }
 }

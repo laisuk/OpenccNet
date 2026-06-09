@@ -178,8 +178,8 @@ DeTofu is an optional display-compatibility pass for rare non-BMP CJK extension 
 document viewers, e-book readers, and mobile platforms do not have complete font coverage for these characters, so they
 may render as tofu boxes or missing glyphs.
 
-DeTofu is **not** OpenCC linguistic conversion. It does not modify dictionaries, phrase matching, regional variants,
-script detection, or punctuation conversion. For converted text, the recommended order is:
+DeTofu is **not** OpenCC linguistic conversion. It does not modify OpenCC dictionaries, phrase matching, regional
+variant selection, script detection, or punctuation conversion. For converted text, the recommended order is:
 
 1. Run normal OpenCC conversion with `Convert(...)`.
 2. Run DeTofu on the converted result.
@@ -216,6 +216,18 @@ string displaySafe = DeTofu.Convert("驂𬴂", DeTofuLevel.ExtB);
 Console.WriteLine(displaySafe);
 ```
 
+DeTofu APIs:
+
+```text
+DeTofu.Convert(...)
+DeTofuMap.Builtin(...)
+DeTofuMap.WithCustomFile(...)
+DeTofuMap.WithCustomPairs(...)
+Opencc.DeTofu(...)
+Opencc.DeTofuWithCustomFile(...)
+Opencc.DeTofuWithCustomPairs(...)
+```
+
 Reusable map usage:
 
 ```csharp
@@ -232,6 +244,35 @@ var map = DeTofuMap
 string displaySafe = map.Convert("𣭲");
 Console.WriteLine(displaySafe);
 ```
+
+Custom in-memory pairs usage:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc();
+
+var pairs = new Dictionary<string, string>
+{
+    ["𣭲"] = "氂",
+    ["𬴂"] = "騑"
+};
+
+var output = cc.DeTofuWithCustomPairs(
+    "𣭲毛 骖𬴂",
+    DeTofuLevel.ExtB,
+    pairs);
+
+Console.WriteLine(output);
+// 氂毛 骖騑
+```
+
+In-memory pairs are supplied as `IEnumerable<KeyValuePair<string, string>>`, where each key is a tofu-risk character and
+each value is its display-compatible fallback character. Only the first Unicode scalar value from each key and value is
+used, and null or empty keys and values are ignored. Pairs do not carry an extension column, so they are applied
+directly
+to the selected map after the built-in mappings. Custom pairs override built-in mappings for the same tofu-risk
+character. If duplicate keys are supplied, the later mapping wins according to enumeration order.
 
 Custom fallback file usage:
 
@@ -251,19 +292,23 @@ Console.WriteLine(displaySafe);
 Fallback files are UTF-8 text files with one mapping per line:
 
 ```text
-tofu_char<TAB>fallback_char<TAB>extension
+# Format: tofu_char<TAB>fallback_char<TAB>extension
 ```
 
 Example:
 
 ```text
-𣭲	氄	B
+# Custom DeTofu fallbacks
+𣭲	氂	B
+𬴂	騑	ExtC
 ```
 
-The extension column accepts compact `B`-`I` values and legacy `ExtB`-`ExtI` values.
+Blank lines and lines beginning with `#` are ignored. The extension column accepts compact `B`-`I` values and legacy
+`ExtB`-`ExtI` values.
 
 Built-in mappings are loaded from `dicts/TSCharactersTofu.txt`. Custom files and custom pairs are applied after the
-built-in mappings, and later mappings override earlier mappings when the same tofu-risk character is provided.
+built-in mappings. File mappings override built-in mappings for the same tofu-risk character, and custom pairs do the
+same. Later mappings override earlier mappings when the same tofu-risk character is provided.
 
 Characters without built-in or custom fallback mappings are preserved unchanged, even if they belong to an enabled CJK
 extension block. DeTofu is non-destructive: it never replaces unknown characters with `?`, `□`, `�`, or empty text.
