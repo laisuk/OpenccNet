@@ -407,8 +407,8 @@ var dict = DictionaryLib.FromDicts(
 Opencc.UseCustomDictionary(dict);
 
 var cc = new Opencc(OpenccConfig.S2Hkp);
-Console.WriteLine(cc.Convert("小女孩侵犯个人隐私权"));
-// 妹丁侵犯個人私隱權
+Console.WriteLine(cc.Convert("小女孩问：什么是个人隐私权？"));
+// 妹丁問：什麽是個人私隱權？
 ```
 
 For in-memory pairs, apply a post-load custom spec:
