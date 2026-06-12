@@ -64,14 +64,11 @@ namespace OpenccNetLib
         /// <summary>Traditional Kyujitai-to-Japanese Shinjitai character mappings.</summary>
         JPSCharacters,
 
+        /// <summary>Japanese Shinjitai-to-Traditional Kyujitai character mappings.</summary>
+        JpsCharactersRev,
+
         /// <summary>Traditional Kyujitai-to-Japanese Shinjitai phrase mappings.</summary>
         JPSPhrases,
-
-        /// <summary>Traditional-to-Japanese character variant mappings.</summary>
-        JPVariants,
-
-        /// <summary>Japanese variant-to-Traditional character mappings.</summary>
-        JPVariantsRev,
 
         /// <summary>
         /// Traditional-to-Hong Kong phrase mappings.

@@ -7,6 +7,20 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.6.0] - Unreleased
+
+### Changed
+
+- Update OpenccNetLib to v1.6.0.
+- Aligned Japanese Shinjitai dictionary bundles with upstream OpenCC commit `93ee7f7`.
+
+### Breaking Changes
+
+- Custom dictionary bundles must include the new `JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
+  `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active JP conversion schema.
+
+---
+
 ## [1.5.2] - Unreleased
 
 ### Added

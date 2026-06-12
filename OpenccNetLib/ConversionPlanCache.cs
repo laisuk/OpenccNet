@@ -139,15 +139,15 @@ namespace OpenccNetLib
             // --- Japan-specific ---
 
             /// <summary>
-            /// Japanese variants only (character-level).
+            /// Japanese Shinjitai-to-Traditional Kyujitai characters only.
             /// </summary>
-            JpVariantsOnly,
+            JpsCharactersRev,
 
             /// <summary>
-            /// Japanese reverse triple:
-            /// JPS phrases + JPS characters + JP variants_rev.
+            /// Japanese Shinjitai pair:
+            /// JPS phrases + JPS characters.
             /// </summary>
-            JpRevTriple
+            JpsPair
         }
 
         /// <summary>
@@ -378,13 +378,13 @@ namespace OpenccNetLib
 
                 case OpenccConfig.T2Jp:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.JpVariantsOnly, out var r1);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.JpsCharactersRev, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
                 case OpenccConfig.Jp2T:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.JpRevTriple, out var r1);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.JpsPair, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
@@ -592,15 +592,14 @@ namespace OpenccNetLib
                     };
 
                 // --- JP ---
-                case UnionKey.JpVariantsOnly:
-                    return new[] { d.jp_variants };
+                case UnionKey.JpsCharactersRev:
+                    return new[] { d.jps_characters_rev };
 
-                case UnionKey.JpRevTriple:
+                case UnionKey.JpsPair:
                     return new[]
                     {
                         d.jps_phrases,
-                        d.jps_characters,
-                        d.jp_variants_rev
+                        d.jps_characters
                     };
 
                 default:

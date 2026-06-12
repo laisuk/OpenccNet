@@ -193,6 +193,11 @@ phrase slots are supported too: `DictSlot.TWVariantsPhrases` is applied before `
 regional variant mappings.
 Direct Hong Kong phrase slots are customizable too: `DictSlot.HKPhrases` is used by `s2hkp`, and
 `DictSlot.HKPhrasesRev` is used by `hk2sp`.
+Japanese Shinjitai slots follow upstream OpenCC commit `93ee7f7`: `JPShinjitaiCharacters.txt` is the
+authoritative character mapping source, `JPShinjitaiCharactersRev.txt` is generated from it and used by `t2jp`,
+and `jp2t` uses `JPShinjitaiPhrases.txt` plus `JPShinjitaiCharacters.txt`. `JPVariants.txt` and
+`JPVariantsRev.txt` are no longer part of the active schema. Custom `FromDicts`, JSON, CBOR, or Zstd dictionary
+bundles must be regenerated or include the new non-empty `jps_characters_rev` slot.
 
 ```csharp
 using OpenccNetLib;

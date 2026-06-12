@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.5.2] - Unreleased
+## [1.6.0] - Unreleased
 
 ### Added
 
@@ -19,11 +19,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added direct Hong Kong phrase dictionary slots:
     - `DictSlot.HKPhrases` / `hk_phrases` / `HKPhrases.txt`
     - `DictSlot.HKPhrasesRev` / `hk_phrases_rev` / `HKPhrasesRev.txt`
+- Added `DictSlot.JpsCharactersRev` / `jps_characters_rev` / `JPShinjitaiCharactersRev.txt` for Traditional
+  Kyujitai-to-Japanese Shinjitai character conversion.
 - Added full loading, metadata normalization, JSON/CBOR/Zstd serialization, and custom dictionary append/override
-  support for the new Taiwan, Hong Kong phrase variant, and direct Hong Kong phrase slots.
-- Added tests covering strict loading of the new required dictionary files, enum availability, Zstd provider hydration,
-  JSON field emission, custom dictionary append/override behavior, direct `s2hkp` / `hk2sp` conversion, and
-  phrase-before-character conversion ordering.
+  support for the new Taiwan, Hong Kong, and Japanese Shinjitai dictionary slots.
 - Added DeTofu display-compatibility support for rare non-BMP CJK extension characters that may render as tofu boxes
   or missing glyphs on systems with incomplete font coverage.
 - Added public DeTofu APIs:
@@ -40,6 +39,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   custom pairs applied afterward so later mappings override earlier mappings for the same tofu-risk character.
 - Added threshold-based DeTofu extension levels where `ExtB` means Extension B and above, `ExtC` means Extension C and
   above, and `ExtI` means Extension I only.
+- Added tests covering strict loading, enum availability, Zstd provider hydration, JSON/CBOR field preservation,
+  custom dictionary append/override behavior, direct `s2hkp` / `hk2sp` conversion, JP Shinjitai conversion topology,
+  DeTofu fallback behavior, and phrase-before-character conversion ordering.
 
 ### Changed
 
@@ -53,25 +55,50 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added direct Hong Kong phrase conversion plans:
     - `s2hkp`: round 1 Simplified-to-Traditional, round 2 `hk_phrases`, `hk_variants_phrases`, `hk_variants`
     - `hk2sp`: round 1 `hk_phrases_rev`, `hk_variants_rev_phrases`, `hk_variants_rev`, round 2 Traditional-to-Simplified
-- Renamed internal conversion-plan union keys from `TwVariantsOnly` / `HkVariantsOnly` to
-  `TwVariantsPair` / `HkVariantsPair` to reflect that these stages now include both phrase and character variant slots.
-- Regenerated the bundled `dictionary_maxlength.zstd`, JSON, and CBOR dictionary artifacts with the new phrase slots
-  included.
+- Aligned the Japanese Shinjitai dictionary topology with upstream OpenCC commit `93ee7f7`.
+- `JPShinjitaiCharacters.txt` is now the authoritative Japanese Shinjitai character mapping source, and
+  `JPShinjitaiCharactersRev.txt` is the generated reverse dictionary used by `t2jp`.
+- Updated Japanese conversion plans:
+    - `t2jp` now uses only `jps_characters_rev`
+    - `jp2t` now uses only `jps_phrases` + `jps_characters`
+- Renamed internal conversion-plan union keys:
+    - `TwVariantsOnly` → `TwVariantsPair`
+    - `HkVariantsOnly` → `HkVariantsPair`
+    - JP Shinjitai reverse conversion now uses `JpsCharactersRev`
+    - JP Shinjitai phrase/character conversion now uses `JpsPair`
+- Regenerated bundled `dictionary_maxlength.zstd`, JSON, and CBOR dictionary artifacts with the new Taiwan, Hong Kong,
+  and Japanese Shinjitai slots included.
 
 ### Fixed
 
-- Ensured missing `TWVariantsPhrases.txt`, `HKVariantsPhrases.txt`, `HKPhrases.txt`, or `HKPhrasesRev.txt` fails during
-  strict text dictionary loading, matching the behavior of other required OpenCC dictionary files.
-- Preserved compatibility with older serialized dictionary payloads by normalizing missing new phrase-slot fields to
-  empty dictionary slots during JSON/CBOR/Zstd deserialization.
+- Ensured missing `TWVariantsPhrases.txt`, `HKVariantsPhrases.txt`, `HKPhrases.txt`, `HKPhrasesRev.txt`, or
+  `JPShinjitaiCharactersRev.txt` fails clearly during strict text dictionary loading.
+- Preserved compatibility with older serialized dictionary payloads by normalizing missing new Taiwan and Hong Kong
+  phrase-slot fields to empty dictionary slots during JSON/CBOR/Zstd deserialization.
+
+### Removed
+
+- Removed `JPVariants.txt` and `JPVariantsRev.txt` from the active dictionary schema, bundled text dictionaries, and
+  Japanese conversion plans.
+
+### Breaking Changes
+
+- Custom dictionary bundles, JSON packs, CBOR packs, and Zstd packs must include non-empty `jps_characters_rev` data.
+- `JPVariants.txt` and `JPVariantsRev.txt` are no longer active dictionary inputs.
+- Users who provide custom dictionary bundles must regenerate bundled dictionaries or download/generate
+  `JPShinjitaiCharactersRev.txt` from `JPShinjitaiCharacters.txt` before using `FromDicts()`, `FromJson()`,
+  `FromCbor()`, or compressed bundles.
 
 ### Documentation
 
-- Updated README custom dictionary guidance and slot tables to document the new phrase variant slots and clarify that
-  regional phrase slots are applied before character/regional variant slots.
+- Updated README custom dictionary guidance and slot tables to document the new Taiwan, Hong Kong, and Japanese
+  Shinjitai slots.
+- Documented that regional phrase slots are applied before character/regional variant slots.
 - Added README and XML documentation for DeTofu usage, fallback file format
   (`tofu_char<TAB>fallback_char<TAB>extension`), custom override behavior, and the non-destructive preservation contract
   for unmapped characters.
+- Added upgrade guidance for custom dictionary and serialized-bundle users affected by the v1.6.0 JP dictionary schema
+  change.
 
 ---
 

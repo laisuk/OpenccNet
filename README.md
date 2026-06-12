@@ -606,9 +606,14 @@ var opencc = new Opencc("s2t");
 | `DictSlot.HKPhrasesRev`         | `hk_phrases_rev`          | `HKPhrasesRev.txt`          |
 | `DictSlot.HKVariantsRevPhrases` | `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`  |
 | `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt` |
+| `DictSlot.JpsCharactersRev`     | `jps_characters_rev`      | `JPShinjitaiCharactersRev.txt` |
 | `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`    |
-| `DictSlot.JPVariants`           | `jp_variants`             | `JPVariants.txt`            |
-| `DictSlot.JPVariantsRev`        | `jp_variants_rev`         | `JPVariantsRev.txt`         |
+
+Japanese Shinjitai dictionary layout follows upstream OpenCC commit `93ee7f7`: `JPShinjitaiCharacters.txt`
+is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse
+dictionary used by `t2jp`. `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active
+dictionary schema. Users who provide custom dictionary bundles, JSON, CBOR, or Zstd packs must regenerate
+those bundles or include the new non-empty `JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
 
 #### Recommended usage
 

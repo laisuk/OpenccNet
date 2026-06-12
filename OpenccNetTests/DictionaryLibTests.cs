@@ -45,10 +45,12 @@ public class DictionaryLibTests
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKVariantsPhrases));
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrases));
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrasesRev));
+        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.JpsCharactersRev));
         AssertMetadataValid(dict.tw_variants_phrases);
         AssertMetadataValid(dict.hk_variants_phrases);
         AssertMetadataValid(dict.hk_phrases);
         AssertMetadataValid(dict.hk_phrases_rev);
+        AssertMetadataValid(dict.jps_characters_rev);
     }
 
     [TestMethod]
@@ -60,6 +62,7 @@ public class DictionaryLibTests
         AssertMetadataValid(dict.hk_variants_phrases);
         AssertMetadataValid(dict.hk_phrases);
         AssertMetadataValid(dict.hk_phrases_rev);
+        AssertMetadataValid(dict.jps_characters_rev);
     }
 
     [TestMethod]
@@ -67,7 +70,7 @@ public class DictionaryLibTests
     {
         var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
 
-        foreach (var missingFile in new[] { "TWVariantsPhrases.txt", "HKVariantsPhrases.txt", "HKPhrases.txt", "HKPhrasesRev.txt" })
+        foreach (var missingFile in new[] { "TWVariantsPhrases.txt", "HKVariantsPhrases.txt", "HKPhrases.txt", "HKPhrasesRev.txt", "JPShinjitaiCharactersRev.txt" })
         {
             var tempDir = Path.Combine(OutputDir, "dicts_missing_" + Path.GetFileNameWithoutExtension(missingFile));
 
@@ -91,11 +94,38 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
+    public void TestFromDicts_DoesNotRequireLegacyJpVariantFiles()
+    {
+        var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
+        var tempDir = Path.Combine(OutputDir, "dicts_without_legacy_jp_variants");
+
+        if (Directory.Exists(tempDir))
+            Directory.Delete(tempDir, recursive: true);
+
+        Directory.CreateDirectory(tempDir);
+
+        foreach (var sourceFile in Directory.EnumerateFiles(sourceDir))
+        {
+            var fileName = Path.GetFileName(sourceFile);
+
+            if (fileName == "JPVariants.txt" || fileName == "JPVariantsRev.txt")
+                continue;
+
+            File.Copy(sourceFile, Path.Combine(tempDir, fileName));
+        }
+
+        var dict = DictionaryLib.FromDicts(tempDir);
+
+        AssertMetadataValid(dict.jps_characters_rev);
+    }
+
+    [TestMethod]
     public void TestFromJson()
     {
         var dict = DictionaryLib.FromJson("Data/dictionary_maxlength.json");
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
+        AssertMetadataValid(dict.jps_characters_rev);
     }
 
     [TestMethod]
@@ -104,6 +134,7 @@ public class DictionaryLibTests
         var dict = DictionaryLib.FromCbor("Data/dictionary_maxlength.cbor");
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
+        AssertMetadataValid(dict.jps_characters_rev);
     }
 
 
@@ -158,6 +189,7 @@ public class DictionaryLibTests
         var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
         Assert.IsNotNull(loaded);
         Assert.HasCount(dict.ts_characters.Dict.Count, loaded.ts_characters.Dict);
+        Assert.HasCount(dict.jps_characters_rev.Dict.Count, loaded.jps_characters_rev.Dict);
     }
 
     [TestMethod]
@@ -224,6 +256,7 @@ public class DictionaryLibTests
         Assert.IsTrue(json.RootElement.TryGetProperty("hk_phrases", out _));
         Assert.IsTrue(json.RootElement.TryGetProperty("hk_phrases_rev", out _));
         Assert.IsTrue(json.RootElement.TryGetProperty("hk_variants_phrases", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("jps_characters_rev", out _));
 
         var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
         Assert.AreEqual(
@@ -232,6 +265,9 @@ public class DictionaryLibTests
         Assert.AreEqual(
             DictionaryLib.FromDicts().hk_phrases_rev.Count,
             loaded.hk_phrases_rev.Count);
+        Assert.AreEqual(
+            DictionaryLib.FromDicts().jps_characters_rev.Count,
+            loaded.jps_characters_rev.Count);
     }
 
     [TestMethod]
@@ -347,6 +383,26 @@ public class DictionaryLibTests
         Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
         Assert.IsTrue(dict.hk_phrases.StarterLenMask.ContainsKey("小"));
         AssertMetadataValid(dict.hk_phrases);
+    }
+
+    [TestMethod]
+    public void TestFromDicts_AppendsCustomJpsCharactersRev()
+    {
+        var customPath = Path.Combine(OutputDir, "custom_jps_characters_rev.txt");
+        File.WriteAllText(
+            customPath,
+            "測試舊字\t測試新字\n",
+            Encoding.UTF8);
+
+        var dict = DictionaryLib.FromDicts(
+            appends: new Dictionary<DictSlot, string>
+            {
+                [DictSlot.JpsCharactersRev] = customPath
+            });
+
+        Assert.AreEqual("測試新字", dict.jps_characters_rev.Dict["測試舊字"]);
+        Assert.IsTrue(dict.jps_characters_rev.StarterLenMask.ContainsKey("測"));
+        AssertMetadataValid(dict.jps_characters_rev);
     }
 
     [TestMethod]
@@ -588,6 +644,30 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
+    public void TestWithCustomDicts_OverridesJpsCharactersRevFromPairs()
+    {
+        var dict = DictionaryLib.New();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            [
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.JpsCharactersRev,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["測試舊字"] = "測試新字"
+                    }
+                }
+            ]);
+
+        Assert.AreEqual(1, dict.jps_characters_rev.Count);
+        Assert.AreEqual("測試新字", dict.jps_characters_rev.Dict["測試舊字"]);
+        AssertMetadataValid(dict.jps_characters_rev);
+    }
+
+    [TestMethod]
     public void TestWithCustomDicts_AppendsCustomStPhraseFromFile()
     {
         var customPath = Path.Combine(OutputDir, "post_load_custom_st_phrases.txt");
@@ -723,6 +803,76 @@ public class DictionaryLibTests
         {
             var opencc = new Opencc("t2hk");
             Assert.AreEqual("喫茶小舖", opencc.Convert("喫茶小舖"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
+    }
+
+    [TestMethod]
+    public void TestT2JpUsesJpsCharactersRevOnly()
+    {
+        var dict = DictionaryLib.FromDicts();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            [
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.JPSCharacters,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
+                },
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.JPSPhrases,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string> { ["惡德"] = "不應使用" }
+                },
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.JpsCharactersRev,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string> { ["惡"] = "悪" }
+                }
+            ]);
+
+        Opencc.UseCustomDictionary(dict);
+
+        try
+        {
+            var opencc = new Opencc("t2jp");
+            Assert.AreEqual("悪德", opencc.Convert("惡德"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
+    }
+
+    [TestMethod]
+    public void TestJp2TUsesJpsPhrasesAndCharactersOnly()
+    {
+        var dict = DictionaryLib.FromDicts();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            [
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.JpsCharactersRev,
+                    Mode = CustomDictMode.Override,
+                    Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
+                }
+            ]);
+
+        Opencc.UseCustomDictionary(dict);
+
+        try
+        {
+            var opencc = new Opencc("jp2t");
+            Assert.AreEqual("辨當と惡", opencc.Convert("弁当と悪"));
         }
         finally
         {

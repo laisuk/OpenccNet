@@ -32,16 +32,16 @@ internal static class ConvertCommand
             Required = true,
             Description =
                 "Conversion configuration.\nValid options: " +
-                string.Join(", ", Opencc.GetSupportedConfigs())
+                string.Join(", ", CliConfigNames.All)
         };
 
         configOption.Validators.Add(result =>
         {
             var value = result.GetValueOrDefault<string>();
-            if (!string.IsNullOrEmpty(value) && !Opencc.IsValidConfig(value))
+            if (!string.IsNullOrEmpty(value) && !CliConfigNames.IsValid(value))
             {
                 result.AddError(
-                    $"Invalid config '{value}'. Valid options: {string.Join(", ", Opencc.GetSupportedConfigs())}"
+                    $"Invalid config '{value}'. Valid options: {string.Join(", ", CliConfigNames.All)}"
                 );
             }
         });

@@ -228,19 +228,14 @@ namespace OpenccNetLib
         public DictWithMaxLength jps_characters { get; set; } = new DictWithMaxLength();
 
         /// <summary>
+        /// Japanese Shinjitai-to-Traditional Kyujitai character mappings.
+        /// </summary>
+        public DictWithMaxLength jps_characters_rev { get; set; } = new DictWithMaxLength();
+
+        /// <summary>
         /// Traditional Kyujitai-to-Japanese Shinjitai phrase mappings.
         /// </summary>
         public DictWithMaxLength jps_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Japanese character variant mappings.
-        /// </summary>
-        public DictWithMaxLength jp_variants { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Japanese variant-to-Traditional character mappings.
-        /// </summary>
-        public DictWithMaxLength jp_variants_rev { get; set; } = new DictWithMaxLength();
 
         /// <summary>
         /// Simplified-to-Traditional punctuation mappings.
@@ -816,9 +811,8 @@ namespace OpenccNetLib
                 [DictSlot.HKVariantsRevPhrases] = "HKVariantsRevPhrases.txt",
 
                 [DictSlot.JPSCharacters] = "JPShinjitaiCharacters.txt",
-                [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt",
-                [DictSlot.JPVariants] = "JPVariants.txt",
-                [DictSlot.JPVariantsRev] = "JPVariantsRev.txt"
+                [DictSlot.JpsCharactersRev] = "JPShinjitaiCharactersRev.txt",
+                [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt"
             };
 
         /// <summary>
@@ -927,9 +921,8 @@ namespace OpenccNetLib
                 case DictSlot.HKVariantsRevPhrases: return d.hk_variants_rev_phrases;
 
                 case DictSlot.JPSCharacters: return d.jps_characters;
+                case DictSlot.JpsCharactersRev: return d.jps_characters_rev;
                 case DictSlot.JPSPhrases: return d.jps_phrases;
-                case DictSlot.JPVariants: return d.jp_variants;
-                case DictSlot.JPVariantsRev: return d.jp_variants_rev;
 
                 default:
                     throw new ArgumentException(
@@ -1000,9 +993,8 @@ namespace OpenccNetLib
                 case DictSlot.HKVariantsRevPhrases: d.hk_variants_rev_phrases = value; break;
 
                 case DictSlot.JPSCharacters: d.jps_characters = value; break;
+                case DictSlot.JpsCharactersRev: d.jps_characters_rev = value; break;
                 case DictSlot.JPSPhrases: d.jps_phrases = value; break;
-                case DictSlot.JPVariants: d.jp_variants = value; break;
-                case DictSlot.JPVariantsRev: d.jp_variants_rev = value; break;
 
                 default:
                     throw new ArgumentException(
@@ -1579,6 +1571,9 @@ namespace OpenccNetLib
             if (instance.hk_phrases_rev == null)
                 instance.hk_phrases_rev = new DictWithMaxLength();
 
+            if (instance.jps_characters_rev == null)
+                instance.jps_characters_rev = new DictWithMaxLength();
+
             EnsureDictionaryMetadata(instance.st_characters);
             EnsureDictionaryMetadata(instance.st_phrases);
             EnsureDictionaryMetadata(instance.st_punctuations);
@@ -1602,11 +1597,25 @@ namespace OpenccNetLib
             EnsureDictionaryMetadata(instance.hk_variants_rev_phrases);
 
             EnsureDictionaryMetadata(instance.jps_characters);
+            EnsureDictionaryMetadata(instance.jps_characters_rev);
             EnsureDictionaryMetadata(instance.jps_phrases);
-            EnsureDictionaryMetadata(instance.jp_variants);
-            EnsureDictionaryMetadata(instance.jp_variants_rev);
+
+            EnsureRequiredDictionarySlots(instance);
 
             return instance;
+        }
+
+        /// <summary>
+        /// Verifies schema-breaking required dictionary slots are present after
+        /// hydration from bundled JSON/CBOR/Zstd dictionary packs.
+        /// </summary>
+        private static void EnsureRequiredDictionarySlots(DictionaryMaxlength instance)
+        {
+            if (instance.jps_characters_rev.Dict == null ||
+                instance.jps_characters_rev.Dict.Count == 0)
+                throw new InvalidOperationException(
+                    "Required dictionary slot 'jps_characters_rev' is missing or empty. " +
+                    "Regenerate dictionary_maxlength assets or include JPShinjitaiCharactersRev.txt.");
         }
 
         /// <summary>
