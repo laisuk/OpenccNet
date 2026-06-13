@@ -105,37 +105,76 @@ namespace OpenccNetLib
             if (value == null)
                 throw new ArgumentNullException(nameof(value));
 
+            if (TryParseLevel(value, out var level))
+                return level;
+
+            throw new ArgumentException(
+                "Supported deTofu levels: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i.",
+                nameof(value));
+        }
+
+        private static bool TryParseLevel(
+            string value,
+            out DeTofuLevel level)
+        {
+            level = DeTofuLevel.ExtB;
+
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
             switch (value.Trim().ToLowerInvariant())
             {
                 case "all":
                 case "ext-b":
+                case "extb":
                 case "b":
-                    return DeTofuLevel.ExtB;
+                    level = DeTofuLevel.ExtB;
+                    return true;
+
                 case "ext-c":
+                case "extc":
                 case "c":
-                    return DeTofuLevel.ExtC;
+                    level = DeTofuLevel.ExtC;
+                    return true;
+
                 case "ext-d":
+                case "extd":
                 case "d":
-                    return DeTofuLevel.ExtD;
+                    level = DeTofuLevel.ExtD;
+                    return true;
+
                 case "ext-e":
+                case "exte":
                 case "e":
-                    return DeTofuLevel.ExtE;
+                    level = DeTofuLevel.ExtE;
+                    return true;
+
                 case "ext-f":
+                case "extf":
                 case "f":
-                    return DeTofuLevel.ExtF;
+                    level = DeTofuLevel.ExtF;
+                    return true;
+
                 case "ext-g":
+                case "extg":
                 case "g":
-                    return DeTofuLevel.ExtG;
+                    level = DeTofuLevel.ExtG;
+                    return true;
+
                 case "ext-h":
+                case "exth":
                 case "h":
-                    return DeTofuLevel.ExtH;
+                    level = DeTofuLevel.ExtH;
+                    return true;
+
                 case "ext-i":
+                case "exti":
                 case "i":
-                    return DeTofuLevel.ExtI;
+                    level = DeTofuLevel.ExtI;
+                    return true;
+
                 default:
-                    throw new ArgumentException(
-                        "Supported deTofu levels: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i.",
-                        nameof(value));
+                    return false;
             }
         }
 
@@ -185,7 +224,7 @@ namespace OpenccNetLib
                     var tofu = ReadFirstScalar(parts[0].Trim());
                     var fallback = ReadFirstScalar(parts[1].Trim());
 
-                    if (tofu == null || fallback == null || !TryParseExtension(parts[2], out var ext))
+                    if (tofu == null || fallback == null || !TryParseLevel(parts[2], out var ext))
                         continue;
 
                     entries.Add(new DeTofuEntry(tofu, fallback, ext));
@@ -216,60 +255,6 @@ namespace OpenccNetLib
             }
 
             return ParseEntries(File.ReadAllText(path, Encoding.UTF8));
-        }
-
-        private static bool TryParseExtension(string value, out DeTofuLevel level)
-        {
-            level = DeTofuLevel.ExtB;
-
-            if (value == null)
-                return false;
-
-            switch (value.Trim())
-            {
-                case "ExtB":
-                case "B":
-                case "b":
-                    level = DeTofuLevel.ExtB;
-                    return true;
-                case "ExtC":
-                case "C":
-                case "c":
-                    level = DeTofuLevel.ExtC;
-                    return true;
-                case "ExtD":
-                case "D":
-                case "d":
-                    level = DeTofuLevel.ExtD;
-                    return true;
-                case "ExtE":
-                case "E":
-                case "e":
-                    level = DeTofuLevel.ExtE;
-                    return true;
-                case "ExtF":
-                case "F":
-                case "f":
-                    level = DeTofuLevel.ExtF;
-                    return true;
-                case "ExtG":
-                case "G":
-                case "g":
-                    level = DeTofuLevel.ExtG;
-                    return true;
-                case "ExtH":
-                case "H":
-                case "h":
-                    level = DeTofuLevel.ExtH;
-                    return true;
-                case "ExtI":
-                case "I":
-                case "i":
-                    level = DeTofuLevel.ExtI;
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         internal static string ReadFirstScalar(string value)
