@@ -45,7 +45,7 @@ public class DictionaryLibTests
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKVariantsPhrases));
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrases));
         Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrasesRev));
-        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.JpsCharactersRev));
+        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.JPSCharactersRev));
         AssertMetadataValid(dict.tw_variants_phrases);
         AssertMetadataValid(dict.hk_variants_phrases);
         AssertMetadataValid(dict.hk_phrases);
@@ -386,7 +386,7 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
-    public void TestFromDicts_AppendsCustomJpsCharactersRev()
+    public void TestFromDicts_AppendsCustomJPSCharactersRev()
     {
         var customPath = Path.Combine(OutputDir, "custom_jps_characters_rev.txt");
         File.WriteAllText(
@@ -397,7 +397,7 @@ public class DictionaryLibTests
         var dict = DictionaryLib.FromDicts(
             appends: new Dictionary<DictSlot, string>
             {
-                [DictSlot.JpsCharactersRev] = customPath
+                [DictSlot.JPSCharactersRev] = customPath
             });
 
         Assert.AreEqual("測試新字", dict.jps_characters_rev.Dict["測試舊字"]);
@@ -644,7 +644,7 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
-    public void TestWithCustomDicts_OverridesJpsCharactersRevFromPairs()
+    public void TestWithCustomDicts_OverridesJPSCharactersRevFromPairs()
     {
         var dict = DictionaryLib.New();
 
@@ -653,7 +653,7 @@ public class DictionaryLibTests
             [
                 new CustomDictSpec
                 {
-                    Slot = DictSlot.JpsCharactersRev,
+                    Slot = DictSlot.JPSCharactersRev,
                     Mode = CustomDictMode.Override,
                     Pairs = new Dictionary<string, string>
                     {
@@ -811,7 +811,7 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
-    public void TestT2JpUsesJpsCharactersRevOnly()
+    public void TestT2JpUsesJPSCharactersRevOnly()
     {
         var dict = DictionaryLib.FromDicts();
 
@@ -832,7 +832,7 @@ public class DictionaryLibTests
                 },
                 new CustomDictSpec
                 {
-                    Slot = DictSlot.JpsCharactersRev,
+                    Slot = DictSlot.JPSCharactersRev,
                     Mode = CustomDictMode.Override,
                     Pairs = new Dictionary<string, string> { ["惡"] = "悪" }
                 }
@@ -861,7 +861,7 @@ public class DictionaryLibTests
             [
                 new CustomDictSpec
                 {
-                    Slot = DictSlot.JpsCharactersRev,
+                    Slot = DictSlot.JPSCharactersRev,
                     Mode = CustomDictMode.Override,
                     Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
                 }

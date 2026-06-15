@@ -19,7 +19,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added direct Hong Kong phrase dictionary slots:
     - `DictSlot.HKPhrases` / `hk_phrases` / `HKPhrases.txt`
     - `DictSlot.HKPhrasesRev` / `hk_phrases_rev` / `HKPhrasesRev.txt`
-- Added `DictSlot.JpsCharactersRev` / `jps_characters_rev` / `JPShinjitaiCharactersRev.txt` for Traditional
+- Added `DictSlot.JPSCharactersRev` / `jps_characters_rev` / `JPShinjitaiCharactersRev.txt` for Traditional
   Kyujitai-to-Japanese Shinjitai character conversion.
 - Added full loading, metadata normalization, JSON/CBOR/Zstd serialization, and custom dictionary append/override
   support for the new Taiwan, Hong Kong, and Japanese Shinjitai dictionary slots.

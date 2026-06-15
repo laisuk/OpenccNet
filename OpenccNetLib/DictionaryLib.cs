@@ -811,7 +811,7 @@ namespace OpenccNetLib
                 [DictSlot.HKVariantsRevPhrases] = "HKVariantsRevPhrases.txt",
 
                 [DictSlot.JPSCharacters] = "JPShinjitaiCharacters.txt",
-                [DictSlot.JpsCharactersRev] = "JPShinjitaiCharactersRev.txt",
+                [DictSlot.JPSCharactersRev] = "JPShinjitaiCharactersRev.txt",
                 [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt"
             };
 
@@ -921,7 +921,7 @@ namespace OpenccNetLib
                 case DictSlot.HKVariantsRevPhrases: return d.hk_variants_rev_phrases;
 
                 case DictSlot.JPSCharacters: return d.jps_characters;
-                case DictSlot.JpsCharactersRev: return d.jps_characters_rev;
+                case DictSlot.JPSCharactersRev: return d.jps_characters_rev;
                 case DictSlot.JPSPhrases: return d.jps_phrases;
 
                 default:
@@ -993,7 +993,7 @@ namespace OpenccNetLib
                 case DictSlot.HKVariantsRevPhrases: d.hk_variants_rev_phrases = value; break;
 
                 case DictSlot.JPSCharacters: d.jps_characters = value; break;
-                case DictSlot.JpsCharactersRev: d.jps_characters_rev = value; break;
+                case DictSlot.JPSCharactersRev: d.jps_characters_rev = value; break;
                 case DictSlot.JPSPhrases: d.jps_phrases = value; break;
 
                 default:

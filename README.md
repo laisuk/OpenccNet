@@ -585,29 +585,29 @@ var opencc = new Opencc("s2t");
 
 #### Supported dictionary slots
 
-| DictSlot                        | Serialization Field       | Default File                |
-|---------------------------------|---------------------------|-----------------------------|
-| `DictSlot.STCharacters`         | `st_characters`           | `STCharacters.txt`          |
-| `DictSlot.STPhrases`            | `st_phrases`              | `STPhrases.txt`             |
-| `DictSlot.STPunctuations`       | `st_punctuations`         | `STPunctuations.txt`        |
-| `DictSlot.TSCharacters`         | `ts_characters`           | `TSCharacters.txt`          |
-| `DictSlot.TSPhrases`            | `ts_phrases`              | `TSPhrases.txt`             |
-| `DictSlot.TSPunctuations`       | `ts_punctuations`         | `TSPunctuations.txt`        |
-| `DictSlot.TWPhrases`            | `tw_phrases`              | `TWPhrases.txt`             |
-| `DictSlot.TWPhrasesRev`         | `tw_phrases_rev`          | `TWPhrasesRev.txt`          |
-| `DictSlot.TWVariants`           | `tw_variants`             | `TWVariants.txt`            |
-| `DictSlot.TWVariantsPhrases`    | `tw_variants_phrases`     | `TWVariantsPhrases.txt`     |
-| `DictSlot.TWVariantsRev`        | `tw_variants_rev`         | `TWVariantsRev.txt`         |
-| `DictSlot.TWVariantsRevPhrases` | `tw_variants_rev_phrases` | `TWVariantsRevPhrases.txt`  |
-| `DictSlot.HKVariants`           | `hk_variants`             | `HKVariants.txt`            |
-| `DictSlot.HKPhrases`            | `hk_phrases`              | `HKPhrases.txt`             |
-| `DictSlot.HKVariantsPhrases`    | `hk_variants_phrases`     | `HKVariantsPhrases.txt`     |
-| `DictSlot.HKVariantsRev`        | `hk_variants_rev`         | `HKVariantsRev.txt`         |
-| `DictSlot.HKPhrasesRev`         | `hk_phrases_rev`          | `HKPhrasesRev.txt`          |
-| `DictSlot.HKVariantsRevPhrases` | `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`  |
-| `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt` |
-| `DictSlot.JpsCharactersRev`     | `jps_characters_rev`      | `JPShinjitaiCharactersRev.txt` |
-| `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`    |
+| DictSlot                        | Serialization Field       | Default File                   |
+|---------------------------------|---------------------------|--------------------------------|
+| `DictSlot.STCharacters`         | `st_characters`           | `STCharacters.txt`             |
+| `DictSlot.STPhrases`            | `st_phrases`              | `STPhrases.txt`                |
+| `DictSlot.STPunctuations`       | `st_punctuations`         | `STPunctuations.txt`           |
+| `DictSlot.TSCharacters`         | `ts_characters`           | `TSCharacters.txt`             |
+| `DictSlot.TSPhrases`            | `ts_phrases`              | `TSPhrases.txt`                |
+| `DictSlot.TSPunctuations`       | `ts_punctuations`         | `TSPunctuations.txt`           |
+| `DictSlot.TWPhrases`            | `tw_phrases`              | `TWPhrases.txt`                |
+| `DictSlot.TWPhrasesRev`         | `tw_phrases_rev`          | `TWPhrasesRev.txt`             |
+| `DictSlot.TWVariants`           | `tw_variants`             | `TWVariants.txt`               |
+| `DictSlot.TWVariantsPhrases`    | `tw_variants_phrases`     | `TWVariantsPhrases.txt`        |
+| `DictSlot.TWVariantsRev`        | `tw_variants_rev`         | `TWVariantsRev.txt`            |
+| `DictSlot.TWVariantsRevPhrases` | `tw_variants_rev_phrases` | `TWVariantsRevPhrases.txt`     |
+| `DictSlot.HKVariants`           | `hk_variants`             | `HKVariants.txt`               |
+| `DictSlot.HKPhrases`            | `hk_phrases`              | `HKPhrases.txt`                |
+| `DictSlot.HKVariantsPhrases`    | `hk_variants_phrases`     | `HKVariantsPhrases.txt`        |
+| `DictSlot.HKVariantsRev`        | `hk_variants_rev`         | `HKVariantsRev.txt`            |
+| `DictSlot.HKPhrasesRev`         | `hk_phrases_rev`          | `HKPhrasesRev.txt`             |
+| `DictSlot.HKVariantsRevPhrases` | `hk_variants_rev_phrases` | `HKVariantsRevPhrases.txt`     |
+| `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt`    |
+| `DictSlot.JPSCharactersRev`     | `jps_characters_rev`      | `JPShinjitaiCharactersRev.txt` |
+| `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`       |
 
 Japanese Shinjitai dictionary layout follows upstream OpenCC commit `93ee7f7`: `JPShinjitaiCharacters.txt`
 is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse
