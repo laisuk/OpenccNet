@@ -10,7 +10,7 @@
 # an explanation.
 # Historical compatibility entries that are not covered by the three tables are
 # kept with a self-mapping as the first candidate.
-# Reference: https://zh.wikipedia.org/wiki/%E6%96%B0%E5%AD%97%E4%BD%93#%E6%96%B0%E8%88%8A%E5%AD%97%E9%AB%94%E5%B0%8D%E7%85%A7%E8%A1%A8
+# Reference: https://zh.wikipedia.org/wiki/新字体#新舊字體對照表
 
 万	萬
 与	與
@@ -31,6 +31,8 @@
 余	餘
 併	倂
 価	價
+値	値 值
+倶	倶 俱
 倹	儉
 偽	僞
 兎	兎 兔
@@ -81,6 +83,7 @@
 圧	壓
 堕	墮
 塁	壘
+塡	塡 填
 塩	鹽
 増	增
 壊	壞
@@ -92,6 +95,7 @@
 変	變
 奥	奧
 奨	奬 獎
+姫	姫 姬
 嬢	孃
 学	學
 宝	寶
