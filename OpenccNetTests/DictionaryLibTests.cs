@@ -54,6 +54,73 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
+    public void TestDictSlot_PreservesPublishedNumericValues()
+    {
+        var publishedValues = new Dictionary<DictSlot, int>
+        {
+            [DictSlot.STCharacters] = 0,
+            [DictSlot.STPhrases] = 1,
+            [DictSlot.STPunctuations] = 2,
+            [DictSlot.TSCharacters] = 3,
+            [DictSlot.TSPhrases] = 4,
+            [DictSlot.TSPunctuations] = 5,
+            [DictSlot.TWPhrases] = 6,
+            [DictSlot.TWPhrasesRev] = 7,
+            [DictSlot.TWVariants] = 8,
+            [DictSlot.TWVariantsRev] = 9,
+            [DictSlot.TWVariantsRevPhrases] = 10,
+            [DictSlot.HKVariants] = 11,
+            [DictSlot.HKVariantsRev] = 12,
+            [DictSlot.HKVariantsRevPhrases] = 13,
+            [DictSlot.JPSCharacters] = 14,
+            [DictSlot.JPSPhrases] = 15
+        };
+
+        foreach (var pair in publishedValues)
+            Assert.AreEqual(pair.Value, (int)pair.Key);
+
+        Assert.IsTrue(Enum.TryParse("JPVariants", out DictSlot jpVariants));
+        Assert.AreEqual(16, (int)jpVariants);
+        Assert.IsTrue(Enum.TryParse("JPVariantsRev", out DictSlot jpVariantsRev));
+        Assert.AreEqual(17, (int)jpVariantsRev);
+
+        Assert.IsNotNull(typeof(DictSlot).GetField("JPVariants")
+            ?.GetCustomAttributes(typeof(ObsoleteAttribute), false).SingleOrDefault());
+        Assert.IsNotNull(typeof(DictSlot).GetField("JPVariantsRev")
+            ?.GetCustomAttributes(typeof(ObsoleteAttribute), false).SingleOrDefault());
+
+        Assert.IsGreaterThan(17, (int)DictSlot.TWVariantsPhrases);
+        Assert.IsGreaterThan(17, (int)DictSlot.HKVariantsPhrases);
+        Assert.IsGreaterThan(17, (int)DictSlot.JPSCharactersRev);
+        Assert.IsGreaterThan(17, (int)DictSlot.HKPhrases);
+        Assert.IsGreaterThan(17, (int)DictSlot.HKPhrasesRev);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_RejectsRetiredNumericSlots()
+    {
+        foreach (var retiredValue in new[] { 16, 17 })
+        {
+            var ex = Assert.Throws<ArgumentException>(() =>
+                DictionaryLib.WithCustomDicts(
+                    DictionaryLib.New(),
+                    new[]
+                    {
+                        new CustomDictSpec
+                        {
+                            Slot = (DictSlot)retiredValue,
+                            Pairs = new Dictionary<string, string>
+                            {
+                                ["test"] = "value"
+                            }
+                        }
+                    }));
+
+            Assert.Contains("Unknown dictionary slot", ex.Message);
+        }
+    }
+
+    [TestMethod]
     public void TestProvider_LoadsForwardVariantPhraseSlotsFromZstd()
     {
         var dict = DictionaryLib.Provider;

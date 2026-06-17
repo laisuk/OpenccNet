@@ -139,7 +139,7 @@ namespace OpenccNetLib
             // --- Japan-specific ---
 
             /// <summary>
-            /// Japanese Shinjitai-to-Traditional Kyujitai characters only.
+            /// Traditional Kyujitai-to-Japanese Shinjitai characters only.
             /// </summary>
             JpsCharactersRev,
 

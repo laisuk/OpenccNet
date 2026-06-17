@@ -240,7 +240,6 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
     - Gen1: ~5.6K,
     - Gen2: ~1K — all expected and manageable.
 - ⚡ Warm startup is fast, ideal for both CLI batch conversion and interactive GUI usage.
-- ✨ OpenccNetLib 1.0.3 is now production-ready for large-scale Chinese text conversion.
 
 ---
 

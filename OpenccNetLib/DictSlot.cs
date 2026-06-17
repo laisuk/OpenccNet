@@ -14,73 +14,87 @@ namespace OpenccNetLib
     public enum DictSlot
     {
         /// <summary>Simplified-to-Traditional character mappings.</summary>
-        STCharacters,
+        STCharacters = 0,
 
         /// <summary>Simplified-to-Traditional phrase mappings.</summary>
-        STPhrases,
+        STPhrases = 1,
 
         /// <summary>Simplified-to-Traditional punctuation mappings.</summary>
-        STPunctuations,
+        STPunctuations = 2,
 
         /// <summary>Traditional-to-Simplified character mappings.</summary>
-        TSCharacters,
+        TSCharacters = 3,
 
         /// <summary>Traditional-to-Simplified phrase mappings.</summary>
-        TSPhrases,
+        TSPhrases = 4,
 
         /// <summary>Traditional-to-Simplified punctuation mappings.</summary>
-        TSPunctuations,
+        TSPunctuations = 5,
 
         /// <summary>Traditional-to-Taiwan phrase mappings.</summary>
-        TWPhrases,
+        TWPhrases = 6,
 
         /// <summary>Taiwan-to-Traditional phrase mappings.</summary>
-        TWPhrasesRev,
+        TWPhrasesRev = 7,
 
         /// <summary>Traditional-to-Taiwan character variant mappings.</summary>
-        TWVariants,
-
-        /// <summary>Traditional-to-Taiwan phrase variant mappings applied before <see cref="TWVariants"/>.</summary>
-        TWVariantsPhrases,
+        TWVariants = 8,
 
         /// <summary>Taiwan-to-Traditional character variant mappings.</summary>
-        TWVariantsRev,
+        TWVariantsRev = 9,
 
         /// <summary>Taiwan-to-Traditional phrase variant mappings.</summary>
-        TWVariantsRevPhrases,
+        TWVariantsRevPhrases = 10,
 
         /// <summary>Traditional-to-Hong Kong character variant mappings.</summary>
-        HKVariants,
-
-        /// <summary>Traditional-to-Hong Kong phrase variant mappings applied before <see cref="HKVariants"/>.</summary>
-        HKVariantsPhrases,
+        HKVariants = 11,
 
         /// <summary>Hong Kong-to-Traditional character variant mappings.</summary>
-        HKVariantsRev,
+        HKVariantsRev = 12,
 
         /// <summary>Hong Kong-to-Traditional phrase variant mappings.</summary>
-        HKVariantsRevPhrases,
+        HKVariantsRevPhrases = 13,
 
-        /// <summary>Traditional Kyujitai-to-Japanese Shinjitai character mappings.</summary>
-        JPSCharacters,
+        /// <summary>Japanese Shinjitai-to-Traditional Kyujitai character mappings.</summary>
+        JPSCharacters = 14,
 
-        /// <summary>Japanese Shinjitai-to-Traditional Kyujitai character mappings from JPShinjitaiCharactersRev.txt.</summary>
-        JPSCharactersRev,
+        /// <summary>Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.</summary>
+        JPSPhrases = 15,
 
-        /// <summary>Traditional Kyujitai-to-Japanese Shinjitai phrase mappings.</summary>
-        JPSPhrases,
+        /// <summary>
+        /// Retired Japanese variant dictionary slot retained only for source and numeric compatibility.
+        /// </summary>
+        /// <remarks>This slot is not accepted by custom dictionary APIs.</remarks>
+        [System.Obsolete("JPVariants is no longer an active dictionary slot.", false)]
+        JPVariants = 16,
+
+        /// <summary>
+        /// Retired reverse Japanese variant dictionary slot retained only for source and numeric compatibility.
+        /// </summary>
+        /// <remarks>This slot is not accepted by custom dictionary APIs.</remarks>
+        [System.Obsolete("JPVariantsRev is no longer an active dictionary slot.", false)]
+        JPVariantsRev = 17,
+
+        /// <summary>Traditional-to-Taiwan phrase variant mappings applied before <see cref="TWVariants"/>.</summary>
+        TWVariantsPhrases = 18,
+
+        /// <summary>Traditional-to-Hong Kong phrase variant mappings applied before <see cref="HKVariants"/>.</summary>
+        HKVariantsPhrases = 19,
+
+        /// <summary>Traditional Kyujitai-to-Japanese Shinjitai character mappings from JPShinjitaiCharactersRev.txt.</summary>
+        JPSCharactersRev = 20,
 
         /// <summary>
         /// Traditional-to-Hong Kong phrase mappings.
         /// Added after existing values to preserve enum numeric stability.
         /// </summary>
-        HKPhrases,
+        HKPhrases = 21,
 
         /// <summary>
         /// Hong Kong-to-Traditional phrase mappings.
         /// Added after existing values to preserve enum numeric stability.
         /// </summary>
-        HKPhrasesRev
+        HKPhrasesRev = 22
     }
 
     // ReSharper restore InconsistentNaming

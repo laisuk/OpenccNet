@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.6.0] - Unreleased
+## [1.6.0] - 2026-06-18
 
 ### Added
 
@@ -27,6 +27,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   or missing glyphs on systems with incomplete font coverage.
 - Added public DeTofu APIs:
     - `DeTofuLevel`
+    - `DeTofu.ParseLevel(...)`
     - `DeTofu.Convert(...)`
     - `DeTofuMap.Builtin(...)`
     - `DeTofuMap.WithCustomPairs(...)`
@@ -80,11 +81,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Removed `JPVariants.txt` and `JPVariantsRev.txt` from the active dictionary schema, bundled text dictionaries, and
   Japanese conversion plans.
+- Retained the public `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` enum members as obsolete, unsupported
+  compatibility sentinels with their original numeric values (16 and 17). All new v1.6.0 slots use values above 17.
 
 ### Breaking Changes
 
 - Custom dictionary bundles, JSON packs, CBOR packs, and Zstd packs must include non-empty `jps_characters_rev` data.
 - `JPVariants.txt` and `JPVariantsRev.txt` are no longer active dictionary inputs.
+- Custom dictionary APIs reject the obsolete `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` members with an
+  unknown-slot error; the members remain defined to prevent old numeric values from silently targeting new slots.
 - Users who provide custom dictionary bundles must regenerate bundled dictionaries or download/generate
   `JPShinjitaiCharactersRev.txt` from `JPShinjitaiCharacters.txt` before using `FromDicts()`, `FromJson()`,
   `FromCbor()`, or compressed bundles.

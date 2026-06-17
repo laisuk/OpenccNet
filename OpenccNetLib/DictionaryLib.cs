@@ -223,17 +223,17 @@ namespace OpenccNetLib
         public DictWithMaxLength hk_variants_rev_phrases { get; set; } = new DictWithMaxLength();
 
         /// <summary>
-        /// Traditional Kyujitai-to-Japanese Shinjitai character mappings.
+        /// Japanese Shinjitai-to-Traditional Kyujitai character mappings.
         /// </summary>
         public DictWithMaxLength jps_characters { get; set; } = new DictWithMaxLength();
 
         /// <summary>
-        /// Japanese Shinjitai-to-Traditional Kyujitai character mappings.
+        /// Traditional Kyujitai-to-Japanese Shinjitai character mappings.
         /// </summary>
         public DictWithMaxLength jps_characters_rev { get; set; } = new DictWithMaxLength();
 
         /// <summary>
-        /// Traditional Kyujitai-to-Japanese Shinjitai phrase mappings.
+        /// Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.
         /// </summary>
         public DictWithMaxLength jps_phrases { get; set; } = new DictWithMaxLength();
 

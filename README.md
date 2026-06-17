@@ -219,6 +219,7 @@ Console.WriteLine(displaySafe);
 DeTofu APIs:
 
 ```text
+DeTofu.ParseLevel(...)
 DeTofu.Convert(...)
 DeTofuMap.Builtin(...)
 DeTofuMap.WithCustomFile(...)
@@ -614,6 +615,12 @@ is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt
 dictionary used by `t2jp`. `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active
 dictionary schema. Users who provide custom dictionary bundles, JSON, CBOR, or Zstd packs must regenerate
 those bundles or include the new non-empty `JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
+The retired `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` enum members remain defined as obsolete compatibility
+sentinels with their original numeric values. Custom dictionary APIs reject these inactive slots rather than silently
+redirecting their values to a different dictionary.
+The retired `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` enum members remain defined as obsolete compatibility
+sentinels with their original numeric values. Custom dictionary APIs reject these inactive slots rather than silently
+redirecting their values to a different dictionary.
 
 #### Recommended usage
 
