@@ -32,7 +32,10 @@ projects with a focus on performance and minimal memory usage.
 - Accurate handling of **Supplementary Plane CJK (U+20000+)** characters  
   (correct surrogate-pair detection and matching)
 - Optional punctuation conversion
-- Thread-safe and suitable for high-throughput parallel processing
+
+* Thread-safe conversion core with immutable shared dictionaries; suitable for high-throughput parallel processing when
+  converters are not reconfigured concurrently.
+
 - **Office document & EPUB conversion** (pure in-memory):
     - `.docx` (Word), `.xlsx` (Excel), `.pptx` (PowerPoint), `.epub`
     - `byte[] → byte[]` conversion with full XML patching
@@ -148,6 +151,10 @@ Console.WriteLine(result);  // Output: 動態切換轉換方式
 opencc.Config = "invalid_config";
 Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: invalid_config. Using default 's2t'.
 ```
+
+> Thread-safety note: `Opencc` instances should not be reconfigured while they are being used by other threads. For
+> parallel conversion, create one instance per configuration and treat it as immutable, or use direct conversion methods.
+`GetLastError()` is instance-level diagnostic state and should not be shared across threads.
 
 #### 💡 Tips
 
