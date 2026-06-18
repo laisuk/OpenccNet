@@ -66,17 +66,10 @@ internal static class OfficeCommand
                     $"Invalid format '{format}'. Valid: {string.Join(" | ", OfficeConverter.OfficeFormats)})");
         });
 
-        var keepFontOption = new Option<bool>("--keep-font")
+        var keepFontOption = new Option<bool>("--keep-font", "-k")
         {
             DefaultValueFactory = _ => true,
             Description = "Preserve font names in Office documents [default: true]. Use --keep-font:false to disable."
-        };
-
-        var autoExtOption = new Option<bool>("--auto-ext")
-        {
-            DefaultValueFactory = _ => true,
-            Description =
-                "Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable."
         };
 
         var quietOption = new Option<bool>("--quiet", "-q")
@@ -88,7 +81,7 @@ internal static class OfficeCommand
         var officeCommand = new Command("office", $"{Blue}Convert Office documents or Epub using OpenccNetLib.{Reset}")
         {
             inputFileOption, outputFileOption, configOption, punctOption,
-            formatOption, keepFontOption, autoExtOption, quietOption,
+            formatOption, keepFontOption, quietOption,
         };
 
         officeCommand.SetAction(async (pr, _) =>
@@ -99,7 +92,6 @@ internal static class OfficeCommand
             var punct = pr.GetValue(punctOption);
             var format = pr.GetValue(formatOption);
             var keepFont = pr.GetValue(keepFontOption);
-            var autoExt = pr.GetValue(autoExtOption);
             var quiet = pr.GetValue(quietOption);
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
@@ -108,7 +100,10 @@ internal static class OfficeCommand
                 return 1;
             }
 
-            var resolvedFormat = format ?? Path.GetExtension(input).TrimStart('.').ToLowerInvariant();
+            var resolvedFormat = !string.IsNullOrWhiteSpace(format)
+                ? format.ToLowerInvariant()
+                : Path.GetExtension(input).TrimStart('.').ToLowerInvariant();
+
             if (!OfficeConverter.IsValidOfficeFormat(resolvedFormat))
             {
                 await Console.Error.WriteLineAsync(
@@ -121,11 +116,11 @@ internal static class OfficeCommand
                 $"{Path.GetFileNameWithoutExtension(input)}_converted.{resolvedFormat}"
             );
 
-            if (autoExt &&
-                !string.Equals(Path.GetExtension(resolvedOutput), "." + resolvedFormat,
-                    StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(output) &&
+                string.IsNullOrEmpty(Path.GetExtension(resolvedOutput)))
             {
-                resolvedOutput = Path.ChangeExtension(resolvedOutput, resolvedFormat);
+                resolvedOutput = $"{resolvedOutput}.{resolvedFormat}";
+
                 if (!quiet)
                     await Console.Error.WriteLineAsync($"ℹ️ Output file extension adjusted to: {resolvedOutput}");
             }

@@ -1222,14 +1222,15 @@ Usage:
   OpenccNet office [options]
 
 Options:
-  -i, --input              Input Office document <input>
-  -o, --output             Output Office document <output>
-  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|hk2s|jp2t|t2jp
-  -p, --punct              Enable punctuation conversion. [default: False]
-  -f, --format             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
-  --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]
-  --auto-ext               Auto append correct extension to Office output files [default: true]. Use --auto-ext:false to disable. [default: True]
-  -?, -h, --help           Show help and usage information
+  -i, --input <input>               Input Office document <input>
+  -o, --output <output>             Output Office document <output>
+  -c, --config <config> (REQUIRED)  Conversion configuration.
+                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+  -p, --punct                       Enable punctuation conversion.
+  -f, --format <format>             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
+  -k, --keep-font                   Preserve font names in Office documents [default: true]. Use --keep-font:false to disable.
+  -q, --quiet                       Suppress status and progress output; only errors will be shown.
+  -?, -h, --help                    Show help and usage information
 ```
 
 ### `OpenccNet pdf`
