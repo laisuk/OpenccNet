@@ -117,10 +117,10 @@ internal static class ConvertCommand
         convertCommand.Validators.Add(result =>
         {
             var deTofuResult = result.GetResult(deTofuOption);
-            var deToFuFileResult = result.GetResult(deTofuFileOption);
+            var deTofuFileResult = result.GetResult(deTofuFileOption);
 
-            if (deToFuFileResult is null) return;
-            if (deToFuFileResult.Errors.Any())
+            if (deTofuFileResult is null) return;
+            if (deTofuFileResult.Errors.Any())
                 return;
 
             if (deTofuResult is null)
