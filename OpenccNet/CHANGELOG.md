@@ -7,6 +7,14 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.6.1] - Unreleased
+
+### Changed
+
+- CLI: Optimized `OpenccNet office` subcommand.
+
+---
+
 ## [1.6.0] - 2026-06-18
 
 ### Added

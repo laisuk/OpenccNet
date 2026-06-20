@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.6.1] - Unreleased
+
+### Changed
+
+- Update dictionary data
+
+---
+
 ## [1.6.0] - 2026-06-18
 
 ### Added
