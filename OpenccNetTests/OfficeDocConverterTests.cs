@@ -193,6 +193,87 @@ namespace OpenccNetTests
             }
         }
 
+        [TestMethod]
+        public void ConvertOfficeBytes_NullInput_ThrowsArgumentNullException()
+        {
+            var converter = new Opencc(OpenccConfig.S2T);
+
+            Assert.ThrowsExactly<ArgumentNullException>(
+                () => OfficeDocConverter.ConvertOfficeBytes(null!, "docx", converter));
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_EmptyInput_ThrowsArgumentException()
+        {
+            var converter = new Opencc(OpenccConfig.S2T);
+
+            Assert.ThrowsExactly<ArgumentException>(
+                () => OfficeDocConverter.ConvertOfficeBytes(Array.Empty<byte>(), "docx", converter));
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_NullConverter_ThrowsArgumentNullException()
+        {
+            var inputBytes = File.ReadAllBytes(_testDocxPath!);
+
+            Assert.ThrowsExactly<ArgumentNullException>(
+                () => OfficeDocConverter.ConvertOfficeBytes(inputBytes, "docx", null!));
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_CorruptedZip_PreservesInnerException()
+        {
+            var converter = new Opencc(OpenccConfig.S2T);
+
+            var exception = Assert.ThrowsExactly<InvalidOperationException>(
+                () => OfficeDocConverter.ConvertOfficeBytes(
+                    "not a ZIP package"u8.ToArray(),
+                    "docx",
+                    converter));
+
+            Assert.IsNotNull(exception.InnerException);
+            Assert.IsInstanceOfType<InvalidDataException>(exception.InnerException);
+        }
+
+        [TestMethod]
+        public void ConvertOfficeFile_FailedConversion_DoesNotOverwriteExistingOutput()
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "OpenccNetTests_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            var inputPath = Path.Combine(directory, "corrupted.docx");
+            var outputPath = Path.Combine(directory, "existing.docx");
+            var originalOutput = "existing output"u8.ToArray();
+
+            try
+            {
+                File.WriteAllBytes(inputPath, "not a ZIP package"u8.ToArray());
+                File.WriteAllBytes(outputPath, originalOutput);
+
+                Assert.ThrowsExactly<InvalidOperationException>(
+                    () => OfficeDocConverter.ConvertOfficeFile(
+                        inputPath,
+                        outputPath,
+                        OfficeFormat.Docx,
+                        new Opencc(OpenccConfig.S2T)));
+
+                CollectionAssert.AreEqual(originalOutput, File.ReadAllBytes(outputPath));
+                Assert.IsEmpty(Directory.GetFiles(directory, "*.tmp"));
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        [TestMethod]
+        public void IsSupportedFormat_NullEmptyWhitespaceAndTrimmed_AreHandledSafely()
+        {
+            Assert.IsFalse(OfficeDocConverter.IsSupportedFormat(null!));
+            Assert.IsFalse(OfficeDocConverter.IsSupportedFormat(string.Empty));
+            Assert.IsFalse(OfficeDocConverter.IsSupportedFormat("   "));
+            Assert.IsTrue(OfficeDocConverter.IsSupportedFormat("  DOCX  "));
+        }
+
         private static byte[] CreateMinimalXlsx(string sharedStringsXml, string worksheetXml)
         {
             using var ms = new MemoryStream();

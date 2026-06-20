@@ -775,6 +775,12 @@ String format async overload also remains available.
 
 ## 📁 Convert Files (Convenience wrappers)
 
+Office and EPUB conversion validates every generated ZIP package before returning success. Invalid or corrupted input
+packages fail with a clear `InvalidOperationException` that preserves the underlying ZIP/package exception instead of
+returning potentially corrupted bytes. File-output overloads write to a temporary file in the destination directory and
+atomically publish it only after conversion and validation complete, avoiding partial or corrupted output files.
+
+
 ```csharp
 OfficeDocConverter.ConvertOfficeFile(
     "input.docx",

@@ -20,6 +20,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Update dictionary data
+- Hardened Office/EPUB conversion against corrupted ZIP/package output by validating rebuilt packages before success.
+- Added explicit null/empty input validation for package bytes, paths, formats, and converter instances.
+- Preserved underlying ZIP/package exceptions as inner exceptions on conversion failures.
+- Made file output writes atomic to avoid partial files on failure.
 
 ---
 

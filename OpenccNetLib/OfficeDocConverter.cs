@@ -177,7 +177,7 @@ namespace OpenccNetLib
         /// <param name="format">Logical format name (e.g. "docx"). Case-insensitive.</param>
         public static bool IsSupportedFormat(string format)
         {
-            return !string.IsNullOrWhiteSpace(format) && SupportedFormatSet.Contains(format);
+            return !string.IsNullOrWhiteSpace(format) && SupportedFormatSet.Contains(format.Trim());
         }
 
         /// <summary>
@@ -273,13 +273,13 @@ namespace OpenccNetLib
             bool punctuation = false,
             bool keepFont = false)
         {
-            if (inputBytes == null) throw new ArgumentNullException(nameof(inputBytes));
+            ValidateInputBytes(inputBytes);
             if (converter == null) throw new ArgumentNullException(nameof(converter));
 
             var result = ConvertOfficeBytesCore(inputBytes, format, converter, punctuation, keepFont);
 
             if (!result.Success || result.OutputBytes == null)
-                throw new InvalidOperationException(result.Message);
+                throw new InvalidOperationException(result.Message, result.Error);
 
             return result.OutputBytes;
         }
@@ -376,16 +376,15 @@ namespace OpenccNetLib
             bool punctuation = false,
             bool keepFont = false)
         {
-            if (inputBytes == null) throw new ArgumentNullException(nameof(inputBytes));
+            ValidateInputBytes(inputBytes);
             if (converter == null) throw new ArgumentNullException(nameof(converter));
-            if (!IsSupportedFormat(format))
-                throw new ArgumentException("Unsupported Office/EPUB format: '" + format + "'.", nameof(format));
+            format = ValidateFormat(format);
 
             var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
             var result = ConvertOfficeBytesCore(inputBytes, parsed, converter, punctuation, keepFont);
 
             if (!result.Success || result.OutputBytes == null)
-                throw new InvalidOperationException(result.Message);
+                throw new InvalidOperationException(result.Message, result.Error);
 
             return result.OutputBytes;
         }
@@ -538,6 +537,7 @@ namespace OpenccNetLib
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            format = ValidateFormat(format);
             var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
             // netstandard2.0-friendly async wrapper around synchronous core
             return Task.Run(
@@ -641,8 +641,8 @@ namespace OpenccNetLib
             bool punctuation = false,
             bool keepFont = false)
         {
-            if (inputPath == null) throw new ArgumentNullException(nameof(inputPath));
-            if (outputPath == null) throw new ArgumentNullException(nameof(outputPath));
+            ValidatePath(inputPath, nameof(inputPath));
+            ValidatePath(outputPath, nameof(outputPath));
             if (converter == null) throw new ArgumentNullException(nameof(converter));
             if (!File.Exists(inputPath))
                 throw new FileNotFoundException("Input file not found.", inputPath);
@@ -650,11 +650,7 @@ namespace OpenccNetLib
             var bytes = File.ReadAllBytes(inputPath);
             var output = ConvertOfficeBytes(bytes, format, converter, punctuation, keepFont);
 
-            var dir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            File.WriteAllBytes(outputPath, output);
+            WriteAllBytesAtomic(outputPath, output);
         }
 
         /// <summary>
@@ -736,9 +732,10 @@ namespace OpenccNetLib
             bool punctuation = false,
             bool keepFont = false)
         {
-            if (inputPath == null) throw new ArgumentNullException(nameof(inputPath));
-            if (outputPath == null) throw new ArgumentNullException(nameof(outputPath));
+            ValidatePath(inputPath, nameof(inputPath));
+            ValidatePath(outputPath, nameof(outputPath));
             if (converter == null) throw new ArgumentNullException(nameof(converter));
+            format = ValidateFormat(format);
 
             if (!File.Exists(inputPath))
                 throw new FileNotFoundException("Input file not found.", inputPath);
@@ -747,11 +744,7 @@ namespace OpenccNetLib
             var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
             var outputBytes = ConvertOfficeBytes(inputBytes, parsed, converter, punctuation, keepFont);
 
-            var dir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            File.WriteAllBytes(outputPath, outputBytes);
+            WriteAllBytesAtomic(outputPath, outputBytes);
         }
 
         /// <summary>
@@ -888,6 +881,7 @@ namespace OpenccNetLib
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            format = ValidateFormat(format);
             var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
             return Task.Run(
                 () => { ConvertOfficeFile(inputPath, outputPath, parsed, converter, punctuation, keepFont); },
@@ -1091,7 +1085,8 @@ namespace OpenccNetLib
                         {
                             Success = false,
                             Message = epubResult.Message,
-                            OutputBytes = null
+                            OutputBytes = null,
+                            Error = epubResult.Error
                         };
                     }
 
@@ -1101,6 +1096,8 @@ namespace OpenccNetLib
                 {
                     resultBytes = CreateZipFromDirectory(tempDir);
                 }
+
+                ValidateZipBytes(resultBytes);
 
                 return new CoreResult
                 {
@@ -1115,7 +1112,8 @@ namespace OpenccNetLib
                 {
                     Success = false,
                     Message = "Conversion failed: " + ex.Message,
-                    OutputBytes = null
+                    OutputBytes = null,
+                    Error = ex
                 };
             }
             finally
@@ -1468,8 +1466,95 @@ namespace OpenccNetLib
                 {
                     Success = false,
                     Message = "Failed to create EPUB archive: " + ex.Message,
-                    OutputBytes = null
+                    OutputBytes = null,
+                    Error = ex
                 };
+            }
+        }
+
+        /// <summary>Validates that an in-memory package was supplied.</summary>
+        /// <param name="inputBytes">The package bytes to validate.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="inputBytes"/> is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="inputBytes"/> is empty.</exception>
+        private static void ValidateInputBytes(byte[] inputBytes)
+        {
+            if (inputBytes == null)
+                throw new ArgumentNullException(nameof(inputBytes));
+            if (inputBytes.Length == 0)
+                throw new ArgumentException("Input package bytes must not be empty.", nameof(inputBytes));
+        }
+
+        /// <summary>Validates a public file path argument.</summary>
+        /// <param name="path">The path to validate.</param>
+        /// <param name="paramName">The public parameter name used by validation exceptions.</param>
+        private static void ValidatePath(string path, string paramName)
+        {
+            if (path == null)
+                throw new ArgumentNullException(paramName);
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("Path must not be empty or whitespace.", paramName);
+        }
+
+        /// <summary>Validates and trims a logical Office or EPUB format name.</summary>
+        /// <param name="format">The logical format name.</param>
+        /// <returns>The trimmed format name.</returns>
+        private static string ValidateFormat(string format)
+        {
+            if (format == null)
+                throw new ArgumentNullException(nameof(format));
+
+            var normalized = format.Trim();
+            if (normalized.Length == 0)
+                throw new ArgumentException("Format must not be empty or whitespace.", nameof(format));
+            if (!IsSupportedFormat(normalized))
+                throw new ArgumentException("Unsupported Office/EPUB format: '" + normalized + "'.", nameof(format));
+
+            return normalized;
+        }
+
+        /// <summary>Confirms that generated bytes contain a readable ZIP package.</summary>
+        /// <param name="bytes">The generated package bytes.</param>
+        private static void ValidateZipBytes(byte[] bytes)
+        {
+            using (var stream = new MemoryStream(bytes, writable: false))
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
+            {
+                var entryCount = archive.Entries.Count;
+            }
+        }
+
+        /// <summary>Writes to a sibling temporary file and atomically publishes the completed output.</summary>
+        /// <param name="outputPath">The final output path.</param>
+        /// <param name="bytes">The fully generated and validated package bytes.</param>
+        private static void WriteAllBytesAtomic(string outputPath, byte[] bytes)
+        {
+            var fullOutputPath = Path.GetFullPath(outputPath);
+            var outputDirectory = Path.GetDirectoryName(fullOutputPath);
+            if (string.IsNullOrEmpty(outputDirectory))
+                throw new ArgumentException("Output path must include a valid directory.", nameof(outputPath));
+
+            Directory.CreateDirectory(outputDirectory);
+            var tempPath = Path.Combine(
+                outputDirectory,
+                "." + Path.GetFileName(fullOutputPath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+
+            try
+            {
+                using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush(true);
+                }
+
+                if (File.Exists(fullOutputPath))
+                    File.Replace(tempPath, fullOutputPath, null);
+                else
+                    File.Move(tempPath, fullOutputPath);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
             }
         }
 
@@ -1525,6 +1610,7 @@ namespace OpenccNetLib
             public bool Success;
             public string Message;
             public byte[] OutputBytes;
+            public Exception Error;
         }
 
         private struct EpubResult
@@ -1532,6 +1618,7 @@ namespace OpenccNetLib
             public bool Success;
             public string Message;
             public byte[] OutputBytes;
+            public Exception Error;
         }
     }
 }
