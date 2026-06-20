@@ -95,6 +95,12 @@ internal static class ConvertCommand
                 "Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires --detofu)"
         };
 
+        var keepIdsOption = new Option<bool>("--keep-ids")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Preserve Unicode IDS expressions during conversion."
+        };
+
         var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
         {
             inputFileOption,
@@ -103,20 +109,22 @@ internal static class ConvertCommand
             punctOption,
             deTofuOption,
             deTofuFileOption,
+            keepIdsOption,
             inputEncodingOption,
             outputEncodingOption,
         };
 
         convertCommand.Validators.Add(result =>
         {
-            var deTofu = result.GetValue(deTofuOption);
-            var deTofuFile = result.GetValue(deTofuFileOption);
+            var deTofuResult = result.GetResult(deTofuOption);
+            var deToFuFileResult = result.GetResult(deTofuFileOption);
 
-            if (!string.IsNullOrWhiteSpace(deTofuFile) &&
-                string.IsNullOrWhiteSpace(deTofu))
-            {
+            if (deToFuFileResult is null) return;
+            if (deToFuFileResult.Errors.Any())
+                return;
+
+            if (deTofuResult is null)
                 result.AddError("--detofu-file requires --detofu.");
-            }
         });
 
         convertCommand.SetAction(async (pr, _) =>
@@ -125,13 +133,20 @@ internal static class ConvertCommand
             var outputFile = pr.GetValue(outputFileOption);
             var config = pr.GetValue(configOption)!;
             var punct = pr.GetValue(punctOption);
+
+            var deTofuResult = pr.GetResult(deTofuOption);
+            var deTofuEnabled = deTofuResult is not null;
             var deTofu = pr.GetValue(deTofuOption);
+            if (deTofuEnabled && string.IsNullOrWhiteSpace(deTofu))
+                deTofu = "all";
+
             var deTofuFile = pr.GetValue(deTofuFileOption);
+            var keepIds = pr.GetValue(keepIdsOption);
             var inputEnc = pr.GetValue(inputEncodingOption)!;
             var outputEnc = pr.GetValue(outputEncodingOption)!;
 
             return await RunConversionAsync(
-                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile
+                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds
             );
         });
 
@@ -147,12 +162,16 @@ internal static class ConvertCommand
         string inputEncoding,
         string outputEncoding,
         string? deTofu,
-        string? deTofuFile)
+        string? deTofuFile,
+        bool keepIds)
     {
         try
         {
             // Assuming OpenccNetLib provides a way to initialize Opencc with a config string
             var opencc = new Opencc(config);
+
+            opencc.SetPreserveIds(keepIds);
+
             var inputStr = await ReadInputAsync(inputFile, inputEncoding);
             var outputStr = opencc.Convert(inputStr, punct);
 
@@ -171,7 +190,20 @@ internal static class ConvertCommand
             var outTo = outputFile ?? "<stdout>";
             lock (ConsoleLock)
             {
-                Console.Error.WriteLine($"✅ Conversion ({config}): {inFrom} → {outTo}");
+                var options = new List<string>();
+
+                if (!string.IsNullOrEmpty(deTofu))
+                    options.Add($"detofu:{deTofu}");
+
+                if (keepIds)
+                    options.Add("keep-ids:true");
+
+                var optionText = options.Count > 0
+                    ? ", " + string.Join(", ", options)
+                    : string.Empty;
+
+                Console.WriteLine(
+                    $"✅ Conversion ({config}{optionText}): {inFrom} → {outTo}");
             }
 
             return 0;
