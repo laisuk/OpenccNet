@@ -153,7 +153,8 @@ Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: i
 ```
 
 > Thread-safety note: `Opencc` instances should not be reconfigured while they are being used by other threads. For
-> parallel conversion, create one instance per configuration and treat it as immutable, or use direct conversion methods.
+> parallel conversion, create one instance per configuration and treat it as immutable, or use direct conversion
+> methods.
 `GetLastError()` is instance-level diagnostic state and should not be shared across threads.
 
 #### 💡 Tips
@@ -177,6 +178,37 @@ opencc.S2T("汉字");
 // Simplified to Taiwan Traditional opencc.T2Jp("漢字");     
 // Traditional to Japanese Kanji
 // ...and more
+```
+
+### Preserve IDS expressions
+
+IDS preservation is disabled by default. Enable it when working with Unicode Ideographic Description Sequences (IDS).
+Complete IDS chunks are preserved, while surrounding normal text is still converted.
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc(OpenccConfig.T2S);
+
+Console.WriteLine(cc.Convert("⿰氵漢"));
+// ⿰氵汉
+
+cc.SetPreserveIds(true);
+
+Console.WriteLine(cc.Convert("⿰氵漢"));
+// ⿰氵漢
+
+Console.WriteLine(cc.Convert("測試⿰氵漢文本"));
+// 测试⿰氵漢文本
+```
+
+The same option can be set as a property:
+
+```csharp
+var cc = new Opencc("t2s")
+{
+    IsPreserveIds = true
+};
 ```
 
 ### DeTofu Display Compatibility

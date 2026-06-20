@@ -379,4 +379,63 @@ public class OpenccNetTests
 
         Assert.AreEqual("氂毛 骖騑", output);
     }
+
+    // IDS
+
+    [TestMethod]
+    public void PreserveIds_DefaultFalse()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        Assert.IsFalse(cc.GetPreserveIds());
+        Assert.IsFalse(cc.IsPreserveIds);
+    }
+
+    [TestMethod]
+    public void PreserveIds_SetGet()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        cc.SetPreserveIds(true);
+
+        Assert.IsTrue(cc.GetPreserveIds());
+        Assert.IsTrue(cc.IsPreserveIds);
+
+        cc.SetPreserveIds(false);
+
+        Assert.IsFalse(cc.GetPreserveIds());
+        Assert.IsFalse(cc.IsPreserveIds);
+    }
+
+    [TestMethod]
+    public void ConvertIds_DefaultConvertsInsideIds()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        Assert.AreEqual("⿰口马", cc.Convert("⿰口馬"));
+        Assert.AreEqual("⿰氵汉", cc.Convert("⿰氵漢"));
+    }
+
+    [TestMethod]
+    public void ConvertIds_PreserveIds()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        cc.SetPreserveIds(true);
+
+        Assert.AreEqual("⿰口馬", cc.Convert("⿰口馬"));
+        Assert.AreEqual("⿰氵漢", cc.Convert("⿰氵漢"));
+    }
+
+    [TestMethod]
+    public void ConvertIds_PreserveIdsStillConvertsOutsideIds()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        cc.SetPreserveIds(true);
+
+        Assert.AreEqual(
+            "测试⿰氵漢文本",
+            cc.Convert("測試⿰氵漢文本"));
+    }
 }

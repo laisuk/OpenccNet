@@ -478,6 +478,40 @@ namespace OpenccNetLib
         private OpenccConfig _configId = DefaultConfigId;
 
         /// <summary>
+        /// Gets or sets whether complete Unicode Ideographic Description Sequences (IDS) are preserved during conversion.
+        /// </summary>
+        /// <remarks>
+        /// When enabled, complete IDS expressions such as <c>⿰氵漢</c> are emitted unchanged,
+        /// while surrounding normal text is still converted. Default: <c>false</c>.
+        /// </remarks>
+        public bool IsPreserveIds { get; set; }
+
+        /// <summary>
+        /// Gets whether complete Unicode Ideographic Description Sequences (IDS) are preserved during conversion.
+        /// </summary>
+        /// <returns><c>true</c> when complete IDS expressions are preserved; otherwise, <c>false</c>. Default: <c>false</c>.</returns>
+        public bool GetPreserveIds()
+        {
+            return IsPreserveIds;
+        }
+
+        /// <summary>
+        /// Sets whether complete Unicode Ideographic Description Sequences (IDS) are preserved during conversion.
+        /// </summary>
+        /// <param name="preserveIds">
+        /// <c>true</c> to preserve complete IDS expressions; otherwise, <c>false</c>. Default: <c>false</c>.
+        /// </param>
+        /// <remarks>
+        /// When enabled, complete IDS expressions such as <c>⿰氵漢</c> are emitted unchanged,
+        /// while surrounding normal text is still converted.
+        /// </remarks>
+        public void SetPreserveIds(bool preserveIds)
+        {
+            IsPreserveIds = preserveIds;
+        }
+
+
+        /// <summary>
         /// Stores the most recent configuration-related error message.
         /// </summary>
         /// <remarks>
@@ -894,9 +928,15 @@ namespace OpenccNetLib
         /// This constructor ensures the global dictionary and its associated lists are initialized.
         /// </summary>
         /// <param name="config">The conversion configuration (e.g., "s2t", "t2s").</param>
-        public Opencc(string config = null)
+        /// <param name="isPreserveIds">
+        /// Whether to preserve complete Unicode IDS expressions during conversion. Default: <c>false</c>.
+        /// </param>
+        public Opencc(
+            string config = null,
+            bool isPreserveIds = false)
         {
             Config = config;
+            IsPreserveIds = isPreserveIds;
         }
 
         /// <summary>
@@ -904,10 +944,15 @@ namespace OpenccNetLib
         /// This overload is the preferred way to create an Opencc instance.
         /// </summary>
         /// <param name="configEnum">The OpenCC conversion configuration enum value.</param>
-        public Opencc(OpenccConfig configEnum)
+        /// <param name="isPreserveIds">
+        /// Whether to preserve complete Unicode IDS expressions during conversion. Default: <c>false</c>.
+        /// </param>
+        public Opencc(
+            OpenccConfig configEnum,
+            bool isPreserveIds = false)
         {
-            // Single-owner rule: set via enum path
-            SetConfigInternal(configEnum, setLastError: false);
+            SetConfigInternal(configEnum, false);
+            IsPreserveIds = isPreserveIds;
         }
 
         /// <summary>
@@ -1067,8 +1112,8 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// The input text is split into delimiter-aware segments (via
-        /// <see cref="GetSplitRangesSpan(ReadOnlySpan{char}, bool)"/>), and each
-        /// segment is converted using <see cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion)"/>.
+        /// <see cref="GetSplitRangesSpan(ReadOnlySpan{char}, bool, bool)"/>), and each
+        /// segment is converted using <see cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion, bool)"/>.
         /// </para>
         /// <para>
         /// For large or highly fragmented inputs, segments are pre-partitioned into
@@ -1095,13 +1140,15 @@ namespace OpenccNetLib
         /// The <see cref="StarterUnion"/> providing starter-character metadata and
         /// length-mask gating for each dictionary.
         /// </param>
+        /// <param name="preserveIds">Whether complete IDS expressions are preserved.</param>
         /// <returns>
         /// A converted string with all applicable dictionary replacements applied.
         /// </returns>
         private static string SegmentReplace(
             string text,
             DictWithMaxLength[] dictionaries,
-            StarterUnion union)
+            StarterUnion union,
+            bool preserveIds = false)
         {
             if (string.IsNullOrEmpty(text))
                 return string.Empty;
@@ -1109,10 +1156,11 @@ namespace OpenccNetLib
             var textLength = text.Length;
 
             // Small texts → run single-threaded for lower scheduling overhead.
-            if (textLength < ConvertTuning.LinearCutoffChars)
+            // But preserveIds needs splitter to isolate IDS chunks inside normal text.
+            if (textLength < ConvertTuning.LinearCutoffChars && !preserveIds)
                 return ConvertByUnion(text.AsSpan(), dictionaries, union);
 
-            var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true);
+            var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true, preserveIds: preserveIds);
 
             // Global builder reused for both serial and parallel stitching.
             var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.25% headroom (~6.8%)
@@ -1127,7 +1175,8 @@ namespace OpenccNetLib
                         sb,
                         text.AsSpan(r.Start, r.Length),
                         dictionaries,
-                        union);
+                        union,
+                        preserveIds);
                 }
 
                 return sb.ToString();
@@ -1151,7 +1200,8 @@ namespace OpenccNetLib
                         sbPart,
                         text.AsSpan(r.Start, r.Length),
                         dictionaries,
-                        union);
+                        union,
+                        preserveIds);
                 }
 
                 parts[cIdx] = sbPart.ToString();
@@ -1208,6 +1258,7 @@ namespace OpenccNetLib
         /// The precomputed <see cref="StarterUnion"/> that provides per-starter caps,
         /// masks, and minimum lengths.
         /// </param>
+        /// <param name="preserveIds">Whether complete IDS expressions are preserved.</param>
         /// <returns>
         /// A converted string with dictionary replacements applied.
         /// </returns>
@@ -1215,7 +1266,8 @@ namespace OpenccNetLib
         private static string ConvertByUnion(
             ReadOnlySpan<char> textSpan,
             DictWithMaxLength[] dictionaries,
-            StarterUnion union)
+            StarterUnion union,
+            bool preserveIds = false)
         {
             var n = textSpan.Length;
             switch (n)
@@ -1224,8 +1276,11 @@ namespace OpenccNetLib
                 case 1 when IsDelimiter(textSpan[0]): return textSpan.ToString();
             }
 
+            if (preserveIds && IdsHelper.IsCompleteIds(textSpan))
+                return textSpan.ToString();
+
             var sb = RentCachedStringBuilder(n * 2 + (n >> 4));
-            ConvertByUnionInto(sb, textSpan, dictionaries, union);
+            ConvertByUnionInto(sb, textSpan, dictionaries, union, preserveIds);
             return GetCachedStringAndMaybeTrim(sb);
         }
 
@@ -1234,7 +1289,8 @@ namespace OpenccNetLib
             StringBuilder sb,
             ReadOnlySpan<char> textSpan,
             DictWithMaxLength[] dictionaries,
-            StarterUnion union)
+            StarterUnion union,
+            bool preserveIds = false)
         {
             var n = textSpan.Length;
             if (n == 0)
@@ -1243,6 +1299,12 @@ namespace OpenccNetLib
             if (n == 1 && IsDelimiter(textSpan[0]))
             {
                 sb.Append(textSpan[0]);
+                return;
+            }
+
+            if (preserveIds && IdsHelper.IsCompleteIds(textSpan))
+            {
+                sb.Append(textSpan.ToString());
                 return;
             }
 
@@ -1379,7 +1441,7 @@ namespace OpenccNetLib
         /// The converted string segment, with all possible matches replaced by their dictionary values.
         /// If no match is found at a position, the original character is preserved.
         /// </returns>
-        /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion)"/>
+        /// <seealso cref="ConvertByUnion(ReadOnlySpan{char}, DictWithMaxLength[], StarterUnion, bool)"/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string ConvertBy(
             ReadOnlySpan<char> text,
@@ -1514,11 +1576,13 @@ namespace OpenccNetLib
         /// If <c>true</c>, each delimiter is included at the end of its preceding segment;
         /// otherwise a delimiter at the start becomes its own segment.
         /// </param>
+        /// <param name="preserveIds">Whether complete IDS expressions are preserved.</param>
         /// <returns>
         /// A list of <see cref="Range"/> objects representing half-open intervals [Start, End).
         /// </returns>
         /// Note: inclusive mode still emits delimiter-only ranges for leading/consecutive delimiters.
-        private static List<Range> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false)
+        private static List<Range> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false,
+            bool preserveIds = false)
         {
             var length = input.Length;
             if (length == 0)
@@ -1534,6 +1598,21 @@ namespace OpenccNetLib
 
             for (var i = 0; i < length; i++)
             {
+                if (preserveIds)
+                {
+                    if (IdsHelper.IdsRangeAt(input, i, out var idsEnd))
+                    {
+                        if (i > currentStart)
+                            ranges.Add(new Range(currentStart, i));
+
+                        ranges.Add(new Range(i, idsEnd));
+
+                        i = idsEnd - 1;
+                        currentStart = idsEnd;
+                        continue;
+                    }
+                }
+
                 if (!IsDelimiter(input[i])) continue;
 
                 if (inclusive)
@@ -1598,7 +1677,7 @@ namespace OpenccNetLib
         public string S2T(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2T, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1610,7 +1689,7 @@ namespace OpenccNetLib
         public string T2S(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.T2S, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1622,7 +1701,7 @@ namespace OpenccNetLib
         public string S2Tw(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2Tw, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1635,7 +1714,7 @@ namespace OpenccNetLib
         public string Tw2S(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2S, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1649,7 +1728,7 @@ namespace OpenccNetLib
         public string S2Twp(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2Twp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1663,7 +1742,7 @@ namespace OpenccNetLib
         public string S2Hkp(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2Hkp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1676,7 +1755,7 @@ namespace OpenccNetLib
         public string Tw2Sp(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2Sp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1689,7 +1768,7 @@ namespace OpenccNetLib
         public string Hk2Sp(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Hk2Sp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1702,7 +1781,7 @@ namespace OpenccNetLib
         public string S2Hk(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.S2Hk, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1715,7 +1794,7 @@ namespace OpenccNetLib
         public string Hk2S(string inputText, bool punctuation = false)
         {
             var refs = GetDictRefs(OpenccConfig.Hk2S, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace);
+            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
             return output;
         }
 
@@ -1727,7 +1806,7 @@ namespace OpenccNetLib
         public string T2Tw(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Tw, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1738,7 +1817,7 @@ namespace OpenccNetLib
         public string T2Twp(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Twp, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1749,7 +1828,7 @@ namespace OpenccNetLib
         public string Tw2T(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2T, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1760,7 +1839,7 @@ namespace OpenccNetLib
         public string Tw2Tp(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Tw2Tp, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1771,7 +1850,7 @@ namespace OpenccNetLib
         public string T2Hk(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Hk, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1782,7 +1861,7 @@ namespace OpenccNetLib
         public string Hk2T(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Hk2T, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1793,7 +1872,7 @@ namespace OpenccNetLib
         public string T2Jp(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.T2Jp, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
@@ -1804,7 +1883,7 @@ namespace OpenccNetLib
         public string Jp2T(string inputText)
         {
             var refs = GetDictRefs(OpenccConfig.Jp2T, false);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>

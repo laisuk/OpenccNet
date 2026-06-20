@@ -122,7 +122,7 @@ namespace OpenccNetLib
         /// A function that performs a single conversion round.
         /// <para>
         ///   Signature:
-        ///   <c>(string input, DictWithMaxLength[] dicts, StarterUnion union) → string</c>
+        ///   <c>(string input, DictWithMaxLength[] dicts, StarterUnion union, bool preserveIds) → string</c>
         /// </para>
         /// <para>
         ///   The function is expected to run a greedy, longest-match replacement using
@@ -130,18 +130,19 @@ namespace OpenccNetLib
         ///   <see cref="StarterUnion"/> lookup metadata.
         /// </para>
         /// </param>
+        /// <param name="preserveIds">Whether the replacement function uses IDS-aware splitting.</param>
         /// <returns>
         /// The fully converted text after all configured rounds have been applied.
         /// </returns>
         public string ApplySegmentReplace(
             string inputText,
-            Func<string, DictWithMaxLength[], StarterUnion, string> segmentReplace)
+            Func<string, DictWithMaxLength[], StarterUnion, bool, string> segmentReplace, bool preserveIds)
         {
-            var output = segmentReplace(inputText, _round1.Dicts, _round1.Union);
+            var output = segmentReplace(inputText, _round1.Dicts, _round1.Union, preserveIds);
             if (_round2 is Round r2)
-                output = segmentReplace(output, r2.Dicts, r2.Union);
+                output = segmentReplace(output, r2.Dicts, r2.Union, preserveIds);
             if (_round3 is Round r3)
-                output = segmentReplace(output, r3.Dicts, r3.Union);
+                output = segmentReplace(output, r3.Dicts, r3.Union, preserveIds);
             return output;
         }
     }

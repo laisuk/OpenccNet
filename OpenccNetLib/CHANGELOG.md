@@ -8,6 +8,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.6.1] - Unreleased
 
+### Added
+
+- Added optional IDS preservation for `Opencc`.
+    - New `IsPreserveIds` property.
+    - New `GetPreserveIds()` and `SetPreserveIds(bool)` helper methods.
+    - When enabled, complete Unicode IDS expressions such as `⿰氵漢` are preserved during conversion while surrounding
+      text is still converted.
+    - IDS preservation is disabled by default.
+
 ### Changed
 
 - Update dictionary data
