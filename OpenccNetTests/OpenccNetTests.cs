@@ -113,9 +113,9 @@ public class OpenccNetTests
     public void T2TW_SimpleConversion()
     {
         var opencc = new Opencc("t2tw");
-        const string traditional = "憂鬱";
+        const string traditional = "娘惹糉子";
         const string
-            expectedTaiwan = "憂鬱"; // In this case, it might be the same, test with a difference if you find one
+            expectedTaiwan = "娘惹粽子"; // In this case, it might be the same, test with a difference if found
         var actualTaiwan = opencc.T2Tw(traditional);
         Assert.AreEqual(expectedTaiwan, actualTaiwan);
     }
@@ -124,9 +124,19 @@ public class OpenccNetTests
     public void TW2T_SimpleConversion()
     {
         var opencc = new Opencc("tw2t");
-        const string taiwan = "著";
-        const string expectedTraditional = "着"; // Similar to above, test with a difference if found
+        const string taiwan = "針核裡才吃著灶煙";
+        const string expectedTraditional = "針核裡才吃著灶煙"; // Similar to above, test with a difference if found
         var actualTraditional = opencc.Tw2T(taiwan);
+        Assert.AreEqual(expectedTraditional, actualTraditional);
+    }
+    
+    [TestMethod]
+    public void HK2T_SimpleConversion()
+    {
+        var opencc = new Opencc("hk2t");
+        const string hongkong = "針核裡才吃著灶煙";
+        const string expectedTraditional = "針核裡才吃著灶煙"; // Similar to above, test with a difference if found
+        var actualTraditional = opencc.Hk2T(hongkong);
         Assert.AreEqual(expectedTraditional, actualTraditional);
     }
 
