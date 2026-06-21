@@ -129,7 +129,7 @@ public class OpenccNetTests
         var actualTraditional = opencc.Tw2T(taiwan);
         Assert.AreEqual(expectedTraditional, actualTraditional);
     }
-    
+
     [TestMethod]
     public void HK2T_SimpleConversion()
     {
@@ -422,8 +422,14 @@ public class OpenccNetTests
     {
         var cc = new Opencc(OpenccConfig.T2S);
 
+        // Simple IDS
         Assert.AreEqual("⿰口马", cc.Convert("⿰口馬"));
         Assert.AreEqual("⿰氵汉", cc.Convert("⿰氵漢"));
+
+        // Real character decompositions
+        Assert.AreEqual("⿰言吾", cc.Convert("⿰言吾")); // unchanged
+        Assert.AreEqual("⿴囗或", cc.Convert("⿴囗或")); // unchanged
+        Assert.AreEqual("⿰氵𦰩", cc.Convert("⿰氵𦰩")); // unchanged
     }
 
     [TestMethod]
@@ -433,8 +439,14 @@ public class OpenccNetTests
 
         cc.SetPreserveIds(true);
 
+        // Simple IDS
         Assert.AreEqual("⿰口馬", cc.Convert("⿰口馬"));
         Assert.AreEqual("⿰氵漢", cc.Convert("⿰氵漢"));
+
+        // Real character decompositions
+        Assert.AreEqual("⿰言吾", cc.Convert("⿰言吾"));
+        Assert.AreEqual("⿴囗或", cc.Convert("⿴囗或"));
+        Assert.AreEqual("⿰氵𦰩", cc.Convert("⿰氵𦰩"));
     }
 
     [TestMethod]
@@ -445,7 +457,15 @@ public class OpenccNetTests
         cc.SetPreserveIds(true);
 
         Assert.AreEqual(
-            "测试⿰氵漢文本",
-            cc.Convert("測試⿰氵漢文本"));
+            "汉字结构：⿰氵漢（汉）",
+            cc.Convert("漢字結構：⿰氵漢（漢）"));
+
+        Assert.AreEqual(
+            "汉字结构：⿴囗或（国）",
+            cc.Convert("漢字結構：⿴囗或（國）"));
+
+        Assert.AreEqual(
+            "汉字结构：⿰言吾（语）",
+            cc.Convert("漢字結構：⿰言吾（語）"));
     }
 }
