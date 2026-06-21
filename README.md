@@ -959,7 +959,7 @@ realistic workloads while preserving deterministic conversion results.
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v151.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v161.png)
 
 ---
 
