@@ -780,7 +780,6 @@ packages fail with a clear `InvalidOperationException` that preserves the underl
 returning potentially corrupted bytes. File-output overloads write to a temporary file in the destination directory and
 atomically publish it only after conversion and validation complete, avoiding partial or corrupted output files.
 
-
 ```csharp
 OfficeDocConverter.ConvertOfficeFile(
     "input.docx",
@@ -888,7 +887,7 @@ public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 - Fully optimized for multi-stage conversion with zero-allocation hot paths.
 - Suitable for real-time, batch, and parallel processing.
 
-### 🚀 Performance Benchmark for **OpenccNetLib 1.5.0**
+### 🚀 Performance Benchmark for **OpenccNetLib 1.6.1**
 
 #### `S2T` Conversion (Union-based Optimizations, Real-World Load)
 
@@ -901,64 +900,86 @@ public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 | Item                | Value                                    |
 |---------------------|------------------------------------------|
 | **BenchmarkDotNet** | v0.15.8                                  |
-| **OS**              | Windows 11 (Build 26200.8246, 25H2)      |
+| **OS**              | Windows 11 (Build 26200.8655, 25H2)      |
 | **CPU**             | Intel Core i5-13400 (10C/16T @ 2.50 GHz) |
-| **.NET SDK**        | 10.0.203                                 |
-| **Runtime**         | .NET 10.0.7 (X64 RyuJIT x86-64-v3)       |
+| **.NET SDK**        | 10.0.301                                 |
+| **Runtime**         | .NET 10.0.9 (X64 RyuJIT x86-64-v3)       |
 | **Iterations**      | 10 (1 warm-up)                           |
 
 ---
 
 ### Results
 
-| Method               |      Size |          Mean |     Error |    StdDev |       Min |       Max | Rank |     Gen0 |     Gen1 |    Gen2 |       Allocated |
-|----------------------|----------:|--------------:|----------:|----------:|----------:|----------:|-----:|---------:|---------:|--------:|----------------:|
-| **BM_Convert_Sized** |       100 |   **2.49 µs** |   0.04 µs |   0.02 µs |   2.47 µs |   2.53 µs |    1 |    0.515 |        – |       – |          5.3 KB |
-| **BM_Convert_Sized** |     1,000 |  **68.79 µs** |   2.71 µs |   1.79 µs |  66.73 µs |  72.50 µs |    2 |    8.789 |        – |       – |         90.3 KB |
-| **BM_Convert_Sized** |    10,000 | **235.49 µs** |  11.01 µs |   7.28 µs | 226.53 µs | 245.62 µs |    3 |   75.684 |   16.113 |       – |        766.4 KB |
-| **BM_Convert_Sized** |   100,000 |   **2.64 ms** | 605.47 µs | 360.31 µs |   2.30 ms |   3.38 ms |    4 |  832.031 |  347.656 | 132.813 |      7,695.8 KB |
-| **BM_Convert_Sized** | 1,000,000 |  **20.56 ms** | 243.93 µs | 145.16 µs |  20.32 ms |  20.80 ms |    5 | 7,781.25 | 1,312.50 | 625.000 | **78,589.5 KB** |
+| Method               |      Size |           Mean |      Error |     StdDev |        Min |        Max | Rank |     Gen0 |     Gen1 |    Gen2 |        Allocated |
+|----------------------|----------:|---------------:|-----------:|-----------:|-----------:|-----------:|-----:|---------:|---------:|--------:|-----------------:|
+| **BM_Convert_Sized** |       100 |   **2.430 µs** |   0.014 µs |   0.009 µs |   2.421 µs |   2.445 µs |    1 |    0.504 |        – |       – |          5.15 KB |
+| **BM_Convert_Sized** |     1,000 |  **62.305 µs** |   0.435 µs |   0.228 µs |  62.013 µs |  62.769 µs |    2 |    8.545 |        – |       – |         87.33 KB |
+| **BM_Convert_Sized** |    10,000 | **250.230 µs** |  10.490 µs |   6.939 µs | 243.349 µs | 261.130 µs |    3 |   75.195 |   17.090 |       – |        759.18 KB |
+| **BM_Convert_Sized** |   100,000 |   **3.807 ms** |  74.178 µs |  49.064 µs |   3.755 ms |   3.905 ms |    4 |  808.594 |  335.938 | 117.188 |      7,580.92 KB |
+| **BM_Convert_Sized** | 1,000,000 |  **20.040 ms** | 435.267 µs | 287.902 µs |  19.572 ms |  20.399 ms |    5 | 7,687.50 | 1,406.25 | 625.000 | **77,511.33 KB** |
 
 ---
 
 ### Summary
 
-- **100 chars** → ~2.5 µs
-- **1,000 chars** → ~69 µs
-- **10,000 chars** → ~0.24 ms
-- **100,000 chars** → ~2.6 ms
-- **1,000,000 chars (1M)** → ~20.6 ms
+- **100 chars** → ~2.4 µs
+- **1,000 chars** → ~62 µs
+- **10,000 chars** → ~0.25 ms
+- **100,000 chars** → ~3.8 ms
+- **1,000,000 chars (1M)** → ~20.0 ms
 
 ---
 
 ### Notes
 
 - Benchmarks include **real-world system noise** (IDE, background services), not isolated lab conditions.
-- Despite this, performance remains **highly stable and near-linear scaling**.
+- v1.6.1 performs in broadly the **same range as v1.5.0**, with modest improvements at several input sizes.
+- This is notable because v1.6.1 also includes **hundreds of added or updated dictionary entries** and several new
+  Taiwan, Hong Kong, and Japanese dictionary slots. Comparable throughput with the expanded dictionary data is
+  consistent with the engine's `StarterUnion` design: O(1) per-starter metadata narrows candidate lengths and skips
+  impossible lookups before probing dictionaries.
+- The benchmark measures `S2T`, so it does not exercise every new regional slot. Conversion plans select only the
+  dictionary groups required for each configuration, while `UnionCache` reuses the prebuilt `StarterUnion` for each
+  semantic slot; unrelated dictionaries therefore do not enlarge the `S2T` hot path.
+- Managed allocations are slightly lower at every measured size (approximately **1–3% lower** than v1.5.0).
 - Minor variance at larger sizes is expected due to OS scheduling and GC activity.
-- Allocation behavior remains consistent with previous versions, with **no regression in memory profile**.
+- The 100,000-character timing should not be read as a direct regression: the v1.5.0 measurement had much higher
+  variance, and both runs were taken under normal desktop load.
+- Two outliers were removed from the 1,000-character benchmark by BenchmarkDotNet.
 
 ---
 
 ### Conclusion
 
-OpenccNetLib 1.5.0 maintains its position among the **high performance .NET-based CJK converters**,  
-delivering **production-grade performance under realistic workloads**, while preserving deterministic conversion
-results.
+OpenccNetLib 1.6.1 maintains the **production-grade performance** established in v1.5.0, with comparable overall
+timings and a small improvement in managed memory usage. It continues to deliver predictable throughput under
+realistic workloads while preserving deterministic conversion results.
 
 ---
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v150.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v151.png)
 
 ---
 
-### 🟢 Highlights (OpenccNetLib v1.5.0)
+### 🟢 Highlights (OpenccNetLib v1.6.1)
 
 - **🚀 High Performance (Real-World Tested)**  
-  Processes **1M characters in ~20 ms** under normal desktop load (IDE, background apps).  
+  Processes **1M characters in ~20.0 ms** under normal desktop load (IDE, background apps).
   Sustains **tens of millions of chars/sec** on a mid-range CPU (Intel i5-13400).
+
+- **📉 Slightly Improved Memory Efficiency**
+    - managed allocations are approximately **1–3% lower** than v1.5.0 across the tested sizes
+    - uses about **75.7 MB** for a 1M-character conversion
+    - preserves the established performance profile without a memory regression
+
+- **📚 Expanded Dictionaries, Preserved Throughput**
+    - adds or updates hundreds of dictionary entries and introduces new regional dictionary slots
+    - retains performance close to v1.5.0 despite the broader dictionary coverage
+    - `StarterUnion` uses O(1) per-starter metadata to reject impossible candidate lengths early
+    - per-slot `UnionCache` reuse keeps accelerator construction and memory duplication low
+    - conversion plans isolate unrelated dictionary slots from the active conversion hot path
 
 - **📌 Predictable, Linear Scaling**  
   Both **time** and **memory usage** scale *linearly* with input size:
