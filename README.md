@@ -941,6 +941,8 @@ public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 - The benchmark measures `S2T`, so it does not exercise every new regional slot. Conversion plans select only the
   dictionary groups required for each configuration, while `UnionCache` reuses the prebuilt `StarterUnion` for each
   semantic slot; unrelated dictionaries therefore do not enlarge the `S2T` hot path.
+- Internal diagnostics found no measurable large-input overhead from optional IDS preservation when no IDS operators
+  are present, confirming efficient short-circuiting and ordinary-text rejection.
 - Managed allocations are slightly lower at every measured size (approximately **1–3% lower** than v1.5.0).
 - Minor variance at larger sizes is expected due to OS scheduling and GC activity.
 - The 100,000-character timing should not be read as a direct regression: the v1.5.0 measurement had much higher
