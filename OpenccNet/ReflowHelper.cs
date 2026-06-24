@@ -495,19 +495,28 @@ public static class ReflowHelper
             //     (comma-ending means the sentence is not finished)
             if (currentIsDialogStart)
             {
-                var shouldFlushPrev = false;
-
-                if (buffer.Length > 0 &&
-                    PunctSets.TryGetLastNonWhitespace(BufferText(), out _, out var last))
+                // 9a-0) Complete single-line dialog.
+                // Flush previous buffer first, then emit this dialog as its own paragraph.
+                if (PunctSets.EndsWithDialogCloser(stripped))
                 {
-                    var isContinuation =
-                        PunctSets.IsCommaLike(last) ||
-                        CjkText.IsCjk(last) ||
-                        dialogState.IsUnclosed ||
-                        HasUnclosedBracket();
+                    if (buffer.Length > 0)
+                    {
+                        segments.Add(BufferText());
+                        buffer.Clear();
+                    }
 
-                    shouldFlushPrev = !isContinuation;
+                    segments.Add(stripped);
+                    dialogState.Reset();
+                    continue;
                 }
+
+                var shouldFlushPrev =
+                    buffer.Length > 0 &&
+                    PunctSets.TryGetLastNonWhitespace(BufferText(), out _, out var last) &&
+                    !PunctSets.IsCommaLike(last) &&
+                    !CjkText.IsCjk(last) &&
+                    !dialogState.IsUnclosed &&
+                    !HasUnclosedBracket();
 
                 if (shouldFlushPrev)
                 {
