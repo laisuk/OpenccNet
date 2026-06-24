@@ -464,29 +464,6 @@ public static class ReflowHelper
                 // else: fall through → normal merge logic below
             }
 
-            // ----- Current line finalizer ------
-            switch (buffer.Length)
-            {
-                // ===== Finalizer: strong sentence end → flush immediately. Do not remove. ===== //
-                // If the current line completes a strong sentence, append it and flush immediately.
-                case > 0
-                    when !dialogState.IsUnclosed
-                         && (buffer.Length > 120 || !HasUnclosedBracket())
-                         && PunctSets.EndsWithStrongSentenceEnd(stripped):
-                    buffer.Append(stripped); // buffer now has new value
-                    segments.Add(buffer.ToString()); // This is not old bufferText (it had been updated)
-                    buffer.Clear();
-                    dialogState.Reset();
-                    // dialogState.Update(stripped);
-                    continue;
-                case 0:
-                    // 4) First line inside buffer → start of a new paragraph
-                    buffer.Append(stripped);
-                    dialogState.Reset();
-                    dialogState.Update(stripped);
-                    continue;
-            }
-
             // *** DIALOG: treat any line that *starts* with a dialog opener as a new paragraph
             var currentIsDialogStart = PunctSets.BeginsWithDialogOpener(stripped);
 
@@ -531,15 +508,43 @@ public static class ReflowHelper
                 continue;
             }
 
+            // ----- Current line finalizer ------
+
+            var strippedEndsWithDialogCloser =
+                PunctSets.TryGetLastNonWhitespace(stripped, out var dialogCloserIdx, out var dialogCloserCh) &&
+                PunctSets.IsDialogCloser(dialogCloserCh);
+
+            switch (buffer.Length)
+            {
+                // ===== Finalizer: strong sentence end → flush immediately. Do not remove. ===== //
+                // If the current line completes a strong sentence, append it and flush immediately.
+                case > 0
+                    when !dialogState.IsUnclosed
+                         && !strippedEndsWithDialogCloser
+                         && (buffer.Length > 120 || !HasUnclosedBracket())
+                         && PunctSets.EndsWithStrongSentenceEnd(stripped):
+                    buffer.Append(stripped); // buffer now has new value
+                    segments.Add(buffer.ToString()); // This is not old bufferText (it had been updated)
+                    buffer.Clear();
+                    dialogState.Reset();
+                    // dialogState.Update(stripped);
+                    continue;
+                case 0:
+                    // 4) First line inside buffer → start of a new paragraph
+                    buffer.Append(stripped);
+                    dialogState.Reset();
+                    dialogState.Update(stripped);
+                    continue;
+            }
+
             // 🔸 9b) Dialog end line: ends with dialog closer.
             // Flush when the char before closer is strong end,
             // and bracket safety is satisfied (with a narrow typo override).
-            if (PunctSets.TryGetLastNonWhitespace(stripped, out var lastIdx, out var lastCh) &&
-                PunctSets.IsDialogCloser(lastCh))
+            if (strippedEndsWithDialogCloser)
             {
                 // Check punctuation right before the closer (e.g., “？” / “。”)
                 var punctBeforeCloserIsStrong =
-                    PunctSets.TryGetPrevNonWhitespace(stripped, lastIdx, out var prevCh) &&
+                    PunctSets.TryGetPrevNonWhitespace(stripped, dialogCloserIdx, out var prevCh) &&
                     PunctSets.IsClauseOrEndPunct(prevCh);
 
                 // Snapshot bracket safety BEFORE appending current line
