@@ -1282,6 +1282,22 @@ Options:
   -?, -h, --help                    Show help and usage information
 ```
 
+Example: append a custom Hong Kong phrase dictionary for `hk2sp`.
+
+`data/my_hk_dict.txt`:
+
+```text
+# Custom Dictionary
+
+細路哥	小男孩
+```
+
+```bash
+"這個細路哥很靈活" | ./OpenccNet convert -c hk2sp --custom-dict hkphrasesrev:append:data/my_hk_dict.txt
+这个小男孩很灵活
+✅ Conversion (hk2sp): <stdin> → <stdout>
+```
+
 ### `OpenccNet office`
 
 ```
