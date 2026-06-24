@@ -40,6 +40,12 @@
         <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="Data\my_hk_dict.txt">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
     <Target Name="Trim_Docs_And_Symbols_FromPublish"
             AfterTargets="ComputeFilesToPublish">
         <ItemGroup>

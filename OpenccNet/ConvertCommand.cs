@@ -101,6 +101,27 @@ internal static class ConvertCommand
             Description = "Preserve Unicode IDS expressions during conversion."
         };
 
+        var customDictOption = new Option<string[]>("--custom-dict")
+        {
+            Arity = ArgumentArity.ZeroOrMore,
+            Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
+        };
+
+        customDictOption.Validators.Add(result =>
+        {
+            foreach (var value in result.GetValueOrDefault<string[]>() ?? Array.Empty<string>())
+            {
+                try
+                {
+                    ParseCustomDictSpec(value);
+                }
+                catch (ArgumentException ex)
+                {
+                    result.AddError(ex.Message);
+                }
+            }
+        });
+
         var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
         {
             inputFileOption,
@@ -110,8 +131,10 @@ internal static class ConvertCommand
             deTofuOption,
             deTofuFileOption,
             keepIdsOption,
+            customDictOption,
             inputEncodingOption,
-            outputEncodingOption,
+            outputEncodingOption
+            
         };
 
         convertCommand.Validators.Add(result =>
@@ -135,8 +158,11 @@ internal static class ConvertCommand
             var punct = pr.GetValue(punctOption);
 
             var deTofuResult = pr.GetResult(deTofuOption);
-            var deTofuEnabled = deTofuResult is not null;
-            var deTofu = pr.GetValue(deTofuOption);
+            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+            var deTofu = deTofuEnabled
+                ? pr.GetValue(deTofuOption)
+                : null;
+
             if (deTofuEnabled && string.IsNullOrWhiteSpace(deTofu))
                 deTofu = "all";
 
@@ -144,9 +170,10 @@ internal static class ConvertCommand
             var keepIds = pr.GetValue(keepIdsOption);
             var inputEnc = pr.GetValue(inputEncodingOption)!;
             var outputEnc = pr.GetValue(outputEncodingOption)!;
+            var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             return await RunConversionAsync(
-                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds
+                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds, customDicts
             );
         });
 
@@ -163,10 +190,23 @@ internal static class ConvertCommand
         string outputEncoding,
         string? deTofu,
         string? deTofuFile,
-        bool keepIds)
+        bool keepIds,
+        string[] customDicts)
     {
         try
         {
+            if (customDicts.Length > 0)
+            {
+                var dict = DictionaryLib.New();
+
+                var specs = customDicts
+                    .Select(ParseCustomDictSpec)
+                    .ToArray();
+
+                DictionaryLib.WithCustomDicts(dict, specs);
+                Opencc.UseCustomDictionary(dict);
+            }
+
             // Assuming OpenccNetLib provides a way to initialize Opencc with a config string
             var opencc = new Opencc(config);
 
@@ -267,6 +307,81 @@ internal static class ConvertCommand
             {
                 Console.WriteLine();
             }
+        }
+    }
+
+    // Custom Dicts
+
+    private static CustomDictSpec ParseCustomDictSpec(string value)
+    {
+        var parts = value.Split(':', 3);
+
+        if (parts.Length != 3)
+            throw new ArgumentException(
+                $"Invalid --custom-dict '{value}'. Expected: <slot>:<mode>:<path>");
+
+        if (!TryParseDictSlot(parts[0], out var slot))
+            throw new ArgumentException($"Unknown dictionary slot '{parts[0]}'.");
+
+        if (!Enum.TryParse(parts[1], true, out CustomDictMode mode))
+            throw new ArgumentException(
+                $"Unknown custom dictionary mode '{parts[1]}'. Valid values: append, override.");
+
+        var path = parts[2].Trim();
+
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Custom dictionary path cannot be empty.");
+
+        return new CustomDictSpec
+        {
+            Slot = slot,
+            Mode = mode,
+            Paths = new[] { path }
+        };
+    }
+
+    private static bool TryParseDictSlot(string value, out DictSlot slot)
+    {
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "stphrases":
+                slot = DictSlot.STPhrases;
+                return true;
+            case "stcharacters":
+                slot = DictSlot.STCharacters;
+                return true;
+            case "twphrases":
+                slot = DictSlot.TWPhrases;
+                return true;
+            case "twphrasesrev":
+                slot = DictSlot.TWPhrasesRev;
+                return true;
+            case "twvariants":
+                slot = DictSlot.TWVariants;
+                return true;
+            case "twvariantsrev":
+                slot = DictSlot.TWVariantsRev;
+                return true;
+            case "twvariantsphrases":
+                slot = DictSlot.TWVariantsPhrases;
+                return true;
+            case "hkphrases":
+                slot = DictSlot.HKPhrases;
+                return true;
+            case "hkphrasesrev":
+                slot = DictSlot.HKPhrasesRev;
+                return true;
+            case "jpscharacters":
+                slot = DictSlot.JPSCharacters;
+                return true;
+            case "jpscharactersrev":
+                slot = DictSlot.JPSCharactersRev;
+                return true;
+            case "jpsphrases":
+                slot = DictSlot.JPSPhrases;
+                return true;
+            default:
+                return Enum.TryParse(value, true, out slot);
         }
     }
 }

@@ -1276,6 +1276,7 @@ Options:
   --detofu <detofu>                 Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i
   --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires --detofu)
   --keep-ids                        Preserve Unicode IDS expressions during conversion.
+  --custom-dict <custom-dict>       Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
   --in-enc <in-enc>                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
   --out-enc <out-enc>               Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
   -?, -h, --help                    Show help and usage information
