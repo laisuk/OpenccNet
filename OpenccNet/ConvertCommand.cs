@@ -109,7 +109,7 @@ internal static class ConvertCommand
 
         customDictOption.Validators.Add(result =>
         {
-            foreach (var value in result.GetValueOrDefault<string[]>() ?? Array.Empty<string>())
+            foreach (var value in result.GetValueOrDefault<string[]>())
             {
                 try
                 {
@@ -134,7 +134,6 @@ internal static class ConvertCommand
             customDictOption,
             inputEncodingOption,
             outputEncodingOption
-            
         };
 
         convertCommand.Validators.Add(result =>
@@ -344,33 +343,66 @@ internal static class ConvertCommand
     {
         switch (value.Trim().ToLowerInvariant())
         {
-            case "stphrases":
-                slot = DictSlot.STPhrases;
-                return true;
             case "stcharacters":
                 slot = DictSlot.STCharacters;
                 return true;
+            case "stphrases":
+                slot = DictSlot.STPhrases;
+                return true;
+            case "stpunctuations":
+                slot = DictSlot.STPunctuations;
+                return true;
+
+            case "tscharacters":
+                slot = DictSlot.TSCharacters;
+                return true;
+            case "tsphrases":
+                slot = DictSlot.TSPhrases;
+                return true;
+            case "tspunctuations":
+                slot = DictSlot.TSPunctuations;
+                return true;
+
             case "twphrases":
                 slot = DictSlot.TWPhrases;
                 return true;
             case "twphrasesrev":
                 slot = DictSlot.TWPhrasesRev;
                 return true;
+
             case "twvariants":
                 slot = DictSlot.TWVariants;
-                return true;
-            case "twvariantsrev":
-                slot = DictSlot.TWVariantsRev;
                 return true;
             case "twvariantsphrases":
                 slot = DictSlot.TWVariantsPhrases;
                 return true;
+            case "twvariantsrev":
+                slot = DictSlot.TWVariantsRev;
+                return true;
+            case "twvariantsrevphrases":
+                slot = DictSlot.TWVariantsRevPhrases;
+                return true;
+
             case "hkphrases":
                 slot = DictSlot.HKPhrases;
                 return true;
             case "hkphrasesrev":
                 slot = DictSlot.HKPhrasesRev;
                 return true;
+
+            case "hkvariants":
+                slot = DictSlot.HKVariants;
+                return true;
+            case "hkvariantsphrases":
+                slot = DictSlot.HKVariantsPhrases;
+                return true;
+            case "hkvariantsrev":
+                slot = DictSlot.HKVariantsRev;
+                return true;
+            case "hkvariantsrevphrases":
+                slot = DictSlot.HKVariantsRevPhrases;
+                return true;
+
             case "jpscharacters":
                 slot = DictSlot.JPSCharacters;
                 return true;
@@ -380,6 +412,7 @@ internal static class ConvertCommand
             case "jpsphrases":
                 slot = DictSlot.JPSPhrases;
                 return true;
+
             default:
                 return Enum.TryParse(value, true, out slot);
         }
