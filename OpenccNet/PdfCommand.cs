@@ -86,6 +86,7 @@ internal static class PdfCommand
         var customDictOption = new Option<string[]>("--custom-dict")
         {
             Arity = ArgumentArity.ZeroOrMore,
+            AllowMultipleArgumentsPerToken = false,
             Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
         };
 

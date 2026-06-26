@@ -11,7 +11,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Add
 
-- CLI: convert - added feature `--custom-dict` to enable custom conversion dictionary slot.
+- CLI: convert/office/pdf/dictgen - added feature `--custom-dict` to enable custom conversion dictionary slot.
 
 ### Changed
 

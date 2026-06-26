@@ -1355,6 +1355,11 @@ namespace OpenccNetLib
         /// </para>
         ///
         /// <para>
+        /// The supplied <paramref name="dict"/> instance is modified in place and is
+        /// also returned for convenience.
+        /// </para>
+        /// 
+        /// <para>
         /// Dictionary metadata such as maximum phrase lengths and starter lookup
         /// caches are automatically rebuilt after customization.
         /// </para>

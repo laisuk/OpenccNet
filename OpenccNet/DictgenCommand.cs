@@ -44,6 +44,28 @@ internal static class DictgenCommand
             Description = "For JSON format only: write readable Unicode characters instead of \\uXXXX escapes"
         };
 
+        var customDictOption = new Option<string[]>("--custom-dict")
+        {
+            Arity = ArgumentArity.ZeroOrMore,
+            AllowMultipleArgumentsPerToken = false,
+            Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
+        };
+
+        customDictOption.Validators.Add(result =>
+        {
+            foreach (var value in result.GetValueOrDefault<string[]>())
+            {
+                try
+                {
+                    CliUtils.ParseCustomDictSpec(value);
+                }
+                catch (ArgumentException ex)
+                {
+                    result.AddError(ex.Message);
+                }
+            }
+        });
+
         var dictGenCommand = new Command(
             "dictgen",
             $"{Blue}Generate OpenccNetLib dictionary files.{Reset}\n\n" +
@@ -59,7 +81,8 @@ internal static class DictgenCommand
             formatOption,
             outputOption,
             baseDirOption,
-            unescapeOption
+            unescapeOption,
+            customDictOption,
         };
 
         dictGenCommand.SetAction(pr =>
@@ -68,6 +91,7 @@ internal static class DictgenCommand
             var output = pr.GetValue(outputOption);
             var baseDir = pr.GetValue(baseDirOption)!;
             var unescape = pr.GetValue(unescapeOption);
+            var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             var defaultOutput = $"dictionary_maxlength.{format}";
             var outputFile = string.IsNullOrWhiteSpace(output) ? defaultOutput : output;
@@ -89,6 +113,17 @@ internal static class DictgenCommand
             try
             {
                 dict = DictionaryLib.FromDicts(resolvedBaseDir);
+
+                if (customDicts.Length > 0)
+                {
+                    Console.WriteLine($"Applying {customDicts.Length} custom dictionary spec(s)...");
+
+                    var specs = customDicts
+                        .Select(CliUtils.ParseCustomDictSpec)
+                        .ToArray();
+
+                    DictionaryLib.WithCustomDicts(dict, specs);
+                }
             }
             catch (FileNotFoundException ex)
             {
