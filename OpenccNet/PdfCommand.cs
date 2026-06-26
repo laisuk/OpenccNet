@@ -82,6 +82,27 @@ internal static class PdfCommand
             DefaultValueFactory = _ => false,
             Description = "Extract text from PDF only (no OpenCC conversion)."
         };
+        
+        var customDictOption = new Option<string[]>("--custom-dict")
+        {
+            Arity = ArgumentArity.ZeroOrMore,
+            Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
+        };
+
+        customDictOption.Validators.Add(result =>
+        {
+            foreach (var value in result.GetValueOrDefault<string[]>())
+            {
+                try
+                {
+                    CliUtils.ParseCustomDictSpec(value);
+                }
+                catch (ArgumentException ex)
+                {
+                    result.AddError(ex.Message);
+                }
+            }
+        });
 
         var pdfCommand = new Command(
             "pdf",
@@ -96,6 +117,7 @@ internal static class PdfCommand
             compactOption,
             quietOption,
             extractOption,
+            customDictOption,
         };
 
         pdfCommand.SetAction(async (pr, cancellationToken) =>
@@ -109,6 +131,7 @@ internal static class PdfCommand
             var compact = pr.GetValue(compactOption);
             var quiet = pr.GetValue(quietOption);
             var extract = pr.GetValue(extractOption);
+            var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
             {
@@ -182,6 +205,18 @@ internal static class PdfCommand
                 // 3) OpenCC conversion (only if not extract)
                 if (!extract)
                 {
+                    if (customDicts.Length > 0)
+                    {
+                        var dict = DictionaryLib.New();
+
+                        var specs = customDicts
+                            .Select(CliUtils.ParseCustomDictSpec)
+                            .ToArray();
+
+                        DictionaryLib.WithCustomDicts(dict, specs);
+                        Opencc.UseCustomDictionary(dict);
+                    }
+                    
                     var converter = new Opencc(config);
                     finalText = converter.Convert(finalText, punctuation: punct);
                 }

@@ -77,11 +77,32 @@ internal static class OfficeCommand
             DefaultValueFactory = _ => false,
             Description = "Suppress status and progress output; only errors will be shown."
         };
+        
+        var customDictOption = new Option<string[]>("--custom-dict")
+        {
+            Arity = ArgumentArity.ZeroOrMore,
+            Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
+        };
+
+        customDictOption.Validators.Add(result =>
+        {
+            foreach (var value in result.GetValueOrDefault<string[]>())
+            {
+                try
+                {
+                    CliUtils.ParseCustomDictSpec(value);
+                }
+                catch (ArgumentException ex)
+                {
+                    result.AddError(ex.Message);
+                }
+            }
+        });
 
         var officeCommand = new Command("office", $"{Blue}Convert Office documents or Epub using OpenccNetLib.{Reset}")
         {
             inputFileOption, outputFileOption, configOption, punctOption,
-            formatOption, keepFontOption, quietOption,
+            formatOption, keepFontOption, quietOption, customDictOption
         };
 
         officeCommand.SetAction(async (pr, _) =>
@@ -93,6 +114,7 @@ internal static class OfficeCommand
             var format = pr.GetValue(formatOption);
             var keepFont = pr.GetValue(keepFontOption);
             var quiet = pr.GetValue(quietOption);
+            var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
             {
@@ -127,6 +149,18 @@ internal static class OfficeCommand
 
             try
             {
+                if (customDicts.Length > 0)
+                {
+                    var dict = DictionaryLib.New();
+
+                    var specs = customDicts
+                        .Select(CliUtils.ParseCustomDictSpec)
+                        .ToArray();
+
+                    DictionaryLib.WithCustomDicts(dict, specs);
+                    Opencc.UseCustomDictionary(dict);
+                }
+                
                 var builder = new OfficeConverterBuilder()
                     .SetInput(input)
                     .SetOutput(resolvedOutput)
