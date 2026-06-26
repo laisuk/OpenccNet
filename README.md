@@ -1246,16 +1246,28 @@ DictionaryLib.SaveJsonCompressed("./custom-dictionary.zstd", dict);
 ```
 Description:
   Generate OpenccNetLib dictionary files.
+  
+  Examples:
+    OpenccNet dictgen
+      Generate default Zstd dictionary (dictionary_maxlength.zstd)
+  
+    OpenccNet dictgen -f cbor
+      Generate CBOR dictionary for interop
+  
+    OpenccNet dictgen -f json --unescape
+      Generate readable JSON dictionary without \uXXXX escapes
+  
 
 Usage:
   OpenccNet dictgen [options]
 
 Options:
-  -f, --format <format>      Dictionary format: zstd|cbor|json [default: zstd]
-  -o, --output <output>      Output filename. Default: dictionary_maxlength.<ext>
-  -b, --base-dir <base-dir>  Base directory containing source dictionary files [default: dicts]
-  -u, --unescape             For JSON format only: write readable Unicode characters instead of \uXXXX escapes
-  -?, -h, --help             Show help and usage information
+  -f, --format <format>        Dictionary format: zstd|cbor|json [default: zstd]
+  -o, --output <output>        Output filename. Default: dictionary_maxlength.<ext>
+  -b, --base-dir <base-dir>    Base directory containing OpenCC-style .txt dictionary sources (for dictgen) [default: dicts]
+  -u, --unescape               For JSON format only: write readable Unicode characters instead of \uXXXX escapes
+  --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
+  -?, -h, --help               Show help and usage information
 ```
 
 ### `OpenccNet convert`
@@ -1316,6 +1328,7 @@ Options:
   -f, --format <format>             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   -k, --keep-font                   Preserve font names in Office documents [default: true]. Use --keep-font:false to disable.
   -q, --quiet                       Suppress status and progress output; only errors will be shown.
+  --custom-dict <custom-dict>       Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
   -?, -h, --help                    Show help and usage information
 ```
 
@@ -1329,18 +1342,18 @@ Usage:
   OpenccNet pdf [options]
 
 Options:
-  -i, --input <input>    Input PDF file <input.pdf>
-  -o, --output <output>  Output text file <output.txt>
-  -c, --config <config>  Conversion configuration.
-                         Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
-  -p, --punct            Enable punctuation conversion.
-  -H, --header           Add [Page x/y] headers to the extracted text.
-  -r, --reflow           Reflow CJK paragraphs into continuous lines.
-  --compact              Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
-  -q, --quiet            Suppress status and progress output; only errors will be shown.
-  -e, --extract          Extract text from PDF only (no OpenCC conversion).
-  -?, -h, --help         Show help and usage information
-
+  -i, --input <input>          Input PDF file <input.pdf>
+  -o, --output <output>        Output text file <output.txt>
+  -c, --config <config>        Conversion configuration.
+                               Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+  -p, --punct                  Enable punctuation conversion.
+  -H, --header                 Add [Page x/y] headers to the extracted text.
+  -r, --reflow                 Reflow CJK paragraphs into continuous lines.
+  --compact                    Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
+  -q, --quiet                  Suppress status and progress output; only errors will be shown.
+  -e, --extract                Extract text from PDF only (no OpenCC conversion).
+  --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
+  -?, -h, --help               Show help and usage information
 ```
 
 ## Usage Notes — `OpenccNet pdf`
