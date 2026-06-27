@@ -13,11 +13,24 @@ projects with a focus on performance and minimal memory usage.
 
 ## Table of Contents
 
+- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Office Document & EPUB Conversion](#-office-document--epub-conversion-in-memory-no-temp-files-required)
+- [Example: Convert Office Document In-Memory](#-example-convert-office-document-in-memory)
+- [Backward-Compatible String Overload](#-backward-compatible-string-overload)
+- [Async API](#-async-api-recommended-for-serverweb)
+- [Convert Files](#-convert-files-convenience-wrappers)
+- [What does conversion do?](#-what-does-conversion-do)
+- [Error Handling](#-error-handling)
+- [Unit Tested](#-unit-tested-mstest)
+- [Why This Matters](#-why-this-matters)
+- [Performance](#performance)
 - [API Reference](#api-reference)
-- [Office Document Conversion](#-office-document--epub-conversion-in-memory-no-temp-files-required)
+- [Dictionary Data](#dictionary-data)
 - [Add-On CLI Tools](#add-on-cli-tools-separated-from-openccnetlib)
+- [Usage Notes - `OpenccNet pdf`](#usage-notes--openccnet-pdf)
+- [Project That Use OpenccNetLib](#project-that-use-openccnetlib)
 - [License](#license)
 
 ## Features
