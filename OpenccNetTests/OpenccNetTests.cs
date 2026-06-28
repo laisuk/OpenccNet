@@ -390,6 +390,35 @@ public class OpenccNetTests
         Assert.AreEqual("氂毛 骖騑", output);
     }
 
+    // CJK Compat Ideographs
+
+    [TestMethod]
+    public void NormalizeCompat_Instance_NormalizesCompatibilityIdeographs()
+    {
+        var cc = new Opencc();
+
+        Assert.AreEqual("金庸", cc.NormalizeCompat("金庸"));
+    }
+
+    [TestMethod]
+    public void NormalizeCompat_Instance_NormalizesThenConverts()
+    {
+        var cc = new Opencc(OpenccConfig.S2T);
+
+        var normalized = cc.NormalizeCompat("金庸小說");
+        var converted = cc.Convert(normalized);
+
+        Assert.AreEqual("金庸小說", converted);
+    }
+
+    [TestMethod]
+    public void NormalizeCompat_Instance_PreservesUnmappedText()
+    {
+        var cc = new Opencc();
+
+        Assert.AreEqual("abc金庸123", cc.NormalizeCompat("abc金庸123"));
+    }
+
     // IDS
 
     [TestMethod]

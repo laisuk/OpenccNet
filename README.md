@@ -224,6 +224,86 @@ var cc = new Opencc("t2s")
 };
 ```
 
+### CJK Compatibility Ideograph Normalization
+
+`CompatIdeographs` is an optional Unicode compatibility pre-processing helper. It maps CJK Compatibility Ideographs to
+their Unicode decomposition targets before OpenCC segmentation and dictionary conversion. This is useful when input text
+contains compatibility forms such as `金` but you want conversion to behave as if the canonical ideograph `金` had been
+provided.
+
+Compatibility ideograph normalization is **not** OpenCC linguistic conversion. It does not modify OpenCC dictionaries,
+phrase matching, regional variant selection, script detection, or punctuation conversion. For converted text, the
+recommended order is:
+
+1. Normalize compatibility ideographs with `NormalizeCompat(...)` or `CompatIdeographs`.
+2. Run normal OpenCC conversion with `Convert(...)`.
+3. Optionally run DeTofu on the converted result for display fallback.
+
+Convenient `Opencc` instance API:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc();
+
+Console.WriteLine(cc.NormalizeCompat("金庸"));
+// Output: 金庸
+
+Console.WriteLine(cc.NormalizeCompat("abc金庸123"));
+// Output: abc金庸123
+```
+
+Normalize before conversion:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc(OpenccConfig.S2T);
+
+string normalized = cc.NormalizeCompat("金庸小說");
+string converted = cc.Convert(normalized);
+
+Console.WriteLine(converted);
+// Output: 金庸小說
+```
+
+Direct reusable normalizer usage:
+
+```csharp
+using OpenccNetLib;
+
+var compat = CompatIdeographs.Builtin();
+
+Console.WriteLine(compat.Normalize("測試金字"));
+// Output: 測試金字
+```
+
+`CompatIdeographs` also supports custom mapping text for advanced callers:
+
+```csharp
+using OpenccNetLib;
+
+var compat = CompatIdeographs.FromText("金\t金\n");
+Console.WriteLine(compat.Normalize("金"));
+// Output: 金
+```
+
+Compatibility ideograph APIs:
+
+```text
+CompatIdeographs.Builtin()
+CompatIdeographs.FromText(...)
+CompatIdeographs.Normalize(...)
+CompatIdeographs.NormalizeScalar(...)
+CompatIdeographs.NormalizeChar(...)
+CompatIdeographs.NormalizeInPlace(...)
+CompatIdeographs.NormalizeCompatIdeographs(...)
+Opencc.NormalizeCompat(...)
+```
+
+Characters outside the CJK Compatibility Ideograph ranges, and compatibility ideographs without a decomposition mapping,
+are preserved unchanged.
+
 ### DeTofu Display Compatibility
 
 DeTofu is an optional display-compatibility pass for rare non-BMP CJK extension characters. Some systems, browsers,
@@ -233,8 +313,9 @@ may render as tofu boxes or missing glyphs.
 DeTofu is **not** OpenCC linguistic conversion. It does not modify OpenCC dictionaries, phrase matching, regional
 variant selection, script detection, or punctuation conversion. For converted text, the recommended order is:
 
-1. Run normal OpenCC conversion with `Convert(...)`.
-2. Run DeTofu on the converted result.
+1. Optionally normalize CJK Compatibility Ideographs before conversion.
+2. Run normal OpenCC conversion with `Convert(...)`.
+3. Run DeTofu on the converted result.
 
 Normal OpenCC conversion:
 
@@ -1135,6 +1216,11 @@ supported configurations:
     - `2` → Simplified Chinese
     - `1` → Traditional Chinese
     - `0` → Neither / unknown
+
+- `string NormalizeCompat(string text)`
+  Normalizes mapped CJK Compatibility Ideographs with the built-in Unicode compatibility table. Use this as an optional
+  pre-processing step before `Convert(...)` when input may contain forms such as `金`. Unmapped text is preserved
+  unchanged.
 
 ---
 

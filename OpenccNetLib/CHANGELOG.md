@@ -10,6 +10,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added CJK Compatibility Ideograph normalization support.
+    - New `CompatIdeographs` helper for built-in and custom compatibility ideograph normalization.
+    - New `Opencc.NormalizeCompat(...)` convenience API for normalizing compatibility ideographs before OpenCC
+      conversion.
+    - New built-in mapping data loaded from `dicts/CJK_Compatibility_Ideographs.txt`.
+    - Compatibility ideograph normalization is an optional pre-processing pass; DeTofu remains the optional
+      post-processing display fallback.
 - Added optional IDS preservation for `Opencc`.
     - New `IsPreserveIds` property.
     - New `GetPreserveIds()` and `SetPreserveIds(bool)` helper methods.

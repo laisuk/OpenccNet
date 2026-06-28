@@ -2007,7 +2007,49 @@ namespace OpenccNetLib
 
         #endregion
 
-        #region DeTofu Region
+        #region Compat Ideograghs and DeTofu Region
+
+        /// <summary>
+        /// Normalizes CJK Compatibility Ideographs using the built-in Unicode
+        /// compatibility mapping table.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This is a convenience wrapper around
+        /// <see cref="CompatIdeographs.Normalize(string)"/>.
+        /// It performs an optional Unicode compatibility normalization pre-pass and
+        /// does not modify this <see cref="Opencc"/> instance, its selected
+        /// configuration, conversion dictionaries, segmentation behavior,
+        /// script detection, or punctuation conversion.
+        /// </para>
+        ///
+        /// <para>
+        /// Use this before <see cref="Convert(string, bool)"/> when input may contain
+        /// CJK Compatibility Ideographs such as <c>金</c> and you want
+        /// upstream OpenCC-compatible behavior. Unmapped compatibility
+        /// ideographs remain unchanged.
+        /// </para>
+        ///
+        /// <para>
+        /// DeToFu is the opposite side of the pipeline: compatibility ideograph
+        /// normalization is a pre-processing step, while
+        /// <see cref="DeTofu(string, DeTofuLevel)"/> is an optional
+        /// post-processing display fallback.
+        /// </para>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// var cc = new Opencc();
+        ///
+        /// var normalized = cc.NormalizeCompat("金庸小說");
+        /// var converted = cc.Convert(normalized);
+        /// var display = cc.DeToFu(converted, DeTofuLevel.ExtB);
+        /// </code>
+        /// </example>
+        public string NormalizeCompat(string text)
+        {
+            return CompatIdeographs.Builtin().Normalize(text);
+        }
 
         /// <summary>
         /// Applies DeTofu display-compatible fallbacks to mapped rare CJK extension characters.
