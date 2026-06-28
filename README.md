@@ -246,11 +246,11 @@ using OpenccNetLib;
 
 var cc = new Opencc();
 
-Console.WriteLine(cc.NormalizeCompat("金庸"));
-// Output: 金庸
+Console.WriteLine(cc.NormalizeCompat("天龍八部書裡的喬峰是契丹人"));
+// Output: 天龍八部書裡的喬峰是契丹人
 
-Console.WriteLine(cc.NormalizeCompat("abc金庸123"));
-// Output: abc金庸123
+Console.WriteLine(cc.NormalizeCompat("abc天龍八部書裡的喬峰是契丹人123"));
+// Output: abc天龍八部書裡的喬峰是契丹人123
 ```
 
 Normalize before conversion:
@@ -258,13 +258,13 @@ Normalize before conversion:
 ```csharp
 using OpenccNetLib;
 
-var cc = new Opencc(OpenccConfig.S2T);
+var cc = new Opencc(OpenccConfig.T2S);
 
-string normalized = cc.NormalizeCompat("金庸小說");
+string normalized = cc.NormalizeCompat("天龍八部書裡的喬峰是契丹人");
 string converted = cc.Convert(normalized);
 
 Console.WriteLine(converted);
-// Output: 金庸小說
+// Output: 天龙八部书里的乔峰是契丹人
 ```
 
 Direct reusable normalizer usage:
@@ -274,8 +274,8 @@ using OpenccNetLib;
 
 var compat = CompatIdeographs.Builtin();
 
-Console.WriteLine(compat.Normalize("測試金字"));
-// Output: 測試金字
+Console.WriteLine(compat.Normalize("天龍八部書裡的喬峰是契丹人"));
+// Output: 天龍八部書裡的喬峰是契丹人
 ```
 
 `CompatIdeographs` also supports custom mapping text for advanced callers:

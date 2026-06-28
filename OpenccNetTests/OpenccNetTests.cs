@@ -418,6 +418,30 @@ public class OpenccNetTests
 
         Assert.AreEqual("abc金庸123", cc.NormalizeCompat("abc金庸123"));
     }
+    
+    [TestMethod]
+    public void NormalizeCompat_Golden()
+    {
+        Assert.AreEqual(
+            "天龍八部書裡的喬峰是契丹人",
+            CompatIdeographs.Builtin().Normalize("天龍八部書裡的喬峰是契丹人"));
+    }
+
+    [TestMethod]
+    public void NormalizeCompatThenConvert_Golden()
+    {
+        var cc = new Opencc(OpenccConfig.T2S);
+
+        var normalized = cc.NormalizeCompat("天龍八部書裡的喬峰是契丹人");
+
+        Assert.AreEqual(
+            "天龍八部書裡的喬峰是契丹人",
+            normalized);
+
+        Assert.AreEqual(
+            "天龙八部书里的乔峰是契丹人",
+            cc.Convert(normalized));
+    }
 
     // IDS
 
