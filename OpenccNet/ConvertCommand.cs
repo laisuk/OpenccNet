@@ -100,6 +100,12 @@ internal static class ConvertCommand
             DefaultValueFactory = _ => false,
             Description = "Preserve Unicode IDS expressions during conversion."
         };
+        
+        var normCompatOption = new Option<bool>("--norm-compat")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Normalize CJK Compatibility Ideographs before conversion."
+        };
 
         var customDictOption = new Option<string[]>("--custom-dict")
         {
@@ -132,6 +138,7 @@ internal static class ConvertCommand
             deTofuOption,
             deTofuFileOption,
             keepIdsOption,
+            normCompatOption,
             customDictOption,
             inputEncodingOption,
             outputEncodingOption
@@ -168,12 +175,13 @@ internal static class ConvertCommand
 
             var deTofuFile = pr.GetValue(deTofuFileOption);
             var keepIds = pr.GetValue(keepIdsOption);
+            var normCompat = pr.GetValue(normCompatOption);
             var inputEnc = pr.GetValue(inputEncodingOption)!;
             var outputEnc = pr.GetValue(outputEncodingOption)!;
             var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             return await RunConversionAsync(
-                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds, customDicts
+                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds,  normCompat, customDicts
             );
         });
 
@@ -191,6 +199,7 @@ internal static class ConvertCommand
         string? deTofu,
         string? deTofuFile,
         bool keepIds,
+        bool normCompat,
         string[] customDicts)
     {
         try
@@ -213,6 +222,11 @@ internal static class ConvertCommand
             opencc.SetPreserveIds(keepIds);
 
             var inputStr = await ReadInputAsync(inputFile, inputEncoding);
+            if (normCompat)
+            {
+                inputStr = opencc.NormalizeCompat(inputStr);
+            }
+            
             var outputStr = opencc.Convert(inputStr, punct);
 
             if (!string.IsNullOrWhiteSpace(deTofu))

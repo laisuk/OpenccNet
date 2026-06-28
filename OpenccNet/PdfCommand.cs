@@ -83,6 +83,12 @@ internal static class PdfCommand
             Description = "Extract text from PDF only (no OpenCC conversion)."
         };
         
+        var normCompatOption = new Option<bool>("--norm-compat")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Normalize CJK Compatibility Ideographs before conversion."
+        };
+        
         var customDictOption = new Option<string[]>("--custom-dict")
         {
             Arity = ArgumentArity.ZeroOrMore,
@@ -118,6 +124,7 @@ internal static class PdfCommand
             compactOption,
             quietOption,
             extractOption,
+            normCompatOption,
             customDictOption,
         };
 
@@ -132,6 +139,7 @@ internal static class PdfCommand
             var compact = pr.GetValue(compactOption);
             var quiet = pr.GetValue(quietOption);
             var extract = pr.GetValue(extractOption);
+            var normCompat = pr.GetValue(normCompatOption);
             var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
@@ -219,6 +227,11 @@ internal static class PdfCommand
                     }
                     
                     var converter = new Opencc(config);
+                    if (normCompat)
+                    {
+                        finalText = converter.NormalizeCompat(finalText);
+                    }
+                    
                     finalText = converter.Convert(finalText, punctuation: punct);
                 }
 
