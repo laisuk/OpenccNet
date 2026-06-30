@@ -44,7 +44,7 @@ internal static class DictgenCommand
             Description = "For JSON format only: write readable Unicode characters instead of \\uXXXX escapes"
         };
 
-        var customDictOption = new Option<string[]>("--custom-dict")
+        var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
             AllowMultipleArgumentsPerToken = false,

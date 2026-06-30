@@ -65,7 +65,7 @@ internal static class PdfCommand
             Description = "Reflow CJK paragraphs into continuous lines."
         };
 
-        var compactOption = new Option<bool>("--compact")
+        var compactOption = new Option<bool>("--compact", "-C")
         {
             DefaultValueFactory = _ => false,
             Description = "Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow."
@@ -83,13 +83,13 @@ internal static class PdfCommand
             Description = "Extract text from PDF only (no OpenCC conversion)."
         };
         
-        var normCompatOption = new Option<bool>("--norm-compat")
+        var normCompatOption = new Option<bool>("--norm-compat", "-n")
         {
             DefaultValueFactory = _ => false,
             Description = "Normalize CJK Compatibility Ideographs before conversion."
         };
         
-        var customDictOption = new Option<string[]>("--custom-dict")
+        var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
             AllowMultipleArgumentsPerToken = false,

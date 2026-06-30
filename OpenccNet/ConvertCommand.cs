@@ -95,19 +95,19 @@ internal static class ConvertCommand
                 "Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires --detofu)"
         };
 
-        var keepIdsOption = new Option<bool>("--keep-ids")
+        var keepIdsOption = new Option<bool>("--keep-ids", "-I")
         {
             DefaultValueFactory = _ => false,
             Description = "Preserve Unicode IDS expressions during conversion."
         };
         
-        var normCompatOption = new Option<bool>("--norm-compat")
+        var normCompatOption = new Option<bool>("--norm-compat", "-n")
         {
             DefaultValueFactory = _ => false,
             Description = "Normalize CJK Compatibility Ideographs before conversion."
         };
 
-        var customDictOption = new Option<string[]>("--custom-dict")
+        var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
             AllowMultipleArgumentsPerToken = false,

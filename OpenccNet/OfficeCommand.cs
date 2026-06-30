@@ -78,7 +78,7 @@ internal static class OfficeCommand
             Description = "Suppress status and progress output; only errors will be shown."
         };
         
-        var customDictOption = new Option<string[]>("--custom-dict")
+        var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
             Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
