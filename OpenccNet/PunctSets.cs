@@ -97,6 +97,18 @@ internal static class PunctSets
     {
         return TryGetLastNonWhitespace(s, out _, out var last) && IsColonLike(last);
     }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool EndsWithEllipsis(ReadOnlySpan<char> s)
+    {
+        if (!TryGetLastNonWhitespace(s, out var index, out var last))
+        {
+            return false;
+        }
+
+        return last == '…'
+               || (last == '.' && index > 0 && s[index - 1] == '.');
+    }
 
     // -------------------------
     // Sentence endings (two tiers)

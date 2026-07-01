@@ -466,6 +466,17 @@ public static class ReflowHelper
 
             // *** DIALOG: treat any line that *starts* with a dialog opener as a new paragraph
             var currentIsDialogStart = PunctSets.BeginsWithDialogOpener(stripped);
+            var strippedEndsWithDialogCloser =
+                PunctSets.TryGetLastNonWhitespace(stripped, out var dialogCloserIdx, out var dialogCloserCh) &&
+                PunctSets.IsDialogCloser(dialogCloserCh);
+
+            var strippedHasUnclosedBracket = PunctSets.HasUnclosedBracket(stripped);
+            var strippedHasUnclosedDialogQuote = PunctSets.HasUnclosedDialogQuote(stripped);
+
+            var strippedEndsWithStrongSentenceEnd = PunctSets.EndsWithStrongSentenceEnd(stripped);
+            var strippedIsCompleteStandalone = strippedEndsWithStrongSentenceEnd
+                                               || PunctSets.EndsWithColonLike(stripped)
+                                               || PunctSets.EndsWithEllipsis(stripped);
 
             // 🔸 NEW RULE: If previous line ends with comma, 
             //     do NOT flush even if this line starts dialog.
@@ -474,7 +485,9 @@ public static class ReflowHelper
             {
                 // 9a-0) Complete single-line dialog.
                 // Flush previous buffer first, then emit this dialog as its own paragraph.
-                if (PunctSets.EndsWithDialogCloser(stripped))
+                if (strippedEndsWithDialogCloser
+                    && !strippedHasUnclosedBracket
+                    && !strippedHasUnclosedDialogQuote)
                 {
                     if (buffer.Length > 0)
                     {
@@ -510,10 +523,6 @@ public static class ReflowHelper
 
             // ----- Current line finalizer ------
 
-            var strippedEndsWithDialogCloser =
-                PunctSets.TryGetLastNonWhitespace(stripped, out var dialogCloserIdx, out var dialogCloserCh) &&
-                PunctSets.IsDialogCloser(dialogCloserCh);
-
             switch (buffer.Length)
             {
                 // ===== Finalizer: strong sentence end → flush immediately. Do not remove. ===== //
@@ -522,15 +531,26 @@ public static class ReflowHelper
                     when !dialogState.IsUnclosed
                          && !strippedEndsWithDialogCloser
                          && (buffer.Length > 120 || !HasUnclosedBracket())
-                         && PunctSets.EndsWithStrongSentenceEnd(stripped):
+                         && strippedIsCompleteStandalone:
                     buffer.Append(stripped); // buffer now has new value
                     segments.Add(buffer.ToString()); // This is not old bufferText (it had been updated)
                     buffer.Clear();
                     dialogState.Reset();
                     // dialogState.Update(stripped);
                     continue;
+                case 0
+                    when !dialogState.IsUnclosed
+                         && !strippedEndsWithDialogCloser
+                         && !strippedHasUnclosedBracket
+                         && !strippedHasUnclosedDialogQuote
+                         && strippedIsCompleteStandalone:
+                    segments.Add(stripped);
+                    buffer.Clear();
+                    dialogState.Reset();
+                    continue;
+                // 8) First line inside buffer → start of a new paragraph
+                // No boundary note here — flushing is handled later (Rule 10).
                 case 0:
-                    // 4) First line inside buffer → start of a new paragraph
                     buffer.Append(stripped);
                     dialogState.Reset();
                     dialogState.Update(stripped);
@@ -549,7 +569,7 @@ public static class ReflowHelper
 
                 // Snapshot bracket safety BEFORE appending current line
                 var bufferHasBracketIssue = HasUnclosedBracket();
-                var lineHasBracketIssue = PunctSets.HasUnclosedBracket(stripped);
+                // var lineHasBracketIssue = strippedHasUnclosedBracket;
 
                 buffer.Append(stripped);
                 dialogState.Update(stripped);
@@ -577,7 +597,7 @@ public static class ReflowHelper
                 //   not a complete sentence, and must not trigger a split.
                 if (!dialogState.IsUnclosed &&
                     punctBeforeCloserIsStrong &&
-                    (!bufferHasBracketIssue || lineHasBracketIssue || buffer.Length > 120))
+                    (!bufferHasBracketIssue || strippedHasUnclosedBracket || buffer.Length > 120))
                 {
                     segments.Add(buffer.ToString()); // use updated buffer content
                     buffer.Clear();
