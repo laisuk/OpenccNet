@@ -531,6 +531,7 @@ public static class ReflowHelper
                     when !dialogState.IsUnclosed
                          && !strippedEndsWithDialogCloser
                          && (buffer.Length > 120 || !HasUnclosedBracket())
+                         && !strippedHasUnclosedDialogQuote
                          && strippedIsCompleteStandalone:
                     buffer.Append(stripped); // buffer now has new value
                     segments.Add(buffer.ToString()); // This is not old bufferText (it had been updated)
