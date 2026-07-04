@@ -132,13 +132,13 @@ internal static class PunctSets
 
         var start = 0;
 
-        if (s.Length < 2 || !char.IsAsciiDigit(s[0])) return HasUnclosedBracket(s.AsSpan(start));
+        if (s.Length < 2 || !IsSimpleListNumber(s[0])) return HasUnclosedBracket(s.AsSpan(start));
         if (s[1] == ')' || s[1] == '）')
         {
             start = 2;
         }
         else if (s.Length >= 3
-                 && char.IsAsciiDigit(s[1])
+                 && IsSimpleListNumber(s[1])
                  && (s[2] == ')' || s[2] == '）'))
         {
             start = 3;
