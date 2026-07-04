@@ -89,34 +89,28 @@ internal static class PunctSets
                 return true;
         }
 
-        // 1) / 1. / 1、
-        if (len >= 2 && char.IsAsciiDigit(s[0]))
+        // 1) / 1） / 1、 / 1.
+        if (len < 2 || !char.IsAsciiDigit(s[0])) return false;
+        switch (s[1])
         {
-            switch (s[1])
-            {
-                // 1) / 1）
-                case ')':
-                case '）':
-                case '、':
-                    return true;
-                case '.':
-                    return len >= 3 && s[2] == ' ';
-            }
+            case ')':
+            case '）':
+            case '、':
+                return true;
+            case '.':
+                return len >= 3 && (s[2] == ' ' || CjkText.IsCjk(s[2]));
+        }
 
-            // 12) / 12. / 12、
-            if (len >= 3 && char.IsAsciiDigit(s[1]))
-            {
-                switch (s[2])
-                {
-                    // 12) / 12）
-                    case ')':
-                    case '）':
-                    case '、':
-                        return true;
-                    case '.':
-                        return len >= 4 && s[3] == ' ';
-                }
-            }
+        // 12) / 12） / 12、 / 12.
+        if (len < 3 || !char.IsAsciiDigit(s[1])) return false;
+        switch (s[2])
+        {
+            case ')':
+            case '）':
+            case '、':
+                return true;
+            case '.':
+                return len >= 4 && (s[3] == ' ' || CjkText.IsCjk(s[3]));
         }
 
         return false;
@@ -128,18 +122,16 @@ internal static class PunctSets
 
         var start = 0;
 
-        if (s.Length >= 2 && char.IsAsciiDigit(s[0]))
+        if (s.Length < 2 || !char.IsAsciiDigit(s[0])) return HasUnclosedBracket(s.AsSpan(start));
+        if (s[1] == ')' || s[1] == '）')
         {
-            if (s[1] == ')' || s[1] == '）')
-            {
-                start = 2;
-            }
-            else if (s.Length >= 3
-                     && char.IsAsciiDigit(s[1])
-                     && (s[2] == ')' || s[2] == '）'))
-            {
-                start = 3;
-            }
+            start = 2;
+        }
+        else if (s.Length >= 3
+                 && char.IsAsciiDigit(s[1])
+                 && (s[2] == ')' || s[2] == '）'))
+        {
+            start = 3;
         }
 
         return HasUnclosedBracket(s.AsSpan(start));
