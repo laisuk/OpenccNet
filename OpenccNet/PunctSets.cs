@@ -59,6 +59,88 @@ internal static class PunctSets
         return TryGetLastNonWhitespace(s, out _, out var last) && IsDialogCloser(last);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool BeginsWithSimpleListStarter(string s)
+    {
+        s = s.TrimStart();
+
+        if (s.StartsWith("- "))
+        {
+            return true;
+        }
+
+        var len = s.Length;
+
+        // (1) / (12)
+        if (len >= 3 && s[0] == '(' && char.IsAsciiDigit(s[1]))
+        {
+            if (s[2] == ')') return true;
+
+            if (len >= 4 && char.IsAsciiDigit(s[2]) && s[3] == ')')
+                return true;
+        }
+
+        // （1） / （12）
+        if (len >= 3 && s[0] == '（' && char.IsAsciiDigit(s[1]))
+        {
+            if (s[2] == '）') return true;
+
+            if (len >= 4 && char.IsAsciiDigit(s[2]) && s[3] == '）')
+                return true;
+        }
+
+        // 1) / 1.
+        if (len >= 2 && char.IsAsciiDigit(s[0]))
+        {
+            if (s[1] == ')')
+            {
+                return true;
+            }
+
+            if (s[1] == '.')
+            {
+                return len >= 3 && s[2] == ' ';
+            }
+
+            // 12) / 12.
+            if (len >= 3 && char.IsAsciiDigit(s[1]))
+            {
+                if (s[2] == ')')
+                {
+                    return true;
+                }
+
+                if (s[2] == '.')
+                {
+                    return len >= 4 && s[3] == ' ';
+                }
+            }
+        }
+
+        return false;
+    }
+
+    internal static bool SimpleListHasUnclosedBracket(string s)
+    {
+        s = s.TrimStart();
+
+        var start = 0;
+
+        if (s.Length >= 2 && char.IsAsciiDigit(s[0]))
+        {
+            if (s[1] == ')')
+            {
+                start = 2;
+            }
+            else if (s.Length >= 3 && char.IsAsciiDigit(s[1]) && s[2] == ')')
+            {
+                start = 3;
+            }
+        }
+
+        return HasUnclosedBracket(s.AsSpan(start));
+    }
+
     // -------------------------
     // Soft continuation punctuation
     // -------------------------

@@ -466,11 +466,14 @@ public static class ReflowHelper
 
             // *** DIALOG: treat any line that *starts* with a dialog opener as a new paragraph
             var currentIsDialogStart = PunctSets.BeginsWithDialogOpener(stripped);
+            var currentIsListStart = PunctSets.BeginsWithSimpleListStarter(stripped);
             var strippedEndsWithDialogCloser =
                 PunctSets.TryGetLastNonWhitespace(stripped, out var dialogCloserIdx, out var dialogCloserCh) &&
                 PunctSets.IsDialogCloser(dialogCloserCh);
 
-            var strippedHasUnclosedBracket = PunctSets.HasUnclosedBracket(stripped);
+            var strippedHasUnclosedBracket = currentIsListStart
+                ? PunctSets.SimpleListHasUnclosedBracket(stripped)
+                : PunctSets.HasUnclosedBracket(stripped);
             var strippedHasUnclosedDialogQuote = PunctSets.HasUnclosedDialogQuote(stripped);
 
             var strippedEndsWithStrongSentenceEnd = PunctSets.EndsWithStrongSentenceEnd(stripped);
@@ -478,14 +481,16 @@ public static class ReflowHelper
                                                || PunctSets.EndsWithColonLike(stripped)
                                                || PunctSets.EndsWithEllipsis(stripped);
 
-            // 🔸 NEW RULE: If previous line ends with comma, 
+            // 🔸 9a) NEW RULE: If previous line ends with comma, 
             //     do NOT flush even if this line starts dialog.
             //     (comma-ending means the sentence is not finished)
-            if (currentIsDialogStart)
+            // DIALOG/LIST: treat dialog openers and simple list starters as paragraph-boundary candidates.
+            if (currentIsDialogStart || currentIsListStart)
             {
                 // 9a-0) Complete single-line dialog.
                 // Flush previous buffer first, then emit this dialog as its own paragraph.
-                if (strippedEndsWithDialogCloser
+                if (currentIsDialogStart
+                    && strippedEndsWithDialogCloser
                     && !strippedHasUnclosedBracket
                     && !strippedHasUnclosedDialogQuote)
                 {
@@ -500,23 +505,54 @@ public static class ReflowHelper
                     continue;
                 }
 
+                // 9a-1) Complete single-line simple list.
+                // Flush previous buffer first, then emit this simple list as its own paragraph.
+                if (currentIsListStart
+                    && strippedIsCompleteStandalone
+                    && !strippedHasUnclosedBracket
+                    && !strippedHasUnclosedDialogQuote)
+                {
+                    if (buffer.Length > 0)
+                    {
+                        segments.Add(BufferText());
+                        buffer.Clear();
+                    }
+
+                    segments.Add(stripped);
+                    continue;
+                }
+
+                var bufferText = BufferText();
+
                 var shouldFlushPrev =
                     buffer.Length > 0 &&
-                    PunctSets.TryGetLastNonWhitespace(BufferText(), out _, out var last) &&
-                    !PunctSets.IsCommaLike(last) &&
-                    !CjkText.IsCjk(last) &&
-                    !dialogState.IsUnclosed &&
-                    !HasUnclosedBracket();
+                    (
+                        // Consecutive simple list items: previous item ends here.
+                        (currentIsListStart && PunctSets.BeginsWithSimpleListStarter(bufferText))
+                        ||
+                        (
+                            PunctSets.TryGetLastNonWhitespace(bufferText, out _, out var last) &&
+                            !PunctSets.IsCommaLike(last) &&
+                            !CjkText.IsCjk(last) &&
+                            !dialogState.IsUnclosed &&
+                            !HasUnclosedBracket()
+                        )
+                    );
 
                 if (shouldFlushPrev)
                 {
-                    segments.Add(BufferText());
+                    segments.Add(bufferText);
                     buffer.Clear();
                 }
 
                 // Start (or continue) the dialog paragraph
                 buffer.Append(stripped);
-                dialogState.Reset();
+
+                if (currentIsDialogStart)
+                {
+                    dialogState.Reset();
+                }
+
                 dialogState.Update(stripped);
                 continue;
             }
