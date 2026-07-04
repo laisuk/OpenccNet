@@ -92,7 +92,8 @@ internal static class PunctSets
         // 1) / 1.
         if (len >= 2 && char.IsAsciiDigit(s[0]))
         {
-            if (s[1] == ')')
+            // 1) / 1）
+            if (s[1] == ')' || s[1] == '）')
             {
                 return true;
             }
@@ -105,7 +106,8 @@ internal static class PunctSets
             // 12) / 12.
             if (len >= 3 && char.IsAsciiDigit(s[1]))
             {
-                if (s[2] == ')')
+                // 12) / 12）
+                if (s[2] == ')' || s[2] == '）')
                 {
                     return true;
                 }
@@ -128,11 +130,13 @@ internal static class PunctSets
 
         if (s.Length >= 2 && char.IsAsciiDigit(s[0]))
         {
-            if (s[1] == ')')
+            if (s[1] == ')' || s[1] == '）')
             {
                 start = 2;
             }
-            else if (s.Length >= 3 && char.IsAsciiDigit(s[1]) && s[2] == ')')
+            else if (s.Length >= 3
+                     && char.IsAsciiDigit(s[1])
+                     && (s[2] == ')' || s[2] == '）'))
             {
                 start = 3;
             }
