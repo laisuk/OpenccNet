@@ -72,25 +72,25 @@ internal static class PunctSets
         var len = s.Length;
 
         // (1) / (12)
-        if (len >= 3 && s[0] == '(' && char.IsAsciiDigit(s[1]))
+        if (len >= 3 && s[0] == '(' && IsSimpleListNumber(s[1]))
         {
             if (s[2] == ')') return true;
 
-            if (len >= 4 && char.IsAsciiDigit(s[2]) && s[3] == ')')
+            if (len >= 4 && IsSimpleListNumber(s[2]) && s[3] == ')')
                 return true;
         }
 
         // （1） / （12）
-        if (len >= 3 && s[0] == '（' && char.IsAsciiDigit(s[1]))
+        if (len >= 3 && s[0] == '（' && IsSimpleListNumber(s[1]))
         {
             if (s[2] == '）') return true;
 
-            if (len >= 4 && char.IsAsciiDigit(s[2]) && s[3] == '）')
+            if (len >= 4 && IsSimpleListNumber(s[2]) && s[3] == '）')
                 return true;
         }
 
-        // 1) / 1） / 1、 / 1.
-        if (len < 2 || !char.IsAsciiDigit(s[0])) return false;
+        // 1) / 1） / 1、 / 1. / 一、 / 十一、
+        if (len < 2 || !IsSimpleListNumber(s[0])) return false;
         switch (s[1])
         {
             case ')':
@@ -101,8 +101,8 @@ internal static class PunctSets
                 return len >= 3 && (s[2] == ' ' || CjkText.IsCjk(s[2]));
         }
 
-        // 12) / 12） / 12、 / 12.
-        if (len < 3 || !char.IsAsciiDigit(s[1])) return false;
+        // 12) / 12） / 12、 / 12. / 十一） / 十一、
+        if (len < 3 || !IsSimpleListNumber(s[1])) return false;
         switch (s[2])
         {
             case ')':
@@ -115,6 +115,16 @@ internal static class PunctSets
 
         return false;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsSimpleListNumber(char ch)
+    {
+        return char.IsAsciiDigit(ch)
+               || ch is >= '０' and <= '９'
+               || ch is '一' or '二' or '三' or '四' or '五'
+                   or '六' or '七' or '八' or '九' or '十';
+    }
+
 
     internal static bool SimpleListHasUnclosedBracket(string s)
     {
