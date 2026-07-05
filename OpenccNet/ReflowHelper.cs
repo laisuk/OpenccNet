@@ -7,9 +7,11 @@ namespace OpenccNet;
 public static class ReflowHelper
 {
     // Chapter / heading patterns (短行 + 第N章/卷/节/部, 前言/序章/终章/尾声/番外)
+    // Reject commas only in the latter part (>20 chars), since early commas are
+    // common in subtitles while later commas are usually narrative prose.
     private static readonly Regex TitleHeadingRegex =
         new(
-            @"^(?!.*[,，])(?=.{0,50}$)
+            @"^(?!.{20,}[,，])(?=.{0,50}$)
                   (前言|序章|楔子|终章|尾声|后记|尾聲|後記|番外.{0,15}
                   |.{0,10}?第.{0,5}?([章节部卷節回][^分合的])|(?:卷|章)[一二三四五六七八九十](?:$|.{0,20}?)
                   )",

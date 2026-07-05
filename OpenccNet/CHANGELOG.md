@@ -18,6 +18,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 ### Changed
 
 - CLI: Optimized `OpenccNet office` subcommand.
+- Reflow: Allow commas in title headings when they appear within the first 20 characters.
 
 ---
 
