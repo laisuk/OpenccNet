@@ -602,9 +602,28 @@ public static class ReflowHelper
             if (strippedEndsWithDialogCloser)
             {
                 // Check punctuation right before the closer (e.g., “？” / “。”)
-                var punctBeforeCloserIsStrong =
-                    PunctSets.TryGetPrevNonWhitespace(stripped, dialogCloserIdx, out var prevCh) &&
-                    PunctSets.IsClauseOrEndPunct(prevCh);
+                bool punctBeforeCloserIsStrong;
+
+                if (PunctSets.TryGetPrevNonWhitespace(stripped, dialogCloserIdx, out var prevCh))
+                {
+                    // Normal case: previous character exists on this line.
+                    punctBeforeCloserIsStrong = PunctSets.IsClauseOrEndPunct(prevCh);
+                }
+                else
+                {
+                    // Standalone dialog closer line. Look at the previous buffered text.
+                    punctBeforeCloserIsStrong = false;
+
+                    for (var i = buffer.Length - 1; i >= 0; i--)
+                    {
+                        var ch = buffer[i];
+                        if (char.IsWhiteSpace(ch))
+                            continue;
+
+                        punctBeforeCloserIsStrong = PunctSets.IsClauseOrEndPunct(ch);
+                        break;
+                    }
+                }
 
                 // Snapshot bracket safety BEFORE appending current line
                 var bufferHasBracketIssue = HasUnclosedBracket();
