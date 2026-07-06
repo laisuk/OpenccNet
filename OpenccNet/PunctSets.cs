@@ -64,9 +64,24 @@ internal static class PunctSets
     {
         s = s.TrimStart();
 
-        if (s.StartsWith("- "))
+        if (s.Length >= 2)
         {
-            return true;
+            switch (s[0])
+            {
+                case '-':
+                case '*':
+                case '＊': // Fullwidth *
+                case '•':
+                case '‧': // U+2027 HYPHENATION POINT (often produced by PDF/OCR as a bullet)
+                case '▪':
+                case '◦':
+                case '○':
+                case '●':
+                case '※':
+                    if (char.IsWhiteSpace(s[1]))
+                        return true;
+                    break;
+            }
         }
 
         var len = s.Length;
