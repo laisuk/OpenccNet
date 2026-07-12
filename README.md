@@ -111,6 +111,8 @@ Console.WriteLine(traditional);
 | tw2sp  | Traditional (Taiwan, idioms) → Simplified       |
 | s2hkp  | Simplified → Traditional (Hong Kong phrases)    |
 | hk2sp  | Traditional (Hong Kong phrases) → Simplified    |
+| t2hkp  | Traditional → Traditional (Hong Kong, phrases)  |
+| hk2tp  | Traditional (Hong Kong, phrases) → Traditional  |
 | s2hk   | Simplified → Traditional (Hong Kong)            |
 | hk2s   | Traditional (Hong Kong) → Simplified            |
 | t2tw   | Traditional → Traditional (Taiwan)              |
@@ -1140,6 +1142,8 @@ realistic workloads while preserving deterministic conversion results.
 - `string Tw2Sp(string inputText, bool punctuation = false)`
 - `string S2Hkp(string inputText, bool punctuation = false)`
 - `string Hk2Sp(string inputText, bool punctuation = false)`
+- `string T2Hkp(string inputText)`
+- `string Hk2Tp(string inputText)`
 - `string S2Hk(string inputText, bool punctuation = false)`
 - `string Hk2S(string inputText, bool punctuation = false)`
 - `string T2Tw(string inputText)`
@@ -1382,7 +1386,7 @@ Options:
   -i, --input <input>               Read original text from file <input>
   -o, --output <output>             Write original text to file <output>
   -c, --config <config> (REQUIRED)  Conversion configuration.
-                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
   -p, --punct                       Punctuation conversion.
   --detofu <detofu>                 Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i
   --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires --detofu)
@@ -1423,7 +1427,7 @@ Options:
   -i, --input <input>               Input Office document <input>
   -o, --output <output>             Output Office document <output>
   -c, --config <config> (REQUIRED)  Conversion configuration.
-                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
   -p, --punct                       Enable punctuation conversion.
   -f, --format <format>             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   -k, --keep-font                   Preserve font names in Office documents [default: true]. Use --keep-font:false to disable.
@@ -1445,7 +1449,7 @@ Options:
   -i, --input <input>              Input PDF file <input.pdf>
   -o, --output <output>            Output text file <output.txt>
   -c, --config <config>            Conversion configuration.
-                                   Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                                   Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
   -p, --punct                      Enable punctuation conversion.
   -H, --header                     Add [Page x/y] headers to the extracted text.
   -r, --reflow                     Reflow CJK paragraphs into continuous lines.

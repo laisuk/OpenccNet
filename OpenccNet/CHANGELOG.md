@@ -11,6 +11,8 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Add
 
+- CLI: added `t2hkp` and `hk2tp` as supported direct Hong Kong phrase conversion configurations.
+
 - CLI: convert/office/pdf/dictgen - added feature `--custom-dict` to enable custom conversion dictionary slot.
 - OpenccNetLib: added CJK Compatibility Ideograph normalization through `CompatIdeographs` and
   `Opencc.NormalizeCompat(...)` for optional pre-processing before conversion.

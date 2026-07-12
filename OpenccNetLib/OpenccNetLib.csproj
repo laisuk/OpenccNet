@@ -25,7 +25,7 @@
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.6.1
 
-            - Added s2hkp / hk2sp Hong Kong phrase conversion.
+            - Added s2hkp / hk2sp and direct t2hkp / hk2tp Hong Kong phrase conversions.
             - Added HKPhrases, HKPhrasesRev, TWVariantsPhrases, and HKVariantsPhrases dictionary slots.
             - Added DeTofu support with custom fallback mappings and files.
             - Updated s2twp and regional variant conversion chains to match upstream OpenCC.

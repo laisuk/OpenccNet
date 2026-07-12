@@ -115,16 +115,16 @@ namespace OpenccNetLib
             HkRevPair,
 
             /// <summary>
-            /// Simplified → Hong Kong phrases round-2 triple:
+            /// Hong Kong phrase and variant dictionaries:
             /// phrases + variants_phrases + variants.
             /// </summary>
-            S2HkpR2HkTriple,
+            HkTriple,
 
             /// <summary>
-            /// Hong Kong → Simplified round-1 triple:
+            /// Reverse Hong Kong phrase and variant dictionaries:
             /// phrases_rev + variants_rev_phrases + variants_rev.
             /// </summary>
-            Hk2SpR1HkRevTriple,
+            HkRevTriple,
 
             // --- Japan-specific ---
 
@@ -242,7 +242,8 @@ namespace OpenccNetLib
         /// Simplified Chinese to Traditional Chinese, and round 2 performs
         /// Taiwan phrase and variant normalization. Direct <c>T2Twp</c> and
         /// <c>Tw2Tp</c> conversions use the same Taiwan triple dictionary groups
-        /// in a single round.
+        /// in a single round. Likewise, direct <c>T2Hkp</c> and <c>Hk2Tp</c>
+        /// conversions use the Hong Kong triple dictionary groups in one round.
         /// </para>
         /// </remarks>
         /// <param name="config">
@@ -298,7 +299,7 @@ namespace OpenccNetLib
                 case OpenccConfig.S2Hkp:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.S2HkpR2HkTriple, out var r2);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.HkTriple, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
@@ -311,7 +312,7 @@ namespace OpenccNetLib
 
                 case OpenccConfig.Hk2Sp:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.Hk2SpR1HkRevTriple, out var r1);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.HkRevTriple, out var r1);
                     var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
@@ -363,6 +364,17 @@ namespace OpenccNetLib
                 case OpenccConfig.Hk2T:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkRevPair, out var r1);
+                    return new DictRefs(r1, u1);
+                }
+                case OpenccConfig.T2Hkp:
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.HkTriple, out var r1);
+                    return new DictRefs(r1, u1);
+                }
+
+                case OpenccConfig.Hk2Tp:
+                {
+                    var u1 = GetOrAddUnionFor(d, UnionKey.HkRevTriple, out var r1);
                     return new DictRefs(r1, u1);
                 }
 
@@ -559,7 +571,7 @@ namespace OpenccNetLib
                         d.hk_variants_rev
                     };
 
-                case UnionKey.S2HkpR2HkTriple:
+                case UnionKey.HkTriple:
                     return new[]
                     {
                         d.hk_phrases,
@@ -567,7 +579,7 @@ namespace OpenccNetLib
                         d.hk_variants
                     };
 
-                case UnionKey.Hk2SpR1HkRevTriple:
+                case UnionKey.HkRevTriple:
                     return new[]
                     {
                         d.hk_phrases_rev,

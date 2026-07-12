@@ -70,6 +70,8 @@ Console.WriteLine(traditional);
 | tw2sp  | Traditional (Taiwan, phrases) → Simplified      |
 | s2hkp  | Simplified → Traditional (Hong Kong phrases)    |
 | hk2sp  | Traditional (Hong Kong phrases) → Simplified    |
+| t2hkp  | Traditional → Traditional (Hong Kong, phrases)  |
+| hk2tp  | Traditional (Hong Kong, phrases) → Traditional  |
 | s2hk   | Simplified → Traditional (Hong Kong)            |
 | hk2s   | Traditional (Hong Kong) → Simplified            |
 | t2tw   | Traditional → Traditional (Taiwan)              |
@@ -265,6 +267,8 @@ Console.WriteLine(traditional); // Output: 漢字轉換測試
 - `string Tw2Sp(string inputText, bool punctuation = false)`
 - `string S2Hkp(string inputText, bool punctuation = false)`
 - `string Hk2Sp(string inputText, bool punctuation = false)`
+- `string T2Hkp(string inputText)`
+- `string Hk2Tp(string inputText)`
 - `string S2Hk(string inputText, bool punctuation = false)`
 - `string Hk2S(string inputText, bool punctuation = false)`
 - `string T2Tw(string inputText)`
@@ -337,7 +341,7 @@ Usage:
 Options:
   -i, --input              Read original text from file <input>
   -o, --output             Write original text to file <output>
-  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|hk2s|jp2t|t2jp
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|t2hkp|hk2tp|hk2s|jp2t|t2jp
   -p, --punct              Punctuation conversion. [default: False]
   --in-enc                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
   --out-enc                Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
@@ -356,7 +360,7 @@ Usage:
 Options:
   -i, --input              Input Office document <input>
   -o, --output             Output Office document <output>
-  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|hk2s|jp2t|t2jp
+  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|t2hkp|hk2tp|hk2s|jp2t|t2jp
   -p, --punct              Enable punctuation conversion. [default: False]
   -f, --format             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   --keep-font              Preserve font names in Office documents [default: true]. Use --keep-font:false to disable. [default: True]

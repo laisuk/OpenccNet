@@ -10,6 +10,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Added direct Hong Kong phrase conversions: `t2hkp` / `OpenccConfig.T2Hkp` / `Opencc.T2Hkp(...)` and
+  `hk2tp` / `OpenccConfig.Hk2Tp` / `Opencc.Hk2Tp(...)`.
+- Added one-round `HkTriple` and `HkRevTriple` conversion plans shared with `s2hkp` and `hk2sp`.
+
 - Added CJK Compatibility Ideograph normalization support.
     - New `CompatIdeographs` helper for built-in and custom compatibility ideograph normalization.
     - New `Opencc.NormalizeCompat(...)` convenience API for normalizing compatibility ideographs before OpenCC
@@ -26,7 +30,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Update dictionary data
+- Update dictionary data.
 - Hardened Office/EPUB conversion against corrupted ZIP/package output by validating rebuilt packages before success.
 - Added explicit null/empty input validation for package bytes, paths, formats, and converter instances.
 - Preserved underlying ZIP/package exceptions as inner exceptions on conversion failures.

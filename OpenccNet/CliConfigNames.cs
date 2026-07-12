@@ -13,6 +13,8 @@ internal static class CliConfigNames
             "tw2sp",
             "s2hkp",
             "hk2sp",
+            "t2hkp",
+            "hk2tp",
             "s2hk",
             "hk2s",
             "t2tw",

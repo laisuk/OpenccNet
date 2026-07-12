@@ -109,7 +109,17 @@ namespace OpenccNetLib
         /// <summary>
         /// Traditional Chinese (Hong Kong Standard, with phrases) → Simplified Chinese.
         /// </summary>
-        Hk2Sp
+        Hk2Sp,
+
+        /// <summary>
+        /// Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
+        /// </summary>
+        T2Hkp,
+
+        /// <summary>
+        /// Traditional Chinese (Hong Kong Standard, with phrases) → Traditional Chinese (General Standard).
+        /// </summary>
+        Hk2Tp
     }
 
     // @Since v1.4.1
@@ -132,6 +142,8 @@ namespace OpenccNetLib
                 case OpenccConfig.S2Hkp: return "s2hkp";
                 case OpenccConfig.Tw2Sp: return "tw2sp";
                 case OpenccConfig.Hk2Sp: return "hk2sp";
+                case OpenccConfig.T2Hkp: return "t2hkp";
+                case OpenccConfig.Hk2Tp: return "hk2tp";
                 case OpenccConfig.S2Hk: return "s2hk";
                 case OpenccConfig.Hk2S: return "hk2s";
                 case OpenccConfig.T2Tw: return "t2tw";
@@ -276,6 +288,8 @@ namespace OpenccNetLib
             new ConfigEntry(OpenccConfig.Hk2T, "hk2t"),
             new ConfigEntry(OpenccConfig.T2Jp, "t2jp"),
             new ConfigEntry(OpenccConfig.Jp2T, "jp2t"),
+            new ConfigEntry(OpenccConfig.T2Hkp, "t2hkp"),
+            new ConfigEntry(OpenccConfig.Hk2Tp, "hk2tp"),
         };
 
         /// <summary>
@@ -1845,6 +1859,30 @@ namespace OpenccNetLib
         }
 
         /// <summary>
+        /// Converts Traditional Chinese to Hong Kong Traditional Chinese in one dictionary pass,
+        /// applying Hong Kong phrase mappings, phrase variants, and character variants.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
+        public string T2Hkp(string inputText)
+        {
+            var refs = GetDictRefs(OpenccConfig.T2Hkp, false);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
+        }
+
+        /// <summary>
+        /// Converts Hong Kong Traditional Chinese with phrase normalization to standard Traditional Chinese
+        /// in one dictionary pass, reversing Hong Kong phrases, phrase variants, and character variants.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <returns>The converted text.</returns>
+        public string Hk2Tp(string inputText)
+        {
+            var refs = GetDictRefs(OpenccConfig.Hk2Tp, false);
+            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
+        }
+
+        /// <summary>
         /// Converts Traditional Chinese to Hong Kong Traditional Chinese.
         /// </summary>
         /// <param name="inputText">The input text.</param>
@@ -1922,6 +1960,8 @@ namespace OpenccNetLib
                         return T2Tw(inputText);
                     case OpenccConfig.T2Twp:
                         return T2Twp(inputText);
+                    case OpenccConfig.T2Hkp:
+                        return T2Hkp(inputText);
                     case OpenccConfig.T2Hk:
                         return T2Hk(inputText);
                     case OpenccConfig.Tw2S:
@@ -1936,6 +1976,8 @@ namespace OpenccNetLib
                         return Tw2Tp(inputText);
                     case OpenccConfig.Hk2S:
                         return Hk2S(inputText, punctuation);
+                    case OpenccConfig.Hk2Tp:
+                        return Hk2Tp(inputText);
                     case OpenccConfig.Hk2T:
                         return Hk2T(inputText);
                     case OpenccConfig.Jp2T:

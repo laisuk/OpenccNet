@@ -3,7 +3,7 @@
 # Format: key	value(s) (values separated by spaces)
 # License: Apache-2.0 (see LICENSE)
 # Source: https://github.com/ByVoid/OpenCC
-# Used in configs: s2hkp.json (via HKPhrases.ocd2)
+# Used by s2hkp and t2hkp conversions (via HKPhrases.ocd2).
 
 伊利諾伊	伊利諾
 伊利諾伊州	伊利諾州
