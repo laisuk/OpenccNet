@@ -1810,7 +1810,8 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Converts Traditional Chinese to Taiwan Traditional Chinese with Taiwan phrase and variant normalization.
+        /// Converts Traditional Chinese to Taiwan Traditional Chinese in one dictionary pass,
+        /// applying Taiwan phrase mappings, phrase variants, and character variants.
         /// </summary>
         /// <param name="inputText">The input text.</param>
         /// <returns>The converted text.</returns>
@@ -1832,7 +1833,8 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Converts Taiwan Traditional Chinese to Traditional Chinese (with phrase round).
+        /// Converts Taiwan Traditional Chinese to standard Traditional Chinese in one dictionary pass,
+        /// reversing Taiwan phrases, phrase variants, and character variants.
         /// </summary>
         /// <param name="inputText">The input text.</param>
         /// <returns>The converted text.</returns>

@@ -81,16 +81,6 @@ namespace OpenccNetLib
             // --- Taiwan-specific ---
 
             /// <summary>
-            /// Taiwan phrases only (excludes character-level variants).
-            /// </summary>
-            TwPhrasesOnly,
-
-            /// <summary>
-            /// Taiwan reverse phrases only.
-            /// </summary>
-            TwPhrasesRevOnly,
-
-            /// <summary>
             /// Taiwan forward variant pair: phrase variants + character variants.
             /// </summary>
             TwVariantsPair,
@@ -101,16 +91,16 @@ namespace OpenccNetLib
             TwRevPair,
 
             /// <summary>
-            /// Simplified → Taiwan phrases round-2 triple:
-            /// phrases + variants_phrases + variants.
+            /// Taiwan phrase and variant dictionaries:
+            /// phrases + variant phrases + character variants.
             /// </summary>
-            S2TwpR2TwTriple,
+            TwTriple,
 
             /// <summary>
-            /// Taiwan → Simplified round-1 triple:
-            /// phrases_rev + variants_rev_phrases + variants_rev.
+            /// Reverse Taiwan phrase and variant dictionaries:
+            /// reverse phrases + reverse variant phrases + reverse character variants.
             /// </summary>
-            Tw2SpR1TwRevTriple,
+            TwRevTriple,
 
             // --- Hong Kong-specific ---
 
@@ -247,10 +237,12 @@ namespace OpenccNetLib
         /// consist of two sequential rounds of dictionary application, while
         /// others (such as <c>S2T</c> and <c>T2S</c>) require only one round.
         /// Complex conversions such as <c>S2Twp</c> and <c>Tw2Sp</c> use
-        /// two sequential rounds.  Each round is represented by its corresponding
+        /// two sequential rounds. Each round is represented by its corresponding
         /// <see cref="UnionKey"/> entry. For <c>S2Twp</c>, round 1 converts
         /// Simplified Chinese to Traditional Chinese, and round 2 performs
-        /// Taiwan phrase and variant normalization.
+        /// Taiwan phrase and variant normalization. Direct <c>T2Twp</c> and
+        /// <c>Tw2Tp</c> conversions use the same Taiwan triple dictionary groups
+        /// in a single round.
         /// </para>
         /// </remarks>
         /// <param name="config">
@@ -299,7 +291,7 @@ namespace OpenccNetLib
                 case OpenccConfig.S2Twp:
                 {
                     var u1 = GetOrAddUnionFor(d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.S2TwpR2TwTriple, out var r2);
+                    var u2 = GetOrAddUnionFor(d, UnionKey.TwTriple, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
 
@@ -312,7 +304,7 @@ namespace OpenccNetLib
 
                 case OpenccConfig.Tw2Sp:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.Tw2SpR1TwRevTriple, out var r1);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwRevTriple, out var r1);
                     var u2 = GetOrAddUnionFor(d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r2);
                     return new DictRefs(r1, u1).WithRound2(r2, u2);
                 }
@@ -346,9 +338,8 @@ namespace OpenccNetLib
 
                 case OpenccConfig.T2Twp:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.TwPhrasesOnly, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.TwVariantsPair, out var r2);
-                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwTriple, out var r1);
+                    return new DictRefs(r1, u1);
                 }
 
                 case OpenccConfig.Tw2T:
@@ -359,9 +350,8 @@ namespace OpenccNetLib
 
                 case OpenccConfig.Tw2Tp:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
-                    var u2 = GetOrAddUnionFor(d, UnionKey.TwPhrasesRevOnly, out var r2);
-                    return new DictRefs(r1, u1).WithRound2(r2, u2);
+                    var u1 = GetOrAddUnionFor(d, UnionKey.TwRevTriple, out var r1);
+                    return new DictRefs(r1, u1);
                 }
 
                 case OpenccConfig.T2Hk:
@@ -524,18 +514,12 @@ namespace OpenccNetLib
                     };
 
                 // --- TW ---
-                case UnionKey.TwPhrasesOnly:
-                    return new[] { d.tw_phrases };
-
                 case UnionKey.TwVariantsPair:
                     return new[]
                     {
                         d.tw_variants_phrases,
                         d.tw_variants
                     };
-
-                case UnionKey.TwPhrasesRevOnly:
-                    return new[] { d.tw_phrases_rev };
 
                 case UnionKey.TwRevPair:
                     return new[]
@@ -544,7 +528,7 @@ namespace OpenccNetLib
                         d.tw_variants_rev
                     };
 
-                case UnionKey.Tw2SpR1TwRevTriple:
+                case UnionKey.TwRevTriple:
                     return new[]
                     {
                         d.tw_phrases_rev,
@@ -552,7 +536,7 @@ namespace OpenccNetLib
                         d.tw_variants_rev
                     };
 
-                case UnionKey.S2TwpR2TwTriple:
+                case UnionKey.TwTriple:
                     return new[]
                     {
                         d.tw_phrases,
