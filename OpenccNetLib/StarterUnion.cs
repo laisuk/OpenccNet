@@ -136,6 +136,19 @@ namespace OpenccNetLib
 
         // ---- Legacy overloads: keep, discourage, and route to GetAt ----
 
+        /// <summary>
+        /// Gets the maximum key length and allowed-length mask for a UTF-16 starter code unit.
+        /// </summary>
+        /// <remarks>
+        /// This overload does not handle supplementary-plane starters correctly. Use
+        /// <see cref="GetAt(char,char,bool,out int,out bool,out ushort,out ulong,out ushort)"/>
+        /// for new code.
+        /// </remarks>
+        /// <param name="c0">The first UTF-16 code unit of the starter.</param>
+        /// <param name="cap">The maximum key length, in UTF-16 code units, for the starter.</param>
+        /// <param name="mask">
+        /// A bitmask of key lengths from 1 through 64, where bit <c>n - 1</c> represents length <c>n</c>.
+        /// </param>
         [Obsolete("Use GetAt(c0,c1,hasSecond, ...) to handle astral starters correctly.")]
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -145,6 +158,23 @@ namespace OpenccNetLib
             mask = _mask[c0];
         }
 
+        /// <summary>
+        /// Gets the maximum key length, allowed-length mask, and minimum key length for a
+        /// UTF-16 starter code unit.
+        /// </summary>
+        /// <remarks>
+        /// This overload does not handle supplementary-plane starters correctly. Use
+        /// <see cref="GetAt(char,char,bool,out int,out bool,out ushort,out ulong,out ushort)"/>
+        /// for new code.
+        /// </remarks>
+        /// <param name="c0">The first UTF-16 code unit of the starter.</param>
+        /// <param name="cap">The maximum key length, in UTF-16 code units, for the starter.</param>
+        /// <param name="mask">
+        /// A bitmask of key lengths from 1 through 64, where bit <c>n - 1</c> represents length <c>n</c>.
+        /// </param>
+        /// <param name="minLen">
+        /// The minimum key length, in UTF-16 code units, or zero if no key uses the starter.
+        /// </param>
         [Obsolete("Use GetAt(c0,c1,hasSecond, ...) to handle astral starters correctly.")]
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -159,6 +189,10 @@ namespace OpenccNetLib
         /// FAST PATH: Build from precomputed per-starter masks (no key scans).
         /// Falls back to legacy key-scan if StarterLenMask is absent.
         /// </summary>
+        /// <param name="dictionaries">The dictionaries whose starter metadata is combined.</param>
+        /// <returns>
+        /// A union containing the combined maximum, minimum, and allowed key lengths for each starter.
+        /// </returns>
         public static StarterUnion Build(IReadOnlyList<DictWithMaxLength> dictionaries)
         {
             // If at least one dict has StarterLenMask populated, use the fast union path.

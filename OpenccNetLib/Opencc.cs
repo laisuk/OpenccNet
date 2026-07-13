@@ -122,13 +122,22 @@ namespace OpenccNetLib
         Hk2Tp
     }
 
+    /// <summary>
+    /// Provides helpers for converting <see cref="OpenccConfig"/> values to their
+    /// canonical lowercase OpenCC configuration names.
+    /// </summary>
     // @Since v1.4.1
     public static class OpenccConfigExtensions
     {
         /// <summary>
-        /// Converts an <see cref="OpenccConfig"/> value to its canonical Opencc configuration name
-        /// (e.g. "s2t", "s2twp").
+        /// Converts an <see cref="OpenccConfig"/> value to its canonical OpenCC configuration name
+        /// (for example, <c>"s2t"</c> or <c>"s2twp"</c>).
         /// </summary>
+        /// <param name="config">The OpenCC configuration to convert.</param>
+        /// <returns>The canonical lowercase configuration name.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="config"/> is not a defined <see cref="OpenccConfig"/> value.
+        /// </exception>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string ToCanonicalName(this OpenccConfig config)
         {
@@ -972,6 +981,9 @@ namespace OpenccNetLib
         /// <summary>
         /// Gets the last error message, if any, from the most recent operation.
         /// </summary>
+        /// <returns>
+        /// The last configuration-related error message, or <see langword="null"/> if no error is recorded.
+        /// </returns>
         public string GetLastError()
         {
             return _lastError;
@@ -2051,7 +2063,7 @@ namespace OpenccNetLib
 
         #endregion
 
-        #region Compat Ideograghs and DeTofu Region
+        #region Compat Ideographs and DeTofu Region
 
         /// <summary>
         /// Normalizes CJK Compatibility Ideographs using the built-in Unicode
@@ -2075,7 +2087,7 @@ namespace OpenccNetLib
         /// </para>
         ///
         /// <para>
-        /// DeToFu is the opposite side of the pipeline: compatibility ideograph
+        /// DeTofu is the opposite side of the pipeline: compatibility ideograph
         /// normalization is a pre-processing step, while
         /// <see cref="DeTofu(string, DeTofuLevel)"/> is an optional
         /// post-processing display fallback.
@@ -2087,9 +2099,15 @@ namespace OpenccNetLib
         ///
         /// var normalized = cc.NormalizeCompat("金庸小說");
         /// var converted = cc.Convert(normalized);
-        /// var display = cc.DeToFu(converted, DeTofuLevel.ExtB);
+        /// var display = cc.DeTofu(converted, DeTofuLevel.ExtB);
         /// </code>
         /// </example>
+        /// <param name="text">
+        /// The input text to normalize. A <see langword="null"/> value is treated as empty text.
+        /// </param>
+        /// <returns>
+        /// Text with mapped CJK Compatibility Ideographs normalized; unmapped text is preserved.
+        /// </returns>
         public string NormalizeCompat(string text)
         {
             return CompatIdeographs.Builtin().Normalize(text);

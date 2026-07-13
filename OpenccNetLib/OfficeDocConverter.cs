@@ -175,6 +175,11 @@ namespace OpenccNetLib
         /// <see cref="OfficeDocConverter"/> (<c>docx/xlsx/pptx/odt/ods/odp/epub</c>).
         /// </summary>
         /// <param name="format">Logical format name (e.g. "docx"). Case-insensitive.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="format"/> identifies a supported format;
+        /// otherwise, <see langword="false"/>. Null, empty, and whitespace-only values return
+        /// <see langword="false"/>.
+        /// </returns>
         public static bool IsSupportedFormat(string format)
         {
             return !string.IsNullOrWhiteSpace(format) && SupportedFormatSet.Contains(format.Trim());
@@ -1039,16 +1044,9 @@ namespace OpenccNetLib
                         }
                     }
 
-                    string convertedXml;
-
-                    if (format == OfficeFormat.Xlsx)
-                    {
-                        convertedXml = ConvertXlsxXmlPart(xmlContent, relativePath, converter, punctuation);
-                    }
-                    else
-                    {
-                        convertedXml = converter.Convert(xmlContent, punctuation);
-                    }
+                    var convertedXml = format == OfficeFormat.Xlsx
+                        ? ConvertXlsxXmlPart(xmlContent, relativePath, converter, punctuation)
+                        : converter.Convert(xmlContent, punctuation);
 
                     // Restore fonts
                     if (fontMap != null)

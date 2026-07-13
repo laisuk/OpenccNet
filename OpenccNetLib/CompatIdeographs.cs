@@ -16,7 +16,7 @@ namespace OpenccNetLib
     /// <para>
     /// Compatibility ideograph normalization is intentionally separate from
     /// <see cref="DeTofu"/>. Compatibility normalization runs before segmentation
-    /// and conversion when callers want Unicode compatibility behavior; DeToFu is
+    /// and conversion when callers want Unicode compatibility behavior; DeTofu is
     /// an optional post-processing display fallback for rare characters after
     /// conversion.
     /// </para>
