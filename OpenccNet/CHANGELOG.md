@@ -7,7 +7,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.6.1] - Unreleased
+## [1.6.1] - 2026-07-15
 
 ### Add
 
@@ -21,7 +21,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 - CLI: Optimized `OpenccNet office` subcommand.
 - Reflow: Allow commas in title headings when they appear within the first 20 characters.
-- Reflow: Handle standalone dialog closer line in reflow finalizer
+- Reflow: Handle standalone dialog closer line and simple list starter in reflow finalizer.
 
 ---
 
