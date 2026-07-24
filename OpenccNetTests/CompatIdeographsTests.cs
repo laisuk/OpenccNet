@@ -51,8 +51,7 @@ namespace OpenccNetTests
         [TestMethod]
         public void FromText_RejectsSourceOutsideCompatibilityIdeographRanges()
         {
-            Assert.Throws<ArgumentException>(
-                () => CompatIdeographs.FromText("漢\t汉\n"));
+            Assert.Throws<ArgumentException>(() => CompatIdeographs.FromText("漢\t汉\n"));
         }
 
         [TestMethod]
@@ -60,8 +59,48 @@ namespace OpenccNetTests
         {
             var compat = CompatIdeographs.FromText("鼖\t鼖\n");
 
-            Assert.Throws<ArgumentException>(
-                () => compat.NormalizeScalar("鼖鼻"));
+            Assert.Throws<ArgumentException>(() => compat.NormalizeScalar("鼖鼻"));
+        }
+
+        [TestMethod]
+        public void NormalizeScalar_RejectsEmptyString()
+        {
+            var compat = CompatIdeographs.FromText(string.Empty);
+
+            Assert.Throws<ArgumentException>(() => compat.NormalizeScalar(string.Empty));
+        }
+
+        [TestMethod]
+        public void NormalizeScalar_RejectsIsolatedHighSurrogate()
+        {
+            var compat = CompatIdeographs.FromText(string.Empty);
+
+            Assert.Throws<ArgumentException>(() => compat.NormalizeScalar("\uD800"));
+        }
+
+        [TestMethod]
+        public void NormalizeScalar_RejectsIsolatedLowSurrogate()
+        {
+            var compat = CompatIdeographs.FromText(string.Empty);
+
+            Assert.Throws<ArgumentException>(() => compat.NormalizeScalar("\uDC00"));
+        }
+
+        [TestMethod]
+        public void FromText_RejectsIsolatedSurrogateMapping()
+        {
+            Assert.Throws<ArgumentException>(() => CompatIdeographs.FromText("\uD800\t金\n"));
+
+            Assert.Throws<ArgumentException>(() => CompatIdeographs.FromText("金\t\uDC00\n"));
+        }
+
+        [TestMethod]
+        public void Normalize_PreservesIsolatedSurrogates()
+        {
+            var compat = CompatIdeographs.FromText(string.Empty);
+            var input = "A\uD800B\uDC00C";
+
+            Assert.AreEqual(input, compat.Normalize(input));
         }
     }
 }
