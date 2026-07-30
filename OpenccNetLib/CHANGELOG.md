@@ -8,6 +8,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.6.2] - Unreleased
 
+### Added
+
+- Added canonical custom-dictionary token parsing with `<slot>:<append|override>:<path>`. The public
+  `CustomDictSpec.Parse(...)` API and CLI now share strict `DictSlot` validation, canonical names, and active-slot
+  enumeration, rejecting numeric, unknown, and obsolete slots while preserving Windows and colon-containing paths.
+
 ### Changed
 
 - Update dictionary data.

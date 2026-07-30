@@ -102,7 +102,7 @@ internal static class PdfCommand
             {
                 try
                 {
-                    CliUtils.ParseCustomDictSpec(value);
+                    CustomDictSpec.Parse(value);
                 }
                 catch (ArgumentException ex)
                 {
@@ -219,7 +219,7 @@ internal static class PdfCommand
                         var dict = DictionaryLib.New();
 
                         var specs = customDicts
-                            .Select(CliUtils.ParseCustomDictSpec)
+                            .Select(CustomDictSpec.Parse)
                             .ToArray();
 
                         DictionaryLib.WithCustomDicts(dict, specs);

@@ -507,6 +507,67 @@ Direct Hong Kong phrase slots are customizable too. `DictSlot.HKPhrases` is used
 Simplified-to-Traditional conversion, and `DictSlot.HKPhrasesRev` is used by `hk2sp` before Traditional-to-Simplified
 conversion.
 
+#### Portable custom-dictionary specifications
+
+A portable custom-dictionary token has this grammar:
+
+```text
+<slot>:<append|override>:<path>
+```
+
+Use `CustomDictSpec.Parse(...)` when a specification comes from configuration, a command line, or another portable
+string source. Slot and mode matching is case-insensitive. Slot parsing is strict: numeric enum strings, unknown names,
+and the obsolete `JPVariants` and `JPVariantsRev` slots are rejected. The parser splits the token into no more than
+three fields, preserving Windows drive-letter paths and relative paths containing additional colons. It validates the
+specification syntax but does not check whether the file exists; dictionary loading reports missing or unreadable files.
+
+```csharp
+using OpenccNetLib;
+
+var parsed = CustomDictSpec.Parse(
+    @"hkphrasesrev:append:data\my_hk_dict.txt");
+
+var parsedDict = DictionaryLib.WithCustomDicts(
+    DictionaryLib.New(),
+    new[] { parsed });
+```
+
+Use `CustomDictSpec.FromFile(...)` when the slot and mode are already strongly typed in C#:
+
+```csharp
+var typed = CustomDictSpec.FromFile(
+    DictSlot.HKPhrasesRev,
+    @"data\my_hk_dict.txt",
+    CustomDictMode.Append);
+
+var typedDict = DictionaryLib.WithCustomDicts(
+    DictionaryLib.New(),
+    new[] { typed });
+```
+
+`Parse(...)` and `FromFile(...)` construct specifications; they do not load files or change the active dictionary.
+Apply the resulting specifications with `DictionaryLib.WithCustomDicts(...)`. For custom files applied while loading a
+complete OpenCC text dictionary directory, use `DictionaryLib.FromDicts(...)` with its strongly typed `appends` or
+`overrides` dictionaries.
+
+Canonical names and supported slots are discoverable without maintaining a separate list:
+
+```csharp
+foreach (var slot in DictSlotExtensions.ActiveSlots)
+{
+    Console.WriteLine(slot.ToCanonicalName());
+}
+
+var slotParsed = DictSlotExtensions.Parse("hkphrasesrev");
+bool recognized = DictSlotExtensions.TryParse("HKPhrasesRev", out var slotTried);
+```
+
+The token representation is intentionally unified across the C#, Java, Rust, and Python OpenCC ecosystem. This release
+provides the public C# `CustomDictSpec.Parse(...)` API and uses it for the C# CLI. A matching public library parser is
+not claimed here for Java, Rust, or Python; those public API ports are separate work and should be treated as planned or
+not yet ported unless the documentation for that language explicitly says otherwise. A CLI in another language may
+already accept the shared token without exposing a public library parser.
+
 #### File-level customization
 
 Use `DictionaryLib.FromDicts()` when custom files should be applied while loading the OpenCC text dictionaries.
@@ -687,6 +748,11 @@ at load time.
 | API                       | Description                                    |
 |---------------------------|------------------------------------------------|
 | `DictSlot`                | Strongly typed OpenCC dictionary slot selector |
+| `DictSlotExtensions.ActiveSlots` | Enumerate active supported slots             |
+| `DictSlotExtensions.Parse(...)` / `TryParse(...)` | Strictly parse a canonical slot name |
+| `DictSlotExtensions.ToCanonicalName()` | Format an active slot canonically    |
+| `CustomDictSpec.Parse(...)` | Parse a portable custom-dictionary token        |
+| `CustomDictSpec.FromFile(...)` | Construct a strongly typed single-file spec  |
 | `CustomDictSpec.Slot`     | Target slot                                    |
 | `CustomDictSpec.Paths`    | Custom dictionary files                        |
 | `CustomDictSpec.Pairs`    | In-memory dictionary entries                   |
@@ -750,9 +816,6 @@ is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt
 dictionary used by `t2jp`. `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active
 dictionary schema. Users who provide custom dictionary bundles, JSON, CBOR, or Zstd packs must regenerate
 those bundles or include the new non-empty `JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
-The retired `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` enum members remain defined as obsolete compatibility
-sentinels with their original numeric values. Custom dictionary APIs reject these inactive slots rather than silently
-redirecting their values to a different dictionary.
 The retired `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` enum members remain defined as obsolete compatibility
 sentinels with their original numeric values. Custom dictionary APIs reject these inactive slots rather than silently
 redirecting their values to a different dictionary.
@@ -1398,9 +1461,9 @@ Options:
   -?, -h, --help                    Show help and usage information
 ```
 
-Example: append a custom Hong Kong phrase dictionary for `hk2sp`.
+Example: append a custom Hong Kong phrase dictionary for `hk2sp` using the verified portable token.
 
-`data/my_hk_dict.txt`:
+`data\my_hk_dict.txt`:
 
 ```text
 # Custom Dictionary
@@ -1408,10 +1471,18 @@ Example: append a custom Hong Kong phrase dictionary for `hk2sp`.
 細路哥	小男孩
 ```
 
-```bash
-echo "這個細路哥很靈活" | ./OpenccNet convert -c hk2sp --custom-dict hkphrasesrev:append:data/my_hk_dict.txt
+```powershell
+"這個細路哥很靈活" | .\OpenccNet.exe convert -c hk2sp -D 'hkphrasesrev:append:data\my_hk_dict.txt'
 这个小男孩很灵活
 ✅ Conversion (hk2sp): <stdin> → <stdout>
+```
+
+Repeat `-D` or `--custom-dict` to apply multiple specifications in command-line order:
+
+```powershell
+.\OpenccNet.exe convert -c hk2sp -i input.txt -o output.txt `
+  -D 'hkphrasesrev:append:data\my_hk_dict.txt' `
+  --custom-dict 'tsphrases:append:data\company_ts_phrases.txt'
 ```
 
 ### `OpenccNet office`

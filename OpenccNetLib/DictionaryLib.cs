@@ -1164,10 +1164,9 @@ namespace OpenccNetLib
 
             var instance = new DictionaryMaxlength();
 
-            foreach (var kv in SlotFiles)
+            foreach (var slot in DictSlotExtensions.ActiveSlots)
             {
-                var slot = kv.Key;
-                var file = kv.Value;
+                var file = SlotFiles[slot];
                 var path = Path.Combine(baseDir, file);
 
                 SetSlot(instance, slot, LoadFile(path));
@@ -1177,7 +1176,7 @@ namespace OpenccNetLib
             {
                 foreach (var kv in overrides)
                 {
-                    if (!SlotFiles.ContainsKey(kv.Key))
+                    if (!kv.Key.IsActive())
                         throw new ArgumentException("Unknown dictionary slot: " + kv.Key);
 
                     SetSlot(instance, kv.Key, LoadFile(ResolveUserPath(kv.Value)));
@@ -1188,7 +1187,7 @@ namespace OpenccNetLib
             {
                 foreach (var kv in appends)
                 {
-                    if (!SlotFiles.ContainsKey(kv.Key))
+                    if (!kv.Key.IsActive())
                         throw new ArgumentException("Unknown dictionary slot: " + kv.Key);
 
                     AppendSlot(instance, kv.Key, ResolveUserPath(kv.Value));
@@ -1454,7 +1453,7 @@ namespace OpenccNetLib
             DictionaryMaxlength dict,
             CustomDictSpec spec)
         {
-            if (!SlotFiles.ContainsKey(spec.Slot))
+            if (!spec.Slot.IsActive())
                 throw new ArgumentException("Unknown dictionary slot: " + spec.Slot, nameof(spec));
 
             var hasPaths = spec.Paths != null && spec.Paths.Length > 0;

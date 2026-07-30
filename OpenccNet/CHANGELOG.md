@@ -7,6 +7,15 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## [1.6.2] - Unreleased
+
+### Changed
+
+- CLI: `-D` / `--custom-dict` now delegates the shared `<slot>:<append|override>:<path>` token grammar to
+  `OpenccNetLib.CustomDictSpec.Parse(...)`, including strict slot validation and colon-preserving paths.
+
+---
+
 ## [1.6.1] - 2026-07-15
 
 ### Add
