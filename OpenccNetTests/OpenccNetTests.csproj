@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <!-- net8.0 selects OpenccNetLib's netstandard2.0 fallback; net10.0 selects its net9.0 asset. -->
+        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
         <LangVersion>default</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>

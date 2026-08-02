@@ -245,6 +245,35 @@ public class OpenccNetTests
     }
 
     [TestMethod]
+    [DataRow("", "")]
+    [DataRow("发髮後臺", "發髮後臺")]
+    [DataRow("A发😀台!", "A發😀臺!")]
+    public void ST_ProducesSameResultsAcrossTargetPaths(string input, string expected)
+    {
+        Assert.AreEqual(expected, Opencc.St(input));
+    }
+
+    [TestMethod]
+    [DataRow("", "")]
+    [DataRow("發髮後臺", "发发后台")]
+    [DataRow("A發😀臺!", "A发😀台!")]
+    public void TS_ProducesSameResultsAcrossTargetPaths(string input, string expected)
+    {
+        Assert.AreEqual(expected, Opencc.Ts(input));
+    }
+
+    [TestMethod]
+    [DataRow("这是简体字。", 2)]
+    [DataRow("這是繁體字。", 1)]
+    [DataRow("汉漢", 1)]
+    [DataRow("English 😀 123!", 0)]
+    [DataRow("", 0)]
+    public void ZhoCheck_ProducesSameResultsAcrossTargetPaths(string input, int expected)
+    {
+        Assert.AreEqual(expected, Opencc.ZhoCheck(input));
+    }
+
+    [TestMethod]
     public void ZhoCheck_SimplifiedText()
     {
         const string simplifiedText = "这是一个简体中文文本。";

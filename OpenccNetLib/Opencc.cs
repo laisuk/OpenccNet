@@ -1507,11 +1507,13 @@ namespace OpenccNetLib
 
             var i = 0;
 
+#if !NET9_0_OR_GREATER
             // Ensure we rent at least length 1
             var bufferLen = Math.Max(1, maxWordLength);
             var keyBuffer = ArrayPool<char>.Shared.Rent(bufferLen);
 
             try
+#endif
             {
                 while (i < textLen)
                 {
@@ -1524,7 +1526,9 @@ namespace OpenccNetLib
                     // Descend from longest to shortest
                     for (var length = tryMaxLen; length > 0; --length)
                     {
+#if !NET9_0_OR_GREATER
                         string key = null;
+#endif
 
                         // Probe dictionaries lazily:
                         // Only materialize the key when at least one dictionary supports this length.
@@ -1534,6 +1538,10 @@ namespace OpenccNetLib
                             if (!dict.SupportsLength(length))
                                 continue;
 
+#if NET9_0_OR_GREATER
+                            if (!dict.TryGetValue(remaining.Slice(0, length), out var match))
+                                continue;
+#else
                             if (key == null)
                             {
                                 var wordSpan = remaining.Slice(0, length);
@@ -1543,6 +1551,7 @@ namespace OpenccNetLib
 
                             if (!dict.TryGetValue(key, out var match))
                                 continue;
+#endif
 
                             bestMatch = match;
                             bestMatchLength = length;
@@ -1563,10 +1572,12 @@ namespace OpenccNetLib
                     }
                 }
             }
+#if !NET9_0_OR_GREATER
             finally
             {
                 ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
             }
+#endif
 
             return sb.ToString();
         }
@@ -2074,11 +2085,74 @@ namespace OpenccNetLib
             var lengthInElements = Math.Min(stringInfo.LengthInTextElements, 100);
             var safeText = stringInfo.SubstringByTextElements(0, lengthInElements);
 
-            var tsConverted = Ts(safeText);
-            if (safeText != tsConverted) return 1;
+            if (ConversionChangesText(safeText.AsSpan(), Dictionary.ts_characters, 2)) return 1;
 
-            var stConverted = St(safeText);
-            return safeText != stConverted ? 2 : 0;
+            return ConversionChangesText(safeText.AsSpan(), Dictionary.st_characters, 2) ? 2 : 0;
+        }
+
+        /// <summary>
+        /// Determines whether dictionary conversion would change <paramref name="text"/>
+        /// without constructing the converted string.
+        /// </summary>
+        /// <remarks>
+        /// The matching order mirrors <see cref="ConvertBy(ReadOnlySpan{char}, DictWithMaxLength[], int)"/>.
+        /// On .NET 9 and later, span alternate lookup avoids allocating candidate keys;
+        /// the .NET Standard 2.0 path retains string-key lookup compatibility.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ConversionChangesText(
+            ReadOnlySpan<char> text,
+            DictWithMaxLength dictionary,
+            int maxWordLength)
+        {
+            var inputIndex = 0;
+            var outputIndex = 0;
+
+            while (inputIndex < text.Length)
+            {
+                var remaining = text.Slice(inputIndex);
+                var tryMaxLength = Math.Min(maxWordLength, remaining.Length);
+                string match = null;
+                var matchLength = 0;
+
+                for (var length = tryMaxLength; length > 0; --length)
+                {
+                    if (!dictionary.SupportsLength(length))
+                        continue;
+
+#if NET9_0_OR_GREATER
+                    if (!dictionary.TryGetValue(remaining.Slice(0, length), out match))
+                        continue;
+#else
+                    var key = remaining.Slice(0, length).ToString();
+                    if (!dictionary.TryGetValue(key, out match))
+                        continue;
+#endif
+
+                    matchLength = length;
+                    break;
+                }
+
+                if (match != null)
+                {
+                    if (outputIndex > text.Length - match.Length ||
+                        !text.Slice(outputIndex, match.Length).SequenceEqual(match.AsSpan()))
+                        return true;
+
+                    outputIndex += match.Length;
+                    inputIndex += matchLength;
+                }
+                else
+                {
+                    if (outputIndex >= text.Length || text[outputIndex] != text[inputIndex])
+                        return true;
+
+                    outputIndex++;
+                    inputIndex++;
+                }
+            }
+
+            return outputIndex != text.Length;
         }
 
         #endregion
