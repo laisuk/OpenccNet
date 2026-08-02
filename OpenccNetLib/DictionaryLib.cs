@@ -75,6 +75,22 @@ namespace OpenccNetLib
             return Dict.TryGetValue(key, out value);
         }
 
+#if NET9_0_OR_GREATER
+        /// <summary>
+        /// Attempts to get a value without materializing the span as a string.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal bool TryGetValue(ReadOnlySpan<char> key, out string value)
+        {
+            if (Dict.TryGetAlternateLookup<ReadOnlySpan<char>>(out var lookup))
+                return lookup.TryGetValue(key, out value);
+
+            // Preserve support for callers that assign a custom comparer which
+            // does not implement alternate span equality.
+            return Dict.TryGetValue(key.ToString(), out value);
+        }
+#endif
+
         /// <summary>
         /// Determines whether the dictionary contains any key with the specified length.
         /// </summary>

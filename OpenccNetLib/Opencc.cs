@@ -1335,9 +1335,13 @@ namespace OpenccNetLib
             }
 
             var i = 0;
+#if !NET9_0_OR_GREATER
             var keyBuffer = ArrayPool<char>.Shared.Rent(Math.Max(1, union.GlobalCap));
+#endif
 
+#if !NET9_0_OR_GREATER
             try
+#endif
             {
                 while (i < n)
                 {
@@ -1375,19 +1379,25 @@ namespace OpenccNetLib
                         step >= unionMinLen &&
                         ((lenMaskAll >> (step - 1)) & 1UL) != 0UL)
                     {
+#if !NET9_0_OR_GREATER
                         keyBuffer[0] = c0;
                         if (step == 2) keyBuffer[1] = c1;
 
                         string keyStep = null;
+#endif
 
                         for (var di = 0; di < dictionaries.Length; di++)
                         {
                             var d = dictionaries[di];
                             if (!d.SupportsLength(step)) continue;
 
+#if NET9_0_OR_GREATER
+                            if (!d.TryGetValue(textSpan.Slice(i, step), out var repl)) continue;
+#else
                             if (keyStep == null)
                                 keyStep = new string(keyBuffer, 0, step);
                             if (!d.TryGetValue(keyStep, out var repl)) continue;
+#endif
 
                             sb.Append(repl);
                             i += step;
@@ -1398,7 +1408,9 @@ namespace OpenccNetLib
                     string bestMatch = null;
                     var bestLen = 0;
 
+#if !NET9_0_OR_GREATER
                     textSpan.Slice(i, tryMax).CopyTo(keyBuffer);
+#endif
                     var lower = unionMinLen > step ? unionMinLen : step;
 
                     for (var len = tryMax; len >= lower; --len)
@@ -1406,16 +1418,22 @@ namespace OpenccNetLib
                         if (len <= 64 && ((lenMaskAll >> (len - 1)) & 1UL) == 0UL)
                             continue;
 
+#if !NET9_0_OR_GREATER
                         string key = null;
+#endif
 
                         for (var di = 0; di < dictionaries.Length; di++)
                         {
                             var d = dictionaries[di];
                             if (!d.SupportsLength(len)) continue;
 
+#if NET9_0_OR_GREATER
+                            if (!d.TryGetValue(textSpan.Slice(i, len), out var repl)) continue;
+#else
                             if (key == null)
                                 key = new string(keyBuffer, 0, len);
                             if (!d.TryGetValue(key, out var repl)) continue;
+#endif
 
                             bestMatch = repl;
                             bestLen = len;
@@ -1439,10 +1457,12 @@ namespace OpenccNetLib
                     ContinueOuter: ;
                 }
             }
+#if !NET9_0_OR_GREATER
             finally
             {
                 ArrayPool<char>.Shared.Return(keyBuffer, clearArray: false);
             }
+#endif
         }
 
         /// <summary>

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks>netstandard2.0;net9.0</TargetFrameworks>
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
@@ -24,6 +24,10 @@
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.6.2
+
+            - Added a net9.0 target asset for the optimized conversion hot path; netstandard2.0 remains the primary compatibility target and fallback.
+            - Optimized ConvertByUnionInto() on .NET 9 and later with allocation-free span-key dictionary lookup,
+              substantially reducing temporary allocations and improving conversion throughput while leaving the netstandard2.0 path unchanged.
 
             - Added direct Hong Kong phrase conversions: t2hkp and hk2tp.
             - Added CJK Compatibility Ideograph normalization with NormalizeCompat().

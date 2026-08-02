@@ -13,9 +13,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added canonical custom-dictionary token parsing with `<slot>:<append|override>:<path>`. The public
   `CustomDictSpec.Parse(...)` API and CLI now share strict `DictSlot` validation, canonical names, and active-slot
   enumeration, rejecting numeric, unknown, and obsolete slots while preserving Windows and colon-containing paths.
+- Added a `net9.0` target asset to enable allocation-free span-key dictionary lookup in the conversion hot path.
+  The package continues to retain `netstandard2.0` as its primary compatibility target and fallback; no existing
+  target or public API was removed.
 
 ### Changed
 
+- Optimized `ConvertByUnionInto()` on .NET 9 and later by using dictionary alternate lookup directly from
+  `ReadOnlySpan<char>`, substantially reducing temporary candidate-key allocations and improving conversion
+  throughput. The `netstandard2.0` conversion path remains unchanged.
 - Update dictionary data.
 
 ---
