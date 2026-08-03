@@ -102,5 +102,71 @@ namespace OpenccNetTests
 
             Assert.AreEqual(input, compat.Normalize(input));
         }
+
+        [TestMethod]
+        public void Normalize_ReturnsSameReference_WhenNoCandidateExists()
+        {
+            var compat = CompatIdeographs.FromText("金\t金\n");
+            var input = "普通文本 ABC 😀";
+
+            Assert.AreSame(input, compat.Normalize(input));
+        }
+
+        [TestMethod]
+        public void Normalize_ReturnsSameReference_ForUnmappedCandidates()
+        {
+            var compat = CompatIdeographs.FromText("金\t金\n");
+            var input = "A更丸Z";
+
+            Assert.AreSame(input, compat.Normalize(input));
+        }
+
+        [TestMethod]
+        public void Normalize_PreservesSurrogatesOutsideCompatibilityRange()
+        {
+            var compat = CompatIdeographs.FromText("金\t金\n");
+            var input = "😀\uD87E\uDFFF\uD87E\uDBFF\uDC00";
+
+            Assert.AreSame(input, compat.Normalize(input));
+        }
+
+        [TestMethod]
+        public void Normalize_MixedMappedAndUnmappedText()
+        {
+            var compat = CompatIdeographs.FromText(
+                "金\t金\n" +
+                "鼖\t鼖\n");
+            var input = "前更金😀鼻鼖後\uD800\uDC00";
+
+            Assert.AreEqual("前更金😀鼻鼖後\uD800\uDC00", compat.Normalize(input));
+        }
+
+        [TestMethod]
+        public void Normalize_HandlesMappingsThatChangeUtf16Length()
+        {
+            var compat = CompatIdeographs.FromText(
+                "金\t𪘀\n" +
+                "鼖\t鼖\n");
+
+            Assert.AreEqual("A𪘀B鼖C", compat.Normalize("A金B鼖C"));
+        }
+
+        [TestMethod]
+        public void Normalize_PreservesMalformedSurrogatesAroundMappings()
+        {
+            var compat = CompatIdeographs.FromText("金\t金\n");
+            var input = "A\uD800金\uDC00Z";
+
+            Assert.AreEqual("A\uD800金\uDC00Z", compat.Normalize(input));
+        }
+
+        [TestMethod]
+        public void Normalize_EmptyAndNullKeepEstablishedSemantics()
+        {
+            var compat = CompatIdeographs.FromText(string.Empty);
+
+            Assert.AreSame(string.Empty, compat.Normalize(string.Empty));
+            Assert.AreEqual(string.Empty, compat.Normalize(null!));
+        }
     }
 }

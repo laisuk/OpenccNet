@@ -174,19 +174,122 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(input))
                 return input ?? string.Empty;
 
+#if NET9_0_OR_GREATER
+            var firstMapping = FindFirstMapping(input.AsSpan());
+#else
+            var firstMapping = FindFirstMapping(input);
+#endif
+            if (firstMapping < 0)
+                return input;
+
             var output = new StringBuilder(input.Length);
+            output.Append(input, 0, firstMapping);
 
-            for (var i = 0; i < input.Length; i++)
+            for (var i = firstMapping; i < input.Length; i++)
             {
-                var codePoint = ReadCodePointAt(input, i, out var charCount);
-                output.Append(NormalizeCodePoint(codePoint));
+                var ch = input[i];
 
-                if (charCount == 2)
-                    i++;
+                if (ch >= BmpStart && ch <= BmpEnd)
+                {
+                    output.Append(_bmp[ch - BmpStart]);
+                    continue;
+                }
+
+                if (ch == '\uD87E' && i + 1 < input.Length)
+                {
+                    var low = input[i + 1];
+                    if (low >= '\uDC00' && low <= '\uDE1F')
+                    {
+                        var codePoint = char.ConvertToUtf32(ch, low);
+                        output.Append(_supp[codePoint - SuppStart]);
+                        i++;
+                        continue;
+                    }
+                }
+
+                output.Append(ch);
             }
 
             return output.ToString();
         }
+
+#if NET9_0_OR_GREATER
+        private int FindFirstMapping(ReadOnlySpan<char> input)
+        {
+            var offset = 0;
+
+            while (offset < input.Length)
+            {
+                var remaining = input.Slice(offset);
+                var bmpIndex = remaining.IndexOfAnyInRange((char)BmpStart, (char)BmpEnd);
+                var suppIndex = remaining.IndexOf('\uD87E');
+
+                if (bmpIndex < 0) bmpIndex = int.MaxValue;
+                if (suppIndex < 0) suppIndex = int.MaxValue;
+
+                var candidateIndex = Math.Min(bmpIndex, suppIndex);
+                if (candidateIndex == int.MaxValue)
+                    return -1;
+
+                var index = offset + candidateIndex;
+                if (HasMappingAt(input, index))
+                    return index;
+
+                offset = index + 1;
+            }
+
+            return -1;
+        }
+
+        private bool HasMappingAt(ReadOnlySpan<char> input, int index)
+        {
+            var ch = input[index];
+            if (ch >= BmpStart && ch <= BmpEnd)
+            {
+                var mapping = _bmp[ch - BmpStart];
+                return mapping.Length != 1 || mapping[0] != ch;
+            }
+
+            if (index + 1 >= input.Length)
+                return false;
+
+            var low = input[index + 1];
+            if (low < '\uDC00' || low > '\uDE1F')
+                return false;
+
+            var supplementaryMapping = _supp[char.ConvertToUtf32(ch, low) - SuppStart];
+            return supplementaryMapping.Length != 2 || supplementaryMapping[0] != ch ||
+                   supplementaryMapping[1] != low;
+        }
+#else
+        private int FindFirstMapping(string input)
+        {
+            for (var i = 0; i < input.Length; i++)
+            {
+                var ch = input[i];
+                if (ch >= BmpStart && ch <= BmpEnd)
+                {
+                    var mapping = _bmp[ch - BmpStart];
+                    if (mapping.Length != 1 || mapping[0] != ch)
+                        return i;
+                }
+                else if (ch == '\uD87E' && i + 1 < input.Length)
+                {
+                    var low = input[i + 1];
+                    if (low >= '\uDC00' && low <= '\uDE1F')
+                    {
+                        var mapping = _supp[char.ConvertToUtf32(ch, low) - SuppStart];
+                        if (mapping.Length != 2 || mapping[0] != ch || mapping[1] != low)
+                            return i;
+
+                        i++;
+                    }
+                }
+            }
+
+            return -1;
+        }
+#endif
 
         /// <summary>
         /// Normalizes a mutable string buffer in place.

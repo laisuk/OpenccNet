@@ -10,19 +10,37 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Added canonical custom-dictionary token parsing with `<slot>:<append|override>:<path>`. The public
-  `CustomDictSpec.Parse(...)` API and CLI now share strict `DictSlot` validation, canonical names, and active-slot
-  enumeration, rejecting numeric, unknown, and obsolete slots while preserving Windows and colon-containing paths.
-- Added a `net9.0` target asset to enable allocation-free span-key dictionary lookup in the conversion hot path.
-  The package continues to retain `netstandard2.0` as its primary compatibility target and fallback; no existing
-  target or public API was removed.
+- Added canonical custom-dictionary token parsing using `<slot>:<append|override>:<path>`. The public
+  `CustomDictSpec.Parse(...)` API and CLI now share strict `DictSlot` validation, canonical naming, and active-slot
+  enumeration. Numeric, unknown, and obsolete slots are rejected, while Windows and other colon-containing paths remain
+  supported.
+- Added a `net9.0` target asset for modern runtime optimizations while retaining `netstandard2.0` as the primary
+  compatibility target and fallback. No existing target or public API was removed.
+- Added differential and randomized splitter tests covering delimiters, inclusive and exclusive modes, IDS preservation,
+  supplementary characters, and malformed UTF-16.
+- Added tests verifying that built-in DeTofu maps return independent mutable clones and cannot modify the cached
+  built-in mapping data used by static conversion.
 
 ### Changed
 
-- Optimized `ConvertByUnionInto()` on .NET 9 and later by using dictionary alternate lookup directly from
-  `ReadOnlySpan<char>`, substantially reducing temporary candidate-key allocations and improving conversion
-  throughput. The `netstandard2.0` conversion path remains unchanged.
-- Update dictionary data.
+- Optimized `ConvertByUnionInto()` on .NET 9 and later with allocation-free alternate dictionary lookup directly from
+  `ReadOnlySpan<char>`, substantially reducing temporary candidate-key allocations and improving conversion throughput.
+- Optimized compatibility-ideograph normalization on .NET 9 and later with range-based candidate searches and lazy
+  `StringBuilder` allocation. Inputs requiring no normalization now return the original string without allocation.
+- Optimized non-IDS text splitting on .NET 9 and later with an adaptive delimiter search. Sparse text uses
+  `SearchValues<char>`, while punctuation-heavy text retains the established bitset path to avoid regressions.
+- Optimized IDS-preserving conversion on .NET 9 and later by detecting whether the input contains a recognized IDS
+  operator. IDS-free input now uses the optimized non-IDS paths, while input containing IDS operators retains the
+  established IDS-aware implementation.
+- Reduced speculative splitter allocations by capping the initial range capacity on the sparse modern path.
+- Refactored DeTofu lookup to use Unicode scalar keys and direct UTF-16 scanning, eliminating per-scalar substring and
+  iterator allocations. Result construction is now deferred until the first replacement, and unchanged input returns the
+  original string without allocation.
+- Cached built-in DeTofu mapping data for static conversion while preserving independently mutable maps returned by
+  `DeTofuMap.Builtin()`.
+- Preserved malformed and unpaired-surrogate handling in DeTofu conversion.
+- Preserved the established `netstandard2.0` conversion, normalization, splitter, and IDS-aware paths.
+- Updated dictionary data.
 
 ---
 
@@ -75,8 +93,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   Kyujitai-to-Japanese Shinjitai character conversion.
 - Added full loading, metadata normalization, JSON/CBOR/Zstd serialization, and custom dictionary append/override
   support for the new Taiwan, Hong Kong, and Japanese Shinjitai dictionary slots.
-- Added DeTofu display-compatibility support for rare non-BMP CJK extension characters that may render as tofu boxes
-  or missing glyphs on systems with incomplete font coverage.
+- Added DeTofu display-compatibility support for rare non-BMP CJK extension characters that may render as tofu boxes or
+  missing glyphs on systems with incomplete font coverage.
 - Added public DeTofu APIs:
     - `DeTofuLevel`
     - `DeTofu.ParseLevel(...)`
@@ -92,9 +110,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   custom pairs applied afterward so later mappings override earlier mappings for the same tofu-risk character.
 - Added threshold-based DeTofu extension levels where `ExtB` means Extension B and above, `ExtC` means Extension C and
   above, and `ExtI` means Extension I only.
-- Added tests covering strict loading, enum availability, Zstd provider hydration, JSON/CBOR field preservation,
-  custom dictionary append/override behavior, direct `s2hkp` / `hk2sp` conversion, JP Shinjitai conversion topology,
-  DeTofu fallback behavior, and phrase-before-character conversion ordering.
+- Added tests covering strict loading, enum availability, Zstd provider hydration, JSON/CBOR field preservation, custom
+  dictionary append/override behavior, direct `s2hkp` / `hk2sp` conversion, JP Shinjitai conversion topology, DeTofu
+  fallback behavior, and phrase-before-character conversion ordering.
 
 ### Changed
 
@@ -142,11 +160,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - `JPVariants.txt` and `JPVariantsRev.txt` are no longer active dictionary inputs.
 - Custom dictionary APIs reject the obsolete `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` members with an
   unknown-slot error; the members remain defined to prevent old numeric values from silently targeting new slots.
-- Custom dictionary users must regenerate JSON, CBOR, Zstd, and bundled dictionary artifacts using OpenccNet v1.6.0
-  (or later) DictGen to produce the new dictionary-slot schema.
-- Existing custom bundles generated by older DictGen versions do not contain the new v1.6.0 slots
-  (`TWVariantsPhrases`, `HKVariantsPhrases`, `HKPhrases`, `HKPhrasesRev`, `JpsCharactersRev`) and should be
-  regenerated before use with OpenccNetLib v1.6.0 or later.
+- Custom dictionary users must regenerate JSON, CBOR, Zstd, and bundled dictionary artifacts using OpenccNet v1.6.0 (or
+  later) DictGen to produce the new dictionary-slot schema.
+- Existing custom bundles generated by older DictGen versions do not contain the new v1.6.0 slots (`TWVariantsPhrases`,
+  `HKVariantsPhrases`, `HKPhrases`, `HKPhrasesRev`, `JpsCharactersRev`) and should be regenerated before use with
+  OpenccNetLib v1.6.0 or later.
 
 ### Documentation
 
@@ -214,8 +232,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   applications to safely fall back to the embedded default Zstd dictionaries.
 - Corrupted or invalid JSON/CBOR payloads now surface their real exceptions directly instead of being silently wrapped,
   making custom dictionary validation and debugging clearer for advanced users.
-- Improved XML documentation across `DictionaryLib`, including dictionary metadata, custom dictionary loading,
-  post-load customization, serialization overloads, path handling, exception contracts, and normalization behavior.
+- Improved XML documentation across `DictionaryLib`, including dictionary metadata, custom dictionary loading, post-load
+  customization, serialization overloads, path handling, exception contracts, and normalization behavior.
 - Custom dictionary loading now fully complies with the existing OpenCC dictionary slot structure instead of introducing
   generic dynamic dictionary slots, keeping `DictionaryMaxlength`, `DictRefs`, and future acceleration structures
   stable.
@@ -240,8 +258,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-* Made `OfficeDocConverter.SupportedFormats` read-only so downstream code cannot mutate the global supported-format
-  list at runtime. `IsSupportedFormat()` still performs case-insensitive validation.
+* Made `OfficeDocConverter.SupportedFormats` read-only so downstream code cannot mutate the global supported-format list
+  at runtime. `IsSupportedFormat()` still performs case-insensitive validation.
 * Changed `DictionaryLib.PlanCache` from a mutable public field to a get-only public property backed by an internal
   cache field, preserving read access while preventing external replacement with a null or inconsistent cache.
 * Updated async Office/EPUB conversion documentation to accurately describe cancellation behavior. Cancellation is
@@ -325,14 +343,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **SerializeToJsonUnescaped()**:  
+- **SerializeToJsonUnescaped ()**:  
   New method in `DictionaryLib` that writes JSON with unescaped Unicode characters, producing fully human-readable
   output.  
   Supplementary-plane CJK characters (e.g. Extension B–H) are now properly restored via automatic surrogate-pair
   decoding.  
   The resulting file is emitted as **UTF-8 without BOM** for maximum cross-platform compatibility.
 
-- **DecodeJsonSurrogatePairs()** (internal helper):  
+- **DecodeJsonSurrogatePairs ()** (internal helper):  
   Detects and converts escaped UTF-16 surrogate pairs (e.g. `\uD841\uDDE3`) back into their real UTF-8 code points.  
   Used internally by `SerializeToJsonUnescaped()`.
 
@@ -350,8 +368,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Moved `OpenccConfig` enum to the `OpenccNetLib` namespace (top-level)**:  
   The enum was previously nested inside the `Opencc` class.  
-  Moving it to the namespace root makes it a first-class public API type, improving discoverability,
-  IntelliSense usability, and alignment with .NET library design guidelines.  
+  Moving it to the namespace root makes it a first-class public API type, improving discoverability, IntelliSense
+  usability, and alignment with .NET library design guidelines.  
   This change is fully backward compatible because all string-based configuration APIs remain unchanged.
 
 - **Refactored `ApplySegmentReplace` delegate**:  
@@ -365,7 +383,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
     - `StarterUnion` metadata behavior
     - key-length gating, mask ranges (1–64), and handling of long keys (≥64)
 
-- **Optimized FromDicts()** in handling missing or optional dictionary files.
+- **Optimized FromDicts ()** in handling missing or optional dictionary files.
 
 ### Notes
 
@@ -378,8 +396,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Migration Note (for `SetConfig(OpenccConfig)` users)
 
-The `OpenccConfig` enum has been moved out of the `Opencc` class into the
-top-level `OpenccNetLib` namespace.
+The `OpenccConfig` enum has been moved out of the `Opencc` class into the top-level `OpenccNetLib` namespace.
 
 This affects only code calling:
 
@@ -387,16 +404,15 @@ This affects only code calling:
 opencc.SetConfig(Opencc.OpenccConfig.S2T);   // Old style
 ```
 
-The method signature is unchanged, but the enum must now be referenced without
-the `Opencc.` prefix:
+The method signature is unchanged, but the enum must now be referenced without the `Opencc.` prefix:
 
 ```csharp
 opencc.SetConfig(OpenccConfig.S2T);          // New, recommended
 ```
 
 No other public APIs are affected.  
-The new constructor `Opencc(OpenccConfig)` did not exist in previous versions,
-so this relocation does **not** break any existing constructor usage.
+The new constructor `Opencc(OpenccConfig)` did not exist in previous versions, so this relocation does **not** break any
+existing constructor usage.
 
 ---
 
@@ -474,7 +490,7 @@ Maintenance release identical to **v1.3.0**, focused on improving developer expe
       `max(minLen, starterUnits)` so astral starters never probe `len == 1`.
     - Added pre-computed `IsHs[]` / `IsLs[]` lookup tables (U+D800–DBFF / U+DC00–DFFF) to remove per-iteration range
       checks.
-- Introduced **per-dictionary length-mask gating** (`SupportsLength`) for `DictWithMaxLength`, enabling fast O(1)
+- Introduced **per-dictionary length-mask gating** (`SupportsLength`) for `DictWithMaxLength`, enabling fast O (1)
   filtering of irrelevant key lengths and reducing allocations.
 - Added automatic `RebuildAllLengthMetadata()` after CBOR deserialization (`FromCbor`) to restore  
   `MinLength`, `MaxLength`, and `LengthMask`.
@@ -497,8 +513,7 @@ Maintenance release identical to **v1.3.0**, focused on improving developer expe
   `step`), restoring full conversions such as “切换 → 切換” and “转换 → 轉換”.
 - Verified astral / non-BMP starter behavior and confirmed parity with the Rust `opencc-fmmseg` implementation.
 - Fixed a packaging issue in v1.2.0 where the third-party `dicts\LICENSE` file was copied as a **folder** instead of a
-  file,
-  causing MSBuild copy errors (`MSB3024`) in some user builds.
+  file, causing MSBuild copy errors (`MSB3024`) in some user builds.
     - Starting with **v1.2.1**, the file is now named **`LICENSE.txt`**, ensuring a clean and unambiguous layout.
     - The change is fully backward compatible:  
       existing `dicts\LICENSE\` folders from older builds can safely coexist with the new `dicts\LICENSE.txt` file.  
@@ -570,19 +585,18 @@ dictionary providers, and warmup behavior are unified, thread-safe, and runtime-
 
 ### Added
 
-- `StarterUnion` now precomputes per-starter **minLen**, in addition to cap and mask,
-  enabling faster clamping of candidate lengths.
+- `StarterUnion` now precomputes per-starter **minLen**, in addition to cap and mask, enabling faster clamping of
+  candidate lengths.
 - Plan/union caching (`ConversionPlanCache`) for reduced allocations across repeated conversions.
 
 ### Changed
 
 - Optimized `zhoCheck()` with max char scan length.
 - Updated bundled dictionaries.
-- Corrected longest-match logic: single-grapheme fast path is only taken when
-  no longer candidate exists.
+- Corrected longest-match logic: single-grapheme fast path is only taken when no longer candidate exists.
 - Conversion is now surrogate-aware and astral-safe in `.NET Standard 2.0`.
-- **Delimiter handling**: replaced `HashSet<char>` with a precomputed bitset table,
-  yielding constant-time O(1) lookups and faster segmentation in hot loops.
+- **Delimiter handling**: replaced `HashSet<char>` with a precomputed bitset table, yielding constant-time O (1) lookups
+  and faster segmentation in hot loops.
 
 ### Removed
 
@@ -614,7 +628,7 @@ dictionary providers, and warmup behavior are unified, thread-safe, and runtime-
 ### ✨ Highlights
 
 - **Non-BMP aware**: indexing & lookup now handle astral characters (surrogate pairs, emoji) correctly.
-- **Starter caps**: O(1) per-starter **UTF-16 cap array** + **64-bit length bitmap** to skip impossible probe lengths.
+- **Starter caps**: O (1) per-starter **UTF-16 cap array** + **64-bit length bitmap** to skip impossible probe lengths.
 - **Single-grapheme fast path**: probes 1- or 2-unit keys first (covers `st_characters` / `ts_characters`) with at most
   one tiny allocation.
 - **.NET Standard 2.0 safe**: surrogate-aware emit path (no `Append(ReadOnlySpan<char>)`).
@@ -662,8 +676,7 @@ This release’s performance leap comes from **multi-layered optimizations**, no
 3. **Dictionary Plan Caching**
 
     - `ConversionPlanCache` + `RoundKey` hashing ensures a `(config, punctuation)` plan is built once and reused,
-      instead of
-      rebuilding `DictRefs` and unions on every call.
+      instead of rebuilding `DictRefs` and unions on every call.
 
 4. **Runtime Memory Behavior**
 

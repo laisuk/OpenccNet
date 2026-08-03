@@ -102,5 +102,16 @@ namespace OpenccNetLib
 
             return true;
         }
+
+#if NET9_0_OR_GREATER
+        /// <summary>
+        /// Determines whether the span contains an IDS operator recognized by this library.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool ContainsIdsOperator(ReadOnlySpan<char> chars)
+        {
+            return chars.IndexOfAnyInRange('\u2FF0', '\u2FFF') >= 0;
+        }
+#endif
     }
 }

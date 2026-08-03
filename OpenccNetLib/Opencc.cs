@@ -747,6 +747,14 @@ namespace OpenccNetLib
             internal static bool Contains(char c) => (T[c >> 6] & (1UL << (c & 63))) != 0;
         }
 
+#if NET9_0_OR_GREATER
+        private static class DelimiterSearchValues
+        {
+            internal static readonly SearchValues<char> Value =
+                System.Buffers.SearchValues.Create(FullDelimiters);
+        }
+#endif
+
         /// <summary>
         /// Inline helper method that wraps <see cref="DelimiterTable.Contains"/>.
         /// </summary>
@@ -1179,61 +1187,86 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(text))
                 return string.Empty;
 
+            var textSpan = text.AsSpan();
             var textLength = text.Length;
+            var preserveIdsForText = preserveIds;
+
+#if NET9_0_OR_GREATER
+        // An IDS expression cannot exist without an operator in U+2FF0–U+2FFF.
+        // If none is present, safely reuse the optimized non-IDS paths even when
+        // IDS preservation was requested.
+        if (preserveIdsForText && !IdsHelper.ContainsIdsOperator(textSpan))
+            preserveIdsForText = false;
+#endif
 
             // Small texts → run single-threaded for lower scheduling overhead.
-            // But preserveIds needs splitter to isolate IDS chunks inside normal text.
-            if (textLength < ConvertTuning.LinearCutoffChars && !preserveIds)
-                return ConvertByUnion(text.AsSpan(), dictionaries, union);
+            // Actual IDS content still needs the splitter to isolate complete IDS chunks.
+            if (textLength < ConvertTuning.LinearCutoffChars && !preserveIdsForText)
+                return ConvertByUnion(textSpan, dictionaries, union);
 
-            var splitRanges = GetSplitRangesSpan(text.AsSpan(), inclusive: true, preserveIds: preserveIds);
+            var splitRanges = GetSplitRangesSpan(
+                textSpan,
+                inclusive: true,
+                preserveIds: preserveIdsForText);
 
             // Global builder reused for both serial and parallel stitching.
-            var sb = new StringBuilder(textLength + (textLength >> 4)); // +6.25% headroom (~6.8%)
+            var sb = new StringBuilder(
+                textLength + (textLength >> 4)); // +6.25% headroom
 
             // Sequential path for small or moderately sized input.
-            if (splitRanges.Count <= ConvertTuning.ParallelRangeGate && textLength <= ConvertTuning.ParallelTextGate)
+            if (splitRanges.Count <= ConvertTuning.ParallelRangeGate &&
+                textLength <= ConvertTuning.ParallelTextGate)
             {
                 for (var i = 0; i < splitRanges.Count; i++)
                 {
                     var r = splitRanges[i];
+
                     ConvertByUnionInto(
                         sb,
-                        text.AsSpan(r.Start, r.Length),
+                        textSpan.Slice(r.Start, r.Length),
                         dictionaries,
                         union,
-                        preserveIds);
+                        preserveIdsForText);
                 }
 
                 return sb.ToString();
             }
 
-            // Parallel path for large inputs -------------------------------------
-            var chunks = BuildChunks(splitRanges, batchSize: ConvertTuning.BatchSize);
+            // Parallel path for large inputs.
+            var chunks = BuildChunks(
+                splitRanges,
+                batchSize: ConvertTuning.BatchSize);
+
             var parts = new string[chunks.Count];
-            var po = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+            var po = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Environment.ProcessorCount
+            };
 
             Parallel.For(0, chunks.Count, po, cIdx =>
             {
                 var chunk = chunks[cIdx];
-                var sbPart = new StringBuilder(chunk.EstChars + (chunk.EstChars >> 6));
+                var sbPart = new StringBuilder(
+                    chunk.EstChars + (chunk.EstChars >> 6));
 
                 var end = chunk.FirstRange + chunk.Count;
+
                 for (var i = chunk.FirstRange; i < end; i++)
                 {
                     var r = splitRanges[i];
+
                     ConvertByUnionInto(
                         sbPart,
                         text.AsSpan(r.Start, r.Length),
                         dictionaries,
                         union,
-                        preserveIds);
+                        preserveIdsForText);
                 }
 
                 parts[cIdx] = sbPart.ToString();
             });
 
-            // Reuse the same global StringBuilder for final stitching (NS2.0-friendly).
+            // Reuse the global StringBuilder for final stitching (NS2.0-friendly).
             for (var i = 0; i < parts.Length; i++)
                 sb.Append(parts[i]);
 
@@ -1586,7 +1619,7 @@ namespace OpenccNetLib
         /// Represents a half-open character range [Start, End) within an input span.
         /// Used internally by OpenCC to track non-delimiter and delimiter segments.
         /// </summary>
-        private readonly struct Range
+        internal readonly struct Range
         {
             /// <summary>
             /// Inclusive start index of the range (0-based).
@@ -1638,8 +1671,18 @@ namespace OpenccNetLib
         /// A list of <see cref="Range"/> objects representing half-open intervals [Start, End).
         /// </returns>
         /// Note: inclusive mode still emits delimiter-only ranges for leading/consecutive delimiters.
-        private static List<Range> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false,
+        internal static List<Range> GetSplitRangesSpan(ReadOnlySpan<char> input, bool inclusive = false,
             bool preserveIds = false)
+        {
+#if NET9_0_OR_GREATER
+            if (!preserveIds)
+                return GetSplitRangesSpanModern(input, inclusive);
+#endif
+            return GetSplitRangesSpanCompatibility(input, inclusive, preserveIds);
+        }
+
+        internal static List<Range> GetSplitRangesSpanCompatibility(ReadOnlySpan<char> input,
+            bool inclusive = false, bool preserveIds = false)
         {
             var length = input.Length;
             if (length == 0)
@@ -1674,26 +1717,84 @@ namespace OpenccNetLib
 
                 if (inclusive)
                 {
-                    // include delimiter in same segment
+                    // Include the delimiter in the preceding segment.
                     ranges.Add(new Range(currentStart, i + 1));
                 }
                 else
                 {
                     if (i > currentStart)
-                        ranges.Add(new Range(currentStart, i)); // text before delimiter
+                        ranges.Add(new Range(currentStart, i)); // Text before the delimiter.
 
-                    ranges.Add(new Range(i, i + 1)); // delimiter itself
+                    ranges.Add(new Range(i, i + 1)); // The delimiter itself.
                 }
 
                 currentStart = i + 1;
             }
 
-            // Add trailing range if text doesn't end with a delimiter
+            // Add a trailing range when the text does not end with a delimiter.
             if (currentStart < length)
                 ranges.Add(new Range(currentStart, length));
 
             return ranges;
         }
+
+#if NET9_0_OR_GREATER
+        internal static List<Range> GetSplitRangesSpanModern(ReadOnlySpan<char> input,
+            bool inclusive = false)
+        {
+            var length = input.Length;
+            if (length == 0)
+                return new List<Range>(0);
+
+            // SearchValues wins on sparse input but is slower when nearly every few
+            // characters are delimiters, so sample the prefix and retain that fast loop.
+            const int densitySampleLength = 256;
+            const int denseDelimiterThreshold = 32;
+            var sampleLength = Math.Min(length, densitySampleLength);
+            var delimiterCount = 0;
+
+            for (var i = 0; i < sampleLength; i++)
+            {
+                if (IsDelimiter(input[i]) && ++delimiterCount >= denseDelimiterThreshold)
+                    return GetSplitRangesSpanCompatibility(input, inclusive);
+            }
+
+            var estSegments = inclusive ? (length >> 2) + 1 : (length >> 1) + 1;
+            if (estSegments < 8) estSegments = 8;
+            if (estSegments > 4096) estSegments = 4096;
+            if (estSegments > length) estSegments = length;
+
+            var ranges = new List<Range>(estSegments);
+            var currentStart = 0;
+
+            while (currentStart < length)
+            {
+                var relativeIndex = input.Slice(currentStart).IndexOfAny(DelimiterSearchValues.Value);
+                if (relativeIndex < 0)
+                    break;
+
+                var delimiterIndex = currentStart + relativeIndex;
+                if (inclusive)
+                {
+                    ranges.Add(new Range(currentStart, delimiterIndex + 1));
+                }
+                else
+                {
+                    if (delimiterIndex > currentStart)
+                        ranges.Add(new Range(currentStart, delimiterIndex));
+
+                    ranges.Add(new Range(delimiterIndex, delimiterIndex + 1));
+                }
+
+                currentStart = delimiterIndex + 1;
+            }
+
+            if (currentStart < length)
+                ranges.Add(new Range(currentStart, length));
+
+            return ranges;
+        }
+#endif
 
         #endregion
 

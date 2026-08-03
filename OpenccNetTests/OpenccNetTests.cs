@@ -446,6 +446,44 @@ public class OpenccNetTests
 
         Assert.AreEqual("氂毛 骖騑", output);
     }
+    
+    [TestMethod]
+    public void TestDeTofuBuiltinReturnsIndependentMutableClone()
+    {
+        var first = DeTofuMap.Builtin(DeTofuLevel.ExtB);
+        first.WithCustomPairs(new Dictionary<string, string>
+        {
+            ["𬴂"] = "訂"
+        });
+
+        var second = DeTofuMap.Builtin(DeTofuLevel.ExtB);
+
+        Assert.AreEqual("訂", first.Convert("𬴂"));
+        Assert.AreEqual("騑", second.Convert("𬴂"));
+    }
+
+    [TestMethod]
+    public void TestDeTofuBuiltinCloneCannotMutateStaticCache()
+    {
+        var mutableClone = DeTofuMap.Builtin(DeTofuLevel.ExtB);
+        mutableClone.WithCustomPairs(new Dictionary<string, string>
+        {
+            ["𬴂"] = "訂"
+        });
+
+        Assert.AreEqual(
+            "骖騑",
+            DeTofu.Convert("骖𬴂", DeTofuLevel.ExtB));
+    }
+
+    [TestMethod]
+    public void TestDeTofuBuiltinReturnsDifferentInstances()
+    {
+        var first = DeTofuMap.Builtin(DeTofuLevel.ExtB);
+        var second = DeTofuMap.Builtin(DeTofuLevel.ExtB);
+
+        Assert.AreNotSame(first, second);
+    }
 
     // CJK Compat Ideographs
 
