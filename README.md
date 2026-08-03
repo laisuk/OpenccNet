@@ -170,7 +170,7 @@ Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: i
 > Thread-safety note: `Opencc` instances should not be reconfigured while they are being used by other threads. For
 > parallel conversion, create one instance per configuration and treat it as immutable, or use direct conversion
 > methods.
-`GetLastError()` is instance-level diagnostic state and should not be shared across threads.
+> `GetLastError()` is instance-level diagnostic state and should not be shared across threads.
 
 #### 💡 Tips
 
@@ -406,8 +406,7 @@ Console.WriteLine(output);
 In-memory pairs are supplied as `IEnumerable<KeyValuePair<string, string>>`, where each key is a tofu-risk character and
 each value is its display-compatible fallback character. Only the first Unicode scalar value from each key and value is
 used, and null or empty keys and values are ignored. Pairs do not carry an extension column, so they are applied
-directly
-to the selected map after the built-in mappings. Custom pairs override built-in mappings for the same tofu-risk
+directly to the selected map after the built-in mappings. Custom pairs override built-in mappings for the same tofu-risk
 character. If duplicate keys are supplied, the later mapping wins according to enumeration order.
 
 Custom fallback file usage:
@@ -545,8 +544,8 @@ var typedDict = DictionaryLib.WithCustomDicts(
     new[] { typed });
 ```
 
-`Parse(...)` and `FromFile(...)` construct specifications; they do not load files or change the active dictionary.
-Apply the resulting specifications with `DictionaryLib.WithCustomDicts(...)`. For custom files applied while loading a
+`Parse(...)` and `FromFile(...)` construct specifications; they do not load files or change the active dictionary. Apply
+the resulting specifications with `DictionaryLib.WithCustomDicts(...)`. For custom files applied while loading a
 complete OpenCC text dictionary directory, use `DictionaryLib.FromDicts(...)` with its strongly typed `appends` or
 `overrides` dictionaries.
 
@@ -702,8 +701,7 @@ patches without restructuring the built-in OpenCC dictionary files.
 
 This is especially useful for tofu-risk or CJK Extension Unicode cases where some target platforms may not render newer
 characters correctly. Applications can provide temporary alternate mappings while keeping the built-in dictionary
-topology
-unchanged.
+topology unchanged.
 
 ```csharp
 using System.Collections.Generic;
@@ -745,26 +743,25 @@ Console.WriteLine(opencc.Convert("帕兰蒂尔"));
 This keeps the core dictionary structure unchanged while still allowing applications to patch specific high-risk entries
 at load time.
 
-| API                       | Description                                    |
-|---------------------------|------------------------------------------------|
-| `DictSlot`                | Strongly typed OpenCC dictionary slot selector |
-| `DictSlotExtensions.ActiveSlots` | Enumerate active supported slots             |
-| `DictSlotExtensions.Parse(...)` / `TryParse(...)` | Strictly parse a canonical slot name |
-| `DictSlotExtensions.ToCanonicalName()` | Format an active slot canonically    |
-| `CustomDictSpec.Parse(...)` | Parse a portable custom-dictionary token        |
-| `CustomDictSpec.FromFile(...)` | Construct a strongly typed single-file spec  |
-| `CustomDictSpec.Slot`     | Target slot                                    |
-| `CustomDictSpec.Paths`    | Custom dictionary files                        |
-| `CustomDictSpec.Pairs`    | In-memory dictionary entries                   |
-| `CustomDictSpec.Mode`     | `Append` or `Override`                         |
-| `CustomDictMode.Append`   | Merge into the existing slot                   |
-| `CustomDictMode.Override` | Replace the whole slot                         |
+| API                                               | Description                                    |
+|---------------------------------------------------|------------------------------------------------|
+| `DictSlot`                                        | Strongly typed OpenCC dictionary slot selector |
+| `DictSlotExtensions.ActiveSlots`                  | Enumerate active supported slots               |
+| `DictSlotExtensions.Parse(...)` / `TryParse(...)` | Strictly parse a canonical slot name           |
+| `DictSlotExtensions.ToCanonicalName()`            | Format an active slot canonically              |
+| `CustomDictSpec.Parse(...)`                       | Parse a portable custom-dictionary token       |
+| `CustomDictSpec.FromFile(...)`                    | Construct a strongly typed single-file spec    |
+| `CustomDictSpec.Slot`                             | Target slot                                    |
+| `CustomDictSpec.Paths`                            | Custom dictionary files                        |
+| `CustomDictSpec.Pairs`                            | In-memory dictionary entries                   |
+| `CustomDictSpec.Mode`                             | `Append` or `Override`                         |
+| `CustomDictMode.Append`                           | Merge into the existing slot                   |
+| `CustomDictMode.Override`                         | Replace the whole slot                         |
 
 #### Custom dictionary file format
 
 Custom dictionary files are UTF-8 text files. Each entry is written as `phrase<TAB>translation`; blank lines are
-ignored,
-comments are supported, and duplicate keys use late-comer wins behavior.
+ignored, comments are supported, and duplicate keys use late-comer wins behavior.
 
 ```text
 # Company terminology
@@ -812,13 +809,13 @@ var opencc = new Opencc("s2t");
 | `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`       |
 
 Japanese Shinjitai dictionary layout follows upstream OpenCC commit `93ee7f7`: `JPShinjitaiCharacters.txt`
-is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse
-dictionary used by `t2jp`. `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active
-dictionary schema. Users who provide custom dictionary bundles, JSON, CBOR, or Zstd packs must regenerate
-those bundles or include the new non-empty `JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
-The retired `DictSlot.JPVariants` and `DictSlot.JPVariantsRev` enum members remain defined as obsolete compatibility
-sentinels with their original numeric values. Custom dictionary APIs reject these inactive slots rather than silently
-redirecting their values to a different dictionary.
+is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse dictionary
+used by `t2jp`. `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active dictionary schema. Users who
+provide custom dictionary bundles, JSON, CBOR, or Zstd packs must regenerate those bundles or include the new non-empty
+`JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot. The retired `DictSlot.JPVariants` and
+`DictSlot.JPVariantsRev` enum members remain defined as obsolete compatibility sentinels with their original numeric
+values. Custom dictionary APIs reject these inactive slots rather than silently redirecting their values to a different
+dictionary.
 
 #### Recommended usage
 
@@ -833,9 +830,8 @@ discard and recreate existing `Opencc` instances.
 
 This global provider design is intentional for performance: dictionary data, metadata, `StarterUnion` / `UnionCache`
 acceleration structures, and runtime plans can be shared instead of duplicated per `Opencc` instance. Normal
-applications
-usually need only one custom provider. Unit tests that mutate the global provider should not run in parallel with tests
-expecting the default provider.
+applications usually need only one custom provider. Unit tests that mutate the global provider should not run in
+parallel with tests expecting the default provider.
 
 #### Why no `user_dict` slot?
 
@@ -1042,15 +1038,16 @@ public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 
 ## Performance
 
-- Uses static dictionary caching, precomputed StarterUnion masks, and thread-local buffers for high throughput.
-- Fully optimized for multi-stage conversion with zero-allocation hot paths.
+- Uses static dictionary caching, precomputed `StarterUnion` masks, and thread-local buffers for high throughput.
+- On .NET 9 and later, dictionary candidates are probed directly from `ReadOnlySpan<char>` without allocating temporary
+  string keys. The .NET Standard 2.0 asset retains the compatible string-key fallback.
 - Suitable for real-time, batch, and parallel processing.
 
-### 🚀 Performance Benchmark for **OpenccNetLib 1.6.1**
+### 🚀 Performance Benchmark for **OpenccNetLib 1.6.2**
 
-#### `S2T` Conversion (Union-based Optimizations, Real-World Load)
+#### `S2T` Conversion (.NET 9+ Span-Key Optimizations, Real-World Load)
 
-> Benchmarked under **normal desktop usage** (IDE, background apps running) to reflect realistic performance.
+> Benchmarked under **normal desktop usage** (IDE and background apps running) to reflect realistic performance.
 
 ---
 
@@ -1059,121 +1056,100 @@ public void ConvertOfficeBytes_Docx_S2T_Succeeds()
 | Item                | Value                                    |
 |---------------------|------------------------------------------|
 | **BenchmarkDotNet** | v0.15.8                                  |
-| **OS**              | Windows 11 (Build 26200.8655, 25H2)      |
+| **OS**              | Windows 11 (Build 26200.8875, 25H2)      |
 | **CPU**             | Intel Core i5-13400 (10C/16T @ 2.50 GHz) |
-| **.NET SDK**        | 10.0.301                                 |
-| **Runtime**         | .NET 10.0.9 (X64 RyuJIT x86-64-v3)       |
+| **.NET SDK**        | 10.0.302                                 |
+| **Runtime**         | .NET 10.0.10 (X64 RyuJIT x86-64-v3)      |
 | **Iterations**      | 10 (1 warm-up)                           |
 
 ---
 
 ### Results
 
-| Method               |      Size |           Mean |      Error |     StdDev |        Min |        Max | Rank |     Gen0 |     Gen1 |    Gen2 |        Allocated |
-|----------------------|----------:|---------------:|-----------:|-----------:|-----------:|-----------:|-----:|---------:|---------:|--------:|-----------------:|
-| **BM_Convert_Sized** |       100 |   **2.430 µs** |   0.014 µs |   0.009 µs |   2.421 µs |   2.445 µs |    1 |    0.504 |        – |       – |          5.15 KB |
-| **BM_Convert_Sized** |     1,000 |  **62.305 µs** |   0.435 µs |   0.228 µs |  62.013 µs |  62.769 µs |    2 |    8.545 |        – |       – |         87.33 KB |
-| **BM_Convert_Sized** |    10,000 | **250.230 µs** |  10.490 µs |   6.939 µs | 243.349 µs | 261.130 µs |    3 |   75.195 |   17.090 |       – |        759.18 KB |
-| **BM_Convert_Sized** |   100,000 |   **3.807 ms** |  74.178 µs |  49.064 µs |   3.755 ms |   3.905 ms |    4 |  808.594 |  335.938 | 117.188 |      7,580.92 KB |
-| **BM_Convert_Sized** | 1,000,000 |  **20.040 ms** | 435.267 µs | 287.902 µs |  19.572 ms |  20.399 ms |    5 | 7,687.50 | 1,406.25 | 625.000 | **77,511.33 KB** |
+| Method               |      Size |              Mean |       Error |     StdDev |           Min |           Max | Rank |     Gen0 |     Gen1 |     Gen2 |    Allocated |
+|----------------------|----------:|------------------:|------------:|-----------:|--------------:|--------------:|-----:|---------:|---------:|---------:|-------------:|
+| **BM_Convert_Sized** |       100 |      **1.776 µs** |   0.0156 µs |  0.0093 µs |      1.769 µs |      1.793 µs |    1 |   0.0305 |        – |        – |        328 B |
+| **BM_Convert_Sized** |     1,000 |     **35.594 µs** |   0.2929 µs |  0.1743 µs |     35.364 µs |     35.876 µs |    2 |   0.1831 |        – |        – |      2,128 B |
+| **BM_Convert_Sized** |    10,000 |    **199.543 µs** |  13.7299 µs |  9.0815 µs |    192.796 µs |    214.343 µs |    3 |  14.6484 |   2.4414 |        – |    146,651 B |
+| **BM_Convert_Sized** |   100,000 |  **1,383.007 µs** |  36.8934 µs | 21.9547 µs |  1,352.110 µs |  1,422.130 µs |    4 | 156.2500 | 119.1406 | 109.3750 |  1,035,338 B |
+| **BM_Convert_Sized** | 1,000,000 | **11,444.810 µs** | 144.7586 µs | 86.1435 µs | 11,278.808 µs | 11,562.277 µs |    5 | 968.7500 | 859.3750 | 531.2500 | 10,274,191 B |
 
 ---
 
 ### Summary
 
-- **100 chars** → ~2.4 µs
-- **1,000 chars** → ~62 µs
-- **10,000 chars** → ~0.25 ms
-- **100,000 chars** → ~3.8 ms
-- **1,000,000 chars (1M)** → ~20.0 ms
+- **100 chars** → ~1.8 µs, 328 B allocated
+- **1,000 chars** → ~35.6 µs, 2.1 KB allocated
+- **10,000 chars** → ~0.20 ms, 143.2 KB allocated
+- **100,000 chars** → ~1.38 ms, 0.99 MB allocated
+- **1,000,000 chars (1M)** → ~11.45 ms, 9.8 MB allocated
+
+On this system, the 1M-character result corresponds to approximately **87 million characters per second**.
+
+---
+
+### Comparison with v1.6.1
+
+|      Size | v1.6.1 Mean | v1.6.2 Mean | Speedup | Allocation Reduction |
+|----------:|------------:|------------:|--------:|---------------------:|
+|       100 |    2.430 µs |    1.776 µs |   1.37× |               ~93.8% |
+|     1,000 |   62.305 µs |   35.594 µs |   1.75× |               ~97.6% |
+|    10,000 |  250.230 µs |  199.543 µs |   1.25× |               ~81.1% |
+|   100,000 |    3.807 ms |    1.383 ms |   2.75× |               ~86.7% |
+| 1,000,000 |   20.040 ms |   11.445 ms |   1.75× |               ~87.1% |
+
+The large improvement is primarily due to **target-specific optimization introduced in v1.6.2**. Version 1.6.1 did not
+ship a .NET 9+ optimized asset, so modern applications used the .NET Standard 2.0 implementation and materialized a
+temporary `string` for each candidate dictionary key. Version 1.6.2 adds a `net9.0` asset that uses
+`Dictionary.TryGetAlternateLookup<ReadOnlySpan<char>>()`, allowing the union conversion hot path to probe existing
+`Dictionary<string, string>` data directly from input spans. This removes most temporary candidate-key allocations,
+reduces GC pressure, and improves throughput without changing dictionaries or conversion results.
+
+The package still includes its `netstandard2.0` asset for broad compatibility. Applications running on runtimes that do
+not select the .NET 9+ asset continue to use the string-allocation fallback, so the gains above should not be assumed
+for those targets.
 
 ---
 
 ### Notes
 
-- Benchmarks include **real-world system noise** (IDE, background services), not isolated lab conditions.
-- v1.6.1 performs in broadly the **same range as v1.5.0**, with modest improvements at several input sizes.
-- This is notable because v1.6.1 also includes **hundreds of added or updated dictionary entries** and several new
-  Taiwan, Hong Kong, and Japanese dictionary slots. Comparable throughput with the expanded dictionary data is
-  consistent with the engine's `StarterUnion` design: O(1) per-starter metadata narrows candidate lengths and skips
-  impossible lookups before probing dictionaries.
-- The benchmark measures `S2T`, so it does not exercise every new regional slot. Conversion plans select only the
-  dictionary groups required for each configuration, while `UnionCache` reuses the prebuilt `StarterUnion` for each
-  semantic slot; unrelated dictionaries therefore do not enlarge the `S2T` hot path.
-- Internal diagnostics found no measurable large-input overhead from optional IDS preservation when no IDS operators
-  are present, confirming efficient short-circuiting and ordinary-text rejection.
-- Managed allocations are slightly lower at every measured size (approximately **1–3% lower** than v1.5.0).
-- Minor variance at larger sizes is expected due to OS scheduling and GC activity.
-- The 100,000-character timing should not be read as a direct regression: the v1.5.0 measurement had much higher
-  variance, and both runs were taken under normal desktop load.
-- Two outliers were removed from the 1,000-character benchmark by BenchmarkDotNet.
+- Benchmarks include **real-world system noise** (IDE and background services), not isolated lab conditions.
+- The benchmark measures warmed `S2T` conversion. Conversion plans select only the required dictionary groups;
+  `StarterUnion` rejects impossible candidate lengths, and `UnionCache` reuses the prepared accelerator.
+- Managed allocation now comes mainly from conversion output and buffer growth rather than temporary lookup keys.
+- Time and memory remain approximately linear with input size; expected GC activity is visible at larger sizes.
+- BenchmarkDotNet removed one outlier from the 100-, 1,000-, 100,000-, and 1,000,000-character measurements. For the
+  1,000,000-character case, two outliers were detected and one was removed.
+- Results are specific to the listed hardware, runtime, input distribution, and system load. Treat them as comparative
+  measurements rather than universal latency guarantees.
 
 ---
 
 ### Conclusion
 
-OpenccNetLib 1.6.1 maintains the **production-grade performance** established in v1.5.0, with comparable overall
-timings and a small improvement in managed memory usage. It continues to deliver predictable throughput under
-realistic workloads while preserving deterministic conversion results.
+OpenccNetLib 1.6.2 delivers a clear performance step forward on .NET 9 and later: the measured workload is **1.25×–2.75×
+faster than v1.6.1**, while managed allocation falls by approximately **81%–98%**. At one million characters, conversion
+improves from ~20.0 ms to ~11.45 ms and allocation drops from ~75.7 MB to ~9.8 MB, with the same deterministic
+conversion behavior and a preserved .NET Standard 2.0 compatibility path.
 
 ---
 
 ### ⏱ Relative Performance Chart
 
-![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v161.png)
+![Benchmark: Time vs Memory](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/Images/benchmark_v162.png)
 
 ---
 
-### 🟢 Highlights (OpenccNetLib v1.6.1)
+### 🟢 Highlights (OpenccNetLib v1.6.2)
 
-- **🚀 High Performance (Real-World Tested)**  
-  Processes **1M characters in ~20.0 ms** under normal desktop load (IDE, background apps).
-  Sustains **tens of millions of chars/sec** on a mid-range CPU (Intel i5-13400).
-
-- **📉 Slightly Improved Memory Efficiency**
-    - managed allocations are approximately **1–3% lower** than v1.5.0 across the tested sizes
-    - uses about **75.7 MB** for a 1M-character conversion
-    - preserves the established performance profile without a memory regression
-
-- **📚 Expanded Dictionaries, Preserved Throughput**
-    - adds or updates hundreds of dictionary entries and introduces new regional dictionary slots
-    - retains performance close to v1.5.0 despite the broader dictionary coverage
-    - `StarterUnion` uses O(1) per-starter metadata to reject impossible candidate lengths early
-    - per-slot `UnionCache` reuse keeps accelerator construction and memory duplication low
-    - conversion plans isolate unrelated dictionary slots from the active conversion hot path
-
-- **📌 Predictable, Linear Scaling**  
-  Both **time** and **memory usage** scale *linearly* with input size:
-    - consistent latency for small and large inputs
-    - stable throughput for batch and streaming workloads
-    - no unexpected slow paths
-
-- **⚙️ Optimized Conversion Core**  
-  Built on a highly efficient pipeline:
-    - fast **Union-based lookup** for candidate filtering
-    - minimal branching for non-matching paths
-    - streamlined control flow for better CPU utilization
-    - allocation-aware design for sustained performance
-
-- **📈 Stable GC Behavior**
-    - allocations mainly come from output buffers
-    - low GC pressure in typical workloads
-    - remains stable even for large inputs (≥1M chars)
-
-- **🏁 Production-Ready Throughput**  
-  Designed for real applications:
-    - performs consistently outside benchmark isolation
-    - suitable for CLI, GUI, and backend services
-    - reliable under multitasking environments
-
-- **💾 Memory Characteristics**
-    - scales proportionally with input size
-    - no abnormal spikes or hidden overhead
-    - predictable usage for large document processing
-
-> **Note:**  
-> Internal caching and optimized data structures ensure consistently fast conversions  
-> across repeated calls and multiple instances.
+- **🚀 High throughput:** processes 1M characters in ~11.45 ms, or roughly 87 million characters/second on the tested
+  Intel i5-13400 system.
+- **📉 Much lower allocation:** uses about 9.8 MB for the 1M-character conversion, down from about 75.7 MB in v1.6.1.
+- **⚙️ Modern-runtime fast path:** .NET 9+ uses allocation-free span-key dictionary probes; .NET Standard 2.0 retains
+  the compatible string-key fallback.
+- **📌 Predictable scaling:** both elapsed time and memory remain approximately linear as input size grows.
+- **📚 Same conversion semantics:** the optimization changes candidate lookup mechanics, not dictionary selection,
+  longest-match behavior, or output.
 
 ---
 
@@ -1243,8 +1219,8 @@ string APIs are provided for backward compatibility and convenience.
 
 - `void SetConfig(OpenccConfig configEnum)`  
   Sets the conversion configuration using a strongly typed `OpenccConfig` enum value.  
-  **This is the preferred and recommended approach** for type safety, IDE support,
-  and interop scenarios (P/Invoke, JNI, bindings).
+  **This is the preferred and recommended approach** for type safety, IDE support, and interop scenarios (P/Invoke, JNI,
+  bindings).
 
 - `string GetConfig()`  
   Returns the current configuration as a canonical lowercase string  
@@ -1262,8 +1238,7 @@ string APIs are provided for backward compatibility and convenience.
 
 #### 📋 Validation and Helper APIs
 
-The following static helpers are provided for validation, parsing, and discovery of
-supported configurations:
+The following static helpers are provided for validation, parsing, and discovery of supported configurations:
 
 - `static bool TryParseConfig(string config, out OpenccConfig result)`  
   Attempts to parse a configuration string into the corresponding `OpenccConfig` enum value.  
@@ -1395,8 +1370,7 @@ DictionaryLib.SaveJsonCompressed("./custom-dictionary.zstd", dict);
 - All configuration inputs ultimately resolve to a single internal
   `OpenccConfig` identifier.
 - Invalid configuration values never throw; they safely fall back to `"s2t"`.
-- Enum-based APIs are future-proof and align with the C API, Rust core,
-  and other language bindings.
+- Enum-based APIs are future-proof and align with the C API, Rust core, and other language bindings.
 
 ---
 
@@ -1536,8 +1510,8 @@ Options:
 
 ### PDF extraction engine
 
-`OpenccNet pdf` uses a **text-based PDF extraction engine** (PdfPig) and is intended for **digitally generated PDFs** (
-e-books, research papers, reports).
+`OpenccNet pdf` uses a **text-based PDF extraction engine** (PdfPig) and is intended for **digitally generated PDFs**
+(e-books, research papers, reports).
 
 - ✅ Works best with selectable text
 - ❌ Does **not** perform OCR on scanned/image-only PDFs
