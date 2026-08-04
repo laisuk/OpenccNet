@@ -259,7 +259,7 @@ namespace OpenccNetLib
         /// Gets the lazily loaded built-in DeTofu entries.
         /// </summary>
         /// <returns>The shared, read-only view of the built-in mapping entries.</returns>
-        internal static IReadOnlyList<DeTofuEntry> GetBuiltinEntries()
+        private static IReadOnlyList<DeTofuEntry> GetBuiltinEntries()
         {
             return BuiltinEntries.Value;
         }
