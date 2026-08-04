@@ -105,8 +105,24 @@ namespace OpenccNetLib
 
 #if NET9_0_OR_GREATER
         /// <summary>
-        /// Determines whether the span contains an IDS operator recognized by this library.
+        /// Determines whether the specified text contains any Unicode
+        /// Ideographic Description Sequence (IDS) operator in U+2FF0–U+2FFF.
         /// </summary>
+        /// <remarks>
+        /// A complete IDS expression cannot exist without at least one operator
+        /// from the contiguous Unicode range U+2FF0–U+2FFF.
+        /// <para>
+        /// On .NET 9 and later, this method intentionally uses
+        /// <see cref="System.MemoryExtensions.IndexOfAnyInRange{T}(System.ReadOnlySpan{T}, T, T)"/>
+        /// instead of a manual character scan. This allows the runtime to use its
+        /// optimized contiguous-range search.
+        /// </para>
+        /// <para>
+        /// The pre-check lets the conversion pipeline bypass IDS-aware splitting when
+        /// the input contains no IDS operator, preserving the faster non-IDS conversion
+        /// path for ordinary text.
+        /// </para>
+        /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool ContainsIdsOperator(ReadOnlySpan<char> chars)
         {
