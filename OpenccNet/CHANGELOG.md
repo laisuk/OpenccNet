@@ -17,8 +17,8 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
   resolution, and error reporting into shared `CliUtils` helpers, reducing duplicated logic across commands.
 - CLI: Refactored `convert`, `office`, and `pdf` commands to reuse the shared custom dictionary pipeline and validation
   helpers while preserving existing command behavior.
-- CLI: Simplified `office` command by removing the unnecessary `OfficeConverterBuilder` layer and invoking
-  `OfficeConverter` directly.
+- CLI: Simplified the `office` command by removing the internal `OfficeConverterBuilder` layer and invoking
+  `OfficeConverter` directly, reducing command orchestration complexity while preserving existing behavior.
 - CLI: Refactored `pdf` command into a clearer processing pipeline with dedicated helpers for validation, extraction,
   reflow, conversion, and output, while keeping the extraction → reflow → conversion workflow unchanged. Extraction-only
   mode now skips OpenCC initialization entirely.
