@@ -48,23 +48,14 @@ internal static class DictgenCommand
         {
             Arity = ArgumentArity.ZeroOrMore,
             AllowMultipleArgumentsPerToken = false,
-            Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
+            Description =
+                "Load custom dictionary: <slot>:<mode>:<path>.\n" +
+                "Example: HkPhrasesRev:append:my_hk_dict.txt\n" +
+                "Available slots: " +
+                CliUtils.SlotHelpAll
         };
 
-        customDictOption.Validators.Add(result =>
-        {
-            foreach (var value in result.GetValueOrDefault<string[]>())
-            {
-                try
-                {
-                    CustomDictSpec.Parse(value);
-                }
-                catch (ArgumentException ex)
-                {
-                    result.AddError(ex.Message);
-                }
-            }
-        });
+        CliUtils.AddCustomDictValidator(customDictOption);
 
         var dictGenCommand = new Command(
             "dictgen",
@@ -85,102 +76,115 @@ internal static class DictgenCommand
             customDictOption,
         };
 
-        dictGenCommand.SetAction(pr =>
+        dictGenCommand.Validators.Add(result =>
         {
-            var format = pr.GetValue(formatOption)!;
-            var output = pr.GetValue(outputOption);
-            var baseDir = pr.GetValue(baseDirOption)!;
-            var unescape = pr.GetValue(unescapeOption);
-            var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
-
-            var defaultOutput = $"dictionary_maxlength.{format}";
-            var outputFile = string.IsNullOrWhiteSpace(output) ? defaultOutput : output;
-
-            var resolvedBaseDir = ResolveUserPath(baseDir);
-
-            Console.WriteLine(
-                $"{Blue}Loading dictionaries from '{resolvedBaseDir}'...{Reset}");
-
-            if (!Directory.Exists(resolvedBaseDir))
+            if (result.GetValue(unescapeOption) &&
+                !string.Equals(
+                    result.GetValue(formatOption),
+                    "json",
+                    StringComparison.OrdinalIgnoreCase))
             {
-                Console.Error.WriteLine(
-                    $"❌ Dictionary base directory not found: {resolvedBaseDir}");
-                return 1;
+                result.AddError("--unescape can only be used with --format json.");
             }
-
-            DictionaryMaxlength dict;
-
-            try
-            {
-                dict = DictionaryLib.FromDicts(resolvedBaseDir);
-
-                if (customDicts.Length > 0)
-                {
-                    Console.WriteLine($"Applying {customDicts.Length} custom dictionary spec(s)...");
-
-                    var specs = customDicts
-                        .Select(CustomDictSpec.Parse)
-                        .ToArray();
-
-                    DictionaryLib.WithCustomDicts(dict, specs);
-                }
-            }
-            catch (FileNotFoundException ex)
-            {
-                Console.Error.WriteLine($"❌ {ex.Message}");
-                return 1;
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine(
-                    $"❌ Failed to load dictionaries: {ex.Message}");
-                return 1;
-            }
-
-            switch (format.ToLowerInvariant())
-            {
-                case "zstd":
-                    DictionaryLib.SaveJsonCompressed(outputFile, dict);
-                    break;
-                case "cbor":
-                    DictionaryLib.SaveCbor(outputFile, dict);
-                    break;
-                case "json":
-                    if (unescape)
-                    {
-                        DictionaryLib.SerializeToJsonUnescaped(outputFile, dict);
-                        Console.WriteLine("(writing unescaped Unicode JSON with surrogate fix)");
-                    }
-                    else
-                    {
-                        DictionaryLib.SerializeToJson(outputFile, dict);
-                    }
-
-                    break;
-                default:
-                    Console.Error.WriteLine($"❌ Unknown format: {format}");
-                    return 1;
-            }
-
-            Console.WriteLine(
-                $"{Blue}Dictionary saved as '{Path.GetFullPath(outputFile)}' in {format.ToUpper()} format.{Reset}");
-
-            return 0;
         });
+
+        dictGenCommand.SetAction(pr => RunDictgen(
+            pr.GetValue(formatOption)!,
+            pr.GetValue(outputOption),
+            pr.GetValue(baseDirOption)!,
+            pr.GetValue(unescapeOption),
+            pr.GetValue(customDictOption) ?? Array.Empty<string>()));
 
         return dictGenCommand;
     }
 
-    private static string ResolveUserPath(string path)
+    private static int RunDictgen(
+        string format,
+        string? output,
+        string baseDir,
+        bool unescape,
+        string[] customDictArgs)
     {
-        if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException("Path must not be null or empty.", nameof(path));
+        try
+        {
+            var normalizedFormat = format.Trim().ToLowerInvariant();
 
-        path = path.Trim();
+            var baseDirectory = CliUtils.ValidateDirectory(
+                baseDir,
+                "Dictionary base directory");
 
-        if (!Path.IsPathRooted(path))
-            path = Path.Combine(AppContext.BaseDirectory, path);
+            var outputFile = CliUtils.ResolveOutputFile(
+                string.IsNullOrWhiteSpace(output)
+                    ? $"dictionary_maxlength.{normalizedFormat}"
+                    : output);
 
-        return Path.GetFullPath(path);
+            var customSpecs =
+                CliUtils.ParseAndValidateCustomDictSpecs(customDictArgs);
+
+            CliUtils.WriteInfo(
+                $"Loading base dictionaries from '{baseDirectory}'...");
+
+            // Dictgen regenerates the complete provider from raw source files.
+            // Do not replace this with DictionaryLib.New().
+            var dictionary = DictionaryLib.FromDicts(baseDirectory);
+
+            if (customSpecs.Length > 0)
+            {
+                CliUtils.WriteInfo(
+                    $"Applying {customSpecs.Length} custom dictionary spec(s)...");
+
+                DictionaryLib.WithCustomDicts(dictionary, customSpecs);
+            }
+
+            SaveDictionary(
+                normalizedFormat,
+                outputFile,
+                dictionary,
+                unescape);
+
+            CliUtils.WriteSuccess(
+                $"{Blue}Dictionary saved as '{outputFile}' in " +
+                $"{normalizedFormat.ToUpperInvariant()} format.{Reset}");
+
+            return CliUtils.ExitSuccess;
+        }
+        catch (Exception ex)
+        {
+            return CliUtils.WriteError(
+                ex,
+                "Dictionary generation");
+        }
+    }
+
+    private static void SaveDictionary(
+        string format,
+        string outputFile,
+        DictionaryMaxlength dictionary,
+        bool unescape)
+    {
+        switch (format)
+        {
+            case "zstd":
+                DictionaryLib.SaveJsonCompressed(outputFile, dictionary);
+                break;
+
+            case "cbor":
+                DictionaryLib.SaveCbor(outputFile, dictionary);
+                break;
+
+            case "json" when unescape:
+                DictionaryLib.SerializeToJsonUnescaped(outputFile, dictionary);
+                break;
+
+            case "json":
+                DictionaryLib.SerializeToJson(outputFile, dictionary);
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(format),
+                    format,
+                    "Unsupported dictionary format.");
+        }
     }
 }

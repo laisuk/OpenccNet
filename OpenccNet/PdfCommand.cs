@@ -32,7 +32,7 @@ internal static class PdfCommand
             // Required = true,
             Description =
                 "Conversion configuration.\nValid options: " +
-                string.Join(", ", CliConfigNames.All)
+                CliUtils.ConfigHelpAll
         };
 
         configOption.Validators.Add(result =>
@@ -41,7 +41,7 @@ internal static class PdfCommand
             if (!string.IsNullOrEmpty(value) && !CliConfigNames.IsValid(value))
             {
                 result.AddError(
-                    $"Invalid config '{value}'. Valid options: {string.Join(", ", CliConfigNames.All)}"
+                    $"Invalid config '{value}'. Valid options: {CliUtils.ConfigHelpAll}"
                 );
             }
         });
@@ -93,7 +93,11 @@ internal static class PdfCommand
         {
             Arity = ArgumentArity.ZeroOrMore,
             AllowMultipleArgumentsPerToken = false,
-            Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
+            Description =
+                "Load custom dictionary: <slot>:<mode>:<path>.\n" +
+                "Example: HkPhrasesRev:append:my_hk_dict.txt\n" +
+                "Available slots: " +
+                CliUtils.SlotHelpAll
         };
 
         customDictOption.Validators.Add(result =>

@@ -40,6 +40,38 @@ internal static class CliUtils
     }
 
     /// <summary>
+    /// Parses, validates, and resolves custom dictionary specifications.
+    ///
+    /// This validates:
+    /// - Canonical slot names.
+    /// - Dictionary mode.
+    /// - Token structure.
+    /// - Referenced dictionary files.
+    ///
+    /// An empty input returns <see cref="Array.Empty{T}"/>.
+    /// </summary>
+    internal static CustomDictSpec[] ParseAndValidateCustomDictSpecs(
+        IEnumerable<string>? customDictArgs)
+    {
+        if (customDictArgs is null)
+            return Array.Empty<CustomDictSpec>();
+
+        var values = customDictArgs as string[] ??
+                     customDictArgs.ToArray();
+
+        if (values.Length == 0)
+            return Array.Empty<CustomDictSpec>();
+
+        var specs = values
+            .Select(CustomDictSpec.Parse)
+            .ToArray();
+
+        ValidateCustomDictionaryFiles(specs);
+
+        return specs;
+    }
+
+    /// <summary>
     /// Parses, validates, loads, and activates custom dictionary specifications.
     ///
     /// This method must be called before constructing any
@@ -51,20 +83,10 @@ internal static class CliUtils
     internal static void ApplyCustomDictionaryProvider(
         IEnumerable<string>? customDictArgs)
     {
-        if (customDictArgs is null)
+        var specs = ParseAndValidateCustomDictSpecs(customDictArgs);
+
+        if (specs.Length == 0)
             return;
-
-        var values = customDictArgs as string[] ??
-                     customDictArgs.ToArray();
-
-        if (values.Length == 0)
-            return;
-
-        var specs = values
-            .Select(CustomDictSpec.Parse)
-            .ToArray();
-
-        ValidateCustomDictionaryFiles(specs);
 
         // DictionaryLib.New() returns the default dictionary provider and
         // resets the global plan provider before customization.
@@ -319,6 +341,22 @@ internal static class CliUtils
                 ex);
         }
     }
+
+    /// <summary>
+    /// Gets a comma-separated list of all supported OpenCC conversion
+    /// configuration names for CLI help text.
+    /// </summary>
+    internal static string ConfigHelpAll =>
+        string.Join(", ", CliConfigNames.All);
+
+    /// <summary>
+    /// Gets a comma-separated list of all active custom dictionary slot
+    /// names for CLI help text.
+    /// </summary>
+    internal static string SlotHelpAll =>
+        string.Join(", ",
+            DictSlotExtensions.ActiveSlots
+                .Select(s => s.ToCanonicalName()));
 
     /// <summary>
     /// Writes a consistently formatted CLI error and returns its exit code.
