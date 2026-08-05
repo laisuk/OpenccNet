@@ -100,7 +100,7 @@ internal static class ConvertCommand
             DefaultValueFactory = _ => false,
             Description = "Preserve Unicode IDS expressions during conversion."
         };
-        
+
         var normCompatOption = new Option<bool>("--norm-compat", "-n")
         {
             DefaultValueFactory = _ => false,
@@ -114,20 +114,7 @@ internal static class ConvertCommand
             Description = "Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt"
         };
 
-        customDictOption.Validators.Add(result =>
-        {
-            foreach (var value in result.GetValueOrDefault<string[]>())
-            {
-                try
-                {
-                    CustomDictSpec.Parse(value);
-                }
-                catch (ArgumentException ex)
-                {
-                    result.AddError(ex.Message);
-                }
-            }
-        });
+        CliUtils.AddCustomDictValidator(customDictOption);
 
         var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
         {
@@ -149,12 +136,39 @@ internal static class ConvertCommand
             var deTofuResult = result.GetResult(deTofuOption);
             var deTofuFileResult = result.GetResult(deTofuFileOption);
 
-            if (deTofuFileResult is null) return;
+            // --detofu-file was not supplied.
+            if (deTofuFileResult is null)
+                return;
+
+            // Avoid cascading errors when System.CommandLine already rejected the value.
             if (deTofuFileResult.Errors.Any())
                 return;
 
-            if (deTofuResult is null)
+            // Presence matters here, because "--detofu" with no value means level "all".
+            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+
+            if (!deTofuEnabled)
+            {
                 result.AddError("--detofu-file requires --detofu.");
+                return;
+            }
+
+            var path = deTofuFileResult.GetValueOrDefault<string>();
+
+            try
+            {
+                CliUtils.ValidateInputFile(
+                    path,
+                    "DeTofu mapping file");
+            }
+            catch (ArgumentException ex)
+            {
+                result.AddError(ex.Message);
+            }
+            catch (IOException ex)
+            {
+                result.AddError(ex.Message);
+            }
         });
 
         convertCommand.SetAction(async (pr, _) =>
@@ -181,7 +195,8 @@ internal static class ConvertCommand
             var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             return await RunConversionAsync(
-                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds,  normCompat, customDicts
+                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds, normCompat,
+                customDicts
             );
         });
 
@@ -204,29 +219,39 @@ internal static class ConvertCommand
     {
         try
         {
-            if (customDicts.Length > 0)
+            var inputEnc = CliUtils.ResolveEncoding(inputEncoding);
+            var outputEnc = CliUtils.ResolveEncoding(outputEncoding);
+
+            if (!string.IsNullOrWhiteSpace(inputFile))
+                inputFile = CliUtils.ValidateInputFile(inputFile);
+
+            if (!string.IsNullOrWhiteSpace(outputFile))
             {
-                var dict = DictionaryLib.New();
+                outputFile = CliUtils.ResolveOutputFile(outputFile);
 
-                var specs = customDicts
-                    .Select(CustomDictSpec.Parse)
-                    .ToArray();
-
-                DictionaryLib.WithCustomDicts(dict, specs);
-                Opencc.UseCustomDictionary(dict);
+                if (!string.IsNullOrWhiteSpace(inputFile))
+                    CliUtils.EnsureDifferentPaths(inputFile, outputFile);
             }
 
-            // Assuming OpenccNetLib provides a way to initialize Opencc with a config string
+            if (!string.IsNullOrWhiteSpace(deTofuFile))
+            {
+                deTofuFile = CliUtils.ValidateInputFile(
+                    deTofuFile,
+                    "DeTofu mapping file");
+            }
+
+            CliUtils.ApplyCustomDictionaryProvider(customDicts);
+
             var opencc = new Opencc(config);
 
             opencc.SetPreserveIds(keepIds);
 
-            var inputStr = await ReadInputAsync(inputFile, inputEncoding);
+            var inputStr = await ReadInputAsync(inputFile, inputEnc);
             if (normCompat)
             {
                 inputStr = opencc.NormalizeCompat(inputStr);
             }
-            
+
             var outputStr = opencc.Convert(inputStr, punct);
 
             if (!string.IsNullOrWhiteSpace(deTofu))
@@ -238,7 +263,7 @@ internal static class ConvertCommand
                     : opencc.DeTofuWithCustomFile(outputStr, level, deTofuFile);
             }
 
-            await WriteOutputAsync(outputFile, outputStr, outputEncoding);
+            await WriteOutputAsync(outputFile, outputStr, outputEnc);
 
             var inFrom = inputFile ?? "<stdin>";
             var outTo = outputFile ?? "<stdout>";
@@ -256,28 +281,28 @@ internal static class ConvertCommand
                     ? ", " + string.Join(", ", options)
                     : string.Empty;
 
-                Console.WriteLine(
-                    $"✅ Conversion ({config}{optionText}): {inFrom} → {outTo}");
+                CliUtils.WriteSuccess(
+                    $"Conversion ({config}{optionText}): {inFrom} → {outTo}");
             }
 
-            return 0;
+            return CliUtils.ExitSuccess;
         }
         catch (Exception ex)
         {
             lock (ConsoleLock)
             {
-                Console.Error.WriteLine($"Error during conversion: {ex.Message}");
+                return CliUtils.WriteError(ex, "Conversion");
             }
-
-            return 1;
         }
     }
 
-    private static async Task<string> ReadInputAsync(string? inputFile, string inputEncoding)
+    private static async Task<string> ReadInputAsync(
+        string? inputFile,
+        Encoding inputEncoding)
     {
         if (inputFile != null)
         {
-            return await File.ReadAllTextAsync(inputFile, Encoding.GetEncoding(inputEncoding));
+            return await File.ReadAllTextAsync(inputFile, inputEncoding);
         }
 
         if (!Console.IsInputRedirected)
@@ -289,28 +314,22 @@ internal static class ConvertCommand
             }
         }
 
-        var encoding = Encoding.GetEncoding(inputEncoding);
-        using var reader = new StreamReader(Console.OpenStandardInput(), encoding);
+        using var reader = new StreamReader(Console.OpenStandardInput(), inputEncoding);
         return await reader.ReadToEndAsync();
     }
 
-    private static async Task WriteOutputAsync(string? outputFile, string content, string encodingName)
+    private static async Task WriteOutputAsync(
+        string? outputFile,
+        string content,
+        Encoding outputEncoding)
     {
-        Encoding encoding;
-        if (string.Equals(encodingName, "utf-8", StringComparison.OrdinalIgnoreCase))
-            encoding = new UTF8Encoding(false);
-        else if (string.Equals(encodingName, "utf-16le", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(encodingName, "unicode", StringComparison.OrdinalIgnoreCase))
-            encoding = new UnicodeEncoding(false, false);
-        else if (string.Equals(encodingName, "utf-16be", StringComparison.OrdinalIgnoreCase))
-            encoding = new UnicodeEncoding(true, false);
-        else if (string.Equals(encodingName, "utf-32", StringComparison.OrdinalIgnoreCase))
-            encoding = new UTF32Encoding(false, false);
-        else
-            encoding = Encoding.GetEncoding(encodingName);
-
         if (!string.IsNullOrEmpty(outputFile))
-            await File.WriteAllTextAsync(outputFile, content, encoding);
+        {
+            await File.WriteAllTextAsync(
+                outputFile,
+                content,
+                outputEncoding);
+        }
         else
         {
             Console.Write(content);

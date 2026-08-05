@@ -74,10 +74,10 @@ public static class OfficeConverter
         ArgumentNullException.ThrowIfNull(converter);
 
         if (!File.Exists(inputPath))
-            return (false, $"❌ Input file not found: {inputPath}");
+            return (false, $"Input file not found: {inputPath}");
 
         if (!IsValidOfficeFormat(format))
-            return (false, $"❌ Unsupported or invalid format: {format}");
+            return (false, $"Unsupported or invalid format: {format}");
 
         var normalizedFormat = format.ToLowerInvariant();
 
@@ -129,7 +129,7 @@ public static class OfficeConverter
             // Check for unsupported or missing format
             if (targetXmlPaths == null || targetXmlPaths.Count == 0)
             {
-                return (false, $"❌ Unsupported or invalid format: {format}");
+                return (false, $"Unsupported or invalid format: {format}");
             }
 
             var convertedCount = 0;
@@ -203,7 +203,7 @@ public static class OfficeConverter
             if (convertedCount == 0)
             {
                 return (false,
-                    $"⚠️ No valid XML fragments were found for conversion. Is the format '{format}' correct?");
+                    $"No valid XML fragments were found for conversion. Is the format '{format}' correct?");
             }
 
             // Create the new ZIP archive with the converted files
@@ -221,11 +221,11 @@ public static class OfficeConverter
                 ZipFile.CreateFromDirectory(tempDir, outputPath, CompressionLevel.Optimal, false);
             }
 
-            return (true, $"✅ Successfully converted {convertedCount} fragment(s) in {format} document.");
+            return (true, $"Successfully converted {convertedCount} fragment(s) in {format} document.");
         }
         catch (Exception ex)
         {
-            return (false, $"❌ Conversion failed: {ex.Message}");
+            return (false, $"Conversion failed: {ex.Message}");
         }
         finally
         {
@@ -352,7 +352,7 @@ public static class OfficeConverter
             }
             else
             {
-                return (false, "❌ 'mimetype' file is missing. EPUB requires this as the first entry.");
+                return (false, "'mimetype' file is missing. EPUB requires this as the first entry.");
             }
 
             // 2. Add the rest (recursively)
@@ -368,11 +368,11 @@ public static class OfficeConverter
                 fileStream.CopyTo(entryStream);
             }
 
-            return (true, "✅ EPUB archive created successfully.");
+            return (true, "EPUB archive created successfully.");
         }
         catch (Exception ex)
         {
-            return (false, $"❌ Failed to create EPUB: {ex.Message}");
+            return (false, $"Failed to create EPUB: {ex.Message}");
         }
     }
 
