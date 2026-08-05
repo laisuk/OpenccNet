@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.Diagnostics;
 using System.Text;
 using OpenccNetLib;
 
@@ -27,9 +28,8 @@ internal static class PdfCommand
             Description = "Output text file <output.txt>"
         };
 
-        var configOption = new Option<string>("--config", "-c")
+        var configOption = new Option<string?>("--config", "-c")
         {
-            // Required = true,
             Description =
                 "Conversion configuration.\nValid options: " +
                 CliUtils.ConfigHelpAll
@@ -38,11 +38,13 @@ internal static class PdfCommand
         configOption.Validators.Add(result =>
         {
             var value = result.GetValueOrDefault<string>();
-            if (!string.IsNullOrEmpty(value) && !CliConfigNames.IsValid(value))
+
+            if (!string.IsNullOrWhiteSpace(value) &&
+                !CliConfigNames.IsValid(value))
             {
                 result.AddError(
-                    $"Invalid config '{value}'. Valid options: {CliUtils.ConfigHelpAll}"
-                );
+                    $"Invalid config '{value}'. Valid options: " +
+                    CliUtils.ConfigHelpAll);
             }
         });
 
@@ -52,7 +54,7 @@ internal static class PdfCommand
             Description = "Enable punctuation conversion."
         };
 
-        // Use -H so -h stays as the global help alias
+        // Use -H so -h stays as the global help alias.
         var headerOption = new Option<bool>("--header", "-H")
         {
             DefaultValueFactory = _ => false,
@@ -68,13 +70,16 @@ internal static class PdfCommand
         var compactOption = new Option<bool>("--compact", "-C")
         {
             DefaultValueFactory = _ => false,
-            Description = "Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow."
+            Description =
+                "Use compact reflow (fewer blank lines between paragraphs). " +
+                "Only meaningful with --reflow."
         };
 
         var quietOption = new Option<bool>("--quiet", "-q")
         {
             DefaultValueFactory = _ => false,
-            Description = "Suppress status and progress output; only errors will be shown."
+            Description =
+                "Suppress status and progress output; only errors will be shown."
         };
 
         var extractOption = new Option<bool>("--extract", "-e")
@@ -82,13 +87,14 @@ internal static class PdfCommand
             DefaultValueFactory = _ => false,
             Description = "Extract text from PDF only (no OpenCC conversion)."
         };
-        
+
         var normCompatOption = new Option<bool>("--norm-compat", "-n")
         {
             DefaultValueFactory = _ => false,
-            Description = "Normalize CJK Compatibility Ideographs before conversion."
+            Description =
+                "Normalize CJK Compatibility Ideographs before conversion."
         };
-        
+
         var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
@@ -100,24 +106,12 @@ internal static class PdfCommand
                 CliUtils.SlotHelpAll
         };
 
-        customDictOption.Validators.Add(result =>
-        {
-            foreach (var value in result.GetValueOrDefault<string[]>())
-            {
-                try
-                {
-                    CustomDictSpec.Parse(value);
-                }
-                catch (ArgumentException ex)
-                {
-                    result.AddError(ex.Message);
-                }
-            }
-        });
+        CliUtils.AddCustomDictValidator(customDictOption);
 
         var pdfCommand = new Command(
             "pdf",
-            $"{Blue}Convert a PDF to UTF-8 text using PdfPig + OpenccNetLib, with optional CJK paragraph reflow.{Reset}")
+            $"{Blue}Convert a PDF to UTF-8 text using PdfPig + " +
+            $"OpenccNetLib, with optional CJK paragraph reflow.{Reset}")
         {
             inputFileOption,
             outputFileOption,
@@ -129,138 +123,311 @@ internal static class PdfCommand
             quietOption,
             extractOption,
             normCompatOption,
-            customDictOption,
+            customDictOption
         };
 
-        pdfCommand.SetAction(async (pr, cancellationToken) =>
+        pdfCommand.Validators.Add(result =>
         {
-            var input = pr.GetValue(inputFileOption);
-            var output = pr.GetValue(outputFileOption);
-            var config = pr.GetValue(configOption)!;
-            var punct = pr.GetValue(punctOption);
-            var addHeader = pr.GetValue(headerOption);
-            var reflow = pr.GetValue(reflowOption);
-            var compact = pr.GetValue(compactOption);
-            var quiet = pr.GetValue(quietOption);
-            var extract = pr.GetValue(extractOption);
-            var normCompat = pr.GetValue(normCompatOption);
-            var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
+            var extractOnly = result.GetValue(extractOption);
+            var config = result.GetValue(configOption);
 
-            if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
+            if (!extractOnly && string.IsNullOrWhiteSpace(config))
             {
-                await Console.Error.WriteLineAsync("❌ Input file does not exist.");
-                return 1;
-            }
-
-            if (!string.Equals(Path.GetExtension(input), ".pdf", StringComparison.OrdinalIgnoreCase))
-            {
-                await Console.Error.WriteLineAsync("❌ Input file must be a .pdf file.");
-                return 1;
-            }
-
-            if (!extract)
-            {
-                if (string.IsNullOrWhiteSpace(config))
-                {
-                    await Console.Error.WriteLineAsync("❌ Missing --config (required unless --extract is used).");
-                    return 1;
-                }
-            }
-            else
-            {
-                if (!quiet && !string.IsNullOrEmpty(config))
-                    await Console.Error.WriteLineAsync("ℹ️ --config is ignored in --extract mode.");
-
-                if (!quiet && punct)
-                    await Console.Error.WriteLineAsync("ℹ️ --punct has no effect in --extract mode.");
-            }
-
-
-            if (compact && !reflow && !quiet)
-            {
-                await Console.Error.WriteLineAsync("ℹ️ --compact has no effect without --reflow; ignoring.");
-            }
-
-            var resolvedOutput = output ?? Path.Combine(
-                Path.GetDirectoryName(input) ?? string.Empty,
-                $"{Path.GetFileNameWithoutExtension(input)}" +
-                (extract ? "_extracted.txt" : "_converted.txt"));
-
-            try
-            {
-                if (!quiet)
-                    await Console.Error.WriteLineAsync("⏳ Processing PDF… please wait…");
-
-                // 1) Extract text via PdfHelper (PdfPig, pure C#)
-                var extractedText = await PdfHelper.LoadPdfTextAsync(
-                    filename: input,
-                    addPdfPageHeader: addHeader,
-                    statusCallback: status =>
-                    {
-                        // simple status logging to stderr
-                        // Console.Error.WriteLine(status);
-                        if (!quiet)
-                            Console.Error.Write("\r" + status);
-                    },
-                    cancellationToken: cancellationToken);
-
-                var finalText = extractedText;
-
-                // 2) Optional CJK paragraph reflow
-                if (reflow)
-                {
-                    finalText = ReflowHelper.ReflowCjkParagraphs(
-                        finalText,
-                        addPdfPageHeader: addHeader,
-                        compact: compact);
-                }
-
-                // 3) OpenCC conversion (only if not extract)
-                if (!extract)
-                {
-                    if (customDicts.Length > 0)
-                    {
-                        var dict = DictionaryLib.New();
-
-                        var specs = customDicts
-                            .Select(CustomDictSpec.Parse)
-                            .ToArray();
-
-                        DictionaryLib.WithCustomDicts(dict, specs);
-                        Opencc.UseCustomDictionary(dict);
-                    }
-                    
-                    var converter = new Opencc(config);
-                    if (normCompat)
-                    {
-                        finalText = converter.NormalizeCompat(finalText);
-                    }
-                    
-                    finalText = converter.Convert(finalText, punctuation: punct);
-                }
-
-                // 4) Save UTF-8
-                await File.WriteAllTextAsync(
-                    resolvedOutput,
-                    finalText,
-                    new UTF8Encoding(false),
-                    cancellationToken);
-
-                if (!quiet)
-                {
-                    await Console.Error.WriteLineAsync(
-                        $"\n✅ PDF {(extract ? "extraction" : "conversion")} succeeded.\n📁 Output: {Path.GetFullPath(resolvedOutput)}");
-                }
-
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                await Console.Error.WriteLineAsync($"❌ PDF conversion failed: {ex.Message}");
-                return 1;
+                result.AddError(
+                    "--config is required unless --extract is used.");
             }
         });
 
+        pdfCommand.SetAction(async (parseResult, cancellationToken) =>
+            await RunPdfAsync(
+                input: parseResult.GetValue(inputFileOption),
+                output: parseResult.GetValue(outputFileOption),
+                config: parseResult.GetValue(configOption),
+                punctuation: parseResult.GetValue(punctOption),
+                addHeader: parseResult.GetValue(headerOption),
+                reflow: parseResult.GetValue(reflowOption),
+                compact: parseResult.GetValue(compactOption),
+                quiet: parseResult.GetValue(quietOption),
+                extractOnly: parseResult.GetValue(extractOption),
+                normCompat: parseResult.GetValue(normCompatOption),
+                customDictArgs:
+                parseResult.GetValue(customDictOption) ??
+                Array.Empty<string>(),
+                cancellationToken));
+
         return pdfCommand;
+    }
+
+    private static async Task<int> RunPdfAsync(
+        string? input,
+        string? output,
+        string? config,
+        bool punctuation,
+        bool addHeader,
+        bool reflow,
+        bool compact,
+        bool quiet,
+        bool extractOnly,
+        bool normCompat,
+        string[] customDictArgs,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var progressLineActive = false;
+
+        try
+        {
+            var resolvedInput = ValidatePdfInput(input);
+            var resolvedOutput = ResolveOutputPath(
+                resolvedInput,
+                output,
+                extractOnly);
+
+            CliUtils.EnsureDifferentPaths(
+                resolvedInput,
+                resolvedOutput);
+
+            ReportIgnoredOptions(
+                extractOnly,
+                config,
+                punctuation,
+                normCompat,
+                customDictArgs,
+                quiet);
+
+            if (compact && !reflow)
+            {
+                CliUtils.WriteInfo(
+                    "--compact has no effect without --reflow; ignoring.",
+                    quiet);
+            }
+
+            CliUtils.WriteInfo(
+                "Processing PDF...",
+                quiet);
+
+            progressLineActive = !quiet;
+
+            var finalText = await ExtractTextAsync(
+                resolvedInput,
+                addHeader,
+                quiet,
+                cancellationToken);
+
+            FinishProgressLine(ref progressLineActive);
+
+            if (reflow)
+            {
+                CliUtils.WriteInfo(
+                    "Reflowing CJK paragraphs...",
+                    quiet);
+
+                finalText = ReflowHelper.ReflowCjkParagraphs(
+                    finalText,
+                    addPdfPageHeader: addHeader,
+                    compact: compact);
+            }
+
+            if (!extractOnly)
+            {
+                CliUtils.WriteInfo(
+                    $"Converting ({config})...",
+                    quiet);
+
+                finalText = ConvertText(
+                    finalText,
+                    config!,
+                    punctuation,
+                    normCompat,
+                    customDictArgs);
+            }
+
+            CliUtils.WriteInfo(
+                "Writing output...",
+                quiet);
+
+            await WriteOutputAsync(
+                resolvedOutput,
+                finalText,
+                cancellationToken);
+
+            stopwatch.Stop();
+
+            WriteSuccess(
+                resolvedOutput,
+                extractOnly,
+                stopwatch.Elapsed,
+                quiet);
+
+            return CliUtils.ExitSuccess;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            FinishProgressLine(ref progressLineActive);
+
+            return CliUtils.WriteError(
+                ex,
+                extractOnly
+                    ? "PDF extraction"
+                    : "PDF conversion");
+        }
+    }
+
+    private static string ValidatePdfInput(string? input)
+    {
+        var resolvedInput = CliUtils.ValidateInputFile(
+            input,
+            "Input PDF file");
+
+        if (!string.Equals(
+                Path.GetExtension(resolvedInput),
+                ".pdf",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"Input file must be a PDF: {resolvedInput}");
+        }
+
+        return resolvedInput;
+    }
+
+    private static string ResolveOutputPath(
+        string input,
+        string? output,
+        bool extractOnly)
+    {
+        var resolvedOutput = string.IsNullOrWhiteSpace(output)
+            ? Path.Combine(
+                Path.GetDirectoryName(input) ?? string.Empty,
+                Path.GetFileNameWithoutExtension(input) +
+                (extractOnly
+                    ? "_extracted.txt"
+                    : "_converted.txt"))
+            : output.Trim();
+
+        return CliUtils.ResolveOutputFile(resolvedOutput);
+    }
+
+    private static void ReportIgnoredOptions(
+        bool extractOnly,
+        string? config,
+        bool punctuation,
+        bool normCompat,
+        string[] customDictArgs,
+        bool quiet)
+    {
+        if (!extractOnly)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(config))
+        {
+            CliUtils.WriteInfo(
+                "--config is ignored in --extract mode.",
+                quiet);
+        }
+
+        if (punctuation)
+        {
+            CliUtils.WriteInfo(
+                "--punct has no effect in --extract mode.",
+                quiet);
+        }
+
+        if (normCompat)
+        {
+            CliUtils.WriteInfo(
+                "--norm-compat has no effect in --extract mode.",
+                quiet);
+        }
+
+        if (customDictArgs.Length > 0)
+        {
+            CliUtils.WriteInfo(
+                "--custom-dict has no effect in --extract mode.",
+                quiet);
+        }
+    }
+
+    private static Task<string> ExtractTextAsync(
+        string input,
+        bool addHeader,
+        bool quiet,
+        CancellationToken cancellationToken)
+    {
+        return PdfHelper.LoadPdfTextAsync(
+            filename: input,
+            addPdfPageHeader: addHeader,
+            statusCallback: quiet
+                ? null
+                : status => Console.Error.Write("\r" + status),
+            cancellationToken: cancellationToken);
+    }
+
+    private static string ConvertText(
+        string text,
+        string config,
+        bool punctuation,
+        bool normCompat,
+        string[] customDictArgs)
+    {
+        // Custom provider selection must happen before Opencc construction.
+        CliUtils.ApplyCustomDictionaryProvider(customDictArgs);
+
+        var converter = new Opencc(config);
+
+        if (normCompat)
+            text = converter.NormalizeCompat(text);
+
+        return converter.Convert(
+            text,
+            punctuation: punctuation);
+    }
+
+    private static Task WriteOutputAsync(
+        string output,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        return File.WriteAllTextAsync(
+            output,
+            text,
+            new UTF8Encoding(
+                encoderShouldEmitUTF8Identifier: false),
+            cancellationToken);
+    }
+
+    private static void FinishProgressLine(
+        ref bool progressLineActive)
+    {
+        if (!progressLineActive)
+            return;
+
+        Console.Error.WriteLine();
+        progressLineActive = false;
+    }
+
+    private static void WriteSuccess(
+        string output,
+        bool extractOnly,
+        TimeSpan elapsed,
+        bool quiet)
+    {
+        if (quiet)
+            return;
+
+        CliUtils.WriteSuccess(
+            $"PDF {(extractOnly ? "extraction" : "conversion")} succeeded.");
+
+        Console.Error.WriteLine(
+            $"⏱ Elapsed: {FormatElapsed(elapsed)}");
+        Console.Error.WriteLine($"📁 Output: {output}");
+    }
+
+    private static string FormatElapsed(TimeSpan elapsed)
+    {
+        return elapsed.TotalMinutes >= 1
+            ? $"{(int)elapsed.TotalMinutes}:{elapsed.Seconds:00}.{elapsed.Milliseconds:000}"
+            : $"{elapsed.TotalSeconds:F2} s";
     }
 }

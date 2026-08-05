@@ -1406,7 +1406,11 @@ Options:
   -o, --output <output>            Output filename. Default: dictionary_maxlength.<ext>
   -b, --base-dir <base-dir>        Base directory containing OpenCC-style .txt dictionary sources (for dictgen) [default: dicts]
   -u, --unescape                   For JSON format only: write readable Unicode characters instead of \uXXXX escapes
-  -D, --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
+  -D, --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>.
+                                   Example: HkPhrasesRev:append:my_hk_dict.txt
+                                   Available slots: STCharacters, STPhrases, STPunctuations, TSCharacters, TSPhrases, TSPunctuations, TWPhrases, TWPhrasesRev, 
+                                   TWVariants, TWVariantsRev, TWVariantsRevPhrases, HKVariants, HKVariantsRev, HKVariantsRevPhrases, JPSCharacters, JPSPhrases, 
+                                   TWVariantsPhrases, HKVariantsPhrases, JPSCharactersRev, HKPhrases, HKPhrasesRev
   -?, -h, --help                   Show help and usage information
 ```
 
@@ -1423,13 +1427,19 @@ Options:
   -i, --input <input>               Read original text from file <input>
   -o, --output <output>             Write original text to file <output>
   -c, --config <config> (REQUIRED)  Conversion configuration.
-                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, 
+                                    hk2t, t2jp, jp2t
   -p, --punct                       Punctuation conversion.
   --detofu <detofu>                 Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i
-  --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires --detofu)
+  --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires 
+                                    --detofu)
   -I, --keep-ids                    Preserve Unicode IDS expressions during conversion.
   -n, --norm-compat                 Normalize CJK Compatibility Ideographs before conversion.
-  -D, --custom-dict <custom-dict>   Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
+  -D, --custom-dict <custom-dict>   Load custom dictionary: <slot>:<mode>:<path>.
+                                    Example: HkPhrasesRev:append:my_hk_dict.txt
+                                    Available slots: STCharacters, STPhrases, STPunctuations, TSCharacters, TSPhrases, TSPunctuations, TWPhrases, TWPhrasesRev, 
+                                    TWVariants, TWVariantsRev, TWVariantsRevPhrases, HKVariants, HKVariantsRev, HKVariantsRevPhrases, JPSCharacters, 
+                                    JPSPhrases, TWVariantsPhrases, HKVariantsPhrases, JPSCharactersRev, HKPhrases, HKPhrasesRev
   --in-enc <in-enc>                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
   --out-enc <out-enc>               Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
   -?, -h, --help                    Show help and usage information
@@ -1463,7 +1473,7 @@ Repeat `-D` or `--custom-dict` to apply multiple specifications in command-line 
 
 ```
 Description:
-  Convert Office documents or Epub using OpenccNetLib.
+  Convert Office documents or EPUB using OpenccNetLib.
 
 Usage:
   OpenccNet office [options]
@@ -1472,12 +1482,17 @@ Options:
   -i, --input <input>               Input Office document <input>
   -o, --output <output>             Output Office document <output>
   -c, --config <config> (REQUIRED)  Conversion configuration.
-                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, 
+                                    hk2t, t2jp, jp2t
   -p, --punct                       Enable punctuation conversion.
   -f, --format <format>             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   -k, --keep-font                   Preserve font names in Office documents [default: true]. Use --keep-font:false to disable.
   -q, --quiet                       Suppress status and progress output; only errors will be shown.
-  -D, --custom-dict <custom-dict>   Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
+  -D, --custom-dict <custom-dict>   Load custom dictionary: <slot>:<mode>:<path>.
+                                    Example: HkPhrasesRev:append:my_hk_dict.txt
+                                    Available slots: STCharacters, STPhrases, STPunctuations, TSCharacters, TSPhrases, TSPunctuations, TWPhrases, TWPhrasesRev, 
+                                    TWVariants, TWVariantsRev, TWVariantsRevPhrases, HKVariants, HKVariantsRev, HKVariantsRevPhrases, JPSCharacters, 
+                                    JPSPhrases, TWVariantsPhrases, HKVariantsPhrases, JPSCharactersRev, HKPhrases, HKPhrasesRev
   -?, -h, --help                    Show help and usage information
 ```
 
@@ -1494,7 +1509,8 @@ Options:
   -i, --input <input>              Input PDF file <input.pdf>
   -o, --output <output>            Output text file <output.txt>
   -c, --config <config>            Conversion configuration.
-                                   Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+                                   Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk, hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, 
+                                   hk2t, t2jp, jp2t
   -p, --punct                      Enable punctuation conversion.
   -H, --header                     Add [Page x/y] headers to the extracted text.
   -r, --reflow                     Reflow CJK paragraphs into continuous lines.
@@ -1502,7 +1518,11 @@ Options:
   -q, --quiet                      Suppress status and progress output; only errors will be shown.
   -e, --extract                    Extract text from PDF only (no OpenCC conversion).
   -n, --norm-compat                Normalize CJK Compatibility Ideographs before conversion.
-  -D, --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>. Example: hkphrasesrev:append:my_hk_dict.txt
+  -D, --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>.
+                                   Example: HkPhrasesRev:append:my_hk_dict.txt
+                                   Available slots: STCharacters, STPhrases, STPunctuations, TSCharacters, TSPhrases, TSPunctuations, TWPhrases, TWPhrasesRev, 
+                                   TWVariants, TWVariantsRev, TWVariantsRevPhrases, HKVariants, HKVariantsRev, HKVariantsRevPhrases, JPSCharacters, JPSPhrases, 
+                                   TWVariantsPhrases, HKVariantsPhrases, JPSCharactersRev, HKPhrases, HKPhrasesRev
   -?, -h, --help                   Show help and usage information
 ```
 

@@ -13,6 +13,15 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 - CLI: `-D` / `--custom-dict` now delegates the shared `<slot>:<append|override>:<path>` token grammar to
   `OpenccNetLib.CustomDictSpec.Parse(...)`, including strict slot validation and colon-preserving paths.
+- CLI: Centralized custom dictionary parsing, file validation, configuration help, slot help, path validation, output
+  resolution, and error reporting into shared `CliUtils` helpers, reducing duplicated logic across commands.
+- CLI: Refactored `convert`, `office`, and `pdf` commands to reuse the shared custom dictionary pipeline and validation
+  helpers while preserving existing command behavior.
+- CLI: Simplified `office` command by removing the unnecessary `OfficeConverterBuilder` layer and invoking
+  `OfficeConverter` directly.
+- CLI: Refactored `pdf` command into a clearer processing pipeline with dedicated helpers for validation, extraction,
+  reflow, conversion, and output, while keeping the extraction → reflow → conversion workflow unchanged. Extraction-only
+  mode now skips OpenCC initialization entirely.
 
 ---
 
