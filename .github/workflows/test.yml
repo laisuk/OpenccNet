@@ -1,0 +1,40 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ master ]
+
+  pull_request:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: .NET Tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore OpenccNet.sln
+
+      - name: Build
+        run: dotnet build OpenccNet.sln --configuration Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test OpenccNetTests/OpenccNetTests.csproj
+          --configuration Release
+          --no-build
+          --logger "console;verbosity=normal"
