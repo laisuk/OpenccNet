@@ -410,4 +410,84 @@ internal static class CliUtils
         if (!quiet)
             Console.Error.WriteLine($"✅ {message}");
     }
+    
+    // Kangxi Radical Normalization
+    
+    private const int KangxiStart = 0x2F00;
+    private const int KangxiEnd = 0x2FDF;
+    private const int KangxiLength = KangxiEnd - KangxiStart + 1;
+
+    private static readonly Lazy<char[]> KangxiRadicalMap =
+        new(LoadKangxiRadicalMap);
+
+    internal static string NormalizeKangxiRadicals(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var map = KangxiRadicalMap.Value;
+        StringBuilder? sb = null;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+
+            if (ch < KangxiStart || ch > KangxiEnd)
+            {
+                sb?.Append(ch);
+                continue;
+            }
+
+            var replacement = map[ch - KangxiStart];
+            if (replacement == '\0')
+            {
+                sb?.Append(ch);
+                continue;
+            }
+
+            if (sb == null)
+            {
+                sb = new StringBuilder(text.Length);
+                sb.Append(text, 0, i);
+            }
+
+            sb.Append(replacement);
+        }
+
+        return sb?.ToString() ?? text;
+    }
+    
+    private static char[] LoadKangxiRadicalMap()
+    {
+        var map = new char[KangxiLength];
+
+        var path = Path.Combine(
+            AppContext.BaseDirectory,
+            "dicts",
+            "Kangxi_Radicals.txt");
+
+        if (!File.Exists(path))
+            return map;
+
+        foreach (var rawLine in File.ReadLines(path, Encoding.UTF8))
+        {
+            var line = rawLine.Trim();
+
+            if (line.Length == 0 || line[0] == '#')
+                continue;
+
+            var parts = line.Split('\t');
+            if (parts.Length != 2 ||
+                parts[0].Length != 1 ||
+                parts[1].Length != 1)
+                continue;
+
+            var source = parts[0][0];
+
+            if (source >= KangxiStart && source <= KangxiEnd)
+                map[source - KangxiStart] = parts[1][0];
+        }
+
+        return map;
+    }
 }

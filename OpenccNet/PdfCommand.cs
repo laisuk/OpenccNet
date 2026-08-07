@@ -215,6 +215,8 @@ internal static class PdfCommand
                 cancellationToken);
 
             FinishProgressLine(ref progressLineActive);
+            
+            finalText = CliUtils.NormalizeKangxiRadicals(finalText);
 
             if (reflow)
             {

@@ -11,6 +11,10 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Changed
 
+- CLI: Added an experimental Kangxi Radical normalization step for the `pdf` command to repair PdfPig extraction that
+  emits Kangxi Radical code points instead of ordinary CJK ideographs. Normalization is applied immediately after PDF
+  extraction and before CJK paragraph reflow, improving list, heading, and paragraph detection while remaining isolated
+  from the core `OpenccNetLib` Unicode compatibility normalization.
 - CLI: `-D` / `--custom-dict` now delegates the shared `<slot>:<append|override>:<path>` token grammar to
   `OpenccNetLib.CustomDictSpec.Parse(...)`, including strict slot validation and colon-preserving paths.
 - CLI: Centralized custom dictionary parsing, file validation, configuration help, slot help, path validation, output
@@ -19,9 +23,10 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
   helpers while preserving existing command behavior.
 - CLI: Simplified the `office` command by removing the internal `OfficeConverterBuilder` layer and invoking
   `OfficeConverter` directly, reducing command orchestration complexity while preserving existing behavior.
-- CLI: Refactored `pdf` command into a clearer processing pipeline with dedicated helpers for validation, extraction,
-  reflow, conversion, and output, while keeping the extraction → reflow → conversion workflow unchanged. Extraction-only
-  mode now skips OpenCC initialization entirely.
+- CLI: Refactored the `pdf` command into a clearer processing pipeline with dedicated helpers for validation,
+  extraction, Kangxi Radical normalization, reflow, conversion, and output, while keeping the extraction →
+  normalization → reflow → conversion workflow easy to follow. Extraction-only mode now skips OpenCC initialization
+  entirely.
 
 ---
 
