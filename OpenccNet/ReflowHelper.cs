@@ -12,7 +12,7 @@ public static class ReflowHelper
     private static readonly Regex TitleHeadingRegex =
         new(
             @"^(?!.{20,}[,，])(?=.{0,50}$)
-                  (前言|序章|楔子|终章|尾声|后记|尾聲|後記|番外.{0,15}
+                  (目录|目錄|前言|序章|楔子|终章|尾声|尾聲|后记|後記|番外.{0,15}
                   |.{0,10}?第.{0,5}?([章节部卷節回][^分合的])|(?:卷|章)[一二三四五六七八九十](?:$|.{0,20}?)
                   )",
             RegexOptions.Compiled | RegexOptions.IgnorePatternWhitespace);
