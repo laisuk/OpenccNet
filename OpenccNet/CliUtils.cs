@@ -425,30 +425,33 @@ internal static class CliUtils
         if (string.IsNullOrEmpty(text))
             return text;
 
-        var map = KangxiRadicalMap.Value;
+        ReadOnlySpan<char> source = text;
+        ReadOnlySpan<char> map = KangxiRadicalMap.Value;
+
         StringBuilder? sb = null;
 
-        for (var i = 0; i < text.Length; i++)
+        for (int i = 0; i < source.Length; i++)
         {
-            var ch = text[i];
+            char ch = source[i];
 
-            if (ch < KangxiStart || ch > KangxiEnd)
+            if ((uint)(ch - KangxiStart) >= KangxiLength)
             {
                 sb?.Append(ch);
                 continue;
             }
 
-            var replacement = map[ch - KangxiStart];
+            char replacement = map[ch - KangxiStart];
+
             if (replacement == '\0')
             {
                 sb?.Append(ch);
                 continue;
             }
 
-            if (sb == null)
+            if (sb is null)
             {
-                sb = new StringBuilder(text.Length);
-                sb.Append(text, 0, i);
+                sb = new StringBuilder(source.Length);
+                sb.Append(source[..i]);
             }
 
             sb.Append(replacement);
