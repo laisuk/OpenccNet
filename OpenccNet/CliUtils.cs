@@ -430,9 +430,9 @@ internal static class CliUtils
 
         StringBuilder? sb = null;
 
-        for (int i = 0; i < source.Length; i++)
+        for (var i = 0; i < source.Length; i++)
         {
-            char ch = source[i];
+            var ch = source[i];
 
             if ((uint)(ch - KangxiStart) >= KangxiLength)
             {
@@ -440,7 +440,7 @@ internal static class CliUtils
                 continue;
             }
 
-            char replacement = map[ch - KangxiStart];
+            var replacement = map[ch - KangxiStart];
 
             if (replacement == '\0')
             {
