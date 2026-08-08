@@ -1,8 +1,6 @@
 # Experimental Kangxi Radicals normalization
 #
 # Complete 214-entry Kangxi radical mapping.
-# Canonical radical order cross-checked against Xiaoma Cidian:
-#   https://www.xiaoma.info/bushou.php?ext=1
 #
 # Intended ONLY for repairing malformed PDF text extraction
 # (notably PdfPig output that substitutes Kangxi Radical code points
