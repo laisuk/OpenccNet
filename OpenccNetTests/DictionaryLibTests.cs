@@ -337,8 +337,8 @@ public class DictionaryLibTests
             loaded.jps_characters_rev.Count);
     }
 
+    // Notes: run with 'dotnet test --filter "TestDictLengthMaskAndLongLengths" --logger "console;verbosity=detailed"' to see the log
     [TestMethod]
-    [Ignore]
     public void TestDictLengthMaskAndLongLengths()
     {
         // Load all dictionaries (from dicts folder)

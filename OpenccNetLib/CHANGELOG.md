@@ -20,6 +20,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   supplementary characters, and malformed UTF-16.
 - Added tests verifying that built-in DeTofu maps return independent mutable clones and cannot modify the cached
   built-in mapping data used by static conversion.
+- Added an optional punctuation argument to the direct conversion APIs for Traditional → Traditional regional
+  configurations.
 
 ### Changed
 

@@ -1960,22 +1960,24 @@ namespace OpenccNetLib
         /// Converts Traditional Chinese to Taiwan Traditional Chinese.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string T2Tw(string inputText)
+        public string T2Tw(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.T2Tw, false);
+            var refs = GetDictRefs(OpenccConfig.T2Tw, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
-        /// Converts Traditional Chinese to Taiwan Traditional Chinese in one dictionary pass,
+        /// Converts Traditional Chinese to Taiwan Traditional Chinese,
         /// applying Taiwan phrase mappings, phrase variants, and character variants.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string T2Twp(string inputText)
+        public string T2Twp(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.T2Twp, false);
+            var refs = GetDictRefs(OpenccConfig.T2Twp, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
@@ -1983,46 +1985,50 @@ namespace OpenccNetLib
         /// Converts Taiwan Traditional Chinese to Traditional Chinese.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string Tw2T(string inputText)
+        public string Tw2T(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.Tw2T, false);
+            var refs = GetDictRefs(OpenccConfig.Tw2T, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
-        /// Converts Taiwan Traditional Chinese to standard Traditional Chinese in one dictionary pass,
+        /// Converts Taiwan Traditional Chinese to standard Traditional Chinese,
         /// reversing Taiwan phrases, phrase variants, and character variants.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string Tw2Tp(string inputText)
+        public string Tw2Tp(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.Tw2Tp, false);
+            var refs = GetDictRefs(OpenccConfig.Tw2Tp, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
-        /// Converts Traditional Chinese to Hong Kong Traditional Chinese in one dictionary pass,
+        /// Converts Traditional Chinese to Hong Kong Traditional Chinese,
         /// applying Hong Kong phrase mappings, phrase variants, and character variants.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string T2Hkp(string inputText)
+        public string T2Hkp(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.T2Hkp, false);
+            var refs = GetDictRefs(OpenccConfig.T2Hkp, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
         /// <summary>
-        /// Converts Hong Kong Traditional Chinese with phrase normalization to standard Traditional Chinese
-        /// in one dictionary pass, reversing Hong Kong phrases, phrase variants, and character variants.
+        /// Converts Hong Kong Traditional Chinese with phrase normalization to standard Traditional Chinese,
+        /// reversing Hong Kong phrases, phrase variants, and character variants.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string Hk2Tp(string inputText)
+        public string Hk2Tp(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.Hk2Tp, false);
+            var refs = GetDictRefs(OpenccConfig.Hk2Tp, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
@@ -2030,10 +2036,11 @@ namespace OpenccNetLib
         /// Converts Traditional Chinese to Hong Kong Traditional Chinese.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string T2Hk(string inputText)
+        public string T2Hk(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.T2Hk, false);
+            var refs = GetDictRefs(OpenccConfig.T2Hk, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
@@ -2041,10 +2048,11 @@ namespace OpenccNetLib
         /// Converts Hong Kong Traditional Chinese to Traditional Chinese.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string Hk2T(string inputText)
+        public string Hk2T(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.Hk2T, false);
+            var refs = GetDictRefs(OpenccConfig.Hk2T, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
@@ -2101,13 +2109,13 @@ namespace OpenccNetLib
                     case OpenccConfig.T2S:
                         return T2S(inputText, punctuation);
                     case OpenccConfig.T2Tw:
-                        return T2Tw(inputText);
+                        return T2Tw(inputText, punctuation);
                     case OpenccConfig.T2Twp:
-                        return T2Twp(inputText);
+                        return T2Twp(inputText, punctuation);
                     case OpenccConfig.T2Hkp:
-                        return T2Hkp(inputText);
+                        return T2Hkp(inputText, punctuation);
                     case OpenccConfig.T2Hk:
-                        return T2Hk(inputText);
+                        return T2Hk(inputText, punctuation);
                     case OpenccConfig.Tw2S:
                         return Tw2S(inputText, punctuation);
                     case OpenccConfig.Tw2Sp:
@@ -2115,15 +2123,15 @@ namespace OpenccNetLib
                     case OpenccConfig.Hk2Sp:
                         return Hk2Sp(inputText, punctuation);
                     case OpenccConfig.Tw2T:
-                        return Tw2T(inputText);
+                        return Tw2T(inputText, punctuation);
                     case OpenccConfig.Tw2Tp:
-                        return Tw2Tp(inputText);
+                        return Tw2Tp(inputText, punctuation);
                     case OpenccConfig.Hk2S:
                         return Hk2S(inputText, punctuation);
                     case OpenccConfig.Hk2Tp:
-                        return Hk2Tp(inputText);
+                        return Hk2Tp(inputText, punctuation);
                     case OpenccConfig.Hk2T:
-                        return Hk2T(inputText);
+                        return Hk2T(inputText, punctuation);
                     case OpenccConfig.Jp2T:
                         return Jp2T(inputText);
                     case OpenccConfig.T2Jp:

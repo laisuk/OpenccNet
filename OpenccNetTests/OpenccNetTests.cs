@@ -161,6 +161,16 @@ public class OpenccNetTests
         var actualTraditional = opencc.Hk2T(hongkong);
         Assert.AreEqual(expectedTraditional, actualTraditional);
     }
+    
+    [TestMethod]
+    public void T2HKP_WithPunctConversion()
+    {
+        var opencc = new Opencc(OpenccConfig.T2Hkp);
+        const string traditional = "但有舉出“懶惰”與“欲速”，說是小品文和短篇小說發達的原因，那卻是不夠的。";
+        const string expectedTraditional = "但有舉出「懶惰」與「欲速」，説是小品文和短篇小説發達的原因，那卻是不夠的。";
+        var actualTraditional = opencc.Convert(traditional, true);
+        Assert.AreEqual(expectedTraditional, actualTraditional);
+    }
 
     [TestMethod]
     public void Convert_WithValidConfig()
@@ -414,7 +424,7 @@ public class OpenccNetTests
     }
 
     [TestMethod]
-    public void TestOpenccT2SDetofuPreservesUnmappedCharacter()
+    public void TestOpenccT2SDeTofuPreservesUnmappedCharacter()
     {
         var cc = new Opencc(OpenccConfig.T2S);
 

@@ -137,7 +137,13 @@ namespace OpenccNetLib
             /// Japanese Shinjitai pair:
             /// JPS phrases + JPS characters.
             /// </summary>
-            JpsPair
+            JpsPair,
+
+            /// <summary>
+            /// Simplified-style punctuation → Traditional-style punctuation only,
+            /// used as an optional punctuation round for direct Traditional-region conversions.
+            /// </summary>
+            StPunctOnly
         }
 
         /// <summary>
@@ -240,10 +246,13 @@ namespace OpenccNetLib
         /// two sequential rounds. Each round is represented by its corresponding
         /// <see cref="UnionKey"/> entry. For <c>S2Twp</c>, round 1 converts
         /// Simplified Chinese to Traditional Chinese, and round 2 performs
-        /// Taiwan phrase and variant normalization. Direct <c>T2Twp</c> and
-        /// <c>Tw2Tp</c> conversions use the same Taiwan triple dictionary groups
-        /// in a single round. Likewise, direct <c>T2Hkp</c> and <c>Hk2Tp</c>
-        /// conversions use the Hong Kong triple dictionary groups in one round.
+        /// Taiwan phrase and variant normalization.
+        /// Direct <c>T2Twp</c> and <c>Tw2Tp</c> conversions use the Taiwan
+        /// triple dictionary group as their primary round. Likewise, direct
+        /// <c>T2Hkp</c> and <c>Hk2Tp</c> conversions use the Hong Kong triple
+        /// dictionary group as their primary round. When punctuation conversion
+        /// is enabled, these direct Traditional-region plans append the
+        /// punctuation-only <see cref="UnionKey.StPunctOnly"/> round.
         /// </para>
         /// </remarks>
         /// <param name="config">
@@ -334,48 +343,112 @@ namespace OpenccNetLib
                 case OpenccConfig.T2Tw:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwVariantsPair, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.T2Twp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwTriple, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.Tw2T:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwRevPair, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.Tw2Tp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.TwRevTriple, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.T2Hk:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkVariantsPair, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.Hk2T:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkRevPair, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
                 case OpenccConfig.T2Hkp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkTriple, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.Hk2Tp:
                 {
                     var u1 = GetOrAddUnionFor(d, UnionKey.HkRevTriple, out var r1);
-                    return new DictRefs(r1, u1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.T2Jp:
@@ -597,6 +670,10 @@ namespace OpenccNetLib
                         d.jps_phrases,
                         d.jps_characters
                     };
+
+                // --- T -> T Region Punctuation
+                case UnionKey.StPunctOnly:
+                    return new[] { d.st_punctuations };
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(key), key, null);

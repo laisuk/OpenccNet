@@ -1181,16 +1181,16 @@ conversion behavior and a preserved .NET Standard 2.0 compatibility path.
 - `string Tw2Sp(string inputText, bool punctuation = false)`
 - `string S2Hkp(string inputText, bool punctuation = false)`
 - `string Hk2Sp(string inputText, bool punctuation = false)`
-- `string T2Hkp(string inputText)`
-- `string Hk2Tp(string inputText)`
+- `string T2Hkp(string inputText, bool punctuation = false)`
+- `string Hk2Tp(string inputText, bool punctuation = false)`
 - `string S2Hk(string inputText, bool punctuation = false)`
 - `string Hk2S(string inputText, bool punctuation = false)`
-- `string T2Tw(string inputText)`
-- `string T2Twp(string inputText)`
-- `string Tw2T(string inputText)`
-- `string Tw2Tp(string inputText)`
-- `string T2Hk(string inputText)`
-- `string Hk2T(string inputText)`
+- `string T2Tw(string inputText, bool punctuation = false)`
+- `string T2Twp(string inputText, bool punctuation = false)`
+- `string Tw2T(string inputText, bool punctuation = false)`
+- `string Tw2Tp(string inputText, bool punctuation = false)`
+- `string T2Hk(string inputText, bool punctuation = false)`
+- `string Hk2T(string inputText, bool punctuation = false)`
 - `string T2Jp(string inputText)`
 - `string Jp2T(string inputText)`
 
