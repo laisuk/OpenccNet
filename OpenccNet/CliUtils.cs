@@ -410,39 +410,30 @@ internal static class CliUtils
         if (!quiet)
             Console.Error.WriteLine($"✅ {message}");
     }
-    
-    // Kangxi Radical Normalization
-    
-    private const int KangxiStart = 0x2F00;
-    private const int KangxiEnd = 0x2FDF;
-    private const int KangxiLength = KangxiEnd - KangxiStart + 1;
 
-    private static readonly Lazy<char[]> KangxiRadicalMap =
-        new(LoadKangxiRadicalMap);
+    // Unicode Compatibility Normalization
 
-    internal static string NormalizeKangxiRadicals(string text)
+    private const char CompatibilityMin = '\u2300';
+    private const char CompatibilityMax = '\u2FFF';
+
+    private static readonly Lazy<Dictionary<char, string>>
+        UnicodeCompatibilityMap =
+            new(LoadUnicodeCompatibilityMap);
+
+    internal static string NormalizeUnicodeCompatibility(string text)
     {
         if (string.IsNullOrEmpty(text))
             return text;
 
-        ReadOnlySpan<char> source = text;
-        ReadOnlySpan<char> map = KangxiRadicalMap.Value;
-
+        var map = UnicodeCompatibilityMap.Value;
         StringBuilder? sb = null;
 
-        for (var i = 0; i < source.Length; i++)
+        for (var i = 0; i < text.Length; i++)
         {
-            var ch = source[i];
+            var ch = text[i];
 
-            if ((uint)(ch - KangxiStart) >= KangxiLength)
-            {
-                sb?.Append(ch);
-                continue;
-            }
-
-            var replacement = map[ch - KangxiStart];
-
-            if (replacement == '\0')
+            if (ch < CompatibilityMin || ch > CompatibilityMax ||
+                !map.TryGetValue(ch, out var replacement))
             {
                 sb?.Append(ch);
                 continue;
@@ -450,8 +441,8 @@ internal static class CliUtils
 
             if (sb is null)
             {
-                sb = new StringBuilder(source.Length);
-                sb.Append(source[..i]);
+                sb = new StringBuilder(text.Length);
+                sb.Append(text, 0, i);
             }
 
             sb.Append(replacement);
@@ -459,15 +450,16 @@ internal static class CliUtils
 
         return sb?.ToString() ?? text;
     }
-    
-    private static char[] LoadKangxiRadicalMap()
+
+    private static Dictionary<char, string>
+        LoadUnicodeCompatibilityMap()
     {
-        var map = new char[KangxiLength];
+        var map = new Dictionary<char, string>(256);
 
         var path = Path.Combine(
             AppContext.BaseDirectory,
             "dicts",
-            "Kangxi_Radicals.txt");
+            "Unicode_Compatibility.txt");
 
         if (!File.Exists(path))
             return map;
@@ -480,15 +472,13 @@ internal static class CliUtils
                 continue;
 
             var parts = line.Split('\t');
+
             if (parts.Length != 2 ||
                 parts[0].Length != 1 ||
-                parts[1].Length != 1)
+                parts[1].Length == 0)
                 continue;
 
-            var source = parts[0][0];
-
-            if (source >= KangxiStart && source <= KangxiEnd)
-                map[source - KangxiStart] = parts[1][0];
+            map[parts[0][0]] = parts[1];
         }
 
         return map;

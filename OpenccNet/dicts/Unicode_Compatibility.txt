@@ -1,6 +1,9 @@
 # Experimental Kangxi Radicals normalization
 #
-# Complete 214-entry Kangxi radical mapping.
+# Unicode extraction-artifact normalization table.
+#
+# Section 1 contains the complete 214-entry Kangxi radical mapping
+# used mainly for zh-Hant text.
 #
 # Intended ONLY for repairing malformed PDF text extraction
 # (notably PdfPig output that substitutes Kangxi Radical code points
@@ -10,7 +13,7 @@
 #   U+2F00–U+2FD5  Kangxi Radicals (214 entries)
 #
 # Format:
-#   <kangxi_radical>\t<cjk_ideograph>
+#   <source>\t<replacement>
 #
 ⼀	一
 ⼁	丨
@@ -226,3 +229,55 @@
 ⿓	龍
 ⿔	龜
 ⿕	龠
+
+# ----------------------------------------------------------------------
+# zh-Hans / CJK Radicals Supplement
+#
+# Simplified radical forms that PdfPig may emit instead of ordinary
+# Simplified Chinese ideographs. The neutral forms at the end were also
+# observed in PdfPig-extracted zh-Hans text.
+#
+# CJK Radicals Supplement: U+2E80–U+2EFF
+#
+⺦	丬
+⺰	纟
+⻅	见
+⻆	角
+⻈	讠
+⻉	贝
+⻋	车
+⻌	辶
+⻐	钅
+⻓	长
+⻔	门
+⻙	韦
+⻚	页
+⻛	风
+⻜	飞
+⻠	饣
+⻢	马
+⻥	鱼
+⻦	鸟
+⻧	卤
+⻨	麦
+⻩	黄
+⻪	黾
+⻬	齐
+⻮	齿
+⻰	龙
+⻳	龟
+
+# Neutral radical forms observed in zh-Hans PdfPig output
+⺟	母
+⻘	青
+⻤	鬼
+
+# ----------------------------------------------------------------------
+# Punctuation / symbol extraction artifacts
+#
+# Compatibility-like glyph substitutions observed by comparing PdfPig
+# extraction with Pdfium extraction from the same PDF.
+#
+〈	〈
+〉	〉
+⸺	——

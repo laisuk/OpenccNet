@@ -216,7 +216,7 @@ internal static class PdfCommand
 
             FinishProgressLine(ref progressLineActive);
             
-            finalText = CliUtils.NormalizeKangxiRadicals(finalText);
+            finalText = CliUtils.NormalizeUnicodeCompatibility(finalText);
 
             if (reflow)
             {
