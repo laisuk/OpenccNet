@@ -413,10 +413,7 @@ internal static class CliUtils
 
     // Unicode Compatibility Normalization
 
-    private const char CompatibilityMin = '\u2300';
-    private const char CompatibilityMax = '\u2FFF';
-
-    private static readonly Lazy<Dictionary<char, string>>
+    private static readonly Lazy<Dictionary<int, string>>
         UnicodeCompatibilityMap =
             new(LoadUnicodeCompatibilityMap);
 
@@ -431,11 +428,26 @@ internal static class CliUtils
         for (var i = 0; i < text.Length; i++)
         {
             var ch = text[i];
+            int codePoint = ch;
+            var charCount = 1;
 
-            if (ch < CompatibilityMin || ch > CompatibilityMax ||
-                !map.TryGetValue(ch, out var replacement))
+            if (char.IsHighSurrogate(ch) &&
+                i + 1 < text.Length &&
+                char.IsLowSurrogate(text[i + 1]))
             {
-                sb?.Append(ch);
+                codePoint = char.ConvertToUtf32(ch, text[i + 1]);
+                charCount = 2;
+            }
+
+            if (!map.TryGetValue(codePoint, out var replacement))
+            {
+                if (sb is not null)
+                {
+                    sb.Append(ch);
+                    if (charCount == 2)
+                        sb.Append(text[++i]);
+                }
+
                 continue;
             }
 
@@ -446,15 +458,18 @@ internal static class CliUtils
             }
 
             sb.Append(replacement);
+
+            if (charCount == 2)
+                i++;
         }
 
         return sb?.ToString() ?? text;
     }
 
-    private static Dictionary<char, string>
+    private static Dictionary<int, string>
         LoadUnicodeCompatibilityMap()
     {
-        var map = new Dictionary<char, string>(256);
+        var map = new Dictionary<int, string>(256);
 
         var path = Path.Combine(
             AppContext.BaseDirectory,
@@ -474,11 +489,18 @@ internal static class CliUtils
             var parts = line.Split('\t');
 
             if (parts.Length != 2 ||
-                parts[0].Length != 1 ||
+                parts[0].Length == 0 ||
                 parts[1].Length == 0)
                 continue;
 
-            map[parts[0][0]] = parts[1];
+            var source = parts[0];
+            var codePoint = char.ConvertToUtf32(source, 0);
+            var charCount = char.IsSurrogatePair(source, 0) ? 2 : 1;
+
+            if (source.Length != charCount)
+                continue;
+
+            map[codePoint] = parts[1];
         }
 
         return map;

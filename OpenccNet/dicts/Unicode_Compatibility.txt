@@ -267,10 +267,73 @@
 ⻰	龙
 ⻳	龟
 
+# Additional CJK Radicals Supplement forms mined from ctext normalization data
+⺋	㔾
+⺖	忄
+⺘	扌
+⺞	歺
+⺡	氵
+⺣	灬
+⺤	爫
+⺨	犭
+⺩	𤣩
+⺫	罒
+⺭	礻
+⺮	𥫗
+⺯	糹
+⺲	罒
+⺴	⺳
+⺷	𦍌
+⺼	月
+⺾	艹
+⻂	衤
+⻃	覀
+⻊	𧾷
+⻏	阝
+⻑	長
+⻒	镸
+⻖	阝
+⻗	雨
+
 # Neutral radical forms observed in zh-Hans PdfPig output
 ⺟	母
 ⻘	青
 ⻤	鬼
+
+# ----------------------------------------------------------------------
+# Other Chinese / legacy glyph normalization candidates
+#
+# Mined from the Chinese Text Project normalization table after excluding
+# mappings already covered by CJK_Compatibility_Ideographs.txt.
+#
+〸	十
+ム	厶
+㦳	㘽
+䎛	㖈
+内	內
+呑	吞
+尙	尚
+岀	出
+敻	夐
+爲	為
+耈	耇
+蔿	蒍
+説	說
+飮	飲
+龺	𠦝
+
+# ----------------------------------------------------------------------
+# CJK Extension glyph normalization candidates
+#
+# Supplementary-plane CJK source forms from the same normalization table.
+#
+𠑗	㒨
+𣔕	𠓲
+𤈎	㶷
+𤑕	爋
+𤧩	𤦼
+𧅄	虁
+𧥙	𣁀
 
 # ----------------------------------------------------------------------
 # Punctuation / symbol extraction artifacts
@@ -281,3 +344,13 @@
 〈	〈
 〉	〉
 ⸺	——
+
+# Additional punctuation forms mined from ctext normalization data
+‧	·
+︰	：
+﹐	，
+﹑	、
+﹔	；
+﹕	：
+﹖	？
+﹗	！
