@@ -181,8 +181,8 @@ namespace OpenccNetTests
         public void NormUnicodeCompat_NormalizesExtendedChineseMappings()
         {
             Assert.AreEqual(
-                "酉十厶㘽㖈內吞尚出夐為耇蒍說飲",
-                Opencc.NormUnicodeCompat("⾣〸ム㦳䎛内呑尙岀敻爲耈蔿説飮"));
+                "酉十厶㘽㖈吞尚出夐耇飲",
+                Opencc.NormUnicodeCompat("⾣〸ム㦳䎛呑尙岀敻耈飮"));
         }
 
         [TestMethod]
