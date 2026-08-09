@@ -22,6 +22,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   built-in mapping data used by static conversion.
 - Added an optional punctuation argument to the direct conversion APIs for Traditional → Traditional regional
   configurations.
+- Added `Opencc.NormUnicodeCompat(...)` for extended Chinese Unicode compatibility normalization. The new API includes
+  the existing CJK Compatibility Ideograph mappings and additionally normalizes curated Kangxi radicals, CJK radical
+  variants, legacy Chinese glyph forms, compatibility punctuation, and known text-extraction artifacts while preserving
+  unmapped text unchanged.
 
 ### Changed
 

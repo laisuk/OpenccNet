@@ -226,22 +226,75 @@ var cc = new Opencc("t2s")
 };
 ```
 
-### CJK Compatibility Ideograph Normalization
+### CJK Compatibility Ideograph and Unicode Normalization
 
-`CompatIdeographs` is an optional Unicode compatibility pre-processing helper. It maps CJK Compatibility Ideographs to
-their Unicode decomposition targets before OpenCC segmentation and dictionary conversion. This is useful when input text
-contains compatibility forms such as `金` but you want conversion to behave as if the canonical ideograph `金` had been
-provided.
+OpenccNetLib provides two optional Unicode pre-processing levels for Chinese text:
 
-Compatibility ideograph normalization is **not** OpenCC linguistic conversion. It does not modify OpenCC dictionaries,
-phrase matching, regional variant selection, script detection, or punctuation conversion. For converted text, the
-recommended order is:
+* `NormalizeCompat(...)` / `CompatIdeographs` performs conservative **CJK Compatibility Ideograph normalization** using
+  the Unicode decomposition mappings for the CJK Compatibility Ideograph ranges.
+* `NormUnicodeCompat(...)` is the broader **Chinese Unicode compatibility normalizer**. It includes the mappings handled
+  by `NormalizeCompat(...)` and additionally normalizes curated Kangxi radicals, CJK radical variants, legacy Chinese
+  glyph forms, compatibility punctuation, and known text-extraction artifacts.
 
-1. Normalize compatibility ideographs with `NormalizeCompat(...)` or `CompatIdeographs`.
+These operations run before OpenCC segmentation and dictionary conversion. They are useful when input contains Unicode
+compatibility or glyph forms but conversion should operate on normalized Chinese text.
+
+Unicode compatibility normalization is **not** OpenCC linguistic conversion. It does not modify OpenCC dictionaries,
+phrase matching, regional variant selection, script detection, or punctuation conversion. It is also not intended to be
+a general-purpose Unicode NFKC implementation.
+
+For converted text, the recommended order is:
+
+1. Normalize the input with `NormalizeCompat(...)` for compatibility ideographs only, or `NormUnicodeCompat(...)` for
+   broader Chinese Unicode normalization.
 2. Run normal OpenCC conversion with `Convert(...)`.
-3. Optionally run DeTofu on the converted result for display fallback.
+3. Optionally run DeToFu on the converted result for display fallback.
 
-Convenient `Opencc` instance API:
+#### Extended Chinese Unicode normalization
+
+For most input that needs broader Unicode cleanup, use the static `NormUnicodeCompat(...)` API:
+
+```csharp
+using OpenccNetLib;
+
+Console.WriteLine(
+    Opencc.NormUnicodeCompat("天龍八部書裡的喬峰是契丹人"));
+// Output: 天龍八部書裡的喬峰是契丹人
+```
+
+`NormUnicodeCompat(...)` also handles extended Chinese compatibility forms outside the CJK Compatibility Ideograph
+ranges:
+
+```csharp
+using OpenccNetLib;
+
+Console.WriteLine(
+    Opencc.NormUnicodeCompat("⾣〸ム㦳䎛内呑尙岀敻爲耈蔿説飮"));
+// Output: 酉十厶㘽㖈內吞尚出夐為耇蒍說飲
+```
+
+The extended normalization table is curated for **Chinese/CJK-Chinese text**. Japanese- and Korean-specific
+compatibility normalization is currently outside its scope. Unmapped text is preserved unchanged.
+
+Normalize before OpenCC conversion:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc(OpenccConfig.T2S);
+
+string normalized =
+    Opencc.NormUnicodeCompat("天龍八部書裡的喬峰是契丹人");
+string converted = cc.Convert(normalized);
+
+Console.WriteLine(converted);
+// Output: 天龙八部书里的乔峰是契丹人
+```
+
+#### CJK Compatibility Ideographs only
+
+For callers that specifically want Unicode CJK Compatibility Ideograph decomposition without the extended normalization
+set, use `NormalizeCompat(...)`:
 
 ```csharp
 using OpenccNetLib;
@@ -255,20 +308,6 @@ Console.WriteLine(cc.NormalizeCompat("abc天龍八部書裡的喬峰是契丹�
 // Output: abc天龍八部書裡的喬峰是契丹人123
 ```
 
-Normalize before conversion:
-
-```csharp
-using OpenccNetLib;
-
-var cc = new Opencc(OpenccConfig.T2S);
-
-string normalized = cc.NormalizeCompat("天龍八部書裡的喬峰是契丹人");
-string converted = cc.Convert(normalized);
-
-Console.WriteLine(converted);
-// Output: 天龙八部书里的乔峰是契丹人
-```
-
 Direct reusable normalizer usage:
 
 ```csharp
@@ -276,7 +315,8 @@ using OpenccNetLib;
 
 var compat = CompatIdeographs.Builtin();
 
-Console.WriteLine(compat.Normalize("天龍八部書裡的喬峰是契丹人"));
+Console.WriteLine(
+    compat.Normalize("天龍八部書裡的喬峰是契丹人"));
 // Output: 天龍八部書裡的喬峰是契丹人
 ```
 
@@ -286,13 +326,17 @@ Console.WriteLine(compat.Normalize("天龍八部書裡的喬峰是契丹人"));
 using OpenccNetLib;
 
 var compat = CompatIdeographs.FromText("金\t金\n");
+
 Console.WriteLine(compat.Normalize("金"));
 // Output: 金
 ```
 
-Compatibility ideograph APIs:
+Compatibility normalization APIs:
 
 ```text
+Opencc.NormUnicodeCompat(...)
+
+Opencc.NormalizeCompat(...)
 CompatIdeographs.Builtin()
 CompatIdeographs.FromText(...)
 CompatIdeographs.Normalize(...)
@@ -300,11 +344,11 @@ CompatIdeographs.NormalizeScalar(...)
 CompatIdeographs.NormalizeChar(...)
 CompatIdeographs.NormalizeInPlace(...)
 CompatIdeographs.NormalizeCompatIdeographs(...)
-Opencc.NormalizeCompat(...)
 ```
 
-Characters outside the CJK Compatibility Ideograph ranges, and compatibility ideographs without a decomposition mapping,
-are preserved unchanged.
+`NormUnicodeCompat(...)` is a superset of the built-in compatibility-ideograph normalization mappings.
+`NormalizeCompat(...)` remains the conservative API for CJK Compatibility Ideographs only. Characters not covered by the
+selected normalization set are preserved unchanged.
 
 ### DeTofu Display Compatibility
 

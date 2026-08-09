@@ -332,13 +332,30 @@ namespace OpenccNetLib
             return Builtin().Normalize(input);
         }
 
-        private string NormalizeCodePoint(int codePoint)
+        internal bool TryNormalizeCodePoint(int codePoint, out string replacement)
         {
             if (codePoint >= BmpStart && codePoint <= BmpEnd)
-                return _bmp[codePoint - BmpStart];
+            {
+                replacement = _bmp[codePoint - BmpStart];
+                return replacement.Length != 1 || replacement[0] != (char)codePoint;
+            }
 
             if (codePoint >= SuppStart && codePoint <= SuppEnd)
-                return _supp[codePoint - SuppStart];
+            {
+                replacement = _supp[codePoint - SuppStart];
+
+                var original = CharFromCodePoint(codePoint);
+                return !string.Equals(replacement, original, StringComparison.Ordinal);
+            }
+
+            replacement = null;
+            return false;
+        }
+
+        private string NormalizeCodePoint(int codePoint)
+        {
+            if (TryNormalizeCodePoint(codePoint, out var replacement))
+                return replacement;
 
             return CharFromCodePoint(codePoint);
         }

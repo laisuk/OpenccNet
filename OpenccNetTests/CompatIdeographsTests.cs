@@ -98,7 +98,7 @@ namespace OpenccNetTests
         public void Normalize_PreservesIsolatedSurrogates()
         {
             var compat = CompatIdeographs.FromText(string.Empty);
-            var input = "A\uD800B\uDC00C";
+            const string input = "A\uD800B\uDC00C";
 
             Assert.AreEqual(input, compat.Normalize(input));
         }
@@ -107,7 +107,7 @@ namespace OpenccNetTests
         public void Normalize_ReturnsSameReference_WhenNoCandidateExists()
         {
             var compat = CompatIdeographs.FromText("金\t金\n");
-            var input = "普通文本 ABC 😀";
+            const string input = "普通文本 ABC 😀";
 
             Assert.AreSame(input, compat.Normalize(input));
         }
@@ -116,7 +116,7 @@ namespace OpenccNetTests
         public void Normalize_ReturnsSameReference_ForUnmappedCandidates()
         {
             var compat = CompatIdeographs.FromText("金\t金\n");
-            var input = "A更丸Z";
+            const string input = "A更丸Z";
 
             Assert.AreSame(input, compat.Normalize(input));
         }
@@ -125,7 +125,7 @@ namespace OpenccNetTests
         public void Normalize_PreservesSurrogatesOutsideCompatibilityRange()
         {
             var compat = CompatIdeographs.FromText("金\t金\n");
-            var input = "😀\uD87E\uDFFF\uD87E\uDBFF\uDC00";
+            const string input = "😀\uD87E\uDFFF\uD87E\uDBFF\uDC00";
 
             Assert.AreSame(input, compat.Normalize(input));
         }
@@ -136,7 +136,7 @@ namespace OpenccNetTests
             var compat = CompatIdeographs.FromText(
                 "金\t金\n" +
                 "鼖\t鼖\n");
-            var input = "前更金😀鼻鼖後\uD800\uDC00";
+            const string input = "前更金😀鼻鼖後\uD800\uDC00";
 
             Assert.AreEqual("前更金😀鼻鼖後\uD800\uDC00", compat.Normalize(input));
         }
@@ -155,7 +155,7 @@ namespace OpenccNetTests
         public void Normalize_PreservesMalformedSurrogatesAroundMappings()
         {
             var compat = CompatIdeographs.FromText("金\t金\n");
-            var input = "A\uD800金\uDC00Z";
+            const string input = "A\uD800金\uDC00Z";
 
             Assert.AreEqual("A\uD800金\uDC00Z", compat.Normalize(input));
         }
@@ -167,6 +167,54 @@ namespace OpenccNetTests
 
             Assert.AreSame(string.Empty, compat.Normalize(string.Empty));
             Assert.AreEqual(string.Empty, compat.Normalize(null!));
+        }
+
+        [TestMethod]
+        public void NormUnicodeCompat_IncludesBuiltinCompatIdeographs()
+        {
+            Assert.AreEqual(
+                "天龍八部書裡的喬峰是契丹人",
+                Opencc.NormUnicodeCompat("天龍八部書裡的喬峰是契丹人"));
+        }
+
+        [TestMethod]
+        public void NormUnicodeCompat_NormalizesExtendedChineseMappings()
+        {
+            Assert.AreEqual(
+                "酉十厶㘽㖈內吞尚出夐為耇蒍說飲",
+                Opencc.NormUnicodeCompat("⾣〸ム㦳䎛内呑尙岀敻爲耈蔿説飮"));
+        }
+
+        [TestMethod]
+        public void NormUnicodeCompat_NormalizesSupplementarySourceMappings()
+        {
+            Assert.AreEqual(
+                "前㒨𠓲㶷後",
+                Opencc.NormUnicodeCompat("前𠑗𣔕𤈎後"));
+        }
+
+        [TestMethod]
+        public void NormUnicodeCompat_NormalizesCompatibilityPunctuation()
+        {
+            Assert.AreEqual(
+                "甲：乙，丙、丁；戊：己？庚！",
+                Opencc.NormUnicodeCompat("甲︰乙﹐丙﹑丁﹔戊﹕己﹖庚﹗"));
+        }
+
+        [TestMethod]
+        public void NormUnicodeCompat_PreservesUnmappedText()
+        {
+            const string input = "普通文本 ABC 😀 한글 ﾆｯﾎﾟﾝ";
+
+            Assert.AreSame(input, Opencc.NormUnicodeCompat(input));
+        }
+
+        [TestMethod]
+        public void NormUnicodeCompat_PreservesMalformedSurrogates()
+        {
+            const string input = "A\uD800中\uDC00Z";
+
+            Assert.AreEqual(input, Opencc.NormUnicodeCompat(input));
         }
     }
 }
