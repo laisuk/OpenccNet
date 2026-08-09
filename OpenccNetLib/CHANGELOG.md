@@ -22,7 +22,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   built-in mapping data used by static conversion.
 - Added an optional punctuation argument to the direct conversion APIs for Traditional → Traditional regional
   configurations.
-- Added `Opencc.NormUnicodeCompat(...)` for curated Chinese Unicode compatibility normalization using the extended
+- Added `Opencc.NormalizeUnicodeCompat(...)` for curated Chinese Unicode compatibility normalization using the extended
   `Unicode_Compatibility.txt` mapping table. It normalizes Kangxi radicals, CJK radical variants, legacy Chinese glyph
   forms, compatibility punctuation, and known text-extraction artifacts while preserving unmapped text unchanged. This
   extended-only API is suitable for extracted text, including PDF text normalization, without implicitly applying the
@@ -32,7 +32,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Extended `Opencc.NormalizeCompat(...)` with an optional `extended` argument. The default behavior remains unchanged;
   when enabled, CJK Compatibility Ideograph normalization and the curated mappings used by
-  `Opencc.NormUnicodeCompat(...)` are applied together in a single normalization pass.
+  `Opencc.NormalizeUnicodeCompat(...)` are applied together in a single normalization pass.
 - Centralized extended Unicode compatibility normalization in `OpenccNetLib`, allowing CLI and PDF extraction paths to
   share the same built-in mapping implementation instead of maintaining separate normalization logic.
 - Optimized `ConvertByUnionInto()` on .NET 9 and later with allocation-free alternate dictionary lookup directly from

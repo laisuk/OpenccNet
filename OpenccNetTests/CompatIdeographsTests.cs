@@ -170,53 +170,53 @@ namespace OpenccNetTests
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_DoesNotApplyBuiltinCompatIdeographs()
+        public void NormalizeUnicodeCompat_DoesNotApplyBuiltinCompatIdeographs()
         {
             const string input = "天龍八部書裡的喬峰是契丹人";
 
             Assert.AreSame(
                 input,
-                Opencc.NormUnicodeCompat(input));
+                Opencc.NormalizeUnicodeCompat(input));
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_NormalizesExtendedChineseMappings()
+        public void NormalizeUnicodeCompat_NormalizesExtendedChineseMappings()
         {
             Assert.AreEqual(
                 "酉十厶㘽㖈吞尚出夐耇飲",
-                Opencc.NormUnicodeCompat("⾣〸ム㦳䎛呑尙岀敻耈飮"));
+                Opencc.NormalizeUnicodeCompat("⾣〸ム㦳䎛呑尙岀敻耈飮"));
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_NormalizesSupplementarySourceMappings()
+        public void NormalizeUnicodeCompat_NormalizesSupplementarySourceMappings()
         {
             Assert.AreEqual(
                 "前㒨𠓲㶷後",
-                Opencc.NormUnicodeCompat("前𠑗𣔕𤈎後"));
+                Opencc.NormalizeUnicodeCompat("前𠑗𣔕𤈎後"));
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_NormalizesCompatibilityPunctuation()
+        public void NormalizeUnicodeCompat_NormalizesCompatibilityPunctuation()
         {
             Assert.AreEqual(
                 "甲：乙，丙、丁；戊：己？庚！",
-                Opencc.NormUnicodeCompat("甲︰乙﹐丙﹑丁﹔戊﹕己﹖庚﹗"));
+                Opencc.NormalizeUnicodeCompat("甲︰乙﹐丙﹑丁﹔戊﹕己﹖庚﹗"));
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_PreservesUnmappedText()
+        public void NormalizeUnicodeCompat_PreservesUnmappedText()
         {
             const string input = "普通文本 ABC 😀 한글 ﾆｯﾎﾟﾝ";
 
-            Assert.AreSame(input, Opencc.NormUnicodeCompat(input));
+            Assert.AreSame(input, Opencc.NormalizeUnicodeCompat(input));
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_PreservesMalformedSurrogates()
+        public void NormalizeUnicodeCompat_PreservesMalformedSurrogates()
         {
             const string input = "A\uD800中\uDC00Z";
 
-            Assert.AreEqual(input, Opencc.NormUnicodeCompat(input));
+            Assert.AreEqual(input, Opencc.NormalizeUnicodeCompat(input));
         }
 
         [TestMethod]
@@ -243,13 +243,13 @@ namespace OpenccNetTests
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_NormalizesExtendedWithoutCompatPass()
+        public void NormalizeUnicodeCompat_NormalizesExtendedWithoutCompatPass()
         {
             const string input = "金‧︰";
 
             Assert.AreEqual(
                 "金·：",
-                Opencc.NormUnicodeCompat(input));
+                Opencc.NormalizeUnicodeCompat(input));
         }
     }
 }

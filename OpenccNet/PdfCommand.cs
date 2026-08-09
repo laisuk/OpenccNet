@@ -216,7 +216,7 @@ internal static class PdfCommand
 
             FinishProgressLine(ref progressLineActive);
             
-            finalText = Opencc.NormUnicodeCompat(finalText);
+            finalText = Opencc.NormalizeUnicodeCompat(finalText);
 
             if (reflow)
             {

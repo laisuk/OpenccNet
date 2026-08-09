@@ -2281,7 +2281,7 @@ namespace OpenccNetLib
         /// <para>
         /// When <paramref name="extended"/> is <see langword="true"/>, the same pass
         /// also applies the curated Chinese Unicode compatibility mappings used by
-        /// <see cref="NormUnicodeCompat(string)"/>. These include Kangxi radicals,
+        /// <see cref="NormalizeUnicodeCompat"/>. These include Kangxi radicals,
         /// CJK radical variants, legacy glyph variants, compatibility punctuation,
         /// and known text-extraction artifacts.
         /// </para>
@@ -2328,7 +2328,7 @@ namespace OpenccNetLib
         /// </param>
         /// <param name="extended">
         /// When <see langword="true"/>, also applies the curated Chinese Unicode
-        /// compatibility mappings used by <see cref="NormUnicodeCompat(string)"/>.
+        /// compatibility mappings used by <see cref="NormalizeUnicodeCompat"/>.
         /// The default is <see langword="false"/>.
         /// </param>
         /// <returns>
@@ -2377,7 +2377,7 @@ namespace OpenccNetLib
         /// </para>
         /// <example>
         /// <code>
-        /// var normalized = Opencc.NormUnicodeCompat(extractedText);
+        /// var normalized = Opencc.NormalizeUnicodeCompat(extractedText);
         ///
         /// var cc = new Opencc();
         /// var converted = cc.Convert(normalized);
@@ -2392,7 +2392,7 @@ namespace OpenccNetLib
         /// Text with mapped extended Chinese Unicode compatibility forms normalized;
         /// unmapped text is preserved unchanged.
         /// </returns>
-        public static string NormUnicodeCompat(string text)
+        public static string NormalizeUnicodeCompat(string text)
         {
             return UnicodeCompat.Builtin().Normalize(text);
         }

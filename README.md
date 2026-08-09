@@ -232,11 +232,11 @@ OpenccNetLib provides two complementary Unicode normalization layers for Chinese
 
 * `NormalizeCompat(...)` / `CompatIdeographs` normalizes **CJK Compatibility Ideographs** using the built-in Unicode
   decomposition mappings for the CJK Compatibility Ideograph ranges.
-* `NormUnicodeCompat(...)` applies the curated **extended Chinese Unicode compatibility table**. It targets additional
+* `NormalizeUnicodeCompat(...)` applies the curated **extended Chinese Unicode compatibility table**. It targets additional
   Kangxi radicals, CJK radical variants, legacy Chinese glyph forms, compatibility punctuation, and known
   text-extraction artifacts outside the normal compatibility-ideograph pass.
 
-The two tables serve different purposes. `NormUnicodeCompat(...)` is **not a replacement or superset** of
+The two tables serve different purposes. `NormalizeUnicodeCompat(...)` is **not a replacement or superset** of
 `NormalizeCompat(...)`. Use `NormalizeCompat(...)` when compatibility ideographs are the concern, and enable its
 extended mode when both normalization layers should be applied together.
 
@@ -292,14 +292,14 @@ The extended table is intentionally curated rather than blindly applying every c
 mapping. Mappings where both source and target remain valid Chinese unified ideographs are excluded when normalization
 would amount to choosing one legitimate Han form over another.
 
-`NormUnicodeCompat(...)` exposes the extended table directly when only that layer is wanted, for example when cleaning
+`NormalizeUnicodeCompat(...)` exposes the extended table directly when only that layer is wanted, for example when cleaning
 text extracted from PDF or other document formats:
 
 ```csharp
 using OpenccNetLib;
 
 Console.WriteLine(
-    Opencc.NormUnicodeCompat("⾣〸ム敻耈‧︰﹐"));
+    Opencc.NormalizeUnicodeCompat("⾣〸ム敻耈‧︰﹐"));
 // Output: 酉十厶夐耇·：，
 ```
 
@@ -352,7 +352,7 @@ Console.WriteLine(compat.Normalize("金"));
 
 ```text
 Opencc.NormalizeCompat(...)
-Opencc.NormUnicodeCompat(...)
+Opencc.NormalizeUnicodeCompat(...)
 
 CompatIdeographs.Builtin()
 CompatIdeographs.FromText(...)
@@ -364,11 +364,11 @@ CompatIdeographs.NormalizeCompatIdeographs(...)
 ```
 
 `NormalizeCompat(...)` is the normal entry point for CJK Compatibility Ideograph normalization. Its extended mode adds
-the curated Chinese Unicode compatibility table in the same preprocessing operation. `NormUnicodeCompat(...)` exposes
+the curated Chinese Unicode compatibility table in the same preprocessing operation. `NormalizeUnicodeCompat(...)` exposes
 that extended table independently. Unmapped characters are preserved unchanged.
 
 > **Advanced users**: `dicts/Unicode_Compatibility.txt` may be customized to add project-specific extended Chinese
-> Unicode normalization mappings used by `NormUnicodeCompat (...)` and `NormalizeCompat (..., extended: true)`. This
+> Unicode normalization mappings used by `NormalizeUnicodeCompat (...)` and `NormalizeCompat (..., extended: true)`. This
 > customization applies only to the extended Unicode compatibility table. The built-in CJK Compatibility Ideograph
 > mappings are separate and are not intended to be customized through this file.
 >
