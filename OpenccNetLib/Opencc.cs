@@ -2269,90 +2269,115 @@ namespace OpenccNetLib
         #region Compat Ideographs and DeTofu Region
 
         /// <summary>
-        /// Normalizes CJK Compatibility Ideographs using the built-in Unicode
-        /// compatibility mapping table.
+        /// Normalizes CJK Compatibility Ideographs using the built-in compatibility
+        /// mapping table, with optional extended Chinese Unicode normalization.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This is a convenience wrapper around
-        /// <see cref="CompatIdeographs.Normalize(string)"/>.
-        /// It performs an optional Unicode compatibility normalization pre-pass and
-        /// does not modify this <see cref="Opencc"/> instance, its selected
-        /// configuration, conversion dictionaries, segmentation behavior,
-        /// script detection, or punctuation conversion.
+        /// By default, this is a convenience wrapper around
+        /// <see cref="CompatIdeographs"/> and performs the same CJK Compatibility
+        /// Ideograph normalization as previous versions of this API.
         /// </para>
-        ///
+        /// <para>
+        /// When <paramref name="extended"/> is <see langword="true"/>, the same pass
+        /// also applies the curated Chinese Unicode compatibility mappings used by
+        /// <see cref="NormUnicodeCompat(string)"/>. These include Kangxi radicals,
+        /// CJK radical variants, legacy glyph variants, compatibility punctuation,
+        /// and known text-extraction artifacts.
+        /// </para>
+        /// <para>
+        /// This method is an optional pre-processing step. It does not modify this
+        /// <see cref="Opencc"/> instance, its selected configuration, conversion
+        /// dictionaries, segmentation behavior, script detection, or punctuation
+        /// conversion.
+        /// </para>
+        /// <para>
+        /// Unlike general-purpose Unicode NFKC normalization, the extended mappings
+        /// are a curated CJK-oriented set intended for Chinese text normalization.
+        /// Japanese- and Korean-specific compatibility normalization is not performed.
+        /// Unmapped text is preserved unchanged.
+        /// </para>
         /// <para>
         /// Use this before <see cref="Convert(string, bool)"/> when input may contain
-        /// CJK Compatibility Ideographs such as <c>金</c> and you want
-        /// upstream OpenCC-compatible behavior. Unmapped compatibility
-        /// ideographs remain unchanged.
+        /// CJK Compatibility Ideographs such as 金. Enable
+        /// <paramref name="extended"/> when the input may additionally contain
+        /// compatibility radicals, glyph variants, punctuation forms, or extraction
+        /// artifacts.
         /// </para>
-        ///
         /// <para>
-        /// DeTofu is the opposite side of the pipeline: compatibility ideograph
-        /// normalization is a pre-processing step, while
-        /// <see cref="DeTofu(string, DeTofuLevel)"/> is an optional
-        /// post-processing display fallback.
+        /// DeTofu is the opposite side of the pipeline: compatibility normalization is
+        /// a pre-processing step, while <see cref="DeTofu(string, DeTofuLevel)"/> is
+        /// an optional post-processing display fallback.
         /// </para>
-        /// </remarks>
         /// <example>
         /// <code>
         /// var cc = new Opencc();
         ///
         /// var normalized = cc.NormalizeCompat("金庸小說");
         /// var converted = cc.Convert(normalized);
-        /// var display = cc.DeTofu(converted, DeTofuLevel.ExtB);
+        ///
+        /// var extended = cc.NormalizeCompat(
+        ///     "天龍八部書裡的喬峰是契丹人",
+        ///     extended: true);
         /// </code>
         /// </example>
+        /// </remarks>
         /// <param name="text">
-        /// The input text to normalize. A <see langword="null"/> value is treated as empty text.
+        /// The input text to normalize. A <see langword="null"/> value is treated
+        /// as empty text.
+        /// </param>
+        /// <param name="extended">
+        /// When <see langword="true"/>, also applies the curated Chinese Unicode
+        /// compatibility mappings used by <see cref="NormUnicodeCompat(string)"/>.
+        /// The default is <see langword="false"/>.
         /// </param>
         /// <returns>
-        /// Text with mapped CJK Compatibility Ideographs normalized; unmapped text is preserved.
+        /// Text with mapped compatibility forms normalized; unmapped text is
+        /// preserved unchanged.
         /// </returns>
-        public string NormalizeCompat(string text)
+        public string NormalizeCompat(
+            string text,
+            bool extended = false)
         {
-            return CompatIdeographs.Builtin().Normalize(text);
+            return extended
+                ? UnicodeCompat.Builtin().NormalizeAll(text)
+                : CompatIdeographs.Builtin().Normalize(text);
         }
 
         /// <summary>
-        /// Normalizes CJK Compatibility Ideographs and extended Chinese Unicode
-        /// compatibility forms using the built-in normalization tables.
+        /// Normalizes curated Chinese Unicode compatibility forms using the built-in
+        /// extended Unicode compatibility table.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This is the broader Unicode compatibility normalizer provided by
-        /// <see cref="OpenccNetLib"/>. It includes all mappings handled by
-        /// <see cref="NormalizeCompat(string)"/> and additionally normalizes curated
-        /// Chinese Unicode forms such as Kangxi radicals, CJK radical variants,
-        /// legacy glyph variants, compatibility punctuation, and known text-extraction
-        /// artifacts.
+        /// This method applies only the mappings from the extended Chinese Unicode
+        /// compatibility table. It does not apply the CJK Compatibility Ideograph
+        /// mappings handled by <see cref="NormalizeCompat(string, bool)"/> unless
+        /// those code points are explicitly present in the extended table.
         /// </para>
         /// <para>
-        /// This method is an optional pre-processing step. It does not modify an
-        /// <see cref="Opencc"/> instance, its selected configuration, conversion
-        /// dictionaries, segmentation behavior, script detection, or punctuation
-        /// conversion.
+        /// The extended mappings include curated Kangxi radicals, CJK radical
+        /// variants, legacy glyph variants, compatibility punctuation, and known
+        /// text-extraction artifacts.
         /// </para>
         /// <para>
-        /// Unlike general-purpose Unicode NFKC normalization, this method uses a
-        /// curated CJK-oriented mapping set intended for Chinese text normalization.
+        /// This method is intended primarily for normalization of extracted or
+        /// heterogeneous Chinese text, including text produced by PDF extraction
+        /// libraries such as PdfPig.
+        /// </para>
+        /// <para>
+        /// It is intentionally not a general-purpose Unicode NFKC normalizer.
         /// Japanese- and Korean-specific compatibility normalization is not performed.
         /// Unmapped text is preserved unchanged.
         /// </para>
         /// <para>
-        /// Use this before OpenCC conversion when input may contain mixed Unicode
-        /// compatibility forms or extraction artifacts, for example text extracted
-        /// from PDF documents or collected from heterogeneous CJK text sources.
+        /// This method does not modify any <see cref="Opencc"/> instance, selected
+        /// configuration, conversion dictionaries, segmentation behavior, script
+        /// detection, or punctuation conversion.
         /// </para>
         /// <example>
         /// <code>
-        /// var normalized = Opencc.NormUnicodeCompat(
-        ///     "天龍八部書裡的喬峰是契丹人");
-        ///
-        /// // normalized:
-        /// // 天龍八部書裡的喬峰是契丹人
+        /// var normalized = Opencc.NormUnicodeCompat(extractedText);
         ///
         /// var cc = new Opencc();
         /// var converted = cc.Convert(normalized);
@@ -2364,8 +2389,8 @@ namespace OpenccNetLib
         /// as empty text.
         /// </param>
         /// <returns>
-        /// Text with mapped CJK Compatibility Ideographs and extended Chinese Unicode
-        /// compatibility forms normalized; unmapped text is preserved.
+        /// Text with mapped extended Chinese Unicode compatibility forms normalized;
+        /// unmapped text is preserved unchanged.
         /// </returns>
         public static string NormUnicodeCompat(string text)
         {

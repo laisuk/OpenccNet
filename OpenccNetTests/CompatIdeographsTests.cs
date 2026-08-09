@@ -170,11 +170,13 @@ namespace OpenccNetTests
         }
 
         [TestMethod]
-        public void NormUnicodeCompat_IncludesBuiltinCompatIdeographs()
+        public void NormUnicodeCompat_DoesNotApplyBuiltinCompatIdeographs()
         {
-            Assert.AreEqual(
-                "天龍八部書裡的喬峰是契丹人",
-                Opencc.NormUnicodeCompat("天龍八部書裡的喬峰是契丹人"));
+            const string input = "天龍八部書裡的喬峰是契丹人";
+
+            Assert.AreSame(
+                input,
+                Opencc.NormUnicodeCompat(input));
         }
 
         [TestMethod]
@@ -215,6 +217,39 @@ namespace OpenccNetTests
             const string input = "A\uD800中\uDC00Z";
 
             Assert.AreEqual(input, Opencc.NormUnicodeCompat(input));
+        }
+
+        [TestMethod]
+        public void NormalizeCompat_Extended_IncludesCompatAndExtendedMappings()
+        {
+            var cc = new Opencc();
+
+            Assert.AreEqual(
+                "天龍八部書裡的喬峰是契丹人·：",
+                cc.NormalizeCompat(
+                    "天龍八部書裡的喬峰是契丹人‧︰",
+                    extended: true));
+        }
+
+        [TestMethod]
+        public void NormalizeCompat_Default_DoesNotApplyExtendedMappings()
+        {
+            var cc = new Opencc();
+            const string input = "普通文本‧︰﹐";
+
+            Assert.AreSame(
+                input,
+                cc.NormalizeCompat(input));
+        }
+
+        [TestMethod]
+        public void NormUnicodeCompat_NormalizesExtendedWithoutCompatPass()
+        {
+            const string input = "金‧︰";
+
+            Assert.AreEqual(
+                "金·：",
+                Opencc.NormUnicodeCompat(input));
         }
     }
 }

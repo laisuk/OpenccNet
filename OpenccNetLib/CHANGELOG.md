@@ -18,17 +18,23 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   compatibility target and fallback. No existing target or public API was removed.
 - Added differential and randomized splitter tests covering delimiters, inclusive and exclusive modes, IDS preservation,
   supplementary characters, and malformed UTF-16.
-- Added tests verifying that built-in DeTofu maps return independent mutable clones and cannot modify the cached
+- Added tests verifying that built-in DeToFu maps return independent mutable clones and cannot modify the cached
   built-in mapping data used by static conversion.
 - Added an optional punctuation argument to the direct conversion APIs for Traditional → Traditional regional
   configurations.
-- Added `Opencc.NormUnicodeCompat(...)` for extended Chinese Unicode compatibility normalization. The new API includes
-  the existing CJK Compatibility Ideograph mappings and additionally normalizes curated Kangxi radicals, CJK radical
-  variants, legacy Chinese glyph forms, compatibility punctuation, and known text-extraction artifacts while preserving
-  unmapped text unchanged.
+- Added `Opencc.NormUnicodeCompat(...)` for curated Chinese Unicode compatibility normalization using the extended
+  `Unicode_Compatibility.txt` mapping table. It normalizes Kangxi radicals, CJK radical variants, legacy Chinese glyph
+  forms, compatibility punctuation, and known text-extraction artifacts while preserving unmapped text unchanged. This
+  extended-only API is suitable for extracted text, including PDF text normalization, without implicitly applying the
+  separate CJK Compatibility Ideograph mappings handled by `NormalizeCompat(...)`.
 
 ### Changed
 
+- Extended `Opencc.NormalizeCompat(...)` with an optional `extended` argument. The default behavior remains unchanged;
+  when enabled, CJK Compatibility Ideograph normalization and the curated mappings used by
+  `Opencc.NormUnicodeCompat(...)` are applied together in a single normalization pass.
+- Centralized extended Unicode compatibility normalization in `OpenccNetLib`, allowing CLI and PDF extraction paths to
+  share the same built-in mapping implementation instead of maintaining separate normalization logic.
 - Optimized `ConvertByUnionInto()` on .NET 9 and later with allocation-free alternate dictionary lookup directly from
   `ReadOnlySpan<char>`, substantially reducing temporary candidate-key allocations and improving conversion throughput.
 - Optimized compatibility-ideograph normalization on .NET 9 and later with range-based candidate searches and lazy
@@ -39,12 +45,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   operator. IDS-free input now uses the optimized non-IDS paths, while input containing IDS operators retains the
   established IDS-aware implementation.
 - Reduced speculative splitter allocations by capping the initial range capacity on the sparse modern path.
-- Refactored DeTofu lookup to use Unicode scalar keys and direct UTF-16 scanning, eliminating per-scalar substring and
+- Refactored DeToFu lookup to use Unicode scalar keys and direct UTF-16 scanning, eliminating per-scalar substring and
   iterator allocations. Result construction is now deferred until the first replacement, and unchanged input returns the
   original string without allocation.
-- Cached built-in DeTofu mapping data for static conversion while preserving independently mutable maps returned by
-  `DeTofuMap.Builtin()`.
-- Preserved malformed and unpaired-surrogate handling in DeTofu conversion.
+- Cached built-in DeToFu mapping data for static conversion while preserving independently mutable maps returned by
+  `DeToFuMap.Builtin()`.
+- Preserved malformed and unpaired-surrogate handling in DeToFu conversion.
 - Preserved the established `netstandard2.0` conversion, normalization, splitter, and IDS-aware paths.
 - Updated dictionary data.
 

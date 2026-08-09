@@ -55,12 +55,6 @@
     </ItemGroup>
 
     <!-- Runtime asset required by PdfPig PDF extraction cleanup -->
-    <ItemGroup>
-        <None Update="dicts\Unicode_Compatibility.txt">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-        </None>
-    </ItemGroup>
 
     <Target Name="Trim_Docs_And_Symbols_FromPublish"
             AfterTargets="ComputeFilesToPublish">

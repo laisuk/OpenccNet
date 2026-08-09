@@ -6,14 +6,14 @@ using System.Text;
 namespace OpenccNetLib
 {
     /// <summary>
-    /// Provides extended Chinese Unicode compatibility normalization.
+    /// Provides curated Chinese Unicode compatibility normalization.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This internal normalizer is a superset of <see cref="CompatIdeographs"/>.
-    /// It preserves the built-in CJK Compatibility Ideograph mappings and adds
-    /// curated Chinese Unicode compatibility, radical, glyph-variant, punctuation,
-    /// and extraction-artifact mappings from <c>dicts/Unicode_Compatibility.txt</c>.
+    /// This internal normalizer owns the curated Chinese Unicode compatibility,
+    /// radical, glyph-variant, punctuation, and extraction-artifact mappings from
+    /// <c>dicts/Unicode_Compatibility.txt</c>. <see cref="NormalizeAll(string)"/>
+    /// additionally includes the built-in <see cref="CompatIdeographs"/> mappings.
     /// </para>
     /// <para>
     /// It is intentionally not a general-purpose Unicode NFKC normalizer.
@@ -42,10 +42,22 @@ namespace OpenccNetLib
 
         internal string Normalize(string input)
         {
+            return NormalizeCore(input, includeCompat: false);
+        }
+
+        internal string NormalizeAll(string input)
+        {
+            return NormalizeCore(input, includeCompat: true);
+        }
+
+        private string NormalizeCore(
+            string input,
+            bool includeCompat)
+        {
             if (string.IsNullOrEmpty(input))
                 return input ?? string.Empty;
 
-            var firstMapping = FindFirstMapping(input);
+            var firstMapping = FindFirstMapping(input, includeCompat);
             if (firstMapping < 0)
                 return input;
 
@@ -66,7 +78,10 @@ namespace OpenccNetLib
                     charCount = 2;
                 }
 
-                if (TryGetMapping(codePoint, out var replacement))
+                if (TryGetMapping(
+                        codePoint,
+                        includeCompat,
+                        out var replacement))
                 {
                     output.Append(replacement);
 
@@ -98,7 +113,9 @@ namespace OpenccNetLib
             builder.Append(normalized);
         }
 
-        private int FindFirstMapping(string input)
+        private int FindFirstMapping(
+            string input,
+            bool includeCompat)
         {
             for (var i = 0; i < input.Length; i++)
             {
@@ -111,24 +128,38 @@ namespace OpenccNetLib
                 {
                     codePoint = char.ConvertToUtf32(ch, input[i + 1]);
 
-                    if (TryGetMapping(codePoint, out _))
+                    if (TryGetMapping(
+                            codePoint,
+                            includeCompat,
+                            out _))
                         return i;
 
                     i++;
                     continue;
                 }
 
-                if (TryGetMapping(codePoint, out _))
+                if (TryGetMapping(
+                        codePoint,
+                        includeCompat,
+                        out _))
                     return i;
             }
 
             return -1;
         }
 
-        private bool TryGetMapping(int codePoint, out string replacement)
+        private bool TryGetMapping(
+            int codePoint,
+            bool includeCompat,
+            out string replacement)
         {
-            return _compat.TryNormalizeCodePoint(codePoint, out replacement)
-                   || _extended.TryGetValue(codePoint, out replacement);
+            if (includeCompat &&
+                _compat.TryNormalizeCodePoint(codePoint, out replacement))
+            {
+                return true;
+            }
+
+            return _extended.TryGetValue(codePoint, out replacement);
         }
 
         private static UnicodeCompat LoadBuiltinTable()
