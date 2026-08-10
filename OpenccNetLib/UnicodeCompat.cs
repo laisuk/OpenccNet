@@ -197,17 +197,14 @@ namespace OpenccNetLib
             bool includeCompat,
             out int replacement)
         {
-            if (includeCompat &&
-                _compat.TryNormalizeCodePoint(codePoint, out var compatReplacement))
-            {
-                replacement = ReadSingleScalar(
-                    compatReplacement,
-                    lineNo: 0,
-                    field: "compatibility target");
-                return true;
-            }
-
-            return _extended.TryGetValue(codePoint, out replacement);
+            if (!includeCompat ||
+                !_compat.TryNormalizeCodePoint(codePoint, out var compatReplacement))
+                return _extended.TryGetValue(codePoint, out replacement);
+            replacement = ReadSingleScalar(
+                compatReplacement,
+                lineNo: 0,
+                field: "compatibility target");
+            return true;
         }
 
         private static UnicodeCompat LoadBuiltinTable()
