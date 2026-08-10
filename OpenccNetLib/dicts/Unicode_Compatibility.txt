@@ -267,7 +267,7 @@
 ⻰	龙
 ⻳	龟
 
-# Additional CJK Radicals Supplement forms mined from ctext normalization data
+# Additional CJK Radicals Supplement forms mined from CText normalization data
 ⺋	㔾
 ⺖	忄
 ⺘	扌
@@ -339,9 +339,12 @@
 #
 〈	〈
 〉	〉
+# PdfPig may extract an em-dash-like glyph as U+2E3A TWO-EM DASH.
+# Normalize it to U+2014 EM DASH for ordinary CJK text.
+# Comment out this mapping if the original long-dash form should be preserved.
 ⸺	—
 
-# Additional punctuation forms mined from ctext normalization data
+# Additional punctuation forms mined from CText normalization data
 ‧	·
 ︰	：
 ﹐	，
