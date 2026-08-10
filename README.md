@@ -250,6 +250,14 @@ This keeps character positions stable for diffing, offsets, selections, diagnost
 processing. Length-changing rewrites belong to a separate conversion or extraction-repair layer rather than these
 normalization tables.
 
+For the curated extended table, source keys are additionally required to be **non-ASCII**. ASCII source mappings are
+rejected when the table is loaded. This prevents compatibility normalization from accidentally rewriting structural
+syntax such as `<`, `>`, `&`, `"`, `'`, `/`, or `=`, protecting HTML/XML, OpenXML-based Office documents, subtitle
+formats, and other structured text from malformed output.
+
+Targets may still be ASCII when that is the correct-normalized representation; the restriction applies only to source
+keys.
+
 For converted text, the recommended order is:
 
 1. Normalize the input with `NormalizeCompat(...)`, optionally enabling extended normalization.

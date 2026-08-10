@@ -219,8 +219,10 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// Each non-comment line must contain exactly two tab-separated columns:
-        /// one source Unicode scalar and one target Unicode scalar. Invalid rows fail
-        /// fast so bundled mapping mistakes cannot be silently ignored.
+        /// one non-ASCII source Unicode scalar and one target Unicode scalar.
+        /// ASCII source mappings are rejected to prevent accidental rewriting of
+        /// markup and structured-text syntax, including XML/OpenXML content.
+        /// Invalid rows fail fast so bundled mapping mistakes cannot be silently ignored.
         /// </remarks>
         private static Dictionary<int, int> LoadExtendedMap()
         {
@@ -261,6 +263,12 @@ namespace OpenccNetLib
                     parts[0].Trim(),
                     lineNo,
                     "source");
+                
+                if (source <= 0x7F)
+                {
+                    throw new InvalidDataException(
+                        $"line {lineNo}: source must not be an ASCII character");
+                }
 
                 var target = ReadSingleScalar(
                     parts[1].Trim(),
