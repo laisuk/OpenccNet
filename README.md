@@ -232,8 +232,8 @@ OpenccNetLib provides two complementary Unicode normalization layers for Chinese
 
 * `NormalizeCompat(...)` / `CompatIdeographs` normalizes **CJK Compatibility Ideographs** using the built-in Unicode
   decomposition mappings for the CJK Compatibility Ideograph ranges.
-* `NormalizeUnicodeCompat(...)` applies the curated **extended Chinese Unicode compatibility table**. It targets additional
-  Kangxi radicals, CJK radical variants, legacy Chinese glyph forms, compatibility punctuation, and known
+* `NormalizeUnicodeCompat(...)` applies the curated **extended Chinese Unicode compatibility table**. It targets
+  additional Kangxi radicals, CJK radical variants, legacy Chinese glyph forms, compatibility punctuation, and known
   text-extraction artifacts outside the normal compatibility-ideograph pass.
 
 The two tables serve different purposes. `NormalizeUnicodeCompat(...)` is **not a replacement or superset** of
@@ -243,6 +243,12 @@ extended mode when both normalization layers should be applied together.
 These operations are Unicode/text normalization, not OpenCC linguistic conversion. They do not modify OpenCC
 dictionaries, phrase matching, regional variant selection, script detection, or OpenCC punctuation conversion. They are
 also not intended to be a general-purpose Unicode NFKC implementation.
+
+Both normalization tables intentionally use a strict **one Unicode scalar → one Unicode scalar** mapping contract. A
+normalization entry may substitute the scalar representation, but it never expands or contracts the scalar sequence.
+This keeps character positions stable for diffing, offsets, selections, diagnostics, and other position-sensitive text
+processing. Length-changing rewrites belong to a separate conversion or extraction-repair layer rather than these
+normalization tables.
 
 For converted text, the recommended order is:
 
@@ -285,15 +291,20 @@ Console.WriteLine(
 
 The extended table includes carefully selected forms useful for Chinese text processing and text extraction, including
 compatibility punctuation such as `‧ → ·`, `︰ → ：`, `﹐ → ，`, `﹑ → 、`, `﹔ → ；`, `﹕ → ：`,
-`﹖ → ？`, and `﹗ → ！`. Normalizing these punctuation forms can improve downstream CJK paragraph reflow and sentence
-splitting; normalizing the middle dot also helps preserve translated Western personal names during splitting.
+`﹖ → ？`, and `﹗ → ！`, plus conservative extraction-artifact repairs such as `⸺ → —`. Normalizing these punctuation forms
+can improve downstream CJK paragraph reflow and sentence splitting; normalizing the middle dot also helps preserve
+translated Western personal names during splitting.
+
+The extended table is scalar-preserving by design. For example, `⸺ → —` is allowed, while a visually similar
+length-changing rewrite such as `⸺ → ——` is intentionally rejected. Built-in mapping data is validated when loaded, and
+malformed rows fail fast instead of being silently skipped.
 
 The extended table is intentionally curated rather than blindly applying every compatibility or historical glyph
 mapping. Mappings where both source and target remain valid Chinese unified ideographs are excluded when normalization
 would amount to choosing one legitimate Han form over another.
 
-`NormalizeUnicodeCompat(...)` exposes the extended table directly when only that layer is wanted, for example when cleaning
-text extracted from PDF or other document formats:
+`NormalizeUnicodeCompat(...)` exposes the extended table directly when only that layer is wanted, for example when
+cleaning text extracted from PDF or other document formats:
 
 ```csharp
 using OpenccNetLib;
@@ -364,11 +375,12 @@ CompatIdeographs.NormalizeCompatIdeographs(...)
 ```
 
 `NormalizeCompat(...)` is the normal entry point for CJK Compatibility Ideograph normalization. Its extended mode adds
-the curated Chinese Unicode compatibility table in the same preprocessing operation. `NormalizeUnicodeCompat(...)` exposes
-that extended table independently. Unmapped characters are preserved unchanged.
+the curated Chinese Unicode compatibility table in the same preprocessing operation. `NormalizeUnicodeCompat(...)`
+exposes that extended table independently. Unmapped characters are preserved unchanged.
 
 > **Advanced users**: `dicts/Unicode_Compatibility.txt` may be customized to add project-specific extended Chinese
-> Unicode normalization mappings used by `NormalizeUnicodeCompat (...)` and `NormalizeCompat (..., extended: true)`. This
+> Unicode normalization mappings used by `NormalizeUnicodeCompat (...)` and `NormalizeCompat (..., extended: true)`.
+> This
 > customization applies only to the extended Unicode compatibility table. The built-in CJK Compatibility Ideograph
 > mappings are separate and are not intended to be customized through this file.
 >
@@ -377,7 +389,11 @@ that extended table independently. Unmapped characters are preserved unchanged.
 > # source<TAB>target
 > ‧	·
 > ︰	：
+> ⸺	—
 > ```
+>
+> Both `source` and `target` must contain **exactly one valid Unicode scalar value**. Entries that are malformed or that
+> expand/contract the scalar sequence are rejected when the table is loaded.
 >
 
 ### DeTofu Display Compatibility

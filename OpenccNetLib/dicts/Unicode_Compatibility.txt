@@ -339,7 +339,7 @@
 #
 〈	〈
 〉	〉
-⸺	——
+⸺	—
 
 # Additional punctuation forms mined from ctext normalization data
 ‧	·

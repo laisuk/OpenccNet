@@ -24,17 +24,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   configurations.
 - Added `Opencc.NormalizeUnicodeCompat(...)` for curated Chinese Unicode compatibility normalization using the extended
   `Unicode_Compatibility.txt` mapping table. It normalizes Kangxi radicals, CJK radical variants, legacy Chinese glyph
-  forms, compatibility punctuation, and known text-extraction artifacts while preserving unmapped text unchanged. This
-  extended-only API is suitable for extracted text, including PDF text normalization, without implicitly applying the
-  separate CJK Compatibility Ideograph mappings handled by `NormalizeCompat(...)`.
+  forms, compatibility punctuation, and known text-extraction artifacts while preserving unmapped text unchanged. The
+  extended table uses a strict one-Unicode-scalar → one-Unicode-scalar mapping contract, rejects malformed or
+  length-changing entries at load time, and is suitable for extracted text, including PDF text normalization, without
+  implicitly applying the separate CJK Compatibility Ideograph mappings handled by `NormalizeCompat(...)`.
 
 ### Changed
 
 - Extended `Opencc.NormalizeCompat(...)` with an optional `extended` argument. The default behavior remains unchanged;
-  when enabled, CJK Compatibility Ideograph normalization and the curated mappings used by
+  when enabled, CJK Compatibility Ideograph normalization and the curated scalar-preserving mappings used by
   `Opencc.NormalizeUnicodeCompat(...)` are applied together in a single normalization pass.
 - Centralized extended Unicode compatibility normalization in `OpenccNetLib`, allowing CLI and PDF extraction paths to
   share the same built-in mapping implementation instead of maintaining separate normalization logic.
+- Refactored extended Unicode compatibility mappings to use Unicode scalar-to-scalar storage and validation. Both source
+  and target must contain exactly one valid Unicode scalar, malformed mapping rows now fail fast with line diagnostics,
+  and length-changing rewrites are intentionally excluded from the normalization contract.
 - Optimized `ConvertByUnionInto()` on .NET 9 and later with allocation-free alternate dictionary lookup directly from
   `ReadOnlySpan<char>`, substantially reducing temporary candidate-key allocations and improving conversion throughput.
 - Optimized compatibility-ideograph normalization on .NET 9 and later with range-based candidate searches and lazy
@@ -52,7 +56,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   `DeToFuMap.Builtin()`.
 - Preserved malformed and unpaired-surrogate handling in DeToFu conversion.
 - Preserved the established `netstandard2.0` conversion, normalization, splitter, and IDS-aware paths.
-- Updated dictionary data.
+- Updated conversion dictionary data.
+- Updated Unicode compatibility mapping data with additional curated punctuation and text-extraction artifact mappings,
+  while preserving the scalar-to-scalar normalization contract.
 
 ---
 
