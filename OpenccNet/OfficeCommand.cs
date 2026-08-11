@@ -116,7 +116,7 @@ internal static class OfficeCommand
             customDictOption
         };
 
-        officeCommand.SetAction(async (parseResult, _) => await RunConversionAsync(
+        officeCommand.SetAction(async (parseResult, cancellationToken) => await RunConversionAsync(
             input: parseResult.GetValue(inputFileOption),
             output: parseResult.GetValue(outputFileOption),
             config: parseResult.GetValue(configOption)!,
@@ -125,7 +125,8 @@ internal static class OfficeCommand
             keepFont: parseResult.GetValue(keepFontOption),
             quiet: parseResult.GetValue(quietOption),
             customDictArgs: parseResult.GetValue(customDictOption) ??
-                            Array.Empty<string>()));
+                            Array.Empty<string>(),
+            cancellationToken: cancellationToken));
 
         return officeCommand;
     }
@@ -138,7 +139,8 @@ internal static class OfficeCommand
         string? format,
         bool keepFont,
         bool quiet,
-        string[] customDictArgs)
+        string[] customDictArgs,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -169,7 +171,8 @@ internal static class OfficeCommand
                     resolvedFormat,
                     converter,
                     punctuation,
-                    keepFont);
+                    keepFont,
+                    cancellationToken);
 
             if (!success)
             {

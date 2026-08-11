@@ -17,12 +17,15 @@ projects with a focus on performance and minimal memory usage.
 - [Installation](#installation)
 - [Usage](#usage)
 - [Office Document & EPUB Conversion](#-office-document--epub-conversion)
-- [Example: Convert Office Document In-Memory](#-example-convert-office-document-from-bytes)
+    - [Supported formats](#-supported-formats)
+- [Example: Convert Office Document from Bytes](#-example-convert-office-document-from-bytes)
 - [Backward-Compatible String Overload](#-backward-compatible-string-overload)
-- [Async API](#-async-api-recommended-for-serverweb)
-- [Convert Files](#-convert-files-convenience-wrappers)
-- [What does conversion do?](#-what-does-conversion-do)
-- [Error Handling](#-error-handling)
+- [Async API](#-async-api)
+- [Convert Files (Convenience Wrappers)](#-convert-files-convenience-wrappers)
+- [In-Memory Package Processing](#-in-memory-package-processing)
+    - [Format-specific behavior](#format-specific-behavior)
+- [EPUB Packaging](#-epub-packaging)
+- [Validation and Error Handling](#-validation-and-error-handling)
 - [Unit Tested](#-unit-tested-mstest)
 - [Why This Matters](#-why-this-matters)
 - [Performance](#performance)
@@ -46,14 +49,18 @@ projects with a focus on performance and minimal memory usage.
   (correct surrogate-pair detection and matching)
 - Optional punctuation conversion
 
-* Thread-safe conversion core with immutable shared dictionaries; suitable for high-throughput parallel processing when
+- Thread-safe conversion core with immutable shared dictionaries; suitable for high-throughput parallel processing when
   converters are not reconfigured concurrently.
 
-- **Office document & EPUB conversion**:
+- **Office document & EPUB conversion (pure in-memory core)**:
+
     - `.docx` (Word), `.xlsx` (Excel), `.pptx` (PowerPoint), `.odt`, `.ods`, `.odp`, `.epub`
-    - `byte[] → byte[]` API with XML/XHTML content conversion and package rebuilding
-    - Async wrapper available (`ConvertOfficeBytesAsync`)
-    - Temporary working files are managed and cleaned up internally; no caller-managed temp files required
+    - Zero-temp-file `byte[] → byte[]` conversion with entry-by-entry ZIP processing
+    - Converts only targeted XML/XHTML content while streaming non-target assets unchanged
+    - EPUB-compliant rebuild with `mimetype` first and uncompressed
+    - Optional punctuation conversion and font preservation
+    - Async wrappers plus validated, atomic file-output convenience APIs
+
 - **.NET Standard 2.0 compatible** (.NET Core 2.0+, .NET 5/6/7/8/9/10 and later), with an optimized .NET 9.0+
   implementation path  
   (cross-platform: Windows, Linux, macOS; usable from .NET implementations supporting .NET Standard 2.0)
@@ -941,31 +948,33 @@ already provide deterministic and extensible customization points.
 
 ## 🆕 Office Document & EPUB Conversion
 
-Starting from **OpenccNetLib v1.3.2**, the library provides Office / EPUB conversion APIs that accept and return
-`byte[]` containers.
+`OfficeDocConverter` provides **pure in-memory conversion** for ZIP-based Office and EPUB containers.
 
-The caller does not need to manage intermediate files: `OfficeDocConverter` handles extraction, text conversion, package
-rebuilding, validation, and temporary-file cleanup internally. The implementation uses a temporary working directory
-while processing the ZIP-based document container.
+The core `ConvertOfficeBytes(...)` APIs accept a document as `byte[]`, process the package directly with `MemoryStream`
+and `ZipArchive`, and return the rebuilt document as `byte[]`. No temporary directory or temporary ZIP file is created
+by the in-memory conversion pipeline.
 
-This is suitable for:
+Packages are processed **entry by entry**:
 
-* **Web servers** (ASP.NET Core)
-* **Desktop applications**
-* **Background services and automation**
-* **Applications that prefer `byte[] → byte[]` document APIs**
+- Text-bearing XML/XHTML entries are decoded, converted with `Opencc`, and written directly to the output archive.
+- Non-target entries such as images, media, relationships, stylesheets, fonts, and metadata are streamed directly from
+  the input archive to the output archive without being materialized as text.
+- Only the XML/XHTML entry currently being converted needs to be materialized as a string.
+- The rebuilt package is validated as a readable ZIP container before it is returned.
 
 ### ✔ Supported formats
 
-| Format | Description                                      |
-|--------|--------------------------------------------------|
-| `docx` | Word document (Office Open XML)                  |
-| `xlsx` | Excel spreadsheet (Office Open XML)              |
-| `pptx` | PowerPoint presentation (Office Open XML)        |
-| `odt`  | OpenDocument Text (LibreOffice / OpenOffice)     |
-| `ods`  | OpenDocument Spreadsheet                         |
-| `odp`  | OpenDocument Presentation                        |
-| `epub` | EPUB e-book (with correct uncompressed mimetype) |
+| Format | Document type                          | Converted content                             |
+|--------|----------------------------------------|-----------------------------------------------|
+| `docx` | Microsoft Word (Office Open XML)       | `word/document.xml`                           |
+| `xlsx` | Microsoft Excel (Office Open XML)      | Shared strings and worksheet inline strings   |
+| `pptx` | Microsoft PowerPoint (Office Open XML) | Slides, notes, layouts, masters, and comments |
+| `odt`  | OpenDocument Text                      | `content.xml`                                 |
+| `ods`  | OpenDocument Spreadsheet               | `content.xml`                                 |
+| `odp`  | OpenDocument Presentation              | `content.xml`                                 |
+| `epub` | EPUB 2/3 e-book                        | XHTML, HTML, OPF, and NCX content             |
+
+Optional punctuation conversion and font-name preservation are supported through the same APIs.
 
 ---
 
@@ -974,41 +983,56 @@ This is suitable for:
 ```csharp
 using OpenccNetLib;
 
-var opencc = new Opencc("s2t"); // Simplified → Traditional
+var opencc = new Opencc(OpenccConfig.S2T);
 
 byte[] inputBytes = File.ReadAllBytes("sample.docx");
 
-// New strongly-typed OfficeFormat enum (recommended)
 byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
     inputBytes,
     format: OfficeFormat.Docx,
     converter: opencc,
     punctuation: false,
-    keepFont: true
-);
+    keepFont: true);
 
 File.WriteAllBytes("output.docx", outputBytes);
 ```
+
+The conversion itself is memory-only. `File.ReadAllBytes(...)` and `File.WriteAllBytes(...)` in this example are only
+used to demonstrate loading and saving a document; callers may obtain or consume the byte arrays from any source.
+
+For example, the same API can be used with uploaded files, database blobs, network responses, embedded resources, or
+other byte-stream workflows without creating intermediate document files.
 
 ---
 
 ## 🔁 Backward-Compatible String Overload
 
-Existing string-based API still works:
+The original string-based format overload remains available:
 
 ```csharp
 byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
     inputBytes,
-    format: "docx",   // legacy string format
-    converter: opencc
-);
+    format: "docx",
+    converter: opencc);
 ```
 
-No breaking changes — all existing code continues working.
+For new code, `OfficeFormat` is recommended for compile-time safety:
+
+```csharp
+byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+    inputBytes,
+    OfficeFormat.Docx,
+    opencc);
+```
+
+No public Office conversion API was removed by the in-memory pipeline refactor.
 
 ---
 
-## ⚡ Async API (Recommended for Server/Web)
+## ⚡ Async API
+
+Async wrappers are available for applications that do not want the synchronous conversion work to occupy the calling
+thread:
 
 ```csharp
 var outputBytes = await OfficeDocConverter.ConvertOfficeBytesAsync(
@@ -1016,123 +1040,149 @@ var outputBytes = await OfficeDocConverter.ConvertOfficeBytesAsync(
     format: OfficeFormat.Docx,
     converter: opencc,
     punctuation: false,
-    keepFont: true
-);
+    keepFont: true);
 ```
 
-- Async wrapper for the synchronous document conversion pipeline
-- Keeps UI or caller threads responsive when awaited
-- Suitable for desktop applications and server-side workloads
+`ConvertOfficeBytesAsync(...)` is an asynchronous wrapper around the synchronous in-memory conversion engine using
+`Task.Run(...)`. The package conversion itself is CPU/memory work rather than asynchronous file I/O.
 
-String format async overload also remains available.
+Cancellation is honored before the background conversion task begins; once synchronous package conversion is running, it
+continues to completion.
+
+String-format async overloads remain available for backward compatibility.
 
 ---
 
-## 📁 Convert Files (Convenience wrappers)
+## 📁 Convert Files (Convenience Wrappers)
 
-Office and EPUB conversion validates every generated ZIP package before returning success. Invalid or corrupted input
-packages fail with a clear `InvalidOperationException` that preserves the underlying ZIP/package exception instead of
-returning potentially corrupted bytes. File-output overloads write to a temporary file in the destination directory and
-atomically publish it only after conversion and validation complete, avoiding partial or corrupted output files.
+For normal file-to-file workflows, `OfficeDocConverter` also provides convenience wrappers:
 
 ```csharp
 OfficeDocConverter.ConvertOfficeFile(
     "input.docx",
     "output.docx",
     format: OfficeFormat.Docx,
-    converter: opencc
-);
+    converter: opencc);
 ```
 
-Or async:
+And:
 
 ```csharp
 await OfficeDocConverter.ConvertOfficeFileAsync(
     "input.docx",
     "output.docx",
     format: OfficeFormat.Docx,
-    converter: opencc
-);
+    converter: opencc);
 ```
 
-String-based overload:
+These file-based wrappers intentionally perform filesystem I/O:
 
-```csharp
-OfficeDocConverter.ConvertOfficeFile(
-    "input.docx",
-    "output.docx",
-    "docx",
-    opencc
-);
-```
+1. Read the input document into memory.
+2. Delegate package conversion to the same pure in-memory `byte[] → byte[]` core.
+3. Validate the completed package.
+4. Write the result to a sibling temporary output file.
+5. Atomically publish the completed file to the requested destination.
+
+This prevents a failed or interrupted conversion from leaving a partially written destination file.
 
 ---
 
-## 🔍 What does conversion do?
+## 🔍 In-Memory Package Processing
 
-Inside the Office/EPUB container (ZIP), the library will:
+For `ConvertOfficeBytes(...)`, the internal pipeline is:
 
-- Extract only the relevant XML/XHTML parts
-- Apply OpenCC text conversion (`s2t`, `t2s`, `t2tw`, `hk2s`, etc.)
-- Preserve XML structure and formatting
-- Optionally preserve fonts (`keepFont = true`)
-- Rebuild the Office container as valid ZIP
-- For EPUB: ensure `mimetype` is **first uncompressed entry** (EPUB spec)
+```text
+input byte[]
+    ↓
+MemoryStream
+    ↓
+ZipArchive (Read)
+    ↓
+process entries sequentially
+    ├─ target XML/XHTML → read → OpenCC convert → write
+    └─ other entries    → stream directly to output
+    ↓
+ZipArchive (Create)
+    ↓
+MemoryStream
+    ↓
+validate package
+    ↓
+output byte[]
+```
+
+The complete extracted archive is never written to a temporary directory.
+
+### Format-specific behavior
+
+- **DOCX** — converts the main WordprocessingML document content.
+- **XLSX** — converts shared-string content and text inside worksheet `inlineStr` cells while leaving worksheet
+  structural data untouched.
+- **PPTX** — converts text-bearing slide, notes, layout, master, and comment XML parts.
+- **ODT / ODS / ODP** — converts the OpenDocument `content.xml` payload.
+- **EPUB** — converts XHTML/HTML content together with OPF/NCX textual metadata.
+
+When `keepFont` is enabled, relevant font declarations are temporarily protected with internal markers during text
+conversion and restored before the XML/XHTML entry is written to the new package.
 
 ---
 
-## 🛡 Error Handling
+## 📚 EPUB Packaging
 
-If conversion fails (invalid format, corrupted ZIP, missing document.xml, etc.):
+EPUB output follows the required ZIP packaging rule:
 
-```csharp
-throw new InvalidOperationException("Conversion failed: ...");
-```
+- `mimetype` is written as the **first ZIP entry**.
+- `mimetype` is stored **without compression**.
+- Remaining EPUB entries are written afterward using normal ZIP compression.
+- Missing `mimetype` causes conversion to fail instead of producing a malformed EPUB.
 
-A companion “Try” API may be added in future versions.
+These requirements are enforced by the in-memory rebuild pipeline.
+
+---
+
+## 🛡 Validation and Error Handling
+
+Generated Office/EPUB packages are reopened and validated as ZIP containers before successful conversion returns.
+
+Invalid or corrupted input packages raise `InvalidOperationException`, preserving the underlying package/ZIP exception
+as the inner exception where applicable.
+
+For file-output APIs, validation occurs before the destination file is atomically replaced, so a failed conversion does
+not overwrite an existing valid output file.
 
 ---
 
 ## 🧪 Unit Tested (MSTest)
 
-OpenccNetLib includes integration tests for:
+The Office/EPUB conversion suite covers both real documents and synthetic package-level test cases, including:
 
-- `.docx` (Word)
-- ZIP structure validation
-- XML extraction correctness
-- Chinese text conversion inside `word/document.xml`
-- Round-trip verification
-
-Example (`OfficeDocConverterTests`):
-
-```csharp
-[TestMethod]
-public void ConvertOfficeBytes_Docx_S2T_Succeeds()
-{
-    var opencc = new Opencc("s2t");
-    var inputBytes = File.ReadAllBytes("滕王阁序.docx");
-
-    var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
-        inputBytes, "docx", opencc);
-
-    Assert.IsNotNull(outputBytes);
-
-    using var ms = new MemoryStream(outputBytes);
-    using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-
-    Assert.IsNotNull(zip.GetEntry("word/document.xml"));
-}
-```
+- Real DOCX conversion and ZIP/package validation
+- Strongly typed and legacy string format overloads
+- XLSX shared-string conversion
+- XLSX worksheet inline-string conversion
+- Preservation of non-target binary ZIP entries byte-for-byte
+- Pure `byte[] → byte[]` DOCX conversion
+- EPUB XHTML conversion
+- EPUB `mimetype` first-entry requirement
+- EPUB uncompressed `mimetype` requirement
+- Missing EPUB `mimetype` rejection
+- Corrupted ZIP error propagation
+- Failed conversion without overwriting an existing output file
+- Atomic file-output cleanup
 
 ---
 
 ## 🚀 Why This Matters
 
-- **Zero temp files** → perfect for cloud environments
-- **Memory-only pipeline** → safer, faster, cleaner
-- **Cross-platform** (Windows / macOS / Linux / WASM)
-- **Blazor and JavaScript-ready** (byte[] in/out)
-- No external dependencies (only built-in System.IO.Compression)
+- **Pure in-memory core** — `ConvertOfficeBytes(...)` requires no temporary directory or intermediate package file.
+- **Entry-by-entry processing** — the complete decompressed document tree is not duplicated in memory or on disk.
+- **Preserves package assets** — non-target binary and structural entries are streamed directly into the rebuilt
+  archive.
+- **Server and byte-stream friendly** — documents can enter and leave the converter entirely as `byte[]`.
+- **EPUB compliant** — required `mimetype` ordering and storage rules are preserved.
+- **Safe file wrappers** — file-based conversion uses validation plus atomic output publishing.
+- **Cross-platform** — built on .NET `System.IO.Compression` rather than Office automation or native Office
+  applications.
 
 ---
 

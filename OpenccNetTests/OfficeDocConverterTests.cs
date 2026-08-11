@@ -179,16 +179,18 @@ namespace OpenccNetTests
             using var ms = new MemoryStream(outputBytes);
             using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
 
-            using (var sharedReader = new StreamReader(archive.GetEntry("xl/sharedStrings.xml")!.Open(), Encoding.UTF8, true))
+            using (var sharedReader =
+                   new StreamReader(archive.GetEntry("xl/sharedStrings.xml")!.Open(), Encoding.UTF8, true))
             {
                 var sharedXml = sharedReader.ReadToEnd();
                 Assert.Contains("漢字", sharedXml);
             }
 
-            using (var sheetReader = new StreamReader(archive.GetEntry("xl/worksheets/sheet1.xml")!.Open(), Encoding.UTF8, true))
+            using (var sheetReader =
+                   new StreamReader(archive.GetEntry("xl/worksheets/sheet1.xml")!.Open(), Encoding.UTF8, true))
             {
                 var sheetXml = sheetReader.ReadToEnd();
-                                StringAssert.Contains(sheetXml, "t=\"inlineStr\"");
+                StringAssert.Contains(sheetXml, "t=\"inlineStr\"");
                 Assert.Contains("漢字", sheetXml);
             }
         }
@@ -198,8 +200,8 @@ namespace OpenccNetTests
         {
             var converter = new Opencc(OpenccConfig.S2T);
 
-            Assert.ThrowsExactly<ArgumentNullException>(
-                () => OfficeDocConverter.ConvertOfficeBytes(null!, "docx", converter));
+            Assert.ThrowsExactly<ArgumentNullException>(() =>
+                OfficeDocConverter.ConvertOfficeBytes(null!, "docx", converter));
         }
 
         [TestMethod]
@@ -207,8 +209,8 @@ namespace OpenccNetTests
         {
             var converter = new Opencc(OpenccConfig.S2T);
 
-            Assert.ThrowsExactly<ArgumentException>(
-                () => OfficeDocConverter.ConvertOfficeBytes(Array.Empty<byte>(), "docx", converter));
+            Assert.ThrowsExactly<ArgumentException>(() =>
+                OfficeDocConverter.ConvertOfficeBytes(Array.Empty<byte>(), "docx", converter));
         }
 
         [TestMethod]
@@ -216,8 +218,8 @@ namespace OpenccNetTests
         {
             var inputBytes = File.ReadAllBytes(_testDocxPath!);
 
-            Assert.ThrowsExactly<ArgumentNullException>(
-                () => OfficeDocConverter.ConvertOfficeBytes(inputBytes, "docx", null!));
+            Assert.ThrowsExactly<ArgumentNullException>(() =>
+                OfficeDocConverter.ConvertOfficeBytes(inputBytes, "docx", null!));
         }
 
         [TestMethod]
@@ -225,11 +227,10 @@ namespace OpenccNetTests
         {
             var converter = new Opencc(OpenccConfig.S2T);
 
-            var exception = Assert.ThrowsExactly<InvalidOperationException>(
-                () => OfficeDocConverter.ConvertOfficeBytes(
-                    "not a ZIP package"u8.ToArray(),
-                    "docx",
-                    converter));
+            var exception = Assert.ThrowsExactly<InvalidOperationException>(() => OfficeDocConverter.ConvertOfficeBytes(
+                "not a ZIP package"u8.ToArray(),
+                "docx",
+                converter));
 
             Assert.IsNotNull(exception.InnerException);
             Assert.IsInstanceOfType<InvalidDataException>(exception.InnerException);
@@ -249,12 +250,11 @@ namespace OpenccNetTests
                 File.WriteAllBytes(inputPath, "not a ZIP package"u8.ToArray());
                 File.WriteAllBytes(outputPath, originalOutput);
 
-                Assert.ThrowsExactly<InvalidOperationException>(
-                    () => OfficeDocConverter.ConvertOfficeFile(
-                        inputPath,
-                        outputPath,
-                        OfficeFormat.Docx,
-                        new Opencc(OpenccConfig.S2T)));
+                Assert.ThrowsExactly<InvalidOperationException>(() => OfficeDocConverter.ConvertOfficeFile(
+                    inputPath,
+                    outputPath,
+                    OfficeFormat.Docx,
+                    new Opencc(OpenccConfig.S2T)));
 
                 CollectionAssert.AreEqual(originalOutput, File.ReadAllBytes(outputPath));
                 Assert.IsEmpty(Directory.GetFiles(directory, "*.tmp"));
@@ -272,6 +272,160 @@ namespace OpenccNetTests
             Assert.IsFalse(OfficeDocConverter.IsSupportedFormat(string.Empty));
             Assert.IsFalse(OfficeDocConverter.IsSupportedFormat("   "));
             Assert.IsTrue(OfficeDocConverter.IsSupportedFormat("  DOCX  "));
+        }
+
+
+        // =====================================================================
+        // In-memory Office/EPUB conversion pipeline
+        // =====================================================================
+
+        [TestMethod]
+        public void ConvertOfficeBytes_Docx_InMemory_PreservesNonTargetEntries()
+        {
+            var inputBytes = CreateMinimalDocx(
+                """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>汉字</w:t></w:r></w:p></w:body></w:document>""",
+                binaryPayload: new byte[] { 0, 1, 2, 3, 0xFE, 0xFF });
+
+            var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+                inputBytes,
+                OfficeFormat.Docx,
+                new Opencc(OpenccConfig.S2T));
+
+            using var ms = new MemoryStream(outputBytes);
+            using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
+
+            using (var reader = new StreamReader(
+                       archive.GetEntry("word/document.xml")!.Open(),
+                       Encoding.UTF8,
+                       detectEncodingFromByteOrderMarks: true))
+            {
+                Assert.Contains("漢字", reader.ReadToEnd());
+            }
+
+            using var binaryStream = archive.GetEntry("word/media/test.bin")!.Open();
+            using var binaryMs = new MemoryStream();
+            binaryStream.CopyTo(binaryMs);
+
+            CollectionAssert.AreEqual(
+                new byte[] { 0, 1, 2, 3, 0xFE, 0xFF },
+                binaryMs.ToArray(),
+                "Non-target ZIP entries should be copied byte-for-byte.");
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_Epub_InMemory_WritesMimetypeFirstAndUncompressed()
+        {
+            var inputBytes = CreateMinimalEpub(
+                """<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><body><p>汉字</p></body></html>""");
+
+            var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+                inputBytes,
+                OfficeFormat.Epub,
+                new Opencc(OpenccConfig.S2T));
+
+            using var ms = new MemoryStream(outputBytes);
+            using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
+
+            Assert.IsGreaterThan(0, archive.Entries.Count);
+            Assert.AreEqual("mimetype", archive.Entries[0].FullName);
+            Assert.AreEqual(
+                archive.Entries[0].Length,
+                archive.Entries[0].CompressedLength,
+                "EPUB mimetype must be stored without compression.");
+
+            using var reader = new StreamReader(
+                archive.GetEntry("OEBPS/chapter.xhtml")!.Open(),
+                Encoding.UTF8,
+                detectEncodingFromByteOrderMarks: true);
+
+            Assert.Contains("漢字", reader.ReadToEnd());
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_Epub_MissingMimetype_ThrowsInvalidOperationException()
+        {
+            using var ms = new MemoryStream();
+            using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                AddEntry(
+                    archive,
+                    "OEBPS/chapter.xhtml",
+                    """<html xmlns="http://www.w3.org/1999/xhtml"><body><p>汉字</p></body></html>""");
+            }
+
+            var exception = Assert.ThrowsExactly<InvalidOperationException>(() => OfficeDocConverter.ConvertOfficeBytes(
+                ms.ToArray(),
+                OfficeFormat.Epub,
+                new Opencc(OpenccConfig.S2T)));
+
+            Assert.Contains("mimetype", exception.Message);
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_Docx_InMemory_DoesNotRequireFilesystemWorkspace()
+        {
+            var inputBytes = CreateMinimalDocx(
+                """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>汉字</w:t></w:r></w:p></w:body></w:document>""");
+
+            var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+                inputBytes,
+                OfficeFormat.Docx,
+                new Opencc(OpenccConfig.S2T));
+
+            Assert.IsNotEmpty(outputBytes);
+
+            using var ms = new MemoryStream(outputBytes);
+            using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
+            Assert.IsNotNull(archive.GetEntry("word/document.xml"));
+        }
+
+        private static byte[] CreateMinimalDocx(string documentXml, byte[]? binaryPayload = null)
+        {
+            using var ms = new MemoryStream();
+            using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                AddEntry(
+                    archive,
+                    "[Content_Types].xml",
+                    """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>""");
+                AddEntry(
+                    archive,
+                    "_rels/.rels",
+                    """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>""");
+                AddEntry(archive, "word/document.xml", documentXml);
+
+                if (binaryPayload != null)
+                {
+                    var binaryEntry = archive.CreateEntry("word/media/test.bin", CompressionLevel.Optimal);
+                    using var stream = binaryEntry.Open();
+                    stream.Write(binaryPayload, 0, binaryPayload.Length);
+                }
+            }
+
+            return ms.ToArray();
+        }
+
+        private static byte[] CreateMinimalEpub(string chapterXhtml)
+        {
+            using var ms = new MemoryStream();
+            using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                var mimeEntry = archive.CreateEntry("mimetype", CompressionLevel.NoCompression);
+                using (var writer = new StreamWriter(mimeEntry.Open(), new UTF8Encoding(false)))
+                    writer.Write("application/epub+zip");
+
+                AddEntry(
+                    archive,
+                    "META-INF/container.xml",
+                    """<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>""");
+                AddEntry(
+                    archive,
+                    "OEBPS/content.opf",
+                    """<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata/><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>""");
+                AddEntry(archive, "OEBPS/chapter.xhtml", chapterXhtml);
+            }
+
+            return ms.ToArray();
         }
 
         private static byte[] CreateMinimalXlsx(string sharedStringsXml, string worksheetXml)

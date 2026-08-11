@@ -21,6 +21,9 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
   resolution, and error reporting into shared `CliUtils` helpers, reducing duplicated logic across commands.
 - CLI: Refactored `convert`, `office`, and `pdf` commands to reuse the shared custom dictionary pipeline and validation
   helpers while preserving existing command behavior.
+- CLI: Replaced the duplicated temporary-directory Office/EPUB conversion pipeline with direct delegation to
+  `OpenccNetLib.OfficeDocConverter`; supported-format validation now comes from the library, and CLI output inherits the
+  shared in-memory conversion and atomic file-publishing behavior.
 - CLI: Simplified the `office` command by removing the internal `OfficeConverterBuilder` layer and invoking
   `OfficeConverter` directly, reducing command orchestration complexity while preserving existing behavior.
 - CLI: Refactored the `pdf` command into a clearer processing pipeline with dedicated helpers for validation,

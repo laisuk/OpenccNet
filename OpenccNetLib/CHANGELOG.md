@@ -59,6 +59,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Updated conversion dictionary data.
 - Updated Unicode compatibility mapping data with additional curated punctuation and text-extraction artifact mappings,
   while preserving the scalar-to-scalar normalization contract.
+- Refactored Office and EPUB conversion to use a pure in-memory `byte[] → byte[]` pipeline. ZIP-based document packages
+  are now processed entry by entry with `MemoryStream` and `ZipArchive` instead of extracting the complete archive to a
+  temporary working directory. Convertible XML/XHTML parts are processed in memory while non-target assets are streamed
+  directly into the rebuilt package, reducing filesystem I/O and temporary-file usage. EPUB output preserves the
+  required first, uncompressed `mimetype` entry, and file-based convenience APIs continue to validate converted packages
+  and publish output atomically.
 
 ---
 

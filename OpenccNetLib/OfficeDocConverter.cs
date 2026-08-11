@@ -132,14 +132,15 @@ namespace OpenccNetLib
     /// <c>.docx</c>, <c>.xlsx</c>, <c>.pptx</c>, <c>.odt</c>, <c>.ods</c>, <c>.odp</c>, <c>.epub</c>.
     /// </para>
     /// <para>
-    /// The core API operates on <c>byte[]</c> containers, enabling use in GUI, server, and interop
-    /// scenarios (e.g. Blazor). Optional file-based wrappers are provided for desktop / CLI usage.
+    /// The core <c>byte[]</c> API is fully in-memory. It reads the input ZIP package
+    /// directly from memory, converts selected XML/XHTML entries, streams unchanged
+    /// entries into a new in-memory archive, and returns the rebuilt package as
+    /// <c>byte[]</c>. No temporary working directory is used by byte-array conversion.
     /// </para>
     /// <para>
-    /// Internally, the implementation extracts the container to a temporary directory, converts
-    /// relevant XML/XHTML fragments via <see cref="Opencc"/>, and then rebuilds a new ZIP/EPUB
-    /// container. This design handles large documents efficiently by relying on the filesystem
-    /// instead of keeping all intermediate files in memory.
+    /// Optional file-based wrappers are provided for desktop and CLI workflows. Those
+    /// wrappers read and write caller-specified files while reusing the same in-memory
+    /// package conversion core.
     /// </para>
     /// </remarks>
     public static class OfficeDocConverter
@@ -194,21 +195,13 @@ namespace OpenccNetLib
         /// <para>
         /// This method is the in-memory counterpart to
         /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
-        /// It is designed for scenarios where the caller does not want or cannot use
-        /// temporary files, such as:
+        /// It does not create a temporary working directory or temporary package file.
         /// </para>
-        /// <list type="bullet">
-        ///   <item><description>Web APIs (ASP.NET, Spring Boot via JNI, Node hosts)</description></item>
-        ///   <item><description>Blazor WebAssembly</description></item>
-        ///   <item><description>Mobile apps (Xamarin, MAUI, Android Java interop)</description></item>
-        ///   <item><description>Unit tests and pipelines</description></item>
-        ///   <item><description>Byte-stream pipelines and CLI piping</description></item>
-        /// </list>
         /// <para>
-        /// The converter unpacks the ZIP-based container (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB),
-        /// modifies only the text-bearing XML/XHTML parts, and repackages the archive.
-        /// All non-textual assets—images, stylesheets, fonts, relationships, metadata,
-        /// and directory layout—are preserved exactly as in the input.
+        /// The input ZIP-based container (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB) is read
+        /// directly from memory. Text-bearing XML/XHTML entries are converted one at
+        /// a time, while all other entries are streamed into a new in-memory archive.
+        /// This avoids materializing the entire decompressed package at once.
         /// </para>
         /// <para>
         /// If <paramref name="keepFont"/> is enabled, the converter temporarily
@@ -220,9 +213,8 @@ namespace OpenccNetLib
         /// <param name="format">
         /// Specifies the document type using the strongly typed
         /// <see cref="OfficeFormat"/> enumeration.  
-        /// This value determines how the container is unpacked, which XML/XHTML
-        /// parts are inspected, and how font preservation and conversion rules
-        /// are applied.
+        /// This value determines which XML/XHTML parts are inspected and how font
+        /// preservation and conversion rules are applied.
         ///
         /// Supported values are:
         /// <list type="bullet">
@@ -255,7 +247,7 @@ namespace OpenccNetLib
         /// Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the container structure is invalid, the ZIP cannot be unpacked,
+        /// Thrown when the container structure is invalid, the ZIP cannot be read,
         /// or the conversion pipeline fails.
         /// </exception>
         /// <example>
@@ -307,21 +299,12 @@ namespace OpenccNetLib
         /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>
         /// and its enum-based overload
         /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
-        /// It is designed for scenarios where the caller does not want or cannot use
-        /// temporary files, such as:
+        /// It does not create a temporary working directory or temporary package file.
         /// </para>
-        /// <list type="bullet">
-        ///   <item><description>Web APIs (ASP.NET, Spring Boot via JNI, Node hosts)</description></item>
-        ///   <item><description>Blazor WebAssembly</description></item>
-        ///   <item><description>Mobile apps (Xamarin, MAUI, Android Java interop)</description></item>
-        ///   <item><description>Unit tests and pipelines</description></item>
-        ///   <item><description>Byte-stream pipelines and CLI piping</description></item>
-        /// </list>
         /// <para>
-        /// The converter unpacks the ZIP-based container (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB),
-        /// modifies only the text-bearing XML/XHTML parts, and repackages the archive.
-        /// All non-textual assets—images, stylesheets, fonts, relationships, metadata,
-        /// and directory layout—are preserved exactly as in the input.
+        /// The input ZIP-based container is read directly from memory. Text-bearing
+        /// XML/XHTML entries are converted one at a time, while all other entries are
+        /// streamed into a new in-memory archive.
         /// </para>
         /// <para>
         /// If <paramref name="keepFont"/> is enabled, the converter temporarily
@@ -358,7 +341,7 @@ namespace OpenccNetLib
         /// Thrown when <paramref name="format"/> is not one of the supported formats.
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the container structure is invalid, the ZIP cannot be unpacked,
+        /// Thrown when the container structure is invalid, the ZIP cannot be read,
         /// or the conversion pipeline fails.
         /// </exception>
         /// <example>
@@ -404,20 +387,11 @@ namespace OpenccNetLib
         /// but performs the work asynchronously.  
         /// </para>
         /// <para>
-        /// On .NET Standard 2.0, where true asynchronous file I/O is unavailable,
-        /// this method offloads the synchronous conversion work to a background
-        /// thread using <see cref="Task.Run(Action)"/>.
-        /// This prevents blocking the UI thread in GUI or web applications.
+        /// The underlying package conversion is synchronous and memory-based.
+        /// This wrapper offloads that CPU-bound work to a background thread with
+        /// <see cref="Task.Run(Action)"/> so callers can await it without blocking
+        /// a UI or request-handling thread.
         /// </para>
-        /// <para>
-        /// Ideal for:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>WPF / Avalonia front-ends</description></item>
-        ///   <item><description>Mobile apps (Android/iOS)</description></item>
-        ///   <item><description>Blazor WebAssembly</description></item>
-        ///   <item><description>High-throughput API servers</description></item>
-        /// </list>
         /// <para>
         /// The returned byte array is a full ZIP container ready to be written to disk,
         /// streamed to a browser, or re-opened by Office/EPUB readers.
@@ -480,20 +454,11 @@ namespace OpenccNetLib
         /// but performs the work asynchronously.  
         /// </para>
         /// <para>
-        /// On .NET Standard 2.0, where true asynchronous file I/O is unavailable,
-        /// the method safely delegates synchronous work to a background thread using
-        /// <see cref="Task.Run(Action)"/>.
-        /// This prevents blocking the UI thread in GUI or web applications.
+        /// The underlying package conversion is synchronous and memory-based.
+        /// This wrapper delegates that work to a background thread using
+        /// <see cref="Task.Run(Action)"/> so callers can await it without blocking
+        /// the calling thread.
         /// </para>
-        /// <para>
-        /// Ideal for:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>WPF / Avalonia front-ends</description></item>
-        ///   <item><description>Mobile apps (Android/iOS)</description></item>
-        ///   <item><description>Blazor WebAssembly</description></item>
-        ///   <item><description>High-throughput API servers</description></item>
-        /// </list>
         /// <para>
         /// The returned byte array is a full ZIP container ready to be written to disk,
         /// streamed to a browser, or re-opened by Office/EPUB readers.
@@ -591,9 +556,8 @@ namespace OpenccNetLib
         /// <param name="format">
         /// Specifies the document type using the strongly typed
         /// <see cref="OfficeFormat"/> enumeration.  
-        /// This value determines how the container is unpacked, which XML/XHTML
-        /// parts are inspected, and how font preservation and conversion rules
-        /// are applied.
+        /// This value determines which XML/XHTML parts are inspected and how font
+        /// preservation and conversion rules are applied.
         ///
         /// Supported values are:
         /// <list type="bullet">
@@ -758,9 +722,9 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// <para>
-        /// On frameworks without native async file APIs (e.g., .NET Standard 2.0),
-        /// this method offloads the synchronous conversion work to a background
-        /// thread using <see cref="Task.Run(Action)"/>.
+        /// This method is an asynchronous wrapper around the synchronous file
+        /// conversion pipeline and delegates the work to a background thread using
+        /// <see cref="Task.Run(Action)"/>.
         /// </para>
         /// <para>
         /// The behavior and conversion rules are identical to
@@ -769,9 +733,8 @@ namespace OpenccNetLib
         /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>.
         /// </para>
         /// <para>
-        /// This method is suitable for GUI applications (WPF, Avalonia, JavaFX
-        /// via JNI), Blazor WebAssembly, mobile apps, and CLI tools that require
-        /// non-blocking operation.
+        /// This wrapper is useful when synchronous package conversion should not
+        /// occupy the calling thread.
         /// </para>
         /// </remarks>
         /// <param name="inputPath">Full path to the source Office/EPUB file.</param>
@@ -830,18 +793,17 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// <para>
-        /// On frameworks without native async file APIs (e.g., .NET Standard 2.0),
-        /// this method offloads the synchronous conversion work to a background
-        /// thread using <see cref="Task.Run(Action)"/>.
+        /// This method is an asynchronous wrapper around the synchronous file
+        /// conversion pipeline and delegates the work to a background thread using
+        /// <see cref="Task.Run(Action)"/>.
         /// </para>
         /// <para>
         /// The behavior and conversion rules are identical to
         /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>.
         /// </para>
         /// <para>
-        /// This method is suitable for GUI applications (WPF, Avalonia, JavaFX
-        /// via JNI), Blazor WebAssembly, mobile apps, and CLI tools that require
-        /// non-blocking operation.
+        /// This wrapper is useful when synchronous package conversion should not
+        /// occupy the calling thread.
         /// </para>
         /// </remarks>
         /// <param name="inputPath">Full path to the source Office/EPUB file.</param>
@@ -894,57 +856,42 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Core conversion engine for Office/EPUB containers.  
-        /// Unpacks the input ZIP-based document, applies OpenCC text conversion
-        /// to all relevant XML/XHTML fragments, and rebuilds the container.
+        /// Core in-memory conversion engine for Office/EPUB ZIP containers.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This method represents the internal processing pipeline shared by all
-        /// public Office/EPUB conversion APIs. It performs the following steps:
+        /// The input package is opened directly from <paramref name="inputBytes"/> and
+        /// rebuilt into a new <see cref="MemoryStream"/> without extracting the archive
+        /// to the filesystem. Entries are processed sequentially so non-text assets can
+        /// be streamed directly from the input archive to the output archive.
         /// </para>
-        /// <list type="number">
-        ///   <item><description>
-        ///   Extracts the ZIP container (<c>DOCX</c>, <c>XLSX</c>, <c>PPTX</c>,
-        ///   <c>ODT</c>/<c>ODS</c>/<c>ODP</c>, <c>EPUB</c>) into a temporary directory.
-        ///   </description></item>
-        ///   <item><description>
-        ///   Locates all text-bearing XML or XHTML files based on the specified
-        ///   <see cref="OfficeFormat"/>. The discovery rules differ per format.
-        ///   </description></item>
-        ///   <item><description>
-        ///   Optionally protects font-family declarations with internal markers so that
-        ///   OpenCC conversion does not alter them, restoring the original fonts after
-        ///   the textual segments have been processed.
-        ///   </description></item>
-        ///   <item><description>
-        ///   Applies OpenCC conversion to each fragment, respecting punctuation and
-        ///   font-preservation settings.
-        ///   </description></item>
-        ///   <item><description>
-        ///   Repackages the modified directory tree into a new ZIP container.  
-        ///   EPUB files follow the EPUB specification (uncompressed <c>mimetype</c> entry).
-        ///   </description></item>
-        /// </list>
         /// <para>
-        /// This method never throws. All exceptions are caught and wrapped into a
-        /// <see cref="CoreResult"/> structure with <c>Success = false</c>.
+        /// Only text-bearing XML/XHTML entries selected for the specified
+        /// <see cref="OfficeFormat"/> are materialized as strings. Those entries are
+        /// converted with <see cref="Opencc"/>, while all other entries are copied
+        /// unchanged at the payload level and repackaged into the new container.
+        /// </para>
+        /// <para>
+        /// EPUB output follows the required packaging rule: the <c>mimetype</c> entry
+        /// is emitted first and stored without compression.
+        /// </para>
+        /// <para>
+        /// This method never throws to its caller. Exceptions are captured in the
+        /// returned <see cref="CoreResult"/> so the public APIs can expose a consistent
+        /// <see cref="InvalidOperationException"/> contract.
         /// </para>
         /// </remarks>
         /// <param name="inputBytes">Raw ZIP container bytes from the input document.</param>
-        /// <param name="format">
-        /// The strongly typed Office/EPUB format that determines extraction and
-        /// XML/XHTML discovery rules.
-        /// </param>
-        /// <param name="converter">The active <see cref="Opencc"/> instance.</param>
-        /// <param name="punctuation">Whether punctuation normalization should be applied.</param>
+        /// <param name="format">The strongly typed Office/EPUB document format.</param>
+        /// <param name="converter">The active <see cref="Opencc"/> converter.</param>
+        /// <param name="punctuation">Whether punctuation conversion should be applied.</param>
         /// <param name="keepFont">
-        /// Whether to preserve font-family declarations using temporary markers
-        /// during conversion.
+        /// Whether supported font declarations should be protected with temporary
+        /// markers while text conversion is performed.
         /// </param>
         /// <returns>
-        /// A <see cref="CoreResult"/> containing the success flag, diagnostics message,
-        /// and the fully rebuilt converted container bytes (if successful).
+        /// A <see cref="CoreResult"/> containing the conversion status, diagnostic
+        /// message, generated package bytes on success, and any captured exception.
         /// </returns>
         private static CoreResult ConvertOfficeBytesCore(
             byte[] inputBytes,
@@ -953,156 +900,94 @@ namespace OpenccNetLib
             bool punctuation,
             bool keepFont)
         {
-            // Canonical lowercase string id for messages, temp dir naming, and helpers
             var formatId = OfficeFormatUtils.OfficeFormatToString(format);
-
-            var tempDir = Path.Combine(
-                Path.GetTempPath(),
-                formatId + "_Opencc_" + Guid.NewGuid().ToString("N"));
 
             try
             {
-                Directory.CreateDirectory(tempDir);
-
-                // 1. Extract ZIP container into temp directory
-                ExtractZipToDirectory(inputBytes, tempDir);
-
-                // 2. Identify target XML/XHTML paths
-                //    (helper still takes normalized string format)
-                var targetXmlPaths = GetTargetXmlPaths(tempDir, formatId);
-                if (targetXmlPaths == null || targetXmlPaths.Count == 0)
+                using (var inputStream = new MemoryStream(
+                           inputBytes,
+                           0,
+                           inputBytes.Length,
+                           writable: false,
+                           publiclyVisible: false))
+                using (var inputArchive = new ZipArchive(inputStream, ZipArchiveMode.Read, leaveOpen: false))
+                using (var outputStream = new MemoryStream())
                 {
-                    return new CoreResult
+                    var convertedCount = 0;
+
+                    using (var outputArchive = new ZipArchive(outputStream, ZipArchiveMode.Create, leaveOpen: true))
                     {
-                        Success = false,
-                        Message = "No convertible XML/XHTML fragments found for format '" + formatId + "'.",
-                        OutputBytes = null
-                    };
-                }
-
-                // 3. Convert each target fragment
-                var convertedCount = 0;
-
-                foreach (var relativePath in targetXmlPaths)
-                {
-                    var fullPath = Path.Combine(tempDir, relativePath);
-                    if (!File.Exists(fullPath))
-                        continue;
-
-                    var xmlContent = File.ReadAllText(fullPath, Encoding.UTF8);
-
-                    Dictionary<string, string> fontMap = null;
-
-                    if (keepFont && ShouldMaskFonts(format, relativePath))
-                    {
-                        string pattern = null;
-
-                        // Choose font-preservation regex based on OfficeFormat
-                        switch (format)
+                        if (format == OfficeFormat.Epub)
                         {
-                            case OfficeFormat.Docx:
-                                pattern = @"(w:eastAsia=""|w:ascii=""|w:hAnsi=""|w:cs="")(.*?)("")";
-                                break;
-
-                            case OfficeFormat.Xlsx:
-                                pattern = @"(val="")(.*?)("")";
-                                break;
-
-                            case OfficeFormat.Pptx:
-                                pattern = @"(typeface="")(.*?)("")";
-                                break;
-
-                            case OfficeFormat.Odt:
-                            case OfficeFormat.Ods:
-                            case OfficeFormat.Odp:
-                                pattern =
-                                    @"((?:style:font-name(?:-asian|-complex)?|svg:font-family|style:name)=[""'])([^""']+)([""'])";
-                                break;
-
-                            case OfficeFormat.Epub:
-                                pattern = @"(font-family\s*:\s*)([^;""']+)([;""'])?";
-                                break;
-                        }
-
-                        if (pattern != null)
-                        {
-                            fontMap = new Dictionary<string, string>();
-                            var fontCounter = 0;
-
-                            xmlContent = Regex.Replace(
-                                xmlContent,
-                                pattern,
-                                m =>
+                            var mimetypeEntry = FindEpubMimetypeEntry(inputArchive);
+                            if (mimetypeEntry == null)
+                            {
+                                return new CoreResult
                                 {
-                                    var original = m.Groups[2].Value;
-                                    var marker = "__F_O_N_T_" + (fontCounter++) + "__";
-                                    fontMap[marker] = original;
+                                    Success = false,
+                                    Message =
+                                        "'mimetype' file is missing; a valid EPUB requires it as the first entry.",
+                                    OutputBytes = null
+                                };
+                            }
 
-                                    var tail = (m.Groups.Count >= 4) ? m.Groups[3].Value : string.Empty;
-                                    return m.Groups[1].Value + marker + tail;
-                                });
+                            CopyEntry(
+                                mimetypeEntry,
+                                outputArchive,
+                                CompressionLevel.NoCompression);
+
+                            foreach (var entry in inputArchive.Entries)
+                            {
+                                // Emit exactly one canonical mimetype entry first.
+                                if (string.Equals(entry.FullName, "mimetype", StringComparison.Ordinal))
+                                    continue;
+
+                                ProcessEntry(
+                                    entry,
+                                    outputArchive,
+                                    format,
+                                    converter,
+                                    punctuation,
+                                    keepFont,
+                                    ref convertedCount);
+                            }
                         }
-                    }
-
-                    var convertedXml = format == OfficeFormat.Xlsx
-                        ? ConvertXlsxXmlPart(xmlContent, relativePath, converter, punctuation)
-                        : converter.Convert(xmlContent, punctuation);
-
-                    // Restore fonts
-                    if (fontMap != null)
-                    {
-                        foreach (var kv in fontMap)
+                        else
                         {
-                            convertedXml = convertedXml.Replace(kv.Key, kv.Value);
+                            foreach (var entry in inputArchive.Entries)
+                            {
+                                ProcessEntry(
+                                    entry,
+                                    outputArchive,
+                                    format,
+                                    converter,
+                                    punctuation,
+                                    keepFont,
+                                    ref convertedCount);
+                            }
                         }
                     }
 
-                    File.WriteAllText(fullPath, convertedXml, Encoding.UTF8);
-                    convertedCount++;
-                }
-
-                if (convertedCount == 0)
-                {
-                    return new CoreResult
-                    {
-                        Success = false,
-                        Message = "No valid XML/XHTML fragments were actually converted for format '" + formatId + "'.",
-                        OutputBytes = null
-                    };
-                }
-
-                // 4. Rebuild container
-                byte[] resultBytes;
-
-                if (format == OfficeFormat.Epub)
-                {
-                    var epubResult = CreateEpubZipWithSpec(tempDir);
-                    if (!epubResult.Success || epubResult.OutputBytes == null)
+                    if (convertedCount == 0)
                     {
                         return new CoreResult
                         {
                             Success = false,
-                            Message = epubResult.Message,
-                            OutputBytes = null,
-                            Error = epubResult.Error
+                            Message = "No convertible XML/XHTML fragments found for format '" + formatId + "'.",
+                            OutputBytes = null
                         };
                     }
 
-                    resultBytes = epubResult.OutputBytes;
-                }
-                else
-                {
-                    resultBytes = CreateZipFromDirectory(tempDir);
-                }
+                    var resultBytes = outputStream.ToArray();
+                    ValidateZipBytes(resultBytes);
 
-                ValidateZipBytes(resultBytes);
-
-                return new CoreResult
-                {
-                    Success = true,
-                    Message = "Converted " + convertedCount + " fragment(s) successfully.",
-                    OutputBytes = resultBytes
-                };
+                    return new CoreResult
+                    {
+                        Success = true,
+                        Message = "Converted " + convertedCount + " fragment(s) successfully.",
+                        OutputBytes = resultBytes
+                    };
+                }
             }
             catch (Exception ex)
             {
@@ -1114,129 +999,323 @@ namespace OpenccNetLib
                     Error = ex
                 };
             }
-            finally
-            {
-                try
-                {
-                    if (Directory.Exists(tempDir))
-                        Directory.Delete(tempDir, true);
-                }
-                catch
-                {
-                    // ignore cleanup errors
-                }
-            }
         }
 
-        private static void ExtractZipToDirectory(byte[] inputBytes, string extractDir)
+        /// <summary>
+        /// Processes one ZIP entry and writes its counterpart to the output package.
+        /// </summary>
+        /// <remarks>
+        /// Directory and non-target entries are streamed directly. Text-bearing target
+        /// entries are decoded as UTF-8, converted, and then written back as UTF-8.
+        /// </remarks>
+        private static void ProcessEntry(
+            ZipArchiveEntry inputEntry,
+            ZipArchive outputArchive,
+            OfficeFormat format,
+            Opencc converter,
+            bool punctuation,
+            bool keepFont,
+            ref int convertedCount)
         {
-            using (var ms = new MemoryStream(inputBytes, 0, inputBytes.Length, writable: false, publiclyVisible: false))
-            using (var archive = new ZipArchive(ms, ZipArchiveMode.Read))
+            if (IsDirectoryEntry(inputEntry) ||
+                !ShouldConvertEntry(format, inputEntry.FullName))
             {
-                var root = Path.GetFullPath(extractDir);
+                CopyEntry(inputEntry, outputArchive, CompressionLevel.Optimal);
+                return;
+            }
 
-                foreach (var entry in archive.Entries)
-                {
-                    if (string.IsNullOrEmpty(entry.FullName))
-                        continue;
+            var xmlContent = ReadEntryText(inputEntry);
+            var convertedXml = ConvertTextEntry(
+                xmlContent,
+                format,
+                inputEntry.FullName,
+                converter,
+                punctuation,
+                keepFont);
 
-                    var destPath = Path.GetFullPath(Path.Combine(extractDir, entry.FullName));
+            WriteTextEntry(
+                outputArchive,
+                inputEntry,
+                convertedXml,
+                CompressionLevel.Optimal);
 
-                    // Prevent Zip Slip
-                    if (!destPath.StartsWith(root, StringComparison.Ordinal))
-                        throw new InvalidOperationException("Unsafe entry path in ZIP: " + entry.FullName);
+            convertedCount++;
+        }
 
-                    var dir = Path.GetDirectoryName(destPath);
-                    if (!string.IsNullOrEmpty(dir))
-                        Directory.CreateDirectory(dir);
+        /// <summary>
+        /// Determines whether a ZIP entry contains text that should be converted for
+        /// the specified document format.
+        /// </summary>
+        private static bool ShouldConvertEntry(OfficeFormat format, string entryName)
+        {
+            if (string.IsNullOrEmpty(entryName))
+                return false;
 
-                    // Directory entry：skip
-                    if (entry.FullName.EndsWith("/", StringComparison.Ordinal) ||
-                        entry.FullName.EndsWith("\\", StringComparison.Ordinal))
+            var normalizedPath = entryName.Replace('\\', '/');
+
+            switch (format)
+            {
+                case OfficeFormat.Docx:
+                    return string.Equals(
+                        normalizedPath,
+                        "word/document.xml",
+                        StringComparison.OrdinalIgnoreCase);
+
+                case OfficeFormat.Xlsx:
+                    return string.Equals(
+                               normalizedPath,
+                               "xl/sharedStrings.xml",
+                               StringComparison.OrdinalIgnoreCase) ||
+                           (normalizedPath.StartsWith(
+                                "xl/worksheets/",
+                                StringComparison.OrdinalIgnoreCase) &&
+                            normalizedPath.EndsWith(
+                                ".xml",
+                                StringComparison.OrdinalIgnoreCase));
+
+                case OfficeFormat.Pptx:
+                    if (!normalizedPath.StartsWith("ppt/", StringComparison.OrdinalIgnoreCase) ||
+                        !normalizedPath.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
                     {
-                        continue;
+                        return false;
                     }
 
-                    using (var entryStream = entry.Open())
-                    using (var fileStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        entryStream.CopyTo(fileStream);
-                    }
-                }
+                    var fileName = GetZipEntryFileName(normalizedPath);
+                    return fileName.StartsWith("slide", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.IndexOf("notesSlide", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           normalizedPath.IndexOf("slideMaster", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           normalizedPath.IndexOf("slideLayout", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           normalizedPath.IndexOf("comment", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                case OfficeFormat.Odt:
+                case OfficeFormat.Ods:
+                case OfficeFormat.Odp:
+                    return string.Equals(
+                        normalizedPath,
+                        "content.xml",
+                        StringComparison.OrdinalIgnoreCase);
+
+                case OfficeFormat.Epub:
+                    return normalizedPath.EndsWith(".xhtml", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.EndsWith(".html", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.EndsWith(".opf", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.EndsWith(".ncx", StringComparison.OrdinalIgnoreCase);
+
+                default:
+                    return false;
             }
         }
 
         /// <summary>
-        /// Computes the list of XML/XHTML-based files inside an extracted archive
-        /// that should be processed for text conversion, based on the given format.
+        /// Converts one selected XML/XHTML entry while preserving protected font
+        /// declarations when requested.
         /// </summary>
-        /// <param name="tempDir">
-        /// Absolute path to the temporary directory where the input archive
-        /// (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB) has been unpacked.
-        /// This is treated as the logical "ZIP root".
-        /// </param>
-        /// <param name="normalizedFormat">
-        /// File format in normalized lowercase form without leading dot, e.g.
-        /// <c>"docx"</c>, <c>"xlsx"</c>, <c>"pptx"</c>, <c>"odt"</c>, <c>"epub"</c>.
-        /// </param>
-        /// <returns>
-        /// A list of relative paths (from <paramref name="tempDir"/>), pointing to
-        /// XML/XHTML files that should be run through the converter.  
-        /// Returns an empty list if the format is unsupported, the directory is missing,
-        /// or no candidate files are found.
-        /// </returns>
-        private static List<string> GetTargetXmlPaths(string tempDir, string normalizedFormat)
+        private static string ConvertTextEntry(
+            string xmlContent,
+            OfficeFormat format,
+            string entryName,
+            Opencc converter,
+            bool punctuation,
+            bool keepFont)
         {
-            if (string.IsNullOrWhiteSpace(normalizedFormat))
-                return new List<string>();
+            Dictionary<string, string> fontMap = null;
 
-            switch (normalizedFormat)
+            if (keepFont && ShouldMaskFonts(format, entryName))
             {
-                case "docx":
-                    // Main WordprocessingML document.
-                    return new List<string> { Path.Combine("word", "document.xml") };
+                var pattern = GetFontMaskPattern(format);
+                if (pattern != null)
+                {
+                    fontMap = new Dictionary<string, string>();
+                    var fontCounter = 0;
 
-                case "xlsx":
-                    // Shared strings plus worksheet XML parts for inline-string cells.
-                    return GetXlsxTargetXmlPaths(tempDir);
+                    xmlContent = Regex.Replace(
+                        xmlContent,
+                        pattern,
+                        delegate(Match match)
+                        {
+                            var marker = "__F_O_N_T_" + (fontCounter++) + "__";
+                            fontMap[marker] = match.Groups[2].Value;
 
-                case "pptx":
-                    // All slide/notes/layout/master/comment XML parts.
-                    return GetPptxTargetXmlPaths(tempDir);
+                            var tail = match.Groups.Count >= 4
+                                ? match.Groups[3].Value
+                                : string.Empty;
 
-                case "odt":
-                case "ods":
-                case "odp":
-                    // OpenDocument formats store main content in content.xml.
-                    return new List<string> { "content.xml" };
+                            return match.Groups[1].Value + marker + tail;
+                        });
+                }
+            }
 
-                case "epub":
-                    // EPUB: scan the entire tree for XHTML/HTML/OPF/NCX files.
-                    return GetEpubTargetPaths(tempDir);
+            var convertedXml = format == OfficeFormat.Xlsx
+                ? ConvertXlsxXmlPart(xmlContent, entryName, converter, punctuation)
+                : converter.Convert(xmlContent, punctuation);
+
+            if (convertedXml == null)
+                throw new InvalidOperationException("OpenCC conversion returned null.");
+
+            if (fontMap != null)
+            {
+                foreach (var pair in fontMap)
+                    convertedXml = convertedXml.Replace(pair.Key, pair.Value);
+            }
+
+            return convertedXml;
+        }
+
+        /// <summary>
+        /// Returns the format-specific regular expression used to protect font
+        /// declarations during text conversion.
+        /// </summary>
+        private static string GetFontMaskPattern(OfficeFormat format)
+        {
+            switch (format)
+            {
+                case OfficeFormat.Docx:
+                    return @"(w:eastAsia=""|w:ascii=""|w:hAnsi=""|w:cs="")(.*?)("")";
+
+                case OfficeFormat.Xlsx:
+                    return @"(val="")(.*?)("")";
+
+                case OfficeFormat.Pptx:
+                    return @"(typeface="")(.*?)("")";
+
+                case OfficeFormat.Odt:
+                case OfficeFormat.Ods:
+                case OfficeFormat.Odp:
+                    return
+                        @"((?:style:font-name(?:-asian|-complex)?|svg:font-family|style:name)=[""'])([^""']+)([""'])";
+
+                case OfficeFormat.Epub:
+                    return @"(font-family\s*:\s*)([^;""']+)([;""'])?";
 
                 default:
-                    // Unsupported or unknown format.
-                    return new List<string>();
+                    return null;
             }
         }
 
-        private static List<string> GetXlsxTargetXmlPaths(string tempDir)
+        /// <summary>
+        /// Reads one ZIP entry as UTF-8 text, honoring a leading byte-order mark when
+        /// present.
+        /// </summary>
+        private static string ReadEntryText(ZipArchiveEntry entry)
         {
-            var list = new List<string>();
+            using (var stream = entry.Open())
+            using (var reader = new StreamReader(
+                       stream,
+                       Encoding.UTF8,
+                       detectEncodingFromByteOrderMarks: true))
+            {
+                return reader.ReadToEnd();
+            }
+        }
 
-            var sharedStringsPath = Path.Combine(tempDir, "xl", "sharedStrings.xml");
-            if (File.Exists(sharedStringsPath))
-                list.Add(Path.Combine("xl", "sharedStrings.xml"));
+        /// <summary>
+        /// Writes converted UTF-8 text to a newly created ZIP entry.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Encoding.UTF8"/> is intentionally used to retain the historical
+        /// encoding behavior of the former <c>File.WriteAllText(..., Encoding.UTF8)</c>
+        /// implementation.
+        /// </remarks>
+        private static void WriteTextEntry(
+            ZipArchive outputArchive,
+            ZipArchiveEntry sourceEntry,
+            string text,
+            CompressionLevel compressionLevel)
+        {
+            var outputEntry = CreateOutputEntry(
+                outputArchive,
+                sourceEntry,
+                compressionLevel);
 
-            var worksheetsDir = Path.Combine(tempDir, "xl", "worksheets");
-            if (!Directory.Exists(worksheetsDir))
-                return list;
+            using (var stream = outputEntry.Open())
+            using (var writer = new StreamWriter(stream, Encoding.UTF8))
+            {
+                writer.Write(text);
+            }
+        }
 
-            var files = Directory.GetFiles(worksheetsDir, "*.xml", SearchOption.AllDirectories);
-            for (var i = 0; i < files.Length; i++)
-                list.Add(GetRelativePath(tempDir, files[i]));
+        /// <summary>
+        /// Streams one ZIP entry directly into the output package.
+        /// </summary>
+        private static void CopyEntry(
+            ZipArchiveEntry inputEntry,
+            ZipArchive outputArchive,
+            CompressionLevel compressionLevel)
+        {
+            var outputEntry = CreateOutputEntry(
+                outputArchive,
+                inputEntry,
+                compressionLevel);
 
-            return list;
+            if (IsDirectoryEntry(inputEntry))
+                return;
+
+            using (var input = inputEntry.Open())
+            using (var output = outputEntry.Open())
+            {
+                input.CopyTo(output);
+            }
+        }
+
+        /// <summary>
+        /// Creates the output entry corresponding to an input entry and preserves its
+        /// ZIP timestamp where possible.
+        /// </summary>
+        private static ZipArchiveEntry CreateOutputEntry(
+            ZipArchive outputArchive,
+            ZipArchiveEntry sourceEntry,
+            CompressionLevel compressionLevel)
+        {
+            var outputEntry = outputArchive.CreateEntry(
+                sourceEntry.FullName,
+                compressionLevel);
+
+            try
+            {
+                outputEntry.LastWriteTime = sourceEntry.LastWriteTime;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Keep ZipArchive's default timestamp if the source value cannot
+                // be represented by the output ZIP implementation.
+            }
+
+            return outputEntry;
+        }
+
+        /// <summary>
+        /// Finds the canonical EPUB <c>mimetype</c> entry.
+        /// </summary>
+        private static ZipArchiveEntry FindEpubMimetypeEntry(ZipArchive archive)
+        {
+            foreach (var entry in archive.Entries)
+            {
+                if (string.Equals(entry.FullName, "mimetype", StringComparison.Ordinal))
+                    return entry;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Returns whether an archive entry represents a directory.
+        /// </summary>
+        private static bool IsDirectoryEntry(ZipArchiveEntry entry)
+        {
+            return string.IsNullOrEmpty(entry.Name) ||
+                   entry.FullName.EndsWith("/", StringComparison.Ordinal) ||
+                   entry.FullName.EndsWith("\\", StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Returns the final path component of a normalized ZIP entry name.
+        /// </summary>
+        private static string GetZipEntryFileName(string normalizedPath)
+        {
+            var slash = normalizedPath.LastIndexOf('/');
+            return slash >= 0
+                ? normalizedPath.Substring(slash + 1)
+                : normalizedPath;
         }
 
         private static bool ShouldMaskFonts(OfficeFormat format, string relativePath)
@@ -1282,192 +1361,6 @@ namespace OpenccNetLib
             }
 
             return xmlContent;
-        }
-
-        /// <summary>
-        /// Returns all relevant XML parts inside a PPTX package that may contain user-visible text,
-        /// such as slides, notes, slide layouts, masters, and comments.
-        /// </summary>
-        /// <param name="tempDir">
-        /// Root temporary directory where the PPTX archive has been extracted.
-        /// </param>
-        /// <returns>
-        /// List of relative paths (from <paramref name="tempDir"/>)
-        /// to PPTX XML parts that should be converted.  
-        /// Returns an empty list if the <c>ppt</c> folder does not exist or no matching files are found.
-        /// </returns>
-        private static List<string> GetPptxTargetXmlPaths(string tempDir)
-        {
-            var pptDir = Path.Combine(tempDir, "ppt");
-            if (!Directory.Exists(pptDir))
-                return new List<string>();
-
-            var files = Directory.GetFiles(pptDir, "*.xml", SearchOption.AllDirectories);
-            var list = new List<string>(files.Length);
-
-            foreach (var path in files)
-            {
-                var fileName = Path.GetFileName(path);
-
-                if (fileName.StartsWith("slide", StringComparison.OrdinalIgnoreCase) ||
-                    path.IndexOf("notesSlide", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    path.IndexOf("slideMaster", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    path.IndexOf("slideLayout", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    path.IndexOf("comment", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    list.Add(GetRelativePath(tempDir, path));
-                }
-            }
-
-            return list;
-        }
-
-        /// <summary>
-        /// Scans an extracted EPUB directory and returns all textual metadata
-        /// and content files that should be converted (XHTML/HTML/OPF/NCX).
-        /// </summary>
-        /// <param name="tempDir">
-        /// Root temporary directory where the EPUB archive has been extracted.
-        /// </param>
-        /// <returns>
-        /// List of relative paths (from <paramref name="tempDir"/>)
-        /// to EPUB content files.  
-        /// Returns an empty list if the directory does not exist or no candidates are found.
-        /// </returns>
-        private static List<string> GetEpubTargetPaths(string tempDir)
-        {
-            if (string.IsNullOrWhiteSpace(tempDir) || !Directory.Exists(tempDir))
-                return new List<string>();
-
-            var files = Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories);
-            var list = new List<string>();
-
-            foreach (var f in files)
-            {
-                if (f.EndsWith(".xhtml", StringComparison.OrdinalIgnoreCase) ||
-                    f.EndsWith(".html", StringComparison.OrdinalIgnoreCase) ||
-                    f.EndsWith(".opf", StringComparison.OrdinalIgnoreCase) ||
-                    f.EndsWith(".ncx", StringComparison.OrdinalIgnoreCase))
-                {
-                    list.Add(GetRelativePath(tempDir, f));
-                }
-            }
-
-            return list;
-        }
-
-        /// <summary>
-        /// Recreates a ZIP archive from a directory and returns the ZIP as a byte array.
-        /// </summary>
-        /// <remarks>
-        /// Used internally by Office/EPUB conversion to rebuild the container after
-        /// text-modified XML parts have been written to the temp directory.
-        /// Preserves directory structure and file names exactly.
-        /// </remarks>
-        private static byte[] CreateZipFromDirectory(string sourceDir)
-        {
-            // MemoryStream → final ZIP buffer
-            using (var ms = new MemoryStream())
-            {
-                // Create a new ZIP archive inside the stream
-                using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
-                {
-                    // Enumerate all files inside the directory tree
-                    var files = Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories);
-
-                    foreach (var file in files)
-                    {
-                        // Convert full path to ZIP-relative path (forward slashes required)
-                        var relativePath = GetRelativePath(sourceDir, file).Replace('\\', '/');
-
-                        // Create ZIP entry
-                        var entry = archive.CreateEntry(relativePath, CompressionLevel.Optimal);
-
-                        // Copy file → ZIP entry stream
-                        using (var entryStream = entry.Open())
-                        using (var fileStream = File.OpenRead(file))
-                        {
-                            fileStream.CopyTo(entryStream);
-                        }
-                    }
-                }
-
-                // Return the completed ZIP as byte[]
-                return ms.ToArray();
-            }
-        }
-
-        /// <summary>
-        /// Creates an EPUB-compliant ZIP archive in memory from the specified source directory.
-        /// Ensures the "mimetype" file (if present) is the first entry and stored uncompressed,
-        /// as required by the EPUB specification.
-        /// </summary>
-        private static EpubResult CreateEpubZipWithSpec(string sourceDir)
-        {
-            var mimePath = Path.Combine(sourceDir, "mimetype");
-
-            try
-            {
-                if (!File.Exists(mimePath))
-                {
-                    return new EpubResult
-                    {
-                        Success = false,
-                        Message = "'mimetype' file is missing; a valid EPUB requires it as the first entry.",
-                        OutputBytes = null
-                    };
-                }
-
-                using (var ms = new MemoryStream())
-                {
-                    using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
-                    {
-                        // 1. mimetype first, uncompressed
-                        var mimeEntry = archive.CreateEntry("mimetype", CompressionLevel.NoCompression);
-                        using (var entryStream = mimeEntry.Open())
-                        using (var fileStream = File.OpenRead(mimePath))
-                        {
-                            fileStream.CopyTo(entryStream);
-                        }
-
-                        // 2. Remaining files
-                        var files = Directory.GetFiles(sourceDir, "*", SearchOption.AllDirectories);
-                        foreach (var file in files)
-                        {
-                            var fullMime = Path.GetFullPath(mimePath);
-                            var fullFile = Path.GetFullPath(file);
-                            if (string.Equals(fullFile, fullMime, StringComparison.OrdinalIgnoreCase))
-                                continue;
-
-                            var relativePath = GetRelativePath(sourceDir, file).Replace('\\', '/');
-
-                            var entry = archive.CreateEntry(relativePath, CompressionLevel.Optimal);
-                            using (var entryStream = entry.Open())
-                            using (var fileStream = File.OpenRead(file))
-                            {
-                                fileStream.CopyTo(entryStream);
-                            }
-                        }
-                    }
-
-                    return new EpubResult
-                    {
-                        Success = true,
-                        Message = string.Empty,
-                        OutputBytes = ms.ToArray()
-                    };
-                }
-            }
-            catch (Exception ex)
-            {
-                return new EpubResult
-                {
-                    Success = false,
-                    Message = "Failed to create EPUB archive: " + ex.Message,
-                    OutputBytes = null,
-                    Error = ex
-                };
-            }
         }
 
         /// <summary>Validates that an in-memory package was supplied.</summary>
@@ -1556,62 +1449,11 @@ namespace OpenccNetLib
             }
         }
 
-        // -----------------------------------------------------------------
-        // Helpers: Path.GetRelativePath replacement for netstandard2.0
-        // -----------------------------------------------------------------
-
-        private static string GetRelativePath(string basePath, string fullPath)
-        {
-            if (string.IsNullOrEmpty(basePath)) return fullPath;
-            if (string.IsNullOrEmpty(fullPath)) return string.Empty;
-
-            var baseUri = new Uri(AppendDirectorySeparatorChar(Path.GetFullPath(basePath)));
-            var fullUri = new Uri(Path.GetFullPath(fullPath));
-
-            if (baseUri.Scheme != fullUri.Scheme)
-            {
-                // cannot be made relative, return fullPath
-                return fullPath;
-            }
-
-            var relativeUri = baseUri.MakeRelativeUri(fullUri);
-            var relativePath = Uri.UnescapeDataString(relativeUri.ToString());
-
-            if (string.Equals(fullUri.Scheme, Uri.UriSchemeFile, StringComparison.OrdinalIgnoreCase))
-            {
-                relativePath = relativePath.Replace('/', Path.DirectorySeparatorChar);
-            }
-
-            return relativePath;
-        }
-
-        private static string AppendDirectorySeparatorChar(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return path;
-
-            var lastChar = path[path.Length - 1];
-            if (lastChar != Path.DirectorySeparatorChar && lastChar != Path.AltDirectorySeparatorChar)
-            {
-                return path + Path.DirectorySeparatorChar;
-            }
-
-            return path;
-        }
-
         // =====================================================================
-        // Internal core pipeline (temp directory + XML/XHTML conversion)
+        // Internal in-memory ZIP + XML/XHTML conversion pipeline
         // =====================================================================
 
         private struct CoreResult
-        {
-            public bool Success;
-            public string Message;
-            public byte[] OutputBytes;
-            public Exception Error;
-        }
-
-        private struct EpubResult
         {
             public bool Success;
             public string Message;
