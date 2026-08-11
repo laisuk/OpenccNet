@@ -25,16 +25,15 @@
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.6.2
 
-            - Added a net9.0 target asset for the optimized conversion hot path; netstandard2.0 remains the primary compatibility target and fallback.
-            - Optimized ConvertByUnionInto() on .NET 9 and later with allocation-free span-key dictionary lookup,
-              substantially reducing temporary allocations and improving conversion throughput while leaving the netstandard2.0 path unchanged.
-
-            - Added direct Hong Kong phrase conversions: t2hkp and hk2tp.
-            - Added CJK Compatibility Ideograph normalization with NormalizeCompat().
-            - Added optional Unicode IDS preservation during conversion.
-            - Hardened Office/EPUB package rebuilding with validation and atomic output writes.
-            - Improved conversion reliability with stronger input validation and exception handling.
-            - Updated dictionary data, tests, and documentation.
+            - Added a net9.0 target asset for modern runtime optimizations while retaining netstandard2.0 as the primary compatibility target and fallback.
+            - Optimized conversion, compatibility normalization, text splitting, IDS preservation, and DeToFu on .NET 9+ to reduce allocations and improve throughput while preserving the established netstandard2.0 paths.
+            - Added Opencc.NormalizeUnicodeCompat() for curated scalar-preserving CJK Unicode compatibility, punctuation, and text-extraction normalization.
+            - Extended Opencc.NormalizeCompat() with optional extended Unicode compatibility normalization while preserving its default behavior.
+            - Added canonical custom-dictionary token parsing with strict DictSlot validation and portable &lt;slot&gt;:&lt;append|override&gt;:&lt;path&gt; syntax.
+            - Added an optional punctuation argument to direct Traditional → Traditional regional conversion APIs.
+            - Improved DeToFu with Unicode scalar lookup, cached built-in mapping data, and independently mutable built-in maps.
+            - Updated conversion dictionaries and curated Unicode compatibility mappings.
+            - Expanded differential, randomized, Unicode, IDS, DeToFu, and malformed-input test coverage.
 
             Breaking: custom dictionary bundles must include jps_characters_rev; regenerate custom JSON/CBOR/Zstd bundles for v1.6.x.
         </PackageReleaseNotes>
@@ -46,7 +45,7 @@
     <ItemGroup>
         <PackageReference Include="PeterO.Cbor" Version="4.5.5"/>
         <PackageReference Include="System.Memory" Version="4.6.3"/>
-        <PackageReference Include="System.Text.Json" Version="10.0.10" />
+        <PackageReference Include="System.Text.Json" Version="10.0.10"/>
         <PackageReference Include="ZstdSharp.Port" Version="0.8.8"/>
     </ItemGroup>
 
@@ -54,8 +53,8 @@
     <ItemGroup>
         <None Include="Images/icon.png" Pack="true" PackagePath="/"/>
         <None Update="dicts\Unicode_Compatibility.txt">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-          <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         </None>
     </ItemGroup>
 

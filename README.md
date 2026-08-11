@@ -16,8 +16,8 @@ projects with a focus on performance and minimal memory usage.
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Office Document & EPUB Conversion](#-office-document--epub-conversion-in-memory-no-temp-files-required)
-- [Example: Convert Office Document In-Memory](#-example-convert-office-document-in-memory)
+- [Office Document & EPUB Conversion](#-office-document--epub-conversion)
+- [Example: Convert Office Document In-Memory](#-example-convert-office-document-from-bytes)
 - [Backward-Compatible String Overload](#-backward-compatible-string-overload)
 - [Async API](#-async-api-recommended-for-serverweb)
 - [Convert Files](#-convert-files-convenience-wrappers)
@@ -49,13 +49,14 @@ projects with a focus on performance and minimal memory usage.
 * Thread-safe conversion core with immutable shared dictionaries; suitable for high-throughput parallel processing when
   converters are not reconfigured concurrently.
 
-- **Office document & EPUB conversion** (pure in-memory):
-    - `.docx` (Word), `.xlsx` (Excel), `.pptx` (PowerPoint), `.epub`
-    - `byte[] → byte[]` conversion with full XML patching
-    - Async/await supported (`ConvertOfficeBytesAsync`)
-    - Zero temp files required; safe for Web, Server, and WASM/Blazor hosts
-- .NET Standard 2.0 compatible  
-  (cross-platform: Windows, Linux, macOS; supported on .NET Core 2.0+, .NET 5+, .NET 6/7/8/9/10 LTS)
+- **Office document & EPUB conversion**:
+    - `.docx` (Word), `.xlsx` (Excel), `.pptx` (PowerPoint), `.odt`, `.ods`, `.odp`, `.epub`
+    - `byte[] → byte[]` API with XML/XHTML content conversion and package rebuilding
+    - Async wrapper available (`ConvertOfficeBytesAsync`)
+    - Temporary working files are managed and cleaned up internally; no caller-managed temp files required
+- **.NET Standard 2.0 compatible** (.NET Core 2.0+, .NET 5/6/7/8/9/10 and later), with an optimized .NET 9.0+
+  implementation path  
+  (cross-platform: Windows, Linux, macOS; usable from .NET implementations supporting .NET Standard 2.0)
 
 ## Installation
 
@@ -187,11 +188,10 @@ You can also use direct methods for specific conversions:
 ```csharp
 using OpenccNetLib;
 var opencc = new Opencc();
-opencc.S2T("汉字");      
-// Simplified to Traditional opencc.T2S("漢字");      
-// Traditional to Simplified opencc.S2Tw("汉字");     
-// Simplified to Taiwan Traditional opencc.T2Jp("漢字");     
-// Traditional to Japanese Kanji
+opencc.S2T("汉字");  // Simplified to Traditional    
+opencc.T2S("漢字");  // Traditional to Simplified     
+opencc.S2Tw("汉字"); // Simplified to Taiwan Traditional    
+opencc.T2Jp("漢字"); // Traditional to Japanese Kanji   
 // ...and more
 ```
 
@@ -939,19 +939,21 @@ already provide deterministic and extensible customization points.
 
 ---
 
-## 🆕 Office Document & EPUB Conversion (In-Memory, No Temp Files Required)
+## 🆕 Office Document & EPUB Conversion
 
-Starting from **OpenccNetLib v1.3.2**, the library now provides a **pure in-memory Office / EPUB conversion API**.  
-This allows converting `.docx`, `.xlsx`, `.pptx`, and `.epub` **directly from byte[] to byte[]**, without touching the
-filesystem.
+Starting from **OpenccNetLib v1.3.2**, the library provides Office / EPUB conversion APIs that accept and return
+`byte[]` containers.
 
-This is ideal for:
+The caller does not need to manage intermediate files: `OfficeDocConverter` handles extraction, text conversion, package
+rebuilding, validation, and temporary-file cleanup internally. The implementation uses a temporary working directory
+while processing the ZIP-based document container.
 
-- **Web servers** (ASP.NET Core)
-- **Blazor / WebAssembly**
-- **JavaScript interop**
-- **Desktop apps that want to avoid temp paths**
-- **Security-restricted environments**
+This is suitable for:
+
+* **Web servers** (ASP.NET Core)
+* **Desktop applications**
+* **Background services and automation**
+* **Applications that prefer `byte[] → byte[]` document APIs**
 
 ### ✔ Supported formats
 
@@ -967,7 +969,7 @@ This is ideal for:
 
 ---
 
-## 📦 Example: Convert Office Document In-Memory
+## 📦 Example: Convert Office Document from Bytes
 
 ```csharp
 using OpenccNetLib;
@@ -1018,9 +1020,9 @@ var outputBytes = await OfficeDocConverter.ConvertOfficeBytesAsync(
 );
 ```
 
-- Fully async
-- No blocking
-- Safe for ASP.NET Core, MAUI, Blazor WebAssembly
+- Async wrapper for the synchronous document conversion pipeline
+- Keeps UI or caller threads responsive when awaited
+- Suitable for desktop applications and server-side workloads
 
 String format async overload also remains available.
 

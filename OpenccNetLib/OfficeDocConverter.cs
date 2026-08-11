@@ -699,7 +699,7 @@ namespace OpenccNetLib
         /// <param name="format">
         /// Normalized format identifier (e.g. <c>"docx"</c>, <c>"xlsx"</c>, <c>"epub"</c>).  
         /// Must match the container type of <paramref name="inputPath"/>.
-        /// /// This overload accepts a raw string and is preserved for backward compatibility.
+        /// This overload accepts a raw string and is preserved for backward compatibility.
         /// For new code, prefer the OfficeFormat enum overload.
         /// </param>
         /// <param name="converter">

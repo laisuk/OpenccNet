@@ -361,19 +361,19 @@ namespace OpenccNetLib
         private static Func<DictionaryMaxlength> _activeProvider = () => DefaultLib.Value;
 
         /// <summary>
-        /// Gets the singleton <see cref="DictionaryMaxlength"/> instance for reuse across  
-        /// all conversions. This property always returns the same object reference.  
+        /// Gets the built-in default singleton <see cref="DictionaryMaxlength"/> instance.
+        /// This property always returns the same object reference.
         /// </summary>
         /// <remarks>
-        /// The dictionary is lazily initialized from the embedded Zstandard-compressed bundle  
-        /// on first access and is safe for concurrent read access from multiple threads.  
+        /// The dictionary is lazily initialized from the embedded Zstandard-compressed bundle
+        /// on first access and is safe for concurrent read access from multiple threads.
         /// <para>
-        /// To obtain a new, independent dictionary instance (e.g., when reloading from  
-        /// an external file), use <see cref="FromZstd"/> or other loader methods directly.  
+        /// To obtain a new, independent dictionary instance (e.g., when reloading from
+        /// an external file), use <see cref="FromZstd"/> or other loader methods directly.
         /// </para>
         /// </remarks>
         /// <returns>
-        /// The shared <see cref="DictionaryMaxlength"/> instance used for all conversions.  
+        /// The built-in default <see cref="DictionaryMaxlength"/> instance.
         /// </returns>
         public static DictionaryMaxlength Provider => DefaultLib.Value;
 
