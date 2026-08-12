@@ -256,7 +256,7 @@ namespace OpenccNetTests
                     OfficeFormat.Docx,
                     new Opencc(OpenccConfig.S2T)));
 
-                CollectionAssert.AreEqual(originalOutput, File.ReadAllBytes(outputPath));
+                Assert.AreSequenceEqual(originalOutput, File.ReadAllBytes(outputPath));
                 Assert.IsEmpty(Directory.GetFiles(directory, "*.tmp"));
             }
             finally
@@ -353,10 +353,14 @@ namespace OpenccNetTests
                     """<html xmlns="http://www.w3.org/1999/xhtml"><body><p>汉字</p></body></html>""");
             }
 
-            var exception = Assert.ThrowsExactly<InvalidOperationException>(() => OfficeDocConverter.ConvertOfficeBytes(
-                ms.ToArray(),
-                OfficeFormat.Epub,
-                new Opencc(OpenccConfig.S2T)));
+            var inputBytes = ms.ToArray();
+            var cc = new Opencc(OpenccConfig.S2T);
+
+            var exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
+                OfficeDocConverter.ConvertOfficeBytes(
+                    inputBytes,
+                    OfficeFormat.Epub,
+                    cc));
 
             Assert.Contains("mimetype", exception.Message);
         }

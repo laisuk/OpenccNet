@@ -138,9 +138,20 @@ namespace OpenccNetLib
     /// <c>byte[]</c>. No temporary working directory is used by byte-array conversion.
     /// </para>
     /// <para>
-    /// Optional file-based wrappers are provided for desktop and CLI workflows. Those
-    /// wrappers read and write caller-specified files while reusing the same in-memory
-    /// package conversion core.
+    /// The <c>byte[]</c> APIs are intentionally pure in-memory APIs: the caller supplies
+    /// the complete package bytes and receives a newly allocated converted package.
+    /// They are well suited to web, server, IPC, and other memory-oriented workflows.
+    /// </para>
+    /// <para>
+    /// The file-based APIs use a separate streaming file-I/O path. The input package is
+    /// read directly from a <see cref="FileStream"/>. Only selected XML/XHTML entries are
+    /// materialized as strings for conversion.
+    /// </para>
+    /// <para>
+    /// The rebuilt package is written to a sibling temporary file. After conversion, the
+    /// temporary package is validated and then published to the requested output path.
+    /// The complete input or output package is never materialized as a managed
+    /// <c>byte[]</c> during normal file conversion.
     /// </para>
     /// </remarks>
     public static class OfficeDocConverter
@@ -198,10 +209,16 @@ namespace OpenccNetLib
         /// It does not create a temporary working directory or temporary package file.
         /// </para>
         /// <para>
-        /// The input ZIP-based container (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB) is read
-        /// directly from memory. Text-bearing XML/XHTML entries are converted one at
-        /// a time, while all other entries are streamed into a new in-memory archive.
-        /// This avoids materializing the entire decompressed package at once.
+        /// The caller supplies the complete ZIP-based container
+        /// (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB) as a <c>byte[]</c>. Conversion remains
+        /// entirely in memory and the rebuilt package is returned as a new
+        /// <c>byte[]</c>. Text-bearing XML/XHTML entries are converted one at a time,
+        /// so the fully decompressed package is never materialized at once.
+        /// </para>
+        /// <para>
+        /// Because both the source package and rebuilt package are memory-resident,
+        /// callers processing very large documents or packages with large embedded
+        /// resources should prefer the file-based API when filesystem access is available.
         /// </para>
         /// <para>
         /// If <paramref name="keepFont"/> is enabled, the converter temporarily
@@ -302,9 +319,11 @@ namespace OpenccNetLib
         /// It does not create a temporary working directory or temporary package file.
         /// </para>
         /// <para>
-        /// The input ZIP-based container is read directly from memory. Text-bearing
-        /// XML/XHTML entries are converted one at a time, while all other entries are
-        /// streamed into a new in-memory archive.
+        /// The caller supplies the complete ZIP-based container as a <c>byte[]</c>.
+        /// Conversion remains entirely in memory and the rebuilt package is returned as
+        /// a new <c>byte[]</c>. Text-bearing XML/XHTML entries are converted one at a time.
+        /// For large filesystem-backed documents, prefer the file-based API to avoid
+        /// retaining complete input and output packages in managed memory.
         /// </para>
         /// <para>
         /// If <paramref name="keepFont"/> is enabled, the converter temporarily
@@ -522,15 +541,22 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This method is the primary high-level API for desktop, CLI tooling,
-        /// and automation scripts. It reads the entire input file into memory,
-        /// performs OpenCC conversion on all text-bearing XML/XHTML parts inside
-        /// the archive (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB), and writes a fully
-        /// reconstructed output archive.
+        /// and automation scripts. It opens the source package directly from disk,
+        /// processes ZIP entries sequentially, materializes only selected text-bearing
+        /// XML/XHTML parts for OpenCC conversion, and writes the rebuilt package to a
+        /// sibling temporary file.
         /// </para>
         /// <para>
-        /// The method preserves non-text assets (images, media, stylesheets,
-        /// relationships, metadata) exactly as they appear in the original
-        /// container. Only the text within target XML-based parts is modified.
+        /// After conversion completes, the temporary package is reopened and validated
+        /// as a ZIP container before it replaces the requested output path. The complete
+        /// source or destination package is never loaded into a managed <c>byte[]</c>.
+        /// This makes the file API preferable for large Office/EPUB documents or packages
+        /// containing large embedded fonts, images, media, or other binary resources.
+        /// </para>
+        /// <para>
+        /// The method preserves the content of non-target assets (images, embedded
+        /// fonts, media, stylesheets, relationships, metadata, etc.) while rebuilding
+        /// the ZIP package. Only selected text-bearing XML/XHTML parts are modified.
         /// </para>
         /// <para>
         /// Supported formats:
@@ -616,10 +642,13 @@ namespace OpenccNetLib
             if (!File.Exists(inputPath))
                 throw new FileNotFoundException("Input file not found.", inputPath);
 
-            var bytes = File.ReadAllBytes(inputPath);
-            var output = ConvertOfficeBytes(bytes, format, converter, punctuation, keepFont);
-
-            WriteAllBytesAtomic(outputPath, output);
+            ConvertOfficeFileCore(
+                inputPath,
+                outputPath,
+                format,
+                converter,
+                punctuation,
+                keepFont);
         }
 
         /// <summary>
@@ -629,15 +658,22 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This method is the primary high-level API for desktop, CLI tooling,
-        /// and automation scripts. It reads the entire input file into memory,
-        /// performs OpenCC conversion on all text-bearing XML/XHTML parts inside
-        /// the archive (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB), and writes a fully
-        /// reconstructed output archive.
+        /// and automation scripts. It opens the source package directly from disk,
+        /// processes ZIP entries sequentially, materializes only selected text-bearing
+        /// XML/XHTML parts for OpenCC conversion, and writes the rebuilt package to a
+        /// sibling temporary file.
         /// </para>
         /// <para>
-        /// The method preserves non-text assets (images, media, stylesheets,
-        /// relationships, metadata) exactly as they appear in the original
-        /// container. Only the text within target XML-based parts is modified.
+        /// After conversion completes, the temporary package is reopened and validated
+        /// as a ZIP container before it replaces the requested output path. The complete
+        /// source or destination package is never loaded into a managed <c>byte[]</c>.
+        /// This makes the file API preferable for large Office/EPUB documents or packages
+        /// containing large embedded fonts, images, media, or other binary resources.
+        /// </para>
+        /// <para>
+        /// The method preserves the content of non-target assets (images, embedded
+        /// fonts, media, stylesheets, relationships, metadata, etc.) while rebuilding
+        /// the ZIP package. Only selected text-bearing XML/XHTML parts are modified.
         /// </para>
         /// <para>
         /// Supported formats:
@@ -709,11 +745,13 @@ namespace OpenccNetLib
             if (!File.Exists(inputPath))
                 throw new FileNotFoundException("Input file not found.", inputPath);
 
-            var inputBytes = File.ReadAllBytes(inputPath);
-            var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
-            var outputBytes = ConvertOfficeBytes(inputBytes, parsed, converter, punctuation, keepFont);
-
-            WriteAllBytesAtomic(outputPath, outputBytes);
+            ConvertOfficeFileCore(
+                inputPath,
+                outputPath,
+                OfficeFormatUtils.ParseOfficeFormat(format),
+                converter,
+                punctuation,
+                keepFont);
         }
 
         /// <summary>
@@ -913,59 +951,20 @@ namespace OpenccNetLib
                 using (var inputArchive = new ZipArchive(inputStream, ZipArchiveMode.Read, leaveOpen: false))
                 using (var outputStream = new MemoryStream())
                 {
-                    var convertedCount = 0;
+                    int convertedCount;
 
-                    using (var outputArchive = new ZipArchive(outputStream, ZipArchiveMode.Create, leaveOpen: true))
+                    using (var outputArchive = new ZipArchive(
+                               outputStream,
+                               ZipArchiveMode.Create,
+                               leaveOpen: true))
                     {
-                        if (format == OfficeFormat.Epub)
-                        {
-                            var mimetypeEntry = FindEpubMimetypeEntry(inputArchive);
-                            if (mimetypeEntry == null)
-                            {
-                                return new CoreResult
-                                {
-                                    Success = false,
-                                    Message =
-                                        "'mimetype' file is missing; a valid EPUB requires it as the first entry.",
-                                    OutputBytes = null
-                                };
-                            }
-
-                            CopyEntry(
-                                mimetypeEntry,
-                                outputArchive,
-                                CompressionLevel.NoCompression);
-
-                            foreach (var entry in inputArchive.Entries)
-                            {
-                                // Emit exactly one canonical mimetype entry first.
-                                if (string.Equals(entry.FullName, "mimetype", StringComparison.Ordinal))
-                                    continue;
-
-                                ProcessEntry(
-                                    entry,
-                                    outputArchive,
-                                    format,
-                                    converter,
-                                    punctuation,
-                                    keepFont,
-                                    ref convertedCount);
-                            }
-                        }
-                        else
-                        {
-                            foreach (var entry in inputArchive.Entries)
-                            {
-                                ProcessEntry(
-                                    entry,
-                                    outputArchive,
-                                    format,
-                                    converter,
-                                    punctuation,
-                                    keepFont,
-                                    ref convertedCount);
-                            }
-                        }
+                        convertedCount = ProcessArchive(
+                            inputArchive,
+                            outputArchive,
+                            format,
+                            converter,
+                            punctuation,
+                            keepFont);
                     }
 
                     if (convertedCount == 0)
@@ -999,6 +998,183 @@ namespace OpenccNetLib
                     Error = ex
                 };
             }
+        }
+
+        /// <summary>
+        /// Converts a filesystem-backed Office/EPUB package using streaming file I/O.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Unlike <see cref="ConvertOfficeBytes(byte[],OfficeFormat,Opencc,bool,bool)"/>,
+        /// this path never calls <see cref="File.ReadAllBytes(string)"/> and never builds
+        /// the complete output package in a <see cref="MemoryStream"/>. Only selected
+        /// XML/XHTML entries are materialized as strings.
+        /// </para>
+        /// <para>
+        /// Non-target ZIP entries are streamed entry-to-entry by
+        /// <see cref="CopyEntry(ZipArchiveEntry,ZipArchive,CompressionLevel)"/>.
+        /// <see cref="System.IO.Compression.ZipArchive"/> may decompress and recompress
+        /// those entries internally, but their complete payloads are not retained in
+        /// managed memory.
+        /// </para>
+        /// <para>
+        /// Output is first written to a sibling temporary file. The completed package is
+        /// then reopened and validated before publication, preventing a failed conversion
+        /// or partial write from corrupting the requested destination.
+        /// </para>
+        /// </remarks>
+        private static void ConvertOfficeFileCore(
+            string inputPath,
+            string outputPath,
+            OfficeFormat format,
+            Opencc converter,
+            bool punctuation,
+            bool keepFont)
+        {
+            var formatId = OfficeFormatUtils.OfficeFormatToString(format);
+            var fullInputPath = Path.GetFullPath(inputPath);
+            var fullOutputPath = Path.GetFullPath(outputPath);
+            var outputDirectory = Path.GetDirectoryName(fullOutputPath);
+
+            if (string.IsNullOrEmpty(outputDirectory))
+                throw new ArgumentException(
+                    "Output path must include a valid directory.",
+                    nameof(outputPath));
+
+            Directory.CreateDirectory(outputDirectory);
+
+            var tempPath = Path.Combine(
+                outputDirectory,
+                "." + Path.GetFileName(fullOutputPath) + "." +
+                Guid.NewGuid().ToString("N") + ".tmp");
+
+            try
+            {
+                try
+                {
+                    int convertedCount;
+
+                    using (var inputStream = new FileStream(
+                               fullInputPath,
+                               FileMode.Open,
+                               FileAccess.Read,
+                               FileShare.Read))
+                    using (var inputArchive = new ZipArchive(
+                               inputStream,
+                               ZipArchiveMode.Read,
+                               leaveOpen: false))
+                    using (var outputStream = new FileStream(
+                               tempPath,
+                               FileMode.CreateNew,
+                               FileAccess.ReadWrite,
+                               FileShare.None))
+                    {
+                        using (var outputArchive = new ZipArchive(
+                                   outputStream,
+                                   ZipArchiveMode.Create,
+                                   leaveOpen: true))
+                        {
+                            convertedCount = ProcessArchive(
+                                inputArchive,
+                                outputArchive,
+                                format,
+                                converter,
+                                punctuation,
+                                keepFont);
+                        }
+
+                        outputStream.Flush(true);
+                    }
+
+                    if (convertedCount == 0)
+                    {
+                        throw new InvalidDataException(
+                            "No convertible XML/XHTML fragments found for format '" +
+                            formatId + "'.");
+                    }
+
+                    ValidateZipFile(tempPath);
+                    PublishTempFile(tempPath, fullOutputPath);
+                    tempPath = null;
+                }
+                catch (Exception ex) when (!(ex is InvalidOperationException))
+                {
+                    throw new InvalidOperationException(
+                        "Conversion failed: " + ex.Message,
+                        ex);
+                }
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(tempPath) && File.Exists(tempPath))
+                    File.Delete(tempPath);
+            }
+        }
+
+        /// <summary>
+        /// Processes an opened Office/EPUB ZIP package and writes its rebuilt entries to
+        /// the supplied output archive.
+        /// </summary>
+        /// <remarks>
+        /// This is the single package-processing implementation shared by the pure
+        /// in-memory <c>byte[]</c> API and the streaming file-I/O API.
+        /// </remarks>
+        /// <returns>The number of text-bearing XML/XHTML entries converted.</returns>
+        private static int ProcessArchive(
+            ZipArchive inputArchive,
+            ZipArchive outputArchive,
+            OfficeFormat format,
+            Opencc converter,
+            bool punctuation,
+            bool keepFont)
+        {
+            var convertedCount = 0;
+
+            if (format == OfficeFormat.Epub)
+            {
+                var mimetypeEntry = FindEpubMimetypeEntry(inputArchive);
+                if (mimetypeEntry == null)
+                {
+                    throw new InvalidDataException(
+                        "'mimetype' file is missing; a valid EPUB requires it as the first entry.");
+                }
+
+                CopyEntry(
+                    mimetypeEntry,
+                    outputArchive,
+                    CompressionLevel.NoCompression);
+
+                foreach (var entry in inputArchive.Entries)
+                {
+                    if (string.Equals(entry.FullName, "mimetype", StringComparison.Ordinal))
+                        continue;
+
+                    ProcessEntry(
+                        entry,
+                        outputArchive,
+                        format,
+                        converter,
+                        punctuation,
+                        keepFont,
+                        ref convertedCount);
+                }
+            }
+            else
+            {
+                foreach (var entry in inputArchive.Entries)
+                {
+                    ProcessEntry(
+                        entry,
+                        outputArchive,
+                        format,
+                        converter,
+                        punctuation,
+                        keepFont,
+                        ref convertedCount);
+                }
+            }
+
+            return convertedCount;
         }
 
         /// <summary>
@@ -1152,11 +1328,9 @@ namespace OpenccNetLib
             if (convertedXml == null)
                 throw new InvalidOperationException("OpenCC conversion returned null.");
 
-            if (fontMap != null)
-            {
-                foreach (var pair in fontMap)
-                    convertedXml = convertedXml.Replace(pair.Key, pair.Value);
-            }
+            if (fontMap == null) return convertedXml;
+            foreach (var pair in fontMap)
+                convertedXml = convertedXml.Replace(pair.Key, pair.Value);
 
             return convertedXml;
         }
@@ -1397,10 +1571,9 @@ namespace OpenccNetLib
             var normalized = format.Trim();
             if (normalized.Length == 0)
                 throw new ArgumentException("Format must not be empty or whitespace.", nameof(format));
-            if (!IsSupportedFormat(normalized))
-                throw new ArgumentException("Unsupported Office/EPUB format: '" + normalized + "'.", nameof(format));
-
-            return normalized;
+            return !IsSupportedFormat(normalized)
+                ? throw new ArgumentException("Unsupported Office/EPUB format: '" + normalized + "'.", nameof(format))
+                : normalized;
         }
 
         /// <summary>Confirms that generated bytes contain a readable ZIP package.</summary>
@@ -1410,47 +1583,42 @@ namespace OpenccNetLib
             using (var stream = new MemoryStream(bytes, writable: false))
             using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
             {
-                var entryCount = archive.Entries.Count;
+                _ = archive.Entries.Count;
             }
         }
 
-        /// <summary>Writes to a sibling temporary file and atomically publishes the completed output.</summary>
-        /// <param name="outputPath">The final output path.</param>
-        /// <param name="bytes">The fully generated and validated package bytes.</param>
-        private static void WriteAllBytesAtomic(string outputPath, byte[] bytes)
+        /// <summary>Confirms that a completed filesystem package is a readable ZIP archive.</summary>
+        /// <param name="path">Path to the generated temporary package.</param>
+        private static void ValidateZipFile(string path)
         {
-            var fullOutputPath = Path.GetFullPath(outputPath);
-            var outputDirectory = Path.GetDirectoryName(fullOutputPath);
-            if (string.IsNullOrEmpty(outputDirectory))
-                throw new ArgumentException("Output path must include a valid directory.", nameof(outputPath));
-
-            Directory.CreateDirectory(outputDirectory);
-            var tempPath = Path.Combine(
-                outputDirectory,
-                "." + Path.GetFileName(fullOutputPath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
-
-            try
+            using (var stream = new FileStream(
+                       path,
+                       FileMode.Open,
+                       FileAccess.Read,
+                       FileShare.Read))
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
             {
-                using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                {
-                    stream.Write(bytes, 0, bytes.Length);
-                    stream.Flush(true);
-                }
+                _ = archive.Entries.Count;
+            }
+        }
 
-                if (File.Exists(fullOutputPath))
-                    File.Replace(tempPath, fullOutputPath, null);
-                else
-                    File.Move(tempPath, fullOutputPath);
-            }
-            finally
-            {
-                if (File.Exists(tempPath))
-                    File.Delete(tempPath);
-            }
+        /// <summary>
+        /// Publishes a fully written and validated temporary package to its final path.
+        /// </summary>
+        /// <remarks>
+        /// The temporary file is created in the destination directory so publication
+        /// does not require copying the package through managed memory.
+        /// </remarks>
+        private static void PublishTempFile(string tempPath, string outputPath)
+        {
+            if (File.Exists(outputPath))
+                File.Replace(tempPath, outputPath, null);
+            else
+                File.Move(tempPath, outputPath);
         }
 
         // =====================================================================
-        // Internal in-memory ZIP + XML/XHTML conversion pipeline
+        // Shared ZIP + XML/XHTML conversion pipeline
         // =====================================================================
 
         private struct CoreResult

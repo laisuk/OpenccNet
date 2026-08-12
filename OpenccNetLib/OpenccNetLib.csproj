@@ -34,7 +34,7 @@
             - Improved DeToFu with Unicode scalar lookup, cached built-in mapping data, and independently mutable built-in maps.
             - Updated conversion dictionaries and curated Unicode compatibility mappings.
             - Expanded differential, randomized, Unicode, IDS, DeToFu, and malformed-input test coverage.
-            - Refactored Office/EPUB `byte[] → byte[]` conversion to a pure in-memory, entry-by-entry ZIP pipeline, eliminating temporary working files while preserving EPUB packaging requirements.
+            - Refactored Office/EPUB package processing into two entry-by-entry paths: pure in-memory ConvertOfficeBytes() APIs and separate streaming ConvertOfficeFile() APIs with validated temporary-file publication, while preserving EPUB packaging requirements.
 
             Breaking: custom dictionary bundles must include jps_characters_rev; regenerate custom JSON/CBOR/Zstd bundles for v1.6.x.
         </PackageReleaseNotes>
