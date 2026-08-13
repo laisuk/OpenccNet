@@ -190,7 +190,7 @@ namespace OpenccNetTests
                    new StreamReader(archive.GetEntry("xl/worksheets/sheet1.xml")!.Open(), Encoding.UTF8, true))
             {
                 var sheetXml = sheetReader.ReadToEnd();
-                StringAssert.Contains(sheetXml, "t=\"inlineStr\"");
+                Assert.Contains("t=\"inlineStr\"", sheetXml);
                 Assert.Contains("漢字", sheetXml);
             }
         }
@@ -306,10 +306,8 @@ namespace OpenccNetTests
             using var binaryMs = new MemoryStream();
             binaryStream.CopyTo(binaryMs);
 
-            CollectionAssert.AreEqual(
-                new byte[] { 0, 1, 2, 3, 0xFE, 0xFF },
-                binaryMs.ToArray(),
-                "Non-target ZIP entries should be copied byte-for-byte.");
+            Assert.AreSequenceEqual(
+                new byte[] { 0, 1, 2, 3, 0xFE, 0xFF }, binaryMs.ToArray(), "Non-target ZIP entries should be copied byte-for-byte.");
         }
 
         [TestMethod]
@@ -398,6 +396,7 @@ namespace OpenccNetTests
                     @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?><Relationships xmlns=""http://schemas.openxmlformats.org/package/2006/relationships""><Relationship Id=""rId1"" Type=""http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"" Target=""word/document.xml""/></Relationships>");
                 AddEntry(archive, "word/document.xml", documentXml);
 
+                // Do not invert if()
                 if (binaryPayload != null)
                 {
                     var binaryEntry = archive.CreateEntry("word/media/test.bin", CompressionLevel.Optimal);

@@ -106,10 +106,10 @@ namespace OpenccNetTests
             AssertRangesEqual(expected, actual);
         }
 
-        private static void AssertRangesEqual(IReadOnlyList<Opencc.Range> expected,
-            IReadOnlyList<Opencc.Range> actual)
+        private static void AssertRangesEqual(List<Opencc.Range> expected,
+            List<Opencc.Range> actual)
         {
-            Assert.AreEqual(expected.Count, actual.Count);
+            Assert.HasCount(expected.Count, actual);
             for (var i = 0; i < expected.Count; i++)
             {
                 Assert.AreEqual(expected[i].Start, actual[i].Start, $"Start differs at range {i}");

@@ -41,11 +41,12 @@ public class DictionaryLibTests
     {
         var dict = DictionaryLib.FromDicts();
 
-        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.TWVariantsPhrases));
-        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKVariantsPhrases));
-        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrases));
-        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.HKPhrasesRev));
-        Assert.IsTrue(Enum.IsDefined(typeof(DictSlot), DictSlot.JPSCharactersRev));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.TWVariantsPhrases));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.HKVariantsPhrases));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.HKPhrases));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.HKPhrasesRev));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.JPSCharactersRev));
+
         AssertMetadataValid(dict.tw_variants_phrases);
         AssertMetadataValid(dict.hk_variants_phrases);
         AssertMetadataValid(dict.hk_phrases);
