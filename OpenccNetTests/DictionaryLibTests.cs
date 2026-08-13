@@ -137,7 +137,11 @@ public class DictionaryLibTests
     {
         var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
 
-        foreach (var missingFile in new[] { "TWVariantsPhrases.txt", "HKVariantsPhrases.txt", "HKPhrases.txt", "HKPhrasesRev.txt", "JPShinjitaiCharactersRev.txt" })
+        foreach (var missingFile in new[]
+                 {
+                     "TWVariantsPhrases.txt", "HKVariantsPhrases.txt", "HKPhrases.txt", "HKPhrasesRev.txt",
+                     "JPShinjitaiCharactersRev.txt"
+                 })
         {
             var tempDir = Path.Combine(OutputDir, "dicts_missing_" + Path.GetFileNameWithoutExtension(missingFile));
 
@@ -621,7 +625,8 @@ public class DictionaryLibTests
 
         DictionaryLib.WithCustomDicts(
             dict,
-            [
+            new[]
+            {
                 new CustomDictSpec
                 {
                     Slot = DictSlot.STPhrases,
@@ -631,7 +636,7 @@ public class DictionaryLibTests
                         ["帕兰蒂尔"] = "帕蘭蒂爾"
                     }
                 }
-            ]);
+            });
 
         Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
         Assert.IsTrue(dict.st_phrases.StarterLenMask.ContainsKey("帕"));
@@ -645,7 +650,8 @@ public class DictionaryLibTests
 
         DictionaryLib.WithCustomDicts(
             dict,
-            [
+            new[]
+            {
                 new CustomDictSpec
                 {
                     Slot = DictSlot.HKPhrases,
@@ -655,7 +661,7 @@ public class DictionaryLibTests
                         ["小女孩"] = "妹丁"
                     }
                 }
-            ]);
+            });
 
         Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
         Assert.IsTrue(dict.hk_phrases.StarterLenMask.ContainsKey("小"));
@@ -669,7 +675,8 @@ public class DictionaryLibTests
 
         DictionaryLib.WithCustomDicts(
             dict,
-            [
+            new[]
+            {
                 new CustomDictSpec
                 {
                     Slot = DictSlot.HKPhrases,
@@ -679,7 +686,7 @@ public class DictionaryLibTests
                         ["小女孩"] = "妹丁"
                     }
                 }
-            ]);
+            });
 
         Assert.AreEqual(1, dict.hk_phrases.Count);
         Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
@@ -693,7 +700,8 @@ public class DictionaryLibTests
 
         DictionaryLib.WithCustomDicts(
             dict,
-            [
+            new[]
+            {
                 new CustomDictSpec
                 {
                     Slot = DictSlot.HKPhrasesRev,
@@ -703,7 +711,7 @@ public class DictionaryLibTests
                         ["妹丁"] = "小女孩"
                     }
                 }
-            ]);
+            });
 
         Assert.AreEqual("小女孩", dict.hk_phrases_rev.Dict["妹丁"]);
         Assert.IsTrue(dict.hk_phrases_rev.StarterLenMask.ContainsKey("妹"));
@@ -717,7 +725,8 @@ public class DictionaryLibTests
 
         DictionaryLib.WithCustomDicts(
             dict,
-            [
+            new[]
+            {
                 new CustomDictSpec
                 {
                     Slot = DictSlot.JPSCharactersRev,
@@ -727,7 +736,7 @@ public class DictionaryLibTests
                         ["測試舊字"] = "測試新字"
                     }
                 }
-            ]);
+            });
 
         Assert.AreEqual(1, dict.jps_characters_rev.Count);
         Assert.AreEqual("測試新字", dict.jps_characters_rev.Dict["測試舊字"]);
@@ -884,7 +893,8 @@ public class DictionaryLibTests
 
         DictionaryLib.WithCustomDicts(
             dict,
-            [
+            new[]
+            {
                 new CustomDictSpec
                 {
                     Slot = DictSlot.JPSCharacters,
@@ -903,7 +913,7 @@ public class DictionaryLibTests
                     Mode = CustomDictMode.Override,
                     Pairs = new Dictionary<string, string> { ["惡"] = "悪" }
                 }
-            ]);
+            });
 
         Opencc.UseCustomDictionary(dict);
 
@@ -925,14 +935,15 @@ public class DictionaryLibTests
 
         DictionaryLib.WithCustomDicts(
             dict,
-            [
+            new[]
+            {
                 new CustomDictSpec
                 {
                     Slot = DictSlot.JPSCharactersRev,
                     Mode = CustomDictMode.Override,
                     Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
                 }
-            ]);
+            });
 
         Opencc.UseCustomDictionary(dict);
 

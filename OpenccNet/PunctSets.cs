@@ -134,12 +134,9 @@ internal static class PunctSets
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsSimpleListNumber(char ch)
     {
-        return char.IsAsciiDigit(ch)
-               || ch is >= '０' and <= '９'
-               || ch is '一' or '二' or '三' or '四' or '五'
-                   or '六' or '七' or '八' or '九' or '十';
+        return ch is >= '0' and <= '9' or >= '０' and <= '９' or '一' or '二' or '三' or '四' or '五'
+            or '六' or '七' or '八' or '九' or '十';
     }
-
 
     internal static bool SimpleListHasUnclosedBracket(string s)
     {

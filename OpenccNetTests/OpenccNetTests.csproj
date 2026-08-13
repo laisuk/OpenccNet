@@ -3,7 +3,7 @@
     <PropertyGroup>
         <!-- net8.0 selects OpenccNetLib's netstandard2.0 fallback; net10.0 selects its net9.0 asset. -->
         <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
-        <LangVersion>default</LangVersion>
+        <LangVersion>10</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
