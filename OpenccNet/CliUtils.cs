@@ -275,11 +275,21 @@ internal static class CliUtils
 
     /// <summary>
     /// Resolves a supported text encoding.
-    /// UTF encodings are created without a byte-order mark for output.
+    /// UTF-8 output is BOM-less, while UTF-16 and UTF-32 output include
+    /// a byte-order mark for reliable encoding detection.
+    /// Encoding names are matched case-insensitively and separator-insensitively.
     /// </summary>
     internal static Encoding ResolveEncoding(string encodingName)
     {
-        if (string.IsNullOrWhiteSpace(encodingName))
+        ArgumentNullException.ThrowIfNull(encodingName);
+
+        var name = encodingName
+            .Trim()
+            .Replace("-", string.Empty)
+            .Replace("_", string.Empty)
+            .ToLowerInvariant();
+
+        if (name.Length == 0)
         {
             throw new ArgumentException(
                 "Encoding name must not be empty.",
@@ -288,50 +298,25 @@ internal static class CliUtils
 
         try
         {
-            if (string.Equals(
-                    encodingName,
-                    "utf-8",
-                    StringComparison.OrdinalIgnoreCase))
+            return name switch
             {
-                return new UTF8Encoding(
-                    encoderShouldEmitUTF8Identifier: false);
-            }
+                "utf8" => new UTF8Encoding(
+                    encoderShouldEmitUTF8Identifier: false),
 
-            if (string.Equals(
-                    encodingName,
-                    "utf-16le",
-                    StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(
-                    encodingName,
-                    "unicode",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return new UnicodeEncoding(
+                "utf16" or "utf16le" or "unicode" => new UnicodeEncoding(
                     bigEndian: false,
-                    byteOrderMark: false);
-            }
+                    byteOrderMark: true),
 
-            if (string.Equals(
-                    encodingName,
-                    "utf-16be",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return new UnicodeEncoding(
+                "utf16be" => new UnicodeEncoding(
                     bigEndian: true,
-                    byteOrderMark: false);
-            }
+                    byteOrderMark: true),
 
-            if (string.Equals(
-                    encodingName,
-                    "utf-32",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                return new UTF32Encoding(
+                "utf32" => new UTF32Encoding(
                     bigEndian: false,
-                    byteOrderMark: false);
-            }
+                    byteOrderMark: true),
 
-            return Encoding.GetEncoding(encodingName);
+                _ => Encoding.GetEncoding(name)
+            };
         }
         catch (ArgumentException ex)
         {

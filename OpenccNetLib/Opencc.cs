@@ -751,7 +751,7 @@ namespace OpenccNetLib
         private static class DelimiterSearchValues
         {
             internal static readonly SearchValues<char> Value =
-                System.Buffers.SearchValues.Create(FullDelimiters);
+                SearchValues.Create(FullDelimiters);
         }
 #endif
 

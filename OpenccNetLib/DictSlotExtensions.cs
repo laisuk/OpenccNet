@@ -93,7 +93,7 @@ namespace OpenccNetLib
         /// </returns>
         public static bool TryParse(string value, out DictSlot slot)
         {
-            slot = default(DictSlot);
+            slot = default;
             return value != null && SlotsByName.TryGetValue(value.Trim(), out slot);
         }
 

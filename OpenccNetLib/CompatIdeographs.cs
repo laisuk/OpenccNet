@@ -220,7 +220,7 @@ namespace OpenccNetLib
 
             while (offset < input.Length)
             {
-                var remaining = input.Slice(offset);
+                var remaining = input[offset..];
                 var bmpIndex = remaining.IndexOfAnyInRange((char)BmpStart, (char)BmpEnd);
                 var suppIndex = remaining.IndexOf('\uD87E');
 
@@ -254,7 +254,7 @@ namespace OpenccNetLib
                 return false;
 
             var low = input[index + 1];
-            if (low < '\uDC00' || low > '\uDE1F')
+            if (low is < '\uDC00' or > '\uDE1F')
                 return false;
 
             var supplementaryMapping = _supp[char.ConvertToUtf32(ch, low) - SuppStart];
@@ -276,14 +276,12 @@ namespace OpenccNetLib
                 else if (ch == '\uD87E' && i + 1 < input.Length)
                 {
                     var low = input[i + 1];
-                    if (low >= '\uDC00' && low <= '\uDE1F')
-                    {
-                        var mapping = _supp[char.ConvertToUtf32(ch, low) - SuppStart];
-                        if (mapping.Length != 2 || mapping[0] != ch || mapping[1] != low)
-                            return i;
+                    if (low < '\uDC00' || low > '\uDE1F') continue;
+                    var mapping = _supp[char.ConvertToUtf32(ch, low) - SuppStart];
+                    if (mapping.Length != 2 || mapping[0] != ch || mapping[1] != low)
+                        return i;
 
-                        i++;
-                    }
+                    i++;
                 }
             }
 
@@ -354,10 +352,7 @@ namespace OpenccNetLib
 
         private string NormalizeCodePoint(int codePoint)
         {
-            if (TryNormalizeCodePoint(codePoint, out var replacement))
-                return replacement;
-
-            return CharFromCodePoint(codePoint);
+            return TryNormalizeCodePoint(codePoint, out var replacement) ? replacement : CharFromCodePoint(codePoint);
         }
 
         private void Set(int sourceCodePoint, string targetScalar, int lineNo)
@@ -389,10 +384,7 @@ namespace OpenccNetLib
         {
             var path = GetBuiltinCompatPath();
 
-            if (!File.Exists(path))
-                return new CompatIdeographs();
-
-            return FromText(File.ReadAllText(path, Encoding.UTF8));
+            return !File.Exists(path) ? new CompatIdeographs() : FromText(File.ReadAllText(path, Encoding.UTF8));
         }
 
         private static ScalarValue ReadSingleScalar(string value, int lineNo, string field)
@@ -405,10 +397,9 @@ namespace OpenccNetLib
             if (charCount == 1 && char.IsSurrogate(value[0]))
                 throw new ArgumentException(LinePrefix(lineNo) + field + " must be a valid Unicode scalar value");
 
-            if (charCount != value.Length)
-                throw new ArgumentException(LinePrefix(lineNo) + field + " must be exactly one character");
-
-            return new ScalarValue(codePoint, value);
+            return charCount != value.Length
+                ? throw new ArgumentException(LinePrefix(lineNo) + field + " must be exactly one character")
+                : new ScalarValue(codePoint, value);
         }
 
         private static int ReadCodePointAt(string value, int index, out int charCount)

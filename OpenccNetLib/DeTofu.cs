@@ -282,12 +282,7 @@ namespace OpenccNetLib
         {
             var path = GetBuiltinTofuPath();
 
-            if (!File.Exists(path))
-            {
-                return new List<DeTofuEntry>();
-            }
-
-            return ParseEntries(File.ReadAllText(path, Encoding.UTF8));
+            return !File.Exists(path) ? new List<DeTofuEntry>() : ParseEntries(File.ReadAllText(path, Encoding.UTF8));
         }
 
         /// <summary>
@@ -334,8 +329,7 @@ namespace OpenccNetLib
 
                 if (!map.TryGetValue(scalar, out var fallback))
                 {
-                    if (output != null)
-                        output.Append(input, scalarStart, scalarLength);
+                    output?.Append(input, scalarStart, scalarLength);
 
                     continue;
                 }
@@ -384,10 +378,9 @@ namespace OpenccNetLib
         internal static Dictionary<int, string> GetBuiltinMap(DeTofuLevel level)
         {
             var index = (int)level;
-            if ((uint)index >= (uint)BuiltinMaps.Value.Length)
-                return new Dictionary<int, string>();
-
-            return BuiltinMaps.Value[index];
+            return (uint)index >= (uint)BuiltinMaps.Value.Length
+                ? new Dictionary<int, string>()
+                : BuiltinMaps.Value[index];
         }
 
         /// <summary>
