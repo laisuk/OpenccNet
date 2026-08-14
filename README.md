@@ -271,7 +271,7 @@ For converted text, the recommended order is:
 
 1. Normalize the input with `NormalizeCompat(...)`, optionally enabling extended normalization.
 2. Run normal OpenCC conversion with `Convert(...)`.
-3. Optionally run DeToFu on the converted result for display fallback.
+3. Optionally run DeTofu on the converted result for display fallback.
 
 #### CJK Compatibility Ideographs
 

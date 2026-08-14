@@ -18,7 +18,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   compatibility target and fallback. No existing target or public API was removed.
 - Added differential and randomized splitter tests covering delimiters, inclusive and exclusive modes, IDS preservation,
   supplementary characters, and malformed UTF-16.
-- Added tests verifying that built-in DeToFu maps return independent mutable clones and cannot modify the cached
+- Added tests verifying that built-in DeTofu maps return independent mutable clones and cannot modify the cached
   built-in mapping data used by static conversion.
 - Added an optional punctuation argument to the direct conversion APIs for Traditional → Traditional regional
   configurations.
@@ -56,12 +56,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   operator. IDS-free input now uses the optimized non-IDS paths, while input containing IDS operators retains the
   established IDS-aware implementation.
 - Reduced speculative splitter allocations by capping the initial range capacity on the sparse modern path.
-- Refactored DeToFu lookup to use Unicode scalar keys and direct UTF-16 scanning, eliminating per-scalar substring and
+- Refactored DeTofu lookup to use Unicode scalar keys and direct UTF-16 scanning, eliminating per-scalar substring and
   iterator allocations. Result construction is now deferred until the first replacement, and unchanged input returns the
   original string without allocation.
-- Cached built-in DeToFu mapping data for static conversion while preserving independently mutable maps returned by
-  `DeToFuMap.Builtin()`.
-- Preserved malformed and unpaired-surrogate handling in DeToFu conversion.
+- Cached built-in DeTofu mapping data for static conversion while preserving independently mutable maps returned by
+  `DeTofuMap.Builtin()`.
+- Preserved malformed and unpaired-surrogate handling in DeTofu conversion.
 - Preserved the established `netstandard2.0` conversion, normalization, splitter, and IDS-aware paths.
 - Updated conversion dictionary data.
 - Updated Unicode compatibility mapping data with additional curated punctuation and text-extraction artifact mappings,
