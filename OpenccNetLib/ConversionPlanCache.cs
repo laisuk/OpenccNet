@@ -147,13 +147,12 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Provides access to the current <see cref="DictionaryMaxlength"/> instance
-        /// used when building new conversion plans and <see cref="StarterUnion"/> caches.
+        /// Provides access to the <see cref="DictionaryMaxlength"/> instance used by this cache
+        /// when building new conversion plans and <see cref="StarterUnion"/> caches.
         /// </summary>
         /// <remarks>
-        /// This delegate is typically supplied by the owning <c>Opencc</c> instance and
-        /// allows the cache to always reference the latest loaded dictionary set,
-        /// supporting scenarios such as hot-reloading or external dictionary replacement.
+        /// The provider is fixed for the lifetime of this cache instance. Dictionary source
+        /// changes are applied by publishing a fresh global cache through <see cref="DictionaryLib"/>.
         /// </remarks>
         private readonly Func<DictionaryMaxlength> _dictionaryProvider;
 
@@ -173,16 +172,13 @@ namespace OpenccNetLib
         /// Initializes a new instance of the <see cref="ConversionPlanCache"/> class.
         /// </summary>
         /// <param name="dictionaryProvider">
-        /// A delegate that returns the current <see cref="DictionaryMaxlength"/> instance
-        /// to be used when constructing new conversion plans.
+        /// A delegate that returns the <see cref="DictionaryMaxlength"/> instance to use when
+        /// constructing new conversion plans.
         /// <para>
-        /// This provider is invoked lazily whenever a plan for a specific
-        /// <see cref="OpenccConfig"/> and punctuation mode is requested,
-        /// ensuring that the latest dictionary data is always used without
-        /// requiring explicit cache updates.
+        /// <see cref="DictionaryLib"/> owns and publishes the global cache. Switching the active
+        /// dictionary source publishes a fresh cache; existing cache instances continue using
+        /// the provider with which they were constructed.
         /// </para>
-        /// Typically, this delegate references the main <c>Dictionary</c>
-        /// instance owned by <c>Opencc</c> or <see cref="DictionaryLib.Provider"/>.
         /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="dictionaryProvider"/> is <see langword="null"/>.

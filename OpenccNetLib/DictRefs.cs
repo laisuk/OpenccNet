@@ -24,10 +24,11 @@ namespace OpenccNetLib
     /// </para>
     ///
     /// <para>
-    /// A <see cref="DictRefs"/> instance is immutable after construction and may be safely
-    /// shared across multiple threads.  All heavy preprocessing is performed once during
-    /// construction of the <see cref="StarterUnion"/>, ensuring that runtime conversions
-    /// only pay the minimal cost of applying replacements.
+    /// A <see cref="DictRefs"/> instance may be mutated while a conversion plan is assembled.
+    /// After plan construction is complete, it is treated as read-only and may be safely shared
+    /// across multiple threads.  All heavy preprocessing is performed once during construction
+    /// of the <see cref="StarterUnion"/>, ensuring that runtime conversions only pay the minimal
+    /// cost of applying replacements.
     /// </para>
     ///
     /// <para>

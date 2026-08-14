@@ -19,7 +19,7 @@ namespace OpenccNetLib
     /// they are ZIP containers containing XML-based document parts.  
     /// Only the text-bearing XML / XHTML fragments are modified during conversion;
     /// all other assets (images, metadata, relationships, fonts, stylesheets, etc.)
-    /// are preserved exactly.
+    /// are not semantically modified, and their payload content is preserved.
     /// </para>
     /// <para>
     /// Use this enumeration when calling any of the strongly typed overloads:
@@ -37,7 +37,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Microsoft Excel workbook in Office Open XML format (SpreadsheetML).  
-        /// Text is stored mainly in <c>xl/sharedStrings.xml</c>.
+        /// Text is stored primarily in <c>xl/sharedStrings.xml</c> and inline-string worksheet cells.
         /// </summary>
         Xlsx,
 
@@ -236,7 +236,7 @@ namespace OpenccNetLib
         /// Supported values are:
         /// <list type="bullet">
         ///   <item><description><see cref="OfficeFormat.Docx"/> – WordprocessingML</description></item>
-        ///   <item><description><see cref="OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings)</description></item>
+        ///   <item><description><see cref="OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
         ///   <item><description><see cref="OfficeFormat.Pptx"/> – PresentationML</description></item>
         ///   <item><description><see cref="OfficeFormat.Odt"/> – OpenDocument Text</description></item>
         ///   <item><description><see cref="OfficeFormat.Ods"/> – OpenDocument Spreadsheet</description></item>
@@ -408,7 +408,7 @@ namespace OpenccNetLib
         /// <para>
         /// The underlying package conversion is synchronous and memory-based.
         /// This wrapper offloads that CPU-bound work to a background thread with
-        /// <see cref="Task.Run(Action)"/> so callers can await it without blocking
+        /// <c>Task.Run</c> so callers can await it without blocking
         /// a UI or request-handling thread.
         /// </para>
         /// <para>
@@ -475,7 +475,7 @@ namespace OpenccNetLib
         /// <para>
         /// The underlying package conversion is synchronous and memory-based.
         /// This wrapper delegates that work to a background thread using
-        /// <see cref="Task.Run(Action)"/> so callers can await it without blocking
+        /// <c>Task.Run</c> so callers can await it without blocking
         /// the calling thread.
         /// </para>
         /// <para>
@@ -562,7 +562,7 @@ namespace OpenccNetLib
         /// Supported formats:
         /// <list type="bullet">
         ///   <item><description><c>docx</c> – WordprocessingML</description></item>
-        ///   <item><description><c>xlsx</c> – SpreadsheetML (shared strings only)</description></item>
+        ///   <item><description><c>xlsx</c> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
         ///   <item><description><c>pptx</c> – PresentationML slides/notes/layouts/masters</description></item>
         ///   <item><description><c>odt</c>/<c>ods</c>/<c>odp</c> – OpenDocument Text/Spreadsheet/Presentation</description></item>
         ///   <item><description><c>epub</c> – XHTML/HTML/OPF/NCX documents</description></item>
@@ -588,7 +588,7 @@ namespace OpenccNetLib
         /// Supported values are:
         /// <list type="bullet">
         ///   <item><description><see cref="OfficeFormat.Docx"/> – WordprocessingML</description></item>
-        ///   <item><description><see cref="OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings)</description></item>
+        ///   <item><description><see cref="OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
         ///   <item><description><see cref="OfficeFormat.Pptx"/> – PresentationML</description></item>
         ///   <item><description><see cref="OfficeFormat.Odt"/> – OpenDocument Text</description></item>
         ///   <item><description><see cref="OfficeFormat.Ods"/> – OpenDocument Spreadsheet</description></item>
@@ -679,7 +679,7 @@ namespace OpenccNetLib
         /// Supported formats:
         /// <list type="bullet">
         ///   <item><description><c>docx</c> – WordprocessingML</description></item>
-        ///   <item><description><c>xlsx</c> – SpreadsheetML (shared strings only)</description></item>
+        ///   <item><description><c>xlsx</c> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
         ///   <item><description><c>pptx</c> – PresentationML slides/notes/layouts/masters</description></item>
         ///   <item><description><c>odt</c>/<c>ods</c>/<c>odp</c> – OpenDocument Text/Spreadsheet/Presentation</description></item>
         ///   <item><description><c>epub</c> – XHTML/HTML/OPF/NCX documents</description></item>
@@ -762,7 +762,7 @@ namespace OpenccNetLib
         /// <para>
         /// This method is an asynchronous wrapper around the synchronous file
         /// conversion pipeline and delegates the work to a background thread using
-        /// <see cref="Task.Run(Action)"/>.
+        /// <c>Task.Run</c>.
         /// </para>
         /// <para>
         /// The behavior and conversion rules are identical to
@@ -833,7 +833,7 @@ namespace OpenccNetLib
         /// <para>
         /// This method is an asynchronous wrapper around the synchronous file
         /// conversion pipeline and delegates the work to a background thread using
-        /// <see cref="Task.Run(Action)"/>.
+        /// <c>Task.Run</c>.
         /// </para>
         /// <para>
         /// The behavior and conversion rules are identical to

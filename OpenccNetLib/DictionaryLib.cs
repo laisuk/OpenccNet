@@ -26,21 +26,21 @@ namespace OpenccNetLib
         public Dictionary<string, string> Dict { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
         /// <summary>
-        /// The maximum length of any key in the dictionary.
+        /// The maximum length, in UTF-16 code units, of any key in the dictionary.
         /// Used for optimizing longest-match lookups.
         /// </summary>
         [JsonInclude]
         public int MaxLength { get; set; }
 
         /// <summary>
-        /// The minimum length of any key in the dictionary.
+        /// The minimum length, in UTF-16 code units, of any key in the dictionary.
         /// Used for optimizing longest-match lookups.
         /// </summary>
         [JsonInclude]
         public int MinLength { get; set; }
 
         /// <summary>
-        /// Bitmask tracking which key lengths (1..64) exist in <see cref="Dict"/>.
+        /// Bitmask tracking which key lengths (1..64 UTF-16 code units) exist in <see cref="Dict"/>.
         /// Helps skip impossible probes in hot lookup paths.
         /// </summary>
         [JsonInclude]

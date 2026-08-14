@@ -860,9 +860,9 @@ namespace OpenccNetLib
         /// for new plan builds, while the original default remains intact and accessible.  
         /// </para>
         /// <para>
-        /// Thread-safe: the provider swap is performed atomically, and the global  
-        /// <see cref="DictionaryLib.PlanCache"/> is cleared to ensure that all  
-        /// new conversions use the custom provider.  
+        /// Thread-safe: the provider swap publishes a fresh global
+        /// <see cref="DictionaryLib.PlanCache"/>, discarding previously cached plans and
+        /// starter-union state so that new conversions use the custom provider.
         /// Existing conversions already in progress will continue using their  
         /// previously built plans.  
         /// </para>
@@ -886,20 +886,19 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Restores the global dictionary provider to the default built-in instance  
-        /// and clears all cached conversion plans in <see cref="DictionaryLib.PlanCache"/>.  
+        /// and publishes a fresh <see cref="DictionaryLib.PlanCache"/>.
         /// </summary>
         /// <remarks>
         /// Call this method to revert the active dictionary provider back to the default  
         /// <see cref="DictionaryMaxlength"/> loaded from embedded resources.  
         /// <para>
-        /// This method only resets the planning provider; the original lazy-loaded  
-        /// dictionary (<c>DefaultLib.Value</c>) remains intact and is reused.  
-        /// No additional allocations occur, and existing <see cref="DictionaryMaxlength"/>  
-        /// objects are not modified.  
+        /// This method resets the planning provider while reusing the original lazy-loaded
+        /// dictionary (<c>DefaultLib.Value</c>), which is neither reloaded nor modified.
         /// </para>
         /// <para>
-        /// Thread-safe: the provider swap is performed atomically, and the global plan cache  
-        /// is fully cleared to ensure that all subsequent conversions use the restored default.  
+        /// Thread-safe: the provider swap publishes a fresh global plan cache, discarding
+        /// previously cached plans and starter-union state so that subsequent conversions
+        /// use the restored default.
         /// </para>
         /// </remarks>
         public static void UseDefaultDictionary()
