@@ -1805,8 +1805,7 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// This method obtains prebuilt dictionary references and lookup structures
-        /// from the global <see cref="DictionaryLib.PlanCache"/> initialized with  
-        /// <see cref="DictionaryLib.Provider"/>.  
+        /// directly from the library's active internal cache snapshot.
         /// By serving results from the cache rather than rebuilding plans on demand,
         /// it minimizes redundant allocations, improves performance consistency,
         /// and reduces GC pressure during high-throughput text conversions.
@@ -1823,7 +1822,7 @@ namespace OpenccNetLib
         /// and lookup tables for the given configuration.
         /// </returns>
         private static DictRefs GetDictRefs(OpenccConfig configEnum, bool punctuation)
-            => DictionaryLib.PlanCache.GetPlan(configEnum, punctuation);
+            => ConversionPlanCache.GetCurrentPlan(configEnum, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.

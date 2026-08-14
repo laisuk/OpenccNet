@@ -31,6 +31,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Refactored active conversion-state ownership into `ConversionPlanCache`. Provider changes now publish a complete
+  provider-bound cache snapshot with one atomic reference exchange, and `Opencc` resolves plans directly from the active
+  snapshot. Conversions already in progress may finish with the previous coherent state; subsequent calls, including
+  calls through existing `Opencc` instances, use the replacement provider.
+- Preserved the existing public v1.x `ConversionPlanCache` members and `DictionaryLib.PlanCache` property while moving
+  global lifecycle coordination behind internal entry points. Tightened the README to describe observable provider and
+  state-refresh behavior without promoting conversion-planning implementation types as application extension points.
 - Extended `Opencc.NormalizeCompat(...)` with an optional `extended` argument. The default behavior remains unchanged;
   when enabled, CJK Compatibility Ideograph normalization and the curated scalar-preserving mappings used by
   `Opencc.NormalizeUnicodeCompat(...)` are applied together in a single normalization pass.

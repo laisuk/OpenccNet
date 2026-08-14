@@ -7,7 +7,6 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using System.Threading;
 using PeterO.Cbor;
 using ZstdSharp;
 
@@ -277,9 +276,10 @@ namespace OpenccNetLib
     /// <para>
     /// The global <see cref="PlanCache"/> is the <b>active planning source of truth</b>
     /// for conversions: all conversion paths obtain <see cref="DictRefs"/> from this cache.
-    /// To apply a custom dictionary source, the active provider delegate is updated and a
-    /// fresh <see cref="ConversionPlanCache"/> instance is published, discarding any
-    /// previously cached plans and starter-union state to avoid mixed or inconsistent data.
+    /// To apply a custom dictionary source, a fresh <see cref="ConversionPlanCache"/>
+    /// snapshot bound to that provider is published atomically, discarding plans and
+    /// starter-union state derived from the previous source and preventing mixed or
+    /// inconsistent data.
     /// </para>
     /// <para>
     /// The built-in default dictionary singleton remains intact and reusable regardless
@@ -304,61 +304,22 @@ namespace OpenccNetLib
         private static readonly Lazy<DictionaryMaxlength> DefaultLib =
             new Lazy<DictionaryMaxlength>(() => FromZstd(), isThreadSafe: true);
 
-        // --------------------------------------------------------------------------------
-        // Global plan cache
-        // --------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Global cache for precomputed <see cref="DictRefs"/> instances used by all
-        /// OpenCC conversions.
-        /// </summary>
-        /// <remarks>
-        /// Each cached plan bundles optimized lookup structures, prefiltered dictionary  
-        /// references, and starter masks for a specific <see cref="OpenccConfig"/> and  
-        /// punctuation mode.
-        /// <para>
-        /// This cache is the <b>active planning source of truth</b> for all conversions.  
-        /// Switching the dictionary provider replaces this cache instance entirely,  
-        /// ensuring that all newly built plans are derived from the updated dictionary  
-        /// source.
-        /// </para>
-        /// <para>
-        /// By default, the cache is initialized with a provider delegate that returns  
-        /// the lazily loaded built-in dictionary (<see cref="Provider"/>).  
-        /// Custom dictionaries can be applied through
-        /// <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or
-        /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/>.
-        /// </para>
-        /// <para>
-        /// This design avoids partial or inconsistent state during dictionary swaps by  
-        /// treating the cache and its provider as a single atomic unit.
-        /// </para>
-        /// </remarks>
-        private static ConversionPlanCache _planCache = new ConversionPlanCache(() => Provider);
 
         /// <summary>
         /// Gets the active global cache for precomputed conversion plans.
         /// </summary>
         /// <remarks>
-        /// The cache instance is replaced only by the dictionary-provider APIs on this
-        /// type. This keeps provider swaps atomic and prevents external code from
-        /// publishing a null or inconsistent cache.
+        /// This v1.x compatibility property returns the cache snapshot currently used by
+        /// the conversion facade. Dictionary-provider changes atomically publish a fresh
+        /// snapshot; an earlier instance retained by a caller remains usable with the
+        /// provider to which it was originally bound.
         /// </remarks>
-        public static ConversionPlanCache PlanCache => Volatile.Read(ref _planCache);
+        public static ConversionPlanCache PlanCache => ConversionPlanCache.Current;
 
         // --------------------------------------------------------------------------------
         // Public accessors and provider management
         // --------------------------------------------------------------------------------
 
-        /// <summary>
-        /// Delegate that supplies the <see cref="DictionaryMaxlength"/> instance used
-        /// for constructing new conversion plans.
-        /// </summary>
-        /// <remarks>
-        /// Defaults to the built-in lazy-loaded dictionary (<see cref="DefaultLib"/>),
-        /// but may be replaced to support custom dictionary sources.
-        /// </remarks>
-        private static Func<DictionaryMaxlength> _activeProvider = () => DefaultLib.Value;
 
         /// <summary>
         /// Gets the built-in default singleton <see cref="DictionaryMaxlength"/> instance.
@@ -382,25 +343,25 @@ namespace OpenccNetLib
         /// for constructing new conversion plans.
         /// </summary>
         /// <remarks>
-        /// This method reflects the <b>logical provider</b> used when building new
-        /// <see cref="DictRefs"/> and populating the global <see cref="PlanCache"/>.
+        /// This method reads the provider bound to the same active cache snapshot used to
+        /// build new <see cref="DictRefs"/> plans.
         /// <para>
-        /// Note that the active provider delegate is lightweight and does not own any
-        /// cached state. All derived lookup structures and starter-union caches are owned
-        /// by <see cref="PlanCache"/>. To fully switch dictionary sources for future
-        /// conversions, call <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or
+        /// The provider and its derived plan and starter-union caches are published as one
+        /// coherent snapshot. To switch dictionary sources for future conversions, call
+        /// <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or
         /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/>.
         /// </para>
         /// <para>
-        /// This method does not imply atomicity or synchronization guarantees beyond those
-        /// provided by the underlying provider delegate implementation.
+        /// A concurrent provider replacement may cause this call to observe either the old
+        /// or new complete snapshot; it does not observe a provider/cache combination assembled
+        /// from different snapshots.
         /// </para>
         /// </remarks>
         /// <returns>
         /// The <see cref="DictionaryMaxlength"/> instance currently returned by the active
         /// provider delegate.
         /// </returns>
-        public static DictionaryMaxlength GetActiveProvider() => _activeProvider();
+        public static DictionaryMaxlength GetActiveProvider() => ConversionPlanCache.GetCurrentDictionary();
 
         /// <summary>
         /// Returns the default singleton dictionary instance and resets the active
@@ -438,11 +399,10 @@ namespace OpenccNetLib
         /// This method is the primary mechanism for switching dictionary sources at runtime
         /// (for example, when applying a custom dictionary set or performing hot-reloads).
         /// <para>
-        /// The provider delegate is first updated to supply the new
-        /// <see cref="DictionaryMaxlength"/> instance. A new
-        /// <see cref="ConversionPlanCache"/> is then created and published, ensuring that
-        /// all subsequently built plans are derived exclusively from the new dictionary
-        /// source.
+        /// A new <see cref="ConversionPlanCache"/> is constructed with the provider and
+        /// published in one atomic reference exchange. This binds the provider and all
+        /// subsequently built plans to the same snapshot, while conversions already using
+        /// the previous snapshot may finish normally.
         /// </para>
         /// <para>
         /// Cached plans and starter-union data from the previous dictionary source are
@@ -466,14 +426,7 @@ namespace OpenccNetLib
             if (provider is null)
                 throw new ArgumentNullException(nameof(provider));
 
-            // publish provider first (so any new cache uses it)
-            Volatile.Write(ref _activeProvider, provider);
-
-            // publish a fresh cache (empty, consistent)
-            var newCache = new ConversionPlanCache(provider);
-
-            // Replace the global cache with a new instance using the new provider.
-            Interlocked.Exchange(ref _planCache, newCache);
+            ConversionPlanCache.PublishProvider(provider);
         }
 
         /// <summary>

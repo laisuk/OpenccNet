@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 
 namespace OpenccNetLib
 {
@@ -37,6 +38,18 @@ namespace OpenccNetLib
     /// </remarks>
     public sealed class ConversionPlanCache
     {
+        /// <summary>
+        /// The process-wide cache used by the <see cref="Opencc"/> conversion facade.
+        /// </summary>
+        /// <remarks>
+        /// Provider changes publish a completely new cache instance so a plan and the
+        /// dictionary provider from which it is built always belong to the same snapshot.
+        /// Existing callers that retain the previous public cache instance may safely
+        /// finish using that instance.
+        /// </remarks>
+        private static ConversionPlanCache _current =
+            new ConversionPlanCache(() => DictionaryLib.Provider);
+
         /// <summary>
         /// Defines the semantic slot identifiers used to group dictionaries
         /// for building and caching <see cref="StarterUnion"/> instances.
@@ -169,15 +182,68 @@ namespace OpenccNetLib
             new ConcurrentDictionary<UnionKey, DictWithMaxLength[]>();
 
         /// <summary>
+        /// Gets the process-wide cache currently used by the conversion facade.
+        /// </summary>
+        /// <remarks>
+        /// This internal accessor also preserves the existing public
+        /// <see cref="DictionaryLib.PlanCache"/> compatibility property in the v1.x API.
+        /// </remarks>
+        internal static ConversionPlanCache Current => Volatile.Read(ref _current);
+
+        /// <summary>
+        /// Retrieves a plan from the process-wide active cache.
+        /// </summary>
+        /// <param name="config">The OpenCC conversion configuration.</param>
+        /// <param name="punctuation">Whether punctuation dictionaries are included.</param>
+        /// <returns>The cached or newly constructed conversion plan.</returns>
+        internal static DictRefs GetCurrentPlan(OpenccConfig config, bool punctuation = false)
+            => Current.GetPlan(config, punctuation);
+
+        /// <summary>
+        /// Returns the dictionary supplied by the provider bound to the active cache snapshot.
+        /// </summary>
+        /// <returns>The active dictionary instance.</returns>
+        internal static DictionaryMaxlength GetCurrentDictionary()
+        {
+            var current = Current;
+            return current._dictionaryProvider();
+        }
+
+        /// <summary>
+        /// Atomically publishes a fresh process-wide cache bound to
+        /// <paramref name="dictionaryProvider"/>.
+        /// </summary>
+        /// <remarks>
+        /// Replacing the complete cache discards plans and starter-union state derived from
+        /// the previous provider. Conversions already using the previous snapshot may finish
+        /// normally; subsequent lookups observe the replacement snapshot.
+        /// </remarks>
+        /// <param name="dictionaryProvider">
+        /// The provider from which the replacement cache builds conversion plans.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="dictionaryProvider"/> is <see langword="null"/>.
+        /// </exception>
+        internal static void PublishProvider(Func<DictionaryMaxlength> dictionaryProvider)
+        {
+            if (dictionaryProvider == null)
+                throw new ArgumentNullException(nameof(dictionaryProvider));
+
+            var replacement = new ConversionPlanCache(dictionaryProvider);
+            Interlocked.Exchange(ref _current, replacement);
+        }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="ConversionPlanCache"/> class.
         /// </summary>
         /// <param name="dictionaryProvider">
         /// A delegate that returns the <see cref="DictionaryMaxlength"/> instance to use when
         /// constructing new conversion plans.
         /// <para>
-        /// <see cref="DictionaryLib"/> owns and publishes the global cache. Switching the active
-        /// dictionary source publishes a fresh cache; existing cache instances continue using
-        /// the provider with which they were constructed.
+        /// A cache instance remains bound to this provider for its entire lifetime. The
+        /// library's internal global lifecycle publishes a fresh instance when the active
+        /// dictionary changes; independently constructed public instances are unaffected.
+        /// Existing cache instances continue using their original provider.
         /// </para>
         /// </param>
         /// <exception cref="ArgumentNullException">

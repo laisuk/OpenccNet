@@ -930,21 +930,22 @@ Use `appends` for company terms, product names, domain vocabulary, and temporary
 when maintaining a full proprietary replacement dictionary. Prefer following the upstream OpenCC lexicon structure
 whenever possible.
 
-Call `Opencc.UseCustomDictionary(dict)` once during application startup, before constructing `Opencc` instances. The
-chosen dictionary should be treated as the application's single source of truth. Do not hot-swap the global dictionary
-provider while existing `Opencc` instances are still active; if the provider must change, set the new provider and then
-discard and recreate existing `Opencc` instances.
+Prefer activating a custom dictionary once during application startup, before conversions begin. The active provider is
+process-wide and should be treated as the application's single source of truth. If it changes, conversions already in
+progress may finish with the previous complete state; conversions started after the replacement is published use the new
+provider, including calls made through existing `Opencc` instances. Avoid routine provider changes when concurrent calls
+must all use the same dictionary snapshot.
 
-This global provider design is intentional for performance: dictionary data, metadata, `StarterUnion` / `UnionCache`
-acceleration structures, and runtime plans can be shared instead of duplicated per `Opencc` instance. Normal
-applications usually need only one custom provider. Unit tests that mutate the global provider should not run in
-parallel with tests expecting the default provider.
+This global provider design is intentional for performance: dictionary data, derived lookup metadata, and prepared
+conversion state can be shared instead of duplicated per `Opencc` instance. Normal applications usually need only one
+custom provider. Unit tests that mutate the global provider should not run in parallel with tests expecting the default
+provider.
 
 #### Why no `user_dict` slot?
 
 OpenccNetLib intentionally preserves the OpenCC dictionary topology. Generic dynamic slots complicate conversion
-contracts, `DictRefs`, starter indexes, `StarterUnion`, and the conversion plan/union caches. Existing OpenCC slots
-already provide deterministic and extensible customization points.
+ordering, derived dictionary metadata, and cached lookup state. Existing OpenCC slots already provide deterministic and
+extensible customization points.
 
 ---
 
@@ -1225,7 +1226,7 @@ The Office/EPUB conversion suite covers both real documents and synthetic packag
 
 ## Performance
 
-- Uses static dictionary caching, precomputed `StarterUnion` masks, and thread-local buffers for high throughput.
+- Uses shared dictionary caching, precomputed candidate-length metadata, and thread-local buffers for high throughput.
 - On .NET 9 and later, dictionary candidates are probed directly from `ReadOnlySpan<char>` without allocating temporary
   string keys. The .NET Standard 2.0 asset retains the compatible string-key fallback.
 - Suitable for real-time, batch, and parallel processing.
@@ -1301,8 +1302,9 @@ for those targets.
 ### Notes
 
 - Benchmarks include **real-world system noise** (IDE and background services), not isolated lab conditions.
-- The benchmark measures warmed `S2T` conversion. Conversion plans select only the required dictionary groups;
-  `StarterUnion` rejects impossible candidate lengths, and `UnionCache` reuses the prepared accelerator.
+- The benchmark measures warmed `S2T` conversion. Conversion prepares only the required dictionary groups. Precomputed
+  starter metadata eliminates impossible candidate lengths, and prepared lookup structures are reused across
+  conversions.
 - Managed allocation now comes mainly from conversion output and buffer growth rather than temporary lookup keys.
 - Time and memory remain approximately linear with input size; expected GC activity is visible at larger sizes.
 - BenchmarkDotNet removed one outlier from the 100-, 1,000-, 100,000-, and 1,000,000-character measurements. For the
@@ -1461,13 +1463,13 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 ##### `Opencc` dictionary activation helpers
 
 - `static void UseCustomDictionary(DictionaryMaxlength customDictionary)`
-  Sets the active conversion dictionary provider to a custom `DictionaryMaxlength` instance and clears cached conversion
-  plans. Call this once during application startup, before creating converters that should use the custom dictionary.
-  Treat the chosen dictionary as the shared application provider; if it must change, recreate existing `Opencc`
-  instances after setting the new provider.
+  Sets the process-wide provider to a custom `DictionaryMaxlength` instance and atomically refreshes internal conversion
+  state. Prefer calling this once during application startup, before conversions begin. Calls already in progress may
+  finish with the previous complete state; subsequent calls, including calls through existing `Opencc` instances, use
+  the replacement provider.
 
 - `static void UseDefaultDictionary()`
-  Restores the active provider to the built-in dictionary and clears cached conversion plans.
+  Restores the active provider to the built-in dictionary and atomically refreshes internal conversion state.
 
 - `static void UseDictionaryFromPath(string dictionaryRelativePath)`
   Loads OpenCC text dictionary files with `DictionaryLib.FromDicts(dictionaryRelativePath)` and activates the result.
@@ -1475,13 +1477,10 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 - `static void UseDictionaryFromJsonString(string jsonString)`
   Deserializes a `DictionaryMaxlength` JSON payload and activates it as the custom dictionary provider.
 
-##### `DictionaryLib` provider and cache APIs
+##### `DictionaryLib` provider APIs
 
 - `static DictionaryMaxlength Provider { get; }`
   Returns the shared built-in dictionary instance.
-
-- `static ConversionPlanCache PlanCache { get; }`
-  Returns the active global conversion plan cache.
 
 - `static DictionaryMaxlength GetActiveProvider()`
   Returns the dictionary instance currently supplied by the active provider delegate.
@@ -1490,10 +1489,12 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
   Returns the built-in dictionary and resets the active provider to the built-in dictionary.
 
 - `static void SetDictionaryProvider(DictionaryMaxlength dictionary)`
-  Sets the active dictionary provider to a fixed `DictionaryMaxlength` instance and publishes a fresh plan cache.
+  Sets the active dictionary provider to a fixed `DictionaryMaxlength` instance and atomically refreshes derived
+  conversion state. Conversions already in progress may finish with the previous complete state; subsequent conversions
+  use the replacement state.
 
 - `static void ResetDictionaryProviderToDefault()`
-  Restores the active dictionary provider to the built-in dictionary and publishes a fresh plan cache.
+  Restores the active dictionary provider to the built-in dictionary and atomically refreshes derived conversion state.
 
 ##### `DictionaryLib` loading APIs
 

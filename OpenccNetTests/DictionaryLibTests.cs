@@ -134,6 +134,35 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
+    [DoNotParallelize]
+    public void TestPlanCache_PublicCompatibilityTracksAtomicProviderReplacement()
+    {
+        DictionaryLib.ResetDictionaryProviderToDefault();
+
+        var provider = DictionaryLib.Provider;
+        var previousCache = DictionaryLib.PlanCache;
+        var previousPlan = previousCache.GetPlan(OpenccConfig.S2T);
+
+        try
+        {
+            DictionaryLib.SetDictionaryProvider(provider);
+
+            var currentCache = DictionaryLib.PlanCache;
+            var currentPlan = currentCache.GetPlan(OpenccConfig.S2T);
+
+            Assert.AreNotSame(previousCache, currentCache);
+            Assert.AreNotSame(previousPlan, currentPlan);
+            Assert.AreSame(currentPlan, currentCache.GetPlan(OpenccConfig.S2T));
+            Assert.AreSame(provider, DictionaryLib.GetActiveProvider());
+            Assert.AreEqual("漢字", new Opencc(OpenccConfig.S2T).Convert("汉字"));
+        }
+        finally
+        {
+            DictionaryLib.ResetDictionaryProviderToDefault();
+        }
+    }
+
+    [TestMethod]
     public void TestFromDicts_RequiresForwardVariantPhraseSlots()
     {
         var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
