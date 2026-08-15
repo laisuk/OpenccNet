@@ -135,6 +135,14 @@ namespace OpenccNetLib
             return Provider;
         }
 
+        // Internal bridge retained only for existing library call sites.
+        // Provider ownership and cache publication live in ConversionPlanCache.
+        internal static void SetDictionaryProvider(DictionaryMaxlength dictionary)
+            => ConversionPlanCache.UseProvider(dictionary);
+
+        internal static void ResetDictionaryProviderToDefault()
+            => ConversionPlanCache.ResetProvider();
+
         private static DictionaryMaxlength FromZstd(
             string relativePath = "dicts/dictionary_maxlength.zstd")
         {
