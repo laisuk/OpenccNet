@@ -613,6 +613,152 @@ Direct Hong Kong phrase slots are customizable too. `DictSlot.HKPhrases` is used
 Simplified-to-Traditional conversion, and `DictSlot.HKPhrasesRev` is used by `hk2sp` before Traditional-to-Simplified
 conversion.
 
+#### Per-instance custom dictionaries (OpenccNetLib 1.7.0)
+
+OpenccNetLib 1.7.0 adds an isolated per-instance alternative to the existing process-wide custom dictionary API:
+
+```csharp
+public Opencc(
+    OpenccConfig configEnum,
+    IEnumerable<CustomDictSpec> customDictSpecs,
+    bool isPreserveIds = false)
+
+public Opencc WithCustomDictionary(
+    IEnumerable<CustomDictSpec> customDictSpecs)
+```
+
+Ordinary `Opencc` instances continue to use the shared process-wide conversion-plan cache. They do not allocate a
+private plan cache or a private dictionary snapshot. In contrast, the custom-spec constructor snapshots the currently
+active global dictionary provider, applies the `CustomDictSpec` entries to that snapshot in enumeration order, and gives
+the new converter its own isolated internal cache. Instance customization never mutates the active global provider, and
+later global-provider changes do not affect an already-created custom instance.
+
+The isolated dictionary snapshot belongs to the instance rather than to one configuration. Calling `SetConfig(...)` or
+assigning `Config` on the custom instance continues to use the same snapshot. Multiple custom instances can therefore
+use different mappings safely and independently.
+
+`WithCustomDictionary(...)` is a convenience method that returns a new `Opencc` with the source instance's current
+configuration and `IsPreserveIds` value; it does not mutate the source. The supplied specs are the new instance's
+complete custom spec set. They are not layered on top of any custom specs attached to the source instance. As with the
+constructor, the base is a snapshot of the currently active global provider at the time the new instance is created.
+
+Constructor-based customization can use in-memory pairs directly:
+
+```csharp
+using System.Collections.Generic;
+using OpenccNetLib;
+
+var specs = new[]
+{
+    new CustomDictSpec
+    {
+        Slot = DictSlot.STCharacters,
+        Mode = CustomDictMode.Append,
+        Pairs = new Dictionary<string, string>
+        {
+            ["汉"] = "甲"
+        }
+    }
+};
+
+var cc = new Opencc(OpenccConfig.S2T, specs);
+Console.WriteLine(cc.Convert("汉")); // 甲
+```
+
+Use `WithCustomDictionary(...)` when starting from an existing converter's configuration and IDS setting:
+
+```csharp
+var source = new Opencc(OpenccConfig.S2T, isPreserveIds: true);
+var customized = source.WithCustomDictionary(specs);
+
+Console.WriteLine(source.Convert("汉"));     // 漢; source is unchanged
+Console.WriteLine(customized.Convert("汉")); // 甲
+```
+
+Different instances may use different mappings for the same dictionary key:
+
+```csharp
+var first = new Opencc(OpenccConfig.S2T, new[]
+{
+    new CustomDictSpec
+    {
+        Slot = DictSlot.STCharacters,
+        Pairs = new Dictionary<string, string> { ["汉"] = "甲" }
+    }
+});
+
+var second = new Opencc(OpenccConfig.S2T, new[]
+{
+    new CustomDictSpec
+    {
+        Slot = DictSlot.STCharacters,
+        Pairs = new Dictionary<string, string> { ["汉"] = "乙" }
+    }
+});
+
+Console.WriteLine(first.Convert("汉"));  // 甲
+Console.WriteLine(second.Convert("汉")); // 乙
+```
+
+Instance specs are layered on the active global dictionary snapshot. For example, this instance sees both the global
+mapping and its own overlay, while the active global provider receives only the global mapping:
+
+```csharp
+var globalDictionary = DictionaryLib.New();
+DictionaryLib.WithCustomDicts(globalDictionary, new[]
+{
+    new CustomDictSpec
+    {
+        Slot = DictSlot.STCharacters,
+        Pairs = new Dictionary<string, string> { ["汉"] = "全" }
+    }
+});
+Opencc.UseCustomDictionary(globalDictionary);
+
+var specs = new[]
+{
+    new CustomDictSpec
+    {
+        Slot = DictSlot.STCharacters,
+        Pairs = new Dictionary<string, string> { ["字"] = "例" }
+    }
+};
+var cc = new Opencc(OpenccConfig.S2T, specs);
+
+Console.WriteLine(cc.Convert("汉字"));                           // 全例
+Console.WriteLine(new Opencc(OpenccConfig.S2T).Convert("汉字")); // 全字
+```
+
+Config switching on a custom instance reuses its isolated dictionary snapshot:
+
+```csharp
+var cc = new Opencc(OpenccConfig.S2T, new[]
+{
+    new CustomDictSpec
+    {
+        Slot = DictSlot.STCharacters,
+        Pairs = new Dictionary<string, string> { ["汉"] = "甲" }
+    },
+    new CustomDictSpec
+    {
+        Slot = DictSlot.TSCharacters,
+        Pairs = new Dictionary<string, string> { ["漢"] = "乙" }
+    }
+});
+
+Console.WriteLine(cc.Convert("汉")); // 甲
+cc.SetConfig(OpenccConfig.T2S);
+Console.WriteLine(cc.Convert("漢")); // 乙
+```
+
+Choose the API according to the required scope:
+
+| API                                               | Behavior                                                               |
+|---------------------------------------------------|------------------------------------------------------------------------|
+| `Opencc.UseCustomDictionary(DictionaryMaxlength)` | Process-wide/global; ordinary instances use the shared active provider |
+| `new Opencc(config, specs)`                       | Isolated per-instance dictionary snapshot and internal cache           |
+| `cc.WithCustomDictionary(specs)`                  | New isolated instance; the source instance is unchanged                |
+
 #### Portable custom-dictionary specifications
 
 A portable custom-dictionary token has this grammar:
