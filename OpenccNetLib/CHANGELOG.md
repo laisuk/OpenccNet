@@ -8,6 +8,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.7.0] - Unreleased
 
+### Added
+
+- Add per-instance custom dictionary support with `Opencc(OpenccConfig, IEnumerable<CustomDictSpec>, bool)`. Custom
+  specifications are applied to a snapshot of the currently active dictionary provider and use an isolated per-instance
+  conversion-plan cache without modifying global dictionary state.
+- Add `Opencc.WithCustomDictionary()` as a convenient way to create a new isolated converter using custom dictionary
+  specifications while preserving the source converter's configuration and IDS-preservation setting.
+- Support configuration switching on custom `Opencc` instances while retaining the same isolated custom dictionary
+  snapshot and conversion-plan cache.
+- Allow multiple `Opencc` instances with different custom dictionary specifications to operate independently, including
+  alongside converters using the process-wide dictionary provider.
+
 ### Changed
 
 - Update DeToFu table data.
@@ -20,11 +32,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   through the internal conversion-plan cache.
 - Consolidate internal conversion-plan lookup so `Opencc` uses a single `ConversionPlanCache.GetPlan()` path.
 - Remove redundant `DictionaryLib` forwarding APIs for active-provider and plan-cache management.
+- Route conversion-plan lookup through the converter instance: ordinary `Opencc` instances continue to use the shared
+  process-wide cache, while instances constructed with custom dictionary specifications use their own isolated cache.
+- Build per-instance custom dictionaries from a snapshot of the currently active provider, allowing application-level
+  dictionary selection through `Opencc.UseCustomDictionary()` to remain the base for additional instance-local
+  customizations.
+- Preserve the existing shared-cache fast path for ordinary `Opencc` instances; no private dictionary or
+  `ConversionPlanCache` is allocated unless per-instance custom dictionary specifications are explicitly supplied.
 
 ### Compatibility
 
 - Existing high-level dictionary and conversion APIs remain available through `DictionaryLib` and `Opencc`.
 - `DictionaryLib.Provider` continues to expose the built-in default dictionary.
+- `Opencc.UseCustomDictionary()` and `Opencc.UseDefaultDictionary()` retain their process-wide behavior; the new
+  per-instance custom dictionary APIs do not modify that global state.
+- Ordinary `Opencc` instances continue to share the process-wide conversion-plan cache and require no migration.
 - Applications using only the documented `Opencc` and `DictionaryLib` APIs require no changes.
 - Code directly referencing the previously public `ConversionPlanCache`, `DictRefs`, or `StarterUnion` types must
   migrate to the supported high-level APIs.

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace OpenccNetLib
@@ -262,6 +263,123 @@ namespace OpenccNetLib
         internal ConversionPlanCache(Func<DictionaryMaxlength> dictionaryProvider)
         {
             _dictionaryProvider = dictionaryProvider ?? throw new ArgumentNullException(nameof(dictionaryProvider));
+        }
+
+        /// <summary>
+        /// Initializes an independent conversion-plan cache from a base dictionary and
+        /// a retained set of per-instance custom dictionary specifications.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This constructor does not publish or replace <see cref="Current"/>. It snapshots
+        /// <paramref name="baseDictionary"/> before applying non-empty custom specifications,
+        /// so the built-in <see cref="DictionaryLib.Provider"/> and other cache instances are
+        /// never mutated.
+        /// </para>
+        /// <para>
+        /// Specifications are applied once during construction. The resulting dictionary
+        /// provider and all plans and starter unions belong exclusively to this cache.
+        /// An empty array creates an independent plan cache over the supplied base dictionary.
+        /// </para>
+        /// </remarks>
+        /// <param name="baseDictionary">
+        /// The dictionary whose mappings form the base of the isolated cache.
+        /// </param>
+        /// <param name="customDictSpecs">
+        /// The materialized custom dictionary specifications to apply in array order.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="baseDictionary"/> or <paramref name="customDictSpecs"/> is
+        /// <see langword="null"/>.
+        /// </exception>
+        internal ConversionPlanCache(
+            DictionaryMaxlength baseDictionary,
+            CustomDictSpec[] customDictSpecs)
+            : this(CreateCustomDictionaryProvider(baseDictionary, customDictSpecs))
+        {
+        }
+
+        /// <summary>
+        /// Creates the fixed dictionary provider for an instance-owned cache.
+        /// </summary>
+        /// <remarks>
+        /// Non-empty specifications are applied to a deep copy so no mutable dictionary
+        /// table or derived lookup metadata is shared with the global default dictionary.
+        /// Empty specifications preserve default conversion behavior without copying the
+        /// dictionary data; the plan and union caches remain instance-owned.
+        /// </remarks>
+        private static Func<DictionaryMaxlength> CreateCustomDictionaryProvider(
+            DictionaryMaxlength baseDictionary,
+            CustomDictSpec[] customDictSpecs)
+        {
+            if (baseDictionary == null)
+                throw new ArgumentNullException(nameof(baseDictionary));
+
+            if (customDictSpecs == null)
+                throw new ArgumentNullException(nameof(customDictSpecs));
+
+            var dictionary = customDictSpecs.Length == 0
+                ? baseDictionary
+                : DictionaryLib.WithCustomDicts(CloneDictionary(baseDictionary), customDictSpecs);
+
+            return () => dictionary;
+        }
+
+        /// <summary>
+        /// Creates a fully independent copy of every mutable dictionary slot and its
+        /// derived lookup metadata.
+        /// </summary>
+        private static DictionaryMaxlength CloneDictionary(DictionaryMaxlength source)
+        {
+            return new DictionaryMaxlength
+            {
+                st_characters = CloneSlot(source.st_characters),
+                st_phrases = CloneSlot(source.st_phrases),
+                ts_characters = CloneSlot(source.ts_characters),
+                ts_phrases = CloneSlot(source.ts_phrases),
+                tw_phrases = CloneSlot(source.tw_phrases),
+                tw_phrases_rev = CloneSlot(source.tw_phrases_rev),
+                tw_variants = CloneSlot(source.tw_variants),
+                tw_variants_phrases = CloneSlot(source.tw_variants_phrases),
+                tw_variants_rev = CloneSlot(source.tw_variants_rev),
+                tw_variants_rev_phrases = CloneSlot(source.tw_variants_rev_phrases),
+                hk_phrases = CloneSlot(source.hk_phrases),
+                hk_phrases_rev = CloneSlot(source.hk_phrases_rev),
+                hk_variants = CloneSlot(source.hk_variants),
+                hk_variants_phrases = CloneSlot(source.hk_variants_phrases),
+                hk_variants_rev = CloneSlot(source.hk_variants_rev),
+                hk_variants_rev_phrases = CloneSlot(source.hk_variants_rev_phrases),
+                jps_characters = CloneSlot(source.jps_characters),
+                jps_characters_rev = CloneSlot(source.jps_characters_rev),
+                jps_phrases = CloneSlot(source.jps_phrases),
+                st_punctuations = CloneSlot(source.st_punctuations),
+                ts_punctuations = CloneSlot(source.ts_punctuations)
+            };
+        }
+
+        /// <summary>
+        /// Copies one mutable dictionary slot and all metadata consumed by plan construction.
+        /// </summary>
+        private static DictWithMaxLength CloneSlot(DictWithMaxLength source)
+        {
+            if (source == null)
+                return new DictWithMaxLength();
+
+            return new DictWithMaxLength
+            {
+                Dict = source.Dict == null
+                    ? new Dictionary<string, string>(StringComparer.Ordinal)
+                    : new Dictionary<string, string>(source.Dict, StringComparer.Ordinal),
+                MaxLength = source.MaxLength,
+                MinLength = source.MinLength,
+                LengthMask = source.LengthMask,
+                LongLengths = source.LongLengths == null
+                    ? null
+                    : new HashSet<int>(source.LongLengths),
+                StarterLenMask = source.StarterLenMask == null
+                    ? null
+                    : new Dictionary<string, ulong>(source.StarterLenMask, StringComparer.Ordinal)
+            };
         }
 
         /// <summary>

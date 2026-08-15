@@ -501,6 +501,30 @@ namespace OpenccNetLib
         private OpenccConfig _configId = DefaultConfigId;
 
         /// <summary>
+        /// Retains the materialized custom dictionary specifications for the lifetime
+        /// of an instance that was explicitly created with custom dictionaries.
+        /// </summary>
+        /// <remarks>
+        /// This field is <see langword="null"/> for ordinary instances. Retaining the
+        /// array records the instance's custom-dictionary identity across
+        /// <see cref="SetConfig(OpenccConfig)"/> and <see cref="Config"/> changes; all
+        /// configurations continue to use the same instance-owned dictionary snapshot.
+        /// </remarks>
+        private readonly CustomDictSpec[] _customDictSpecs;
+
+        /// <summary>
+        /// Holds the isolated conversion-plan cache for an instance created with custom
+        /// dictionary specifications.
+        /// </summary>
+        /// <remarks>
+        /// This field is <see langword="null"/> for ordinary instances, which continue
+        /// sharing <see cref="ConversionPlanCache.Current"/> and incur no per-instance
+        /// cache allocation. A non-null value is never published globally and is safe
+        /// to use concurrently for plan lookup.
+        /// </remarks>
+        private readonly ConversionPlanCache _planCache;
+
+        /// <summary>
         /// Gets or sets whether complete Unicode Ideographic Description Sequences (IDS) are preserved during conversion.
         /// </summary>
         /// <remarks>
@@ -983,6 +1007,87 @@ namespace OpenccNetLib
         {
             SetConfigInternal(configEnum, false);
             IsPreserveIds = isPreserveIds;
+        }
+
+        /// <summary>
+        /// Initializes a new <see cref="Opencc"/> instance with an isolated custom
+        /// dictionary set.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The specification sequence is enumerated exactly once and retained as an array
+        /// for this instance's lifetime. The instance owns a private
+        /// <see cref="ConversionPlanCache"/> built from a snapshot of the currently active
+        /// <see cref="ConversionPlanCache.Provider"/> plus those specifications. Construction
+        /// does not replace <see cref="ConversionPlanCache.Current"/> or modify the active
+        /// global provider.
+        /// </para>
+        /// <para>
+        /// This allows instance custom dictionaries to layer on top of the dictionary
+        /// currently selected through the global provider, including one installed through
+        /// <see cref="UseCustomDictionary(DictionaryMaxlength)"/>. Subsequent global provider
+        /// changes do not affect this instance's private dictionary snapshot.
+        /// </para>
+        /// <para>
+        /// Later changes through <see cref="SetConfig(OpenccConfig)"/> or
+        /// <see cref="Config"/> reuse the same custom dictionary snapshot. An empty
+        /// specification sequence still creates an isolated plan cache whose effective
+        /// mappings are those of the active provider captured at construction time.
+        /// </para>
+        /// <para>
+        /// Plan lookup is thread-safe and isolated from other instances. As with existing
+        /// mutable instance properties, callers should synchronize concurrent configuration
+        /// or <see cref="IsPreserveIds"/> changes.
+        /// </para>
+        /// </remarks>
+        /// <param name="configEnum">The OpenCC conversion configuration enum value.</param>
+        /// <param name="customDictSpecs">
+        /// Custom dictionary specifications applied in enumeration order to the active
+        /// dictionary snapshot.
+        /// </param>
+        /// <param name="isPreserveIds">
+        /// Whether to preserve complete Unicode IDS expressions during conversion.
+        /// Default: <see langword="false"/>.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="customDictSpecs"/> is <see langword="null"/>.
+        /// </exception>
+        public Opencc(
+            OpenccConfig configEnum,
+            IEnumerable<CustomDictSpec> customDictSpecs,
+            bool isPreserveIds = false)
+        {
+            if (customDictSpecs == null)
+                throw new ArgumentNullException(nameof(customDictSpecs));
+
+            _customDictSpecs = new List<CustomDictSpec>(customDictSpecs).ToArray();
+            _planCache = new ConversionPlanCache(ConversionPlanCache.Provider, _customDictSpecs);
+            SetConfigInternal(configEnum, false);
+            IsPreserveIds = isPreserveIds;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="Opencc"/> instance with isolated custom dictionary
+        /// specifications while preserving this instance's configuration and IDS setting.
+        /// </summary>
+        /// <remarks>
+        /// The source instance and all global dictionary/provider state remain unchanged.
+        /// The returned instance retains and applies the supplied specifications across
+        /// subsequent configuration changes and owns its own conversion-plan cache.
+        /// </remarks>
+        /// <param name="customDictSpecs">
+        /// Custom dictionary specifications to attach to the new instance.
+        /// </param>
+        /// <returns>
+        /// A new isolated <see cref="Opencc"/> instance with the same configuration and
+        /// <see cref="IsPreserveIds"/> value as this instance.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="customDictSpecs"/> is <see langword="null"/>.
+        /// </exception>
+        public Opencc WithCustomDictionary(IEnumerable<CustomDictSpec> customDictSpecs)
+        {
+            return new Opencc(_configId, customDictSpecs, IsPreserveIds);
         }
 
         /// <summary>
@@ -1800,15 +1905,24 @@ namespace OpenccNetLib
         #region Direct API and General Conversion Region
 
         /// <summary>
-        /// Retrieves a cached <see cref="DictRefs"/> instance for the specified  
-        /// OpenCC conversion configuration and punctuation mode.
+        /// Retrieves dictionary references for a configuration and punctuation setting
+        /// from the cache associated with this <see cref="Opencc"/> instance.
         /// </summary>
         /// <remarks>
-        /// This method obtains prebuilt dictionary references and lookup structures
-        /// directly from the library's active internal cache snapshot.
-        /// By serving results from the cache rather than rebuilding plans on demand,
-        /// it minimizes redundant allocations, improves performance consistency,
-        /// and reduces GC pressure during high-throughput text conversions.
+        /// <para>
+        /// Ordinary instances resolve plans through the process-wide
+        /// <see cref="ConversionPlanCache.Current"/> cache and allocate no private cache.
+        /// Instances constructed with custom dictionary specifications resolve every
+        /// configuration and punctuation variant through their private
+        /// <see cref="_planCache"/>.
+        /// </para>
+        /// <para>
+        /// Selecting the cache per instance keeps custom plans isolated and ensures
+        /// configuration switching never falls back to the global dictionary.
+        /// </para>
+        /// By serving results from the appropriate cache rather than rebuilding plans
+        /// on demand, this method minimizes redundant allocations, improves performance
+        /// consistency, and reduces GC pressure during high-throughput conversions.
         /// </remarks>
         /// <param name="configEnum">
         /// The OpenCC conversion configuration (e.g., <c>S2T</c>, <c>T2HK</c>, <c>TW2S</c>).
@@ -1821,8 +1935,12 @@ namespace OpenccNetLib
         /// A <see cref="DictRefs"/> object containing the prepared dictionary references
         /// and lookup tables for the given configuration.
         /// </returns>
-        private static DictRefs GetDictRefs(OpenccConfig configEnum, bool punctuation)
-            => ConversionPlanCache.Current.GetPlan(configEnum, punctuation);
+        private DictRefs GetDictRefs(OpenccConfig configEnum, bool punctuation)
+        {
+            return _customDictSpecs != null
+                ? _planCache.GetPlan(configEnum, punctuation)
+                : ConversionPlanCache.Current.GetPlan(configEnum, punctuation);
+        }
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.
