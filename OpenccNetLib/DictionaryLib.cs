@@ -125,6 +125,11 @@ namespace OpenccNetLib
         /// </summary>
         public static DictionaryMaxlength Provider => DefaultLib.Value;
 
+        // Internal compatibility surface for tests and existing in-assembly call sites.
+        // The active provider and all cache state are owned by ConversionPlanCache.
+        internal static ConversionPlanCache PlanCache => ConversionPlanCache.Current;
+        internal static DictionaryMaxlength GetActiveProvider() => ConversionPlanCache.Provider;
+
         /// <summary>
         /// Returns the built-in default dictionary and resets conversion planning
         /// to use that default provider.
@@ -135,8 +140,6 @@ namespace OpenccNetLib
             return Provider;
         }
 
-        // Internal bridge retained only for existing library call sites.
-        // Provider ownership and cache publication live in ConversionPlanCache.
         internal static void SetDictionaryProvider(DictionaryMaxlength dictionary)
             => ConversionPlanCache.UseProvider(dictionary);
 
