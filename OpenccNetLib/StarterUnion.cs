@@ -8,7 +8,7 @@ namespace OpenccNetLib
     /// Precomputed lookup for per-starter maximum length (cap), allowed lengths bitmask,
     /// and minimum length. The mask tracks lengths 1..64; cap/minLen can exceed 64.
     /// </summary>
-    public sealed class StarterUnion
+    internal sealed class StarterUnion
     {
         // max length per starter character (UTF-16 code units)
         private readonly ushort[] _cap = new ushort[char.MaxValue + 1];
