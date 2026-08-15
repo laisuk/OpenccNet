@@ -156,10 +156,13 @@ public class OpenccInstanceCustomDictionaryTests
         var ordinaryByEnum = new Opencc(OpenccConfig.S2T);
         var ordinaryByName = new Opencc("s2t");
 
-        Assert.IsNull(GetPrivateField<CustomDictSpec[]>(ordinaryByEnum, "_customDictSpecs"));
-        Assert.IsNull(GetPrivateField<ConversionPlanCache>(ordinaryByEnum, "_planCache"));
-        Assert.IsNull(GetPrivateField<CustomDictSpec[]>(ordinaryByName, "_customDictSpecs"));
-        Assert.IsNull(GetPrivateField<ConversionPlanCache>(ordinaryByName, "_planCache"));
+        Assert.IsNull(GetPrivateField<ConversionPlanCache>(
+            ordinaryByEnum,
+            "_planCache"));
+
+        Assert.IsNull(GetPrivateField<ConversionPlanCache>(
+            ordinaryByName,
+            "_planCache"));
     }
 
     [TestMethod]

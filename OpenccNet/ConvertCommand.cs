@@ -244,11 +244,12 @@ internal static class ConvertCommand
                     "DeTofu mapping file");
             }
 
-            CliUtils.ApplyCustomDictionaryProvider(customDicts);
+            var customSpecs =
+                CliUtils.ParseAndValidateCustomDictSpecs(customDicts);
 
-            var opencc = new Opencc(config);
-
-            opencc.SetPreserveIds(keepIds);
+            var opencc = customSpecs.Length == 0
+                ? new Opencc(config, keepIds)
+                : new Opencc(config, customSpecs, keepIds);
 
             var inputStr = await ReadInputAsync(inputFile, inputEnc);
             if (normCompat)

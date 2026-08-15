@@ -215,7 +215,7 @@ internal static class PdfCommand
                 cancellationToken);
 
             FinishProgressLine(ref progressLineActive);
-            
+
             finalText = Opencc.NormalizeUnicodeCompat(finalText);
 
             if (reflow)
@@ -374,9 +374,12 @@ internal static class PdfCommand
         string[] customDictArgs)
     {
         // Custom provider selection must happen before Opencc construction.
-        CliUtils.ApplyCustomDictionaryProvider(customDictArgs);
+        var customSpecs =
+            CliUtils.ParseAndValidateCustomDictSpecs(customDictArgs);
 
-        var converter = new Opencc(config);
+        var converter = customSpecs.Length == 0
+            ? new Opencc(config)
+            : new Opencc(config, customSpecs);
 
         if (normCompat)
             text = converter.NormalizeCompat(text);

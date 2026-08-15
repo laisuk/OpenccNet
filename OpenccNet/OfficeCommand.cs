@@ -160,9 +160,12 @@ internal static class OfficeCommand
                 resolvedOutput);
 
             // Custom provider selection must happen before Opencc construction.
-            CliUtils.ApplyCustomDictionaryProvider(customDictArgs);
+            var customSpecs =
+                CliUtils.ParseAndValidateCustomDictSpecs(customDictArgs);
 
-            var converter = new Opencc(config);
+            var converter = customSpecs.Length == 0
+                ? new Opencc(config)
+                : new Opencc(config, customSpecs);
 
             var (success, message) =
                 await OfficeConverter.ConvertOfficeDocAsync(

@@ -759,6 +759,13 @@ Choose the API according to the required scope:
 | `new Opencc(config, specs)`                       | Isolated per-instance dictionary snapshot and internal cache           |
 | `cc.WithCustomDictionary(specs)`                  | New isolated instance; the source instance is unchanged                |
 
+`new Opencc(config, specs)` accepts either a configuration name or an `OpenccConfig` value:
+
+```csharp
+var cc1 = new Opencc("s2t", specs);
+var cc2 = new Opencc(OpenccConfig.S2T, specs);
+```
+
 #### Portable custom-dictionary specifications
 
 A portable custom-dictionary token has this grammar:

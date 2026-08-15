@@ -501,18 +501,6 @@ namespace OpenccNetLib
         private OpenccConfig _configId = DefaultConfigId;
 
         /// <summary>
-        /// Retains the materialized custom dictionary specifications for the lifetime
-        /// of an instance that was explicitly created with custom dictionaries.
-        /// </summary>
-        /// <remarks>
-        /// This field is <see langword="null"/> for ordinary instances. Retaining the
-        /// array records the instance's custom-dictionary identity across
-        /// <see cref="SetConfig(OpenccConfig)"/> and <see cref="Config"/> changes; all
-        /// configurations continue to use the same instance-owned dictionary snapshot.
-        /// </remarks>
-        private readonly CustomDictSpec[] _customDictSpecs;
-
-        /// <summary>
         /// Holds the isolated conversion-plan cache for an instance created with custom
         /// dictionary specifications.
         /// </summary>
@@ -1060,9 +1048,61 @@ namespace OpenccNetLib
             if (customDictSpecs == null)
                 throw new ArgumentNullException(nameof(customDictSpecs));
 
-            _customDictSpecs = new List<CustomDictSpec>(customDictSpecs).ToArray();
-            _planCache = new ConversionPlanCache(ConversionPlanCache.Provider, _customDictSpecs);
+            var specs = new List<CustomDictSpec>(customDictSpecs).ToArray();
+            _planCache = new ConversionPlanCache(ConversionPlanCache.Provider, specs);
             SetConfigInternal(configEnum, false);
+            IsPreserveIds = isPreserveIds;
+        }
+
+        /// <summary>
+        /// Initializes a new <see cref="Opencc"/> instance with an isolated custom
+        /// dictionary set using the specified configuration name.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The specification sequence is enumerated exactly once and retained for this
+        /// instance's lifetime. The custom dictionary is built from a snapshot of the
+        /// currently active dictionary provider plus the supplied specifications and
+        /// uses an isolated conversion-plan cache.
+        /// </para>
+        /// <para>
+        /// Construction does not modify the active global provider. Subsequent global
+        /// provider changes do not affect this instance, and configuration changes reuse
+        /// the same isolated custom dictionary snapshot.
+        /// </para>
+        /// </remarks>
+        /// <param name="config">
+        /// The OpenCC conversion configuration name.
+        /// </param>
+        /// <param name="customDictSpecs">
+        /// Custom dictionary specifications applied in enumeration order to the active
+        /// dictionary snapshot.
+        /// </param>
+        /// <param name="isPreserveIds">
+        /// Whether to preserve complete Unicode IDS expressions during conversion.
+        /// Default: <see langword="false"/>.
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="config"/> is null, empty, or not a supported configuration.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="customDictSpecs"/> is <see langword="null"/>.
+        /// </exception>
+        public Opencc(
+            string config,
+            IEnumerable<CustomDictSpec> customDictSpecs,
+            bool isPreserveIds = false)
+        {
+            if (customDictSpecs == null)
+                throw new ArgumentNullException(nameof(customDictSpecs));
+
+            var specs = new List<CustomDictSpec>(customDictSpecs).ToArray();
+
+            _planCache = new ConversionPlanCache(
+                ConversionPlanCache.Provider,
+                specs);
+
+            SetConfigInternal(config, true);
             IsPreserveIds = isPreserveIds;
         }
 
@@ -1937,7 +1977,7 @@ namespace OpenccNetLib
         /// </returns>
         private DictRefs GetDictRefs(OpenccConfig configEnum, bool punctuation)
         {
-            return _customDictSpecs != null
+            return _planCache != null
                 ? _planCache.GetPlan(configEnum, punctuation)
                 : ConversionPlanCache.Current.GetPlan(configEnum, punctuation);
         }

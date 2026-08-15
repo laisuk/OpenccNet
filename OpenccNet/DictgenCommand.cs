@@ -124,8 +124,9 @@ internal static class DictgenCommand
             CliUtils.WriteInfo(
                 $"Loading base dictionaries from '{baseDirectory}'...");
 
-            // Dictgen regenerates the complete provider from raw source files.
-            // Do not replace this with DictionaryLib.New().
+            // Dictgen always regenerates from the requested raw .txt source directory.
+            // It is intentionally independent of DictionaryLib.Provider and the active
+            // ConversionPlanCache provider.
             var dictionary = DictionaryLib.FromDicts(baseDirectory);
 
             if (customSpecs.Length > 0)
