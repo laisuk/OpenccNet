@@ -10,7 +10,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Update DeTofu table data
+- Update DeToFu table data.
+- Internalize `ConversionPlanCache`, `DictRefs`, and `StarterUnion`; these conversion-planning and acceleration types
+  are implementation details and are no longer part of the public API surface.
+- Centralize active dictionary provider and conversion-plan cache ownership in `ConversionPlanCache`.
+- Keep `DictionaryLib.Provider` as the public built-in/default dictionary provider, independent of the currently active
+  conversion dictionary.
+- Simplify `Opencc.UseCustomDictionary()` and `Opencc.UseDefaultDictionary()` to switch the active provider directly
+  through the internal conversion-plan cache.
+- Consolidate internal conversion-plan lookup so `Opencc` uses a single `ConversionPlanCache.GetPlan()` path.
+- Remove redundant `DictionaryLib` forwarding APIs for active-provider and plan-cache management.
+
+### Compatibility
+
+- Existing high-level dictionary and conversion APIs remain available through `DictionaryLib` and `Opencc`.
+- `DictionaryLib.Provider` continues to expose the built-in default dictionary.
+- Applications using only the documented `Opencc` and `DictionaryLib` APIs require no changes.
+- Code directly referencing the previously public `ConversionPlanCache`, `DictRefs`, or `StarterUnion` types must
+  migrate to the supported high-level APIs.
 
 ---
 

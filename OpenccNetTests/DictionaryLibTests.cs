@@ -137,28 +137,28 @@ public class DictionaryLibTests
     [DoNotParallelize]
     public void TestPlanCache_PublicCompatibilityTracksAtomicProviderReplacement()
     {
-        DictionaryLib.ResetDictionaryProviderToDefault();
+        ConversionPlanCache.ResetProvider();
 
         var provider = DictionaryLib.Provider;
-        var previousCache = DictionaryLib.PlanCache;
+        var previousCache = ConversionPlanCache.Current;
         var previousPlan = previousCache.GetPlan(OpenccConfig.S2T);
 
         try
         {
-            DictionaryLib.SetDictionaryProvider(provider);
+            ConversionPlanCache.UseProvider(provider);
 
-            var currentCache = DictionaryLib.PlanCache;
+            var currentCache = ConversionPlanCache.Current;
             var currentPlan = currentCache.GetPlan(OpenccConfig.S2T);
 
             Assert.AreNotSame(previousCache, currentCache);
             Assert.AreNotSame(previousPlan, currentPlan);
             Assert.AreSame(currentPlan, currentCache.GetPlan(OpenccConfig.S2T));
-            Assert.AreSame(provider, DictionaryLib.GetActiveProvider());
+            Assert.AreSame(provider, ConversionPlanCache.Provider);
             Assert.AreEqual("漢字", new Opencc(OpenccConfig.S2T).Convert("汉字"));
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -274,7 +274,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -592,7 +592,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -622,7 +622,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -895,7 +895,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -912,7 +912,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -954,7 +954,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -984,7 +984,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 
@@ -1019,7 +1019,7 @@ public class DictionaryLibTests
         }
         finally
         {
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
     }
 

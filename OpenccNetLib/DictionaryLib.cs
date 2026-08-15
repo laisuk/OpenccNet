@@ -291,20 +291,9 @@ namespace OpenccNetLib
         private static readonly Lazy<DictionaryMaxlength> DefaultLib =
             new Lazy<DictionaryMaxlength>(() => FromZstd(), isThreadSafe: true);
 
-
-        /// <summary>
-        /// Gets the active global cache for precomputed conversion plans.
-        /// </summary>
-        /// <remarks>
-        /// Internal compatibility accessor for tests and in-assembly call sites.
-        /// Active cache ownership belongs to <see cref="ConversionPlanCache"/>.
-        /// </remarks>
-        internal static ConversionPlanCache PlanCache => ConversionPlanCache.Current;
-
         // --------------------------------------------------------------------------------
         // Public accessors and provider management
         // --------------------------------------------------------------------------------
-
 
         /// <summary>
         /// Gets the built-in default singleton <see cref="DictionaryMaxlength"/> instance.
@@ -322,17 +311,6 @@ namespace OpenccNetLib
         /// The built-in default <see cref="DictionaryMaxlength"/> instance.
         /// </returns>
         public static DictionaryMaxlength Provider => DefaultLib.Value;
-
-        /// <summary>
-        /// Returns the dictionary instance supplied by the currently active provider delegate
-        /// for constructing new conversion plans.
-        /// </summary>
-        /// <remarks>
-        /// Internal compatibility accessor. The active provider belongs to
-        /// <see cref="ConversionPlanCache"/>; the public dictionary accessor remains
-        /// <see cref="Provider"/> for the built-in default dictionary.
-        /// </remarks>
-        internal static DictionaryMaxlength GetActiveProvider() => ConversionPlanCache.Provider;
 
         /// <summary>
         /// Returns the default singleton dictionary instance and resets the active
@@ -359,42 +337,6 @@ namespace OpenccNetLib
         {
             ConversionPlanCache.ResetProvider();
             return Provider;
-        }
-
-        /// <summary>
-        /// Replaces the active dictionary source used for constructing new conversion plans.
-        /// </summary>
-        /// <remarks>
-        /// Internal bridge for existing in-assembly call sites. Provider/cache ownership
-        /// belongs to <see cref="ConversionPlanCache"/>.
-        /// </remarks>
-        private static void SetDictionaryProvider(Func<DictionaryMaxlength> provider)
-        {
-            if (provider is null)
-                throw new ArgumentNullException(nameof(provider));
-
-            ConversionPlanCache.PublishProvider(provider);
-        }
-
-        /// <summary>
-        /// Restores the active dictionary source used for plan construction to the
-        /// built-in default dictionary.
-        /// </summary>
-        internal static void ResetDictionaryProviderToDefault()
-        {
-            ConversionPlanCache.ResetProvider();
-        }
-
-        /// <summary>
-        /// Replaces the active dictionary source for plan construction using a fixed
-        /// <see cref="DictionaryMaxlength"/> instance.
-        /// </summary>
-        internal static void SetDictionaryProvider(DictionaryMaxlength dictionary)
-        {
-            if (dictionary == null)
-                throw new ArgumentNullException(nameof(dictionary));
-
-            ConversionPlanCache.UseProvider(dictionary);
         }
 
         /// <summary>
@@ -653,8 +595,7 @@ namespace OpenccNetLib
         /// <para>
         /// These slot names form the stable internal dictionary contract used by
         /// <see cref="DictionaryMaxlength"/>, <c>DictRefs</c>, starter indexes,
-        /// and future acceleration structures such as <c>StarterUnion</c>
-        /// and <c>UnionCache</c>.
+        /// and the starter-union caches owned by <see cref="ConversionPlanCache"/>.
         /// </para>
         ///
         /// <para>
@@ -751,8 +692,8 @@ namespace OpenccNetLib
         ///
         /// <para>
         /// Slot names form part of the internal OpenCC dictionary contract used by
-        /// <c>DictRefs</c>, starter indexes, and future acceleration structures such
-        /// as <c>StarterUnion</c> and <c>UnionCache</c>.
+        /// <c>DictRefs</c>, starter indexes, and the starter-union caches owned by
+        /// <see cref="ConversionPlanCache"/>.
         /// </para>
         ///
         /// <para>
@@ -822,8 +763,8 @@ namespace OpenccNetLib
         ///
         /// <para>
         /// Slot names form part of the internal OpenCC dictionary contract used by
-        /// <c>DictRefs</c>, starter indexes, and future acceleration structures such
-        /// as <c>StarterUnion</c> and <c>UnionCache</c>.
+        /// <c>DictRefs</c>, starter indexes, and the starter-union caches owned by
+        /// <see cref="ConversionPlanCache"/>.
         /// </para>
         ///
         /// <para>
@@ -900,9 +841,8 @@ namespace OpenccNetLib
         /// <para>
         /// After merging, dictionary metadata is fully rebuilt to ensure that
         /// maximum phrase lengths, starter masks, and derived acceleration metadata
-        /// remain consistent for <c>DictRefs</c>, starter indexes, and future
-        /// acceleration structures such as <c>StarterUnion</c>
-        /// and <c>UnionCache</c>.
+        /// remain consistent for <c>DictRefs</c>, starter indexes, and the
+        /// starter-union caches owned by <see cref="ConversionPlanCache"/>.
         /// </para>
         /// </summary>
         /// <param name="d">
@@ -950,8 +890,7 @@ namespace OpenccNetLib
         /// This is important for custom dictionary append mode because newly appended
         /// entries may introduce longer phrases, new starter characters, or new length
         /// buckets. Rebuilding keeps the slot safe for <c>DictRefs</c>, starter indexes,
-        /// and future acceleration structures such as <c>StarterUnion</c> and
-        /// <c>UnionCache</c>.
+        /// and the starter-union caches owned by <see cref="ConversionPlanCache"/>.
         /// </para>
         /// </summary>
         /// <param name="d">
@@ -1023,9 +962,8 @@ namespace OpenccNetLib
         /// <para>
         /// Unknown custom dictionary slots throw an
         /// <see cref="ArgumentException"/> to preserve the internal OpenCC slot
-        /// contract used by <c>DictRefs</c>, starter indexes, and future
-        /// acceleration structures such as <c>StarterUnion</c> and
-        /// <c>UnionCache</c>.
+        /// contract used by <c>DictRefs</c>, starter indexes, and the starter-union
+        /// caches owned by <see cref="ConversionPlanCache"/>.
         /// </para>
         /// </remarks>
         /// <exception cref="FileNotFoundException">

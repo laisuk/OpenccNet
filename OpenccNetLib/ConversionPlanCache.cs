@@ -187,15 +187,6 @@ namespace OpenccNetLib
         internal static ConversionPlanCache Current => Volatile.Read(ref _current);
 
         /// <summary>
-        /// Retrieves a plan from the process-wide active cache.
-        /// </summary>
-        /// <param name="config">The OpenCC conversion configuration.</param>
-        /// <param name="punctuation">Whether punctuation dictionaries are included.</param>
-        /// <returns>The cached or newly constructed conversion plan.</returns>
-        internal static DictRefs GetCurrentPlan(OpenccConfig config, bool punctuation = false)
-            => Current.GetPlan(config, punctuation);
-
-        /// <summary>
         /// Returns the dictionary supplied by the provider bound to the active cache snapshot.
         /// </summary>
         internal static DictionaryMaxlength Provider

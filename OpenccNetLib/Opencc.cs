@@ -803,7 +803,7 @@ namespace OpenccNetLib
         /// (such as starter masks and plan caches) are ready for immediate use.
         ///
         /// Optionally, a brief warm-up block can be enabled to trigger JIT compilation,  
-        /// tiered PGO optimization, and initialization of global <see cref="DictionaryLib.PlanCache"/>  
+        /// tiered PGO optimization, and initialization of global <see cref="ConversionPlanCache"/>
         /// entries for the most common conversion paths (<c>S2T</c> and <c>T2S</c>).
         ///
         /// Uncomment the warm-up section below if you wish to minimize first-use latency in  
@@ -815,7 +815,7 @@ namespace OpenccNetLib
             var dict = DictionaryLib.New(); // Load default configuration
             InitializeLazyLoaders(dict); // Initialize with the default dictionary
 
-            // Optional warm-up for JIT + Tiered PGO + PlanCache.
+            // Optional warm-up for JIT + Tiered PGO + conversion-plan caching.
             // --------------------------------------------------
             // Uncomment the section below to pre-cache hot paths
             // (recommended for GUI or service applications).
@@ -848,7 +848,7 @@ namespace OpenccNetLib
         /// <summary>
         /// Overrides the default OpenCC planning source with a custom  
         /// <see cref="DictionaryMaxlength"/> instance by updating the global  
-        /// <see cref="DictionaryLib.PlanCache"/> provider and clearing all cached plans.  
+        /// <see cref="ConversionPlanCache"/> provider and clearing all cached plans.
         /// </summary>
         /// <remarks>
         /// Call this method to apply a custom dictionary at runtime for specialized  
@@ -861,7 +861,7 @@ namespace OpenccNetLib
         /// </para>
         /// <para>
         /// Thread-safe: the provider swap publishes a fresh global
-        /// <see cref="DictionaryLib.PlanCache"/>, discarding previously cached plans and
+        /// <see cref="ConversionPlanCache"/>, discarding previously cached plans and
         /// starter-union state so that new conversions use the custom provider.
         /// Existing conversions already in progress will continue using their  
         /// previously built plans.  
@@ -881,12 +881,12 @@ namespace OpenccNetLib
 
             // Swap only the plan cache provider and clear caches.
             // The default dictionary (DefaultLib.Value) remains intact.
-            DictionaryLib.SetDictionaryProvider(customDictionary);
+            ConversionPlanCache.UseProvider(customDictionary);
         }
 
         /// <summary>
         /// Restores the global dictionary provider to the default built-in instance  
-        /// and publishes a fresh <see cref="DictionaryLib.PlanCache"/>.
+        /// and publishes a fresh <see cref="ConversionPlanCache"/>.
         /// </summary>
         /// <remarks>
         /// Call this method to revert the active dictionary provider back to the default  
@@ -904,12 +904,12 @@ namespace OpenccNetLib
         public static void UseDefaultDictionary()
         {
             // Restore the default provider and clear the plan cache.
-            DictionaryLib.ResetDictionaryProviderToDefault();
+            ConversionPlanCache.ResetProvider();
         }
 
         /// <summary>
         /// Overrides the planning source by loading a dictionary from a specified path
-        /// and applying it to <see cref="DictionaryLib.PlanCache"/>.
+        /// and applying it to <see cref="ConversionPlanCache"/>.
         /// </summary>
         /// <remarks>
         /// Leaves the default lazy dictionary untouched. Subsequent conversions build plans
@@ -926,7 +926,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Overrides the planning source by parsing a JSON representation of
-        /// <see cref="DictionaryMaxlength"/> and applying it to <see cref="DictionaryLib.PlanCache"/>.
+        /// <see cref="DictionaryMaxlength"/> and applying it to <see cref="ConversionPlanCache"/>.
         /// </summary>
         /// <remarks>
         /// Leaves the default lazy dictionary untouched. Subsequent conversions build plans
@@ -1822,7 +1822,7 @@ namespace OpenccNetLib
         /// and lookup tables for the given configuration.
         /// </returns>
         private static DictRefs GetDictRefs(OpenccConfig configEnum, bool punctuation)
-            => ConversionPlanCache.GetCurrentPlan(configEnum, punctuation);
+            => ConversionPlanCache.Current.GetPlan(configEnum, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.
