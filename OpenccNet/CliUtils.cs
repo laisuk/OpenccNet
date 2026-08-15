@@ -109,11 +109,13 @@ internal static class CliUtils
             if (spec.Paths is null)
                 continue;
 
-            foreach (var path in spec.Paths)
-                ValidateInputFile(
-                    path,
+            for (var i = 0; i < spec.Paths.Length; i++)
+            {
+                spec.Paths[i] = ValidateInputFile(
+                    spec.Paths[i],
                     "Custom dictionary file",
                     relativeToAppBase: true);
+            }
         }
     }
 
