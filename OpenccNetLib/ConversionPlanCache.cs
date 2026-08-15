@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace OpenccNetLib
 {
-    // ---- Public-facing cache facade -------------------------------------------------------------
+    // ---- Internal cache facade ------------------------------------------------------------------
 
     /// <summary>
     /// Centralized cache for fully-built conversion plans and their  
@@ -36,7 +36,7 @@ namespace OpenccNetLib
     /// </item>
     /// </list>
     /// </remarks>
-    public sealed class ConversionPlanCache
+    internal sealed class ConversionPlanCache
     {
         /// <summary>
         /// The process-wide cache used by the <see cref="Opencc"/> conversion facade.
@@ -44,7 +44,7 @@ namespace OpenccNetLib
         /// <remarks>
         /// Provider changes publish a completely new cache instance so a plan and the
         /// dictionary provider from which it is built always belong to the same snapshot.
-        /// Existing callers that retain the previous public cache instance may safely
+        /// Existing conversions that retain the previous cache instance may safely
         /// finish using that instance.
         /// </remarks>
         private static ConversionPlanCache _current =
@@ -165,7 +165,7 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// The provider is fixed for the lifetime of this cache instance. Dictionary source
-        /// changes are applied by publishing a fresh global cache through <see cref="DictionaryLib"/>.
+        /// changes are applied by publishing a fresh global cache.
         /// </remarks>
         private readonly Func<DictionaryMaxlength> _dictionaryProvider;
 
@@ -184,10 +184,6 @@ namespace OpenccNetLib
         /// <summary>
         /// Gets the process-wide cache currently used by the conversion facade.
         /// </summary>
-        /// <remarks>
-        /// This internal accessor also preserves the existing public
-        /// <see cref="DictionaryLib.PlanCache"/> compatibility property in the v1.x API.
-        /// </remarks>
         internal static ConversionPlanCache Current => Volatile.Read(ref _current);
 
         /// <summary>
@@ -202,12 +198,36 @@ namespace OpenccNetLib
         /// <summary>
         /// Returns the dictionary supplied by the provider bound to the active cache snapshot.
         /// </summary>
-        /// <returns>The active dictionary instance.</returns>
-        internal static DictionaryMaxlength GetCurrentDictionary()
+        internal static DictionaryMaxlength Provider
         {
-            var current = Current;
-            return current._dictionaryProvider();
+            get
+            {
+                var current = Current;
+                return current._dictionaryProvider();
+            }
         }
+
+        /// <summary>
+        /// Compatibility helper for existing in-assembly call sites.
+        /// </summary>
+        internal static DictionaryMaxlength GetCurrentDictionary() => Provider;
+
+        /// <summary>
+        /// Publishes a fresh process-wide cache bound to a fixed dictionary instance.
+        /// </summary>
+        internal static void UseProvider(DictionaryMaxlength dictionary)
+        {
+            if (dictionary == null)
+                throw new ArgumentNullException(nameof(dictionary));
+
+            PublishProvider(() => dictionary);
+        }
+
+        /// <summary>
+        /// Restores the process-wide cache to the built-in default dictionary provider.
+        /// </summary>
+        internal static void ResetProvider()
+            => PublishProvider(() => DictionaryLib.Provider);
 
         /// <summary>
         /// Atomically publishes a fresh process-wide cache bound to
@@ -242,14 +262,13 @@ namespace OpenccNetLib
         /// <para>
         /// A cache instance remains bound to this provider for its entire lifetime. The
         /// library's internal global lifecycle publishes a fresh instance when the active
-        /// dictionary changes; independently constructed public instances are unaffected.
-        /// Existing cache instances continue using their original provider.
+        /// dictionary changes. Existing cache instances continue using their original provider.
         /// </para>
         /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="dictionaryProvider"/> is <see langword="null"/>.
         /// </exception>
-        public ConversionPlanCache(Func<DictionaryMaxlength> dictionaryProvider)
+        internal ConversionPlanCache(Func<DictionaryMaxlength> dictionaryProvider)
         {
             _dictionaryProvider = dictionaryProvider ?? throw new ArgumentNullException(nameof(dictionaryProvider));
         }
@@ -266,11 +285,11 @@ namespace OpenccNetLib
         /// A <see cref="DictRefs"/> containing the ordered dictionaries and  
         /// per-round <see cref="StarterUnion"/> instances.
         /// </returns>
-        public DictRefs GetPlan(OpenccConfig config, bool punctuation = false)
+        internal DictRefs GetPlan(OpenccConfig config, bool punctuation = false)
             => _planCache.GetOrAdd(new PlanKey(config, punctuation), _ => BuildPlan(config, punctuation));
 
         /// <summary>Clear all plan and union caches (e.g., after hot-reloading dictionaries).</summary>
-        public void Clear()
+        internal void Clear()
         {
             _planCache.Clear();
             _unionCacheByKey.Clear();
@@ -796,17 +815,7 @@ namespace OpenccNetLib
         // - This file assumes existing types in your project:
         //   - OpenccConfig (enum), DictRefs (rounds with optional StarterUnion args), DictWithMaxLength,
         //     StarterUnion (with static Build(IReadOnlyList<DictWithMaxLength>)), and DictionaryMaxlength.
-        // - Inject your lazy dictionary via the constructor: () => _lazyDictionary.Value
         // - Thread-safe: both caches use ConcurrentDictionary, and StarterUnion is immutable after Build().
-        // - To hot-reload dictionaries: rebuild DictionaryMaxlength, then call cache.Clear().
-        //
-        // - Secondary cache now keyed by UnionKey instead of RoundKey:
-        //     Each UnionKey represents a predefined logical slot (e.g., S2T, TwRevPair, HkRevPair),
-        //     allowing all conversion plans to share the same StarterUnion instance per slot.
-        // - BuildDicts(DictionaryMaxlength, UnionKey) defines which dictionaries belong to each slot.
-        // - GetOrAddUnionFor() ensures that identical slots reuse an existing StarterUnion
-        //   and remains .NET Standard 2.0-compatible (no lambda captures of out parameters).
-        // - Primary cache (_planCache) maps (OpenccConfig, punctuation) → DictRefs, ensuring
-        //   complete plan reuse across conversions with identical configuration.
+        // - Secondary cache keyed by UnionKey instead of RoundKey.
     }
 }

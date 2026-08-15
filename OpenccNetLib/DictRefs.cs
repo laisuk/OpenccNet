@@ -36,7 +36,7 @@ namespace OpenccNetLib
     /// at a time.  The output of each round becomes the input to the next.
     /// </para>
     /// </remarks>
-    public sealed class DictRefs
+    internal sealed class DictRefs
     {
         /// <summary>
         /// Internal container for a single conversion round.
