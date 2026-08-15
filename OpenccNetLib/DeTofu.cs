@@ -196,7 +196,7 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This method uses cached built-in fallback mappings loaded from
-        /// <c>dicts/TSCharactersTofu.txt</c>. To add or override mappings, build a reusable
+        /// <c>dicts/CharactersTofu.txt</c>. To add or override mappings, build a reusable
         /// <see cref="DeTofuMap"/> with <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>.
         /// </para>
         /// <para>
@@ -271,7 +271,7 @@ namespace OpenccNetLib
         private static string GetBuiltinTofuPath()
         {
             var baseDir = AppContext.BaseDirectory;
-            return Path.Combine(baseDir, "dicts", "TSCharactersTofu.txt");
+            return Path.Combine(baseDir, "dicts", "CharactersTofu.txt");
         }
 
         /// <summary>
@@ -455,7 +455,7 @@ namespace OpenccNetLib
     /// <para>
     /// <see cref="DeTofuMap"/> is useful when callers want to build a fallback table once
     /// and reuse it across many strings, or layer application-specific fallback data on top
-    /// of the built-in mappings from <c>dicts/TSCharactersTofu.txt</c>.
+    /// of the built-in mappings from <c>dicts/CharactersTofu.txt</c>.
     /// </para>
     /// <para>
     /// Custom files and custom pairs are applied after the built-in mappings. Later mappings
@@ -482,7 +482,7 @@ namespace OpenccNetLib
         /// Builds a DeTofu map from the library's built-in compatibility data.
         /// </summary>
         /// <remarks>
-        /// Built-in mappings are loaded from <c>dicts/TSCharactersTofu.txt</c>. Only entries
+        /// Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>. Only entries
         /// at or above the specified threshold are included. For example,
         /// <see cref="DeTofuLevel.ExtB"/> includes mapped Extension B and later entries, while
         /// <see cref="DeTofuLevel.ExtI"/> includes mapped Extension I entries only.

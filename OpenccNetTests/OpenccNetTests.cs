@@ -161,7 +161,7 @@ public class OpenccNetTests
         var actualTraditional = opencc.Hk2T(hongkong);
         Assert.AreEqual(expectedTraditional, actualTraditional);
     }
-    
+
     [TestMethod]
     public void T2HKP_WithPunctConversion()
     {
@@ -397,6 +397,21 @@ public class OpenccNetTests
     }
 
     [TestMethod]
+    public void TestOpenccS2TDeTofu()
+    {
+        var cc = new Opencc(OpenccConfig.S2T);
+
+        var output = cc.DeTofu(
+            cc.Convert(
+                "㓆䘞"),
+            DeTofuLevel.ExtB);
+
+        Assert.AreEqual(
+            "㓆䘞",
+            output);
+    }
+
+    [TestMethod]
     public void TestDeTofuWithCustomFileOverridesBuiltin()
     {
         var path = Path.GetTempFileName();
@@ -456,7 +471,7 @@ public class OpenccNetTests
 
         Assert.AreEqual("氂毛 骖騑", output);
     }
-    
+
     [TestMethod]
     public void TestDeTofuBuiltinReturnsIndependentMutableClone()
     {
@@ -523,7 +538,7 @@ public class OpenccNetTests
 
         Assert.AreEqual("abc金庸123", cc.NormalizeCompat("abc金庸123"));
     }
-    
+
     [TestMethod]
     public void NormalizeCompat_Golden()
     {

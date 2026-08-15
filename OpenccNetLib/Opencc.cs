@@ -2440,7 +2440,7 @@ namespace OpenccNetLib
         /// <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>,
         /// <see cref="DeTofuMap.WithCustomFile(string)"/>, and
         /// <see cref="DeTofuMap.Convert(string)"/>.
-        /// Built-in mappings are loaded from <c>dicts/TSCharactersTofu.txt</c>.
+        /// Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>.
         /// </para>
         /// <para>
         /// Custom mappings are applied after the built-in table. If the same tofu-risk character exists
@@ -2491,7 +2491,7 @@ namespace OpenccNetLib
         /// <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>,
         /// <see cref="DeTofuMap.WithCustomPairs(IEnumerable{KeyValuePair{string, string}})"/>,
         /// and <see cref="DeTofuMap.Convert(string)"/>.
-        /// Built-in mappings are loaded from <c>dicts/TSCharactersTofu.txt</c>.
+        /// Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>.
         /// </para>
         /// <para>
         /// Custom mappings are applied after the built-in table. If the same tofu-risk character exists

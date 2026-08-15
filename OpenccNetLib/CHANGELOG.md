@@ -6,6 +6,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.7.0] - Unreleased
+
+### Changed
+
+- Update DeTofu table data
+
+---
+
 ## [1.6.2] - 2026-08-15
 
 ### Added
