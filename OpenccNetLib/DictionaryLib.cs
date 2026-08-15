@@ -14,94 +14,48 @@ namespace OpenccNetLib
 {
     /// <summary>
     /// Represents a dictionary with string keys and values plus derived key-length metadata.
-    /// Used for efficient word/phrase lookup in OpenCC conversion.
     /// </summary>
     public class DictWithMaxLength
     {
-        /// <summary>
-        /// The mapping of keys to values for conversion.
-        /// </summary>
         [JsonInclude]
-        public Dictionary<string, string> Dict { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+        public Dictionary<string, string> Dict { get; set; } =
+            new Dictionary<string, string>(StringComparer.Ordinal);
 
-        /// <summary>
-        /// The maximum length, in UTF-16 code units, of any key in the dictionary.
-        /// Used for optimizing longest-match lookups.
-        /// </summary>
         [JsonInclude]
         public int MaxLength { get; set; }
 
-        /// <summary>
-        /// The minimum length, in UTF-16 code units, of any key in the dictionary.
-        /// Used for optimizing longest-match lookups.
-        /// </summary>
         [JsonInclude]
         public int MinLength { get; set; }
 
-        /// <summary>
-        /// Bitmask tracking which key lengths (1..64 UTF-16 code units) exist in <see cref="Dict"/>.
-        /// Helps skip impossible probes in hot lookup paths.
-        /// </summary>
         [JsonInclude]
         public ulong LengthMask { get; set; }
 
-        /// <summary>
-        /// Tracks key lengths &gt; 64 UTF-16 units (rare) for completeness.
-        /// Allocated lazily to avoid overhead when not needed.
-        /// </summary>
         [JsonInclude]
         public HashSet<int> LongLengths { get; set; }
 
-        /// <summary>
-        /// Per-starter mask of key lengths (1 to 64) present for that starter.
-        /// Key is UTF-16 starter:
-        ///  - 1-char for BMP
-        ///  - 2-char for surrogate-pair (high+low)
-        /// </summary>
         [JsonInclude]
         public Dictionary<string, ulong> StarterLenMask { get; set; }
 
-        /// <summary>
-        /// Attempts to get the value associated with the specified key.
-        /// Aggressively inlined for performance.
-        /// </summary>
-        /// <param name="key">The key to locate.</param>
-        /// <param name="value">The value associated with the key, if found.</param>
-        /// <returns>True if the key was found; otherwise, false.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGetValue(string key, out string value)
-        {
-            return Dict.TryGetValue(key, out value);
-        }
+            => Dict.TryGetValue(key, out value);
 
 #if NET9_0_OR_GREATER
-        /// <summary>
-        /// Attempts to get a value without materializing the span as a string.
-        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryGetValue(ReadOnlySpan<char> key, out string value)
         {
             if (Dict.TryGetAlternateLookup<ReadOnlySpan<char>>(out var lookup))
                 return lookup.TryGetValue(key, out value);
 
-            // Preserve support for callers that assign a custom comparer which
-            // does not implement alternate span equality.
             return Dict.TryGetValue(key.ToString(), out value);
         }
 #endif
 
-        /// <summary>
-        /// Determines whether the dictionary contains any key with the specified length.
-        /// </summary>
-        /// <param name="length">Target key length in UTF-16 code units.</param>
-        /// <returns>
-        /// <see langword="true"/> if the dictionary contains at least one key with
-        /// the specified length; otherwise, <see langword="false"/>.
-        /// </returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool SupportsLength(int length)
         {
-            if (length <= 0) return false;
+            if (length <= 0)
+                return false;
 
             var minLen = MinLength;
             if (minLen == 0 || length < minLen || length > MaxLength)
@@ -114,16 +68,6 @@ namespace OpenccNetLib
             return longLengths != null && longLengths.Contains(length);
         }
 
-        /// <summary>
-        /// Sets the key-length metadata that was precomputed during dictionary load
-        /// or rebuilt after dictionary mutation.
-        /// </summary>
-        /// <param name="mask">
-        /// Bitmask for key lengths from 1 through 64 UTF-16 code units.
-        /// </param>
-        /// <param name="longLengths">
-        /// Optional set of key lengths greater than 64 UTF-16 code units.
-        /// </param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void SetLengthMetadata(ulong mask, HashSet<int> longLengths)
         {
@@ -131,487 +75,107 @@ namespace OpenccNetLib
             LongLengths = longLengths;
         }
 
-        /// <summary>
-        /// Gets the number of entries in the dictionary.
-        /// </summary>
         public int Count => Dict.Count;
     }
 
+    // ReSharper disable InconsistentNaming
     /// <summary>
     /// Holds all dictionary tables used by the OpenCC conversion engine.
     /// </summary>
-    /// <remarks>
-    /// This type is a mutable data-transfer container for built-in dictionaries,
-    /// custom dictionary loading, and serialization scenarios. The snake_case
-    /// property names are part of the public API and match the dictionary payload
-    /// names used by OpenccNet and related packages.
-    /// <para>
-    /// Most consumers do not need to construct this type manually. Use
-    /// <see cref="DictionaryLib.Provider"/> for the built-in dictionary,
-    /// <see cref="DictionaryLib.FromDicts(string,IDictionary{DictSlot,string},IDictionary{DictSlot,string})"/> or
-    /// <see cref="DictionaryLib.FromJson(string)"/> to load dictionary data, and
-    /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/> to activate a
-    /// custom dictionary set.
-    /// </para>
-    /// </remarks>
-    // ReSharper disable InconsistentNaming
     public sealed class DictionaryMaxlength
     {
-        /// <summary>
-        /// Simplified-to-Traditional character mappings.
-        /// </summary>
         public DictWithMaxLength st_characters { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Simplified-to-Traditional phrase mappings.
-        /// </summary>
         public DictWithMaxLength st_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Simplified character mappings.
-        /// </summary>
         public DictWithMaxLength ts_characters { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Simplified phrase mappings.
-        /// </summary>
         public DictWithMaxLength ts_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Taiwan phrase mappings.
-        /// </summary>
         public DictWithMaxLength tw_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Taiwan-to-Traditional phrase mappings.
-        /// </summary>
         public DictWithMaxLength tw_phrases_rev { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Taiwan character variant mappings.
-        /// </summary>
         public DictWithMaxLength tw_variants { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Taiwan phrase variant mappings applied before character variants.
-        /// </summary>
         public DictWithMaxLength tw_variants_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Taiwan-to-Traditional character variant mappings.
-        /// </summary>
         public DictWithMaxLength tw_variants_rev { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Taiwan-to-Traditional phrase variant mappings.
-        /// </summary>
         public DictWithMaxLength tw_variants_rev_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Hong Kong phrase mappings.
-        /// </summary>
         public DictWithMaxLength hk_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Hong Kong-to-Traditional phrase mappings.
-        /// </summary>
         public DictWithMaxLength hk_phrases_rev { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Hong Kong character variant mappings.
-        /// </summary>
         public DictWithMaxLength hk_variants { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Hong Kong phrase variant mappings applied before character variants.
-        /// </summary>
         public DictWithMaxLength hk_variants_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Hong Kong-to-Traditional character variant mappings.
-        /// </summary>
         public DictWithMaxLength hk_variants_rev { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Hong Kong-to-Traditional phrase variant mappings.
-        /// </summary>
         public DictWithMaxLength hk_variants_rev_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Japanese Shinjitai-to-Traditional Kyujitai character mappings.
-        /// </summary>
         public DictWithMaxLength jps_characters { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional Kyujitai-to-Japanese Shinjitai character mappings.
-        /// </summary>
         public DictWithMaxLength jps_characters_rev { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.
-        /// </summary>
         public DictWithMaxLength jps_phrases { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Simplified-to-Traditional punctuation mappings.
-        /// </summary>
         public DictWithMaxLength st_punctuations { get; set; } = new DictWithMaxLength();
-
-        /// <summary>
-        /// Traditional-to-Simplified punctuation mappings.
-        /// </summary>
         public DictWithMaxLength ts_punctuations { get; set; } = new DictWithMaxLength();
     }
     // ReSharper restore InconsistentNaming
 
     /// <summary>
-    /// Provides centralized access to the built-in default dictionary and the global
-    /// conversion plan cache used by all OpenCC conversions.
+    /// Dictionary loading, customization, and serialization helpers.
+    /// <see cref="Provider"/> is always the built-in default dictionary.
+    /// Runtime active-provider ownership belongs to the internal
+    /// <see cref="ConversionPlanCache"/>.
     /// </summary>
-    /// <remarks>
-    /// This class exposes a lazily loaded, process-wide default
-    /// <see cref="DictionaryMaxlength"/> instance (<see cref="Provider"/>) and a global
-    /// <see cref="ConversionPlanCache"/> (<see cref="PlanCache"/>) that caches precomputed
-    /// <see cref="DictRefs"/> plans.
-    /// <para>
-    /// The global <see cref="PlanCache"/> is the <b>active planning source of truth</b>
-    /// for conversions: all conversion paths obtain <see cref="DictRefs"/> from this cache.
-    /// To apply a custom dictionary source, a fresh <see cref="ConversionPlanCache"/>
-    /// snapshot bound to that provider is published atomically, discarding plans and
-    /// starter-union state derived from the previous source and preventing mixed or
-    /// inconsistent data.
-    /// </para>
-    /// <para>
-    /// The built-in default dictionary singleton remains intact and reusable regardless
-    /// of provider swaps. Custom dictionary instances are not cloned or modified; they are
-    /// used directly as the source for subsequent plan construction.
-    /// </para>
-    /// </remarks>
     public static class DictionaryLib
     {
-        // --------------------------------------------------------------------------------
-        // Lazy loader for the default dictionary
-        // --------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Lazily initializes the default <see cref="DictionaryMaxlength"/> instance  
-        /// used by all conversions that do not explicitly specify a custom dictionary set.  
-        /// 
-        /// This uses <see cref="FromZstd"/> to load the bundled Zstandard-compressed  
-        /// dictionary data on first access. The initialization is thread-safe and  
-        /// performed only once per process lifetime.
-        /// </summary>
         private static readonly Lazy<DictionaryMaxlength> DefaultLib =
             new Lazy<DictionaryMaxlength>(() => FromZstd(), isThreadSafe: true);
 
-
         /// <summary>
-        /// Gets the active global cache for precomputed conversion plans.
+        /// Gets the built-in default singleton dictionary.
+        /// This property is independent of the currently active conversion provider.
         /// </summary>
-        /// <remarks>
-        /// This v1.x compatibility property returns the cache snapshot currently used by
-        /// the conversion facade. Dictionary-provider changes atomically publish a fresh
-        /// snapshot; an earlier instance retained by a caller remains usable with the
-        /// provider to which it was originally bound.
-        /// </remarks>
-        public static ConversionPlanCache PlanCache => ConversionPlanCache.Current;
-
-        // --------------------------------------------------------------------------------
-        // Public accessors and provider management
-        // --------------------------------------------------------------------------------
-
-
-        /// <summary>
-        /// Gets the built-in default singleton <see cref="DictionaryMaxlength"/> instance.
-        /// This property always returns the same object reference.
-        /// </summary>
-        /// <remarks>
-        /// The dictionary is lazily initialized from the embedded Zstandard-compressed bundle
-        /// on first access and is safe for concurrent read access from multiple threads.
-        /// <para>
-        /// To obtain a new, independent dictionary instance (e.g., when reloading from
-        /// an external file), use <see cref="FromZstd"/> or other loader methods directly.
-        /// </para>
-        /// </remarks>
-        /// <returns>
-        /// The built-in default <see cref="DictionaryMaxlength"/> instance.
-        /// </returns>
         public static DictionaryMaxlength Provider => DefaultLib.Value;
 
         /// <summary>
-        /// Returns the dictionary instance supplied by the currently active provider delegate
-        /// for constructing new conversion plans.
+        /// Returns the built-in default dictionary and resets conversion planning
+        /// to use that default provider.
         /// </summary>
-        /// <remarks>
-        /// This method reads the provider bound to the same active cache snapshot used to
-        /// build new <see cref="DictRefs"/> plans.
-        /// <para>
-        /// The provider and its derived plan and starter-union caches are published as one
-        /// coherent snapshot. To switch dictionary sources for future conversions, call
-        /// <see cref="SetDictionaryProvider(DictionaryMaxlength)"/> or
-        /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/>.
-        /// </para>
-        /// <para>
-        /// A concurrent provider replacement may cause this call to observe either the old
-        /// or new complete snapshot; it does not observe a provider/cache combination assembled
-        /// from different snapshots.
-        /// </para>
-        /// </remarks>
-        /// <returns>
-        /// The <see cref="DictionaryMaxlength"/> instance currently returned by the active
-        /// provider delegate.
-        /// </returns>
-        public static DictionaryMaxlength GetActiveProvider() => ConversionPlanCache.GetCurrentDictionary();
-
-        /// <summary>
-        /// Returns the default singleton dictionary instance and resets the active
-        /// planning provider to use the built-in dictionary.
-        /// </summary>
-        /// <remarks>
-        /// This method is retained for backward compatibility and acts as a convenience
-        /// wrapper around <see cref="Provider"/>.
-        /// <para>
-        /// In addition to returning the default singleton dictionary, this method
-        /// reconfigures the global planning source (<see cref="PlanCache"/>) to use the
-        /// built-in dictionary provider and clears all cached conversion plans.
-        /// </para>
-        /// <para>
-        /// No new dictionary instance is created or allocated.
-        /// To explicitly create a separate dictionary instance, use
-        /// <see cref="FromZstd"/> or other loader methods.
-        /// </para>
-        /// </remarks>
-        /// <returns>
-        /// The default singleton <see cref="DictionaryMaxlength"/> instance shared across conversions.
-        /// </returns>
         public static DictionaryMaxlength New()
         {
-            SetDictionaryProvider(() => Provider);
+            ConversionPlanCache.ResetProvider();
             return Provider;
         }
 
-        /// <summary>
-        /// Replaces the active dictionary source used for constructing new conversion plans
-        /// by updating the provider delegate and publishing a fresh global
-        /// <see cref="ConversionPlanCache"/> instance.
-        /// </summary>
-        /// <remarks>
-        /// This method is the primary mechanism for switching dictionary sources at runtime
-        /// (for example, when applying a custom dictionary set or performing hot-reloads).
-        /// <para>
-        /// A new <see cref="ConversionPlanCache"/> is constructed with the provider and
-        /// published in one atomic reference exchange. This binds the provider and all
-        /// subsequently built plans to the same snapshot, while conversions already using
-        /// the previous snapshot may finish normally.
-        /// </para>
-        /// <para>
-        /// Cached plans and starter-union data from the previous dictionary source are
-        /// intentionally discarded by replacing the cache instance, preventing mixed or
-        /// inconsistent state.
-        /// </para>
-        /// <para>
-        /// This method does not modify or clone any existing dictionary instances; it
-        /// only affects how future conversion plans are constructed.
-        /// </para>
-        /// </remarks>
-        /// <param name="provider">
-        /// A delegate that returns the <see cref="DictionaryMaxlength"/> instance to be
-        /// used as the source for all subsequent plan construction.
-        /// </param>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="provider"/> is <see langword="null"/>.
-        /// </exception>
-        private static void SetDictionaryProvider(Func<DictionaryMaxlength> provider)
-        {
-            if (provider is null)
-                throw new ArgumentNullException(nameof(provider));
-
-            ConversionPlanCache.PublishProvider(provider);
-        }
-
-        /// <summary>
-        /// Restores the active dictionary source used for plan construction to the
-        /// built-in default dictionary.
-        /// </summary>
-        /// <remarks>
-        /// This method resets the provider delegate to return the lazily loaded
-        /// built-in dictionary (<see cref="Provider"/>) and publishes a fresh
-        /// <see cref="ConversionPlanCache"/> instance.
-        /// <para>
-        /// All previously cached conversion plans and starter-union data are
-        /// intentionally discarded, ensuring that all subsequent conversions
-        /// are derived exclusively from the default dictionary source.
-        /// </para>
-        /// <para>
-        /// No dictionary instances are modified or reloaded; the original
-        /// built-in singleton remains intact and is reused.
-        /// </para>
-        /// </remarks>
-        public static void ResetDictionaryProviderToDefault()
-        {
-            SetDictionaryProvider(() => DefaultLib.Value);
-        }
-
-        /// <summary>
-        /// Replaces the active dictionary source for plan construction using a fixed
-        /// <see cref="DictionaryMaxlength"/> instance.
-        /// </summary>
-        /// <remarks>
-        /// This overload is a convenience wrapper around
-        /// <see cref="SetDictionaryProvider(Func{DictionaryMaxlength})"/> that wraps the
-        /// supplied instance in a provider delegate.
-        /// <para>
-        /// A fresh global <see cref="ConversionPlanCache"/> instance is published, and all
-        /// previously cached conversion plans and starter-union data are discarded. This
-        /// ensures that all subsequently built plans are derived exclusively from the new
-        /// dictionary source.
-        /// </para>
-        /// <para>
-        /// The supplied dictionary instance is not cloned or modified. It is used
-        /// directly as the source for all future plan construction.
-        /// </para>
-        /// </remarks>
-        /// <param name="dictionary">
-        /// The <see cref="DictionaryMaxlength"/> instance to use as the new active dictionary
-        /// source for subsequent plan construction.
-        /// </param>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="dictionary"/> is <see langword="null"/>.
-        /// </exception>
-        public static void SetDictionaryProvider(DictionaryMaxlength dictionary)
-        {
-            if (dictionary == null)
-                throw new ArgumentNullException(nameof(dictionary));
-
-            SetDictionaryProvider(() => dictionary);
-        }
-
-        /// <summary>
-        /// Loads the bundled dictionary from a Zstd-compressed JSON file.
-        /// </summary>
-        /// <param name="relativePath">
-        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
-        /// path to the Zstandard-compressed JSON dictionary file.
-        /// </param>
-        /// <returns>
-        /// The deserialized and normalized <see cref="DictionaryMaxlength"/> instance.
-        /// </returns>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="relativePath"/> is null, empty, or whitespace.
-        /// </exception>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when the Zstandard dictionary file does not exist.
-        /// </exception>
         private static DictionaryMaxlength FromZstd(
             string relativePath = "dicts/dictionary_maxlength.zstd")
         {
             if (string.IsNullOrWhiteSpace(relativePath))
-            {
-                throw new ArgumentException(
-                    "Path must not be null or empty.",
-                    nameof(relativePath));
-            }
+                throw new ArgumentException("Path must not be null or empty.", nameof(relativePath));
 
             var fullPath = Path.IsPathRooted(relativePath)
                 ? relativePath
                 : Path.Combine(AppContext.BaseDirectory, relativePath);
 
             if (!File.Exists(fullPath))
-            {
-                throw new FileNotFoundException(
-                    "Zstd dictionary file not found.",
-                    fullPath);
-            }
+                throw new FileNotFoundException("Zstd dictionary file not found.", fullPath);
 
             using (var inputStream = File.OpenRead(fullPath))
-            using (var decompressionStream =
-                   new DecompressionStream(inputStream))
+            using (var decompressionStream = new DecompressionStream(inputStream))
             {
-                var instance =
-                    JsonSerializer.Deserialize<DictionaryMaxlength>(
-                        decompressionStream);
-
+                var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(decompressionStream);
                 return EnsureDerivedMetadata(instance);
             }
         }
 
-        /// <summary>
-        /// Loads a <see cref="DictionaryMaxlength"/> instance from a JSON file.
-        ///
-        /// The JSON payload is deserialized and normalized through
-        /// <see cref="EnsureDerivedMetadata(DictionaryMaxlength)"/> to restore any
-        /// derived lookup metadata required by the hot conversion paths.
-        ///
-        /// This method is intended primarily for debugging, development,
-        /// interoperability, or external dictionary generation workflows.
-        /// Production applications should prefer the default embedded Zstd dictionaries
-        /// for best reliability and deployment simplicity.
-        /// </summary>
-        /// <param name="relativePath">
-        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
-        /// path to the JSON dictionary file.
-        /// Defaults to <c>dicts/dictionary_maxlength.json</c>.
-        /// </param>
-        /// <returns>
-        /// The deserialized and normalized
-        /// <see cref="DictionaryMaxlength"/> instance.
-        /// </returns>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="relativePath"/> is null or empty.
-        /// </exception>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when the JSON dictionary file does not exist.
-        /// </exception>
-        /// <exception cref="JsonException">
-        /// Thrown when the JSON payload is invalid or cannot be deserialized.
-        /// </exception>
-        /// <exception cref="IOException">
-        /// Thrown when the file cannot be opened or read.
-        /// </exception>
         public static DictionaryMaxlength FromJson(
             string relativePath = "dicts/dictionary_maxlength.json")
         {
             if (string.IsNullOrWhiteSpace(relativePath))
-            {
-                throw new ArgumentException(
-                    "Path must not be null or empty.",
-                    nameof(relativePath));
-            }
+                throw new ArgumentException("Path must not be null or empty.", nameof(relativePath));
 
             var fullPath = Path.IsPathRooted(relativePath)
                 ? relativePath
                 : Path.Combine(AppContext.BaseDirectory, relativePath);
 
             if (!File.Exists(fullPath))
-            {
-                throw new FileNotFoundException(
-                    "JSON dictionary file not found.",
-                    fullPath);
-            }
+                throw new FileNotFoundException("JSON dictionary file not found.", fullPath);
 
             using (var stream = File.OpenRead(fullPath))
             {
-                var instance =
-                    JsonSerializer.Deserialize<DictionaryMaxlength>(stream);
-
+                var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(stream);
                 return EnsureDerivedMetadata(instance);
             }
         }
 
-        /// <summary>
-        /// Serializes a <see cref="DictionaryMaxlength"/> instance to a JSON file.
-        ///
-        /// <para>
-        /// If no dictionary instance is provided, the dictionary is loaded from the
-        /// default OpenCC text dictionary sources via <see cref="FromDicts"/>.
-        /// </para>
-        /// </summary>
-        /// <param name="path">
-        /// Output JSON file path.
-        /// </param>
-        /// <param name="dictionary">
-        /// Optional preloaded dictionary instance to serialize.
-        /// </param>
         public static void SerializeToJson(
             string path,
             DictionaryMaxlength dictionary = null)
@@ -622,46 +186,14 @@ namespace OpenccNetLib
                 path,
                 JsonSerializer.Serialize(
                     instance,
-                    new JsonSerializerOptions
-                    {
-                        WriteIndented = true
-                    }));
+                    new JsonSerializerOptions { WriteIndented = true }));
         }
 
-        /// <summary>
-        /// Regular expression used to detect escaped UTF-16 surrogate pairs
-        /// (e.g. <c>\uD841\uDDE3</c>) that represent non-BMP Unicode code points
-        /// such as CJK Extension B–H characters.
-        /// </summary>
-        /// <remarks>
-        /// These surrogate pairs are emitted by <see cref="System.Text.Json.JsonSerializer"/>
-        /// when serializing supplementary-plane characters under .NET Standard 2.0.
-        /// The expression captures the high (<c>\uD8xx</c> / <c>\uDBxx</c>) and low
-        /// (<c>\uDCxx</c> / <c>\uDDxx</c>) surrogate components for later reconstruction
-        /// into a full Unicode scalar via <see cref="char.ConvertFromUtf32(int)"/>.
-        /// </remarks>
         private static readonly Regex SurrogatePairRegex =
-            new Regex(@"\\u(?<hi>[dD][89ABab][0-9A-Fa-f]{2})\\u(?<lo>[dD][CDEFcdef][0-9A-Fa-f]{2})",
+            new Regex(
+                @"\\u(?<hi>[dD][89ABab][0-9A-Fa-f]{2})\\u(?<lo>[dD][CDEFcdef][0-9A-Fa-f]{2})",
                 RegexOptions.Compiled);
 
-        /// <summary>
-        /// Reconstructs actual Unicode characters from escaped UTF-16 surrogate pairs
-        /// in a serialized JSON string.
-        /// </summary>
-        /// <param name="json">
-        /// The JSON text that may contain surrogate-pair sequences such as
-        /// <c>\uD841\uDDE3</c>.
-        /// </param>
-        /// <returns>
-        /// A new string where all surrogate-pair escapes have been replaced with
-        /// their corresponding UTF-8 code points (e.g. <c>𠗣</c>).
-        /// </returns>
-        /// <remarks>
-        /// This method is primarily used by <see cref="SerializeToJsonUnescaped"/> to
-        /// restore supplementary-plane characters (U+10000–U+10FFFF) that
-        /// <see cref="System.Text.Json"/> would otherwise output as two escaped
-        /// 16-bit surrogate values.
-        /// </remarks>
         private static string DecodeJsonSurrogatePairs(string json)
         {
             return SurrogatePairRegex.Replace(json, m =>
@@ -673,29 +205,6 @@ namespace OpenccNetLib
             });
         }
 
-        /// <summary>
-        /// Serializes a dictionary to a JSON file
-        /// without escaping non-ASCII characters.
-        /// </summary>
-        /// <param name="path">The output file path.</param>
-        /// <param name="dictionary">
-        /// Optional preloaded dictionary instance to serialize.
-        /// </param>
-        /// <remarks>
-        /// <para>
-        /// This method writes human-readable JSON where Chinese, Japanese, Korean, or other
-        /// non-ASCII characters appear directly instead of escaped <c>\uXXXX</c> sequences.
-        /// </para>
-        /// <para>
-        /// Because <see cref="System.Text.Json"/> still escapes supplementary-plane characters
-        /// (e.g. CJK Extensions B–H) on .NET Standard 2.0, this method additionally invokes
-        /// <see cref="DecodeJsonSurrogatePairs"/> to replace surrogate-pair escapes with their
-        /// correct Unicode scalars (e.g. <c>\uD841\uDDE3 → 𠗣</c>).
-        /// </para>
-        /// <para>
-        /// The resulting file is written in UTF-8 encoding without a BOM marker.
-        /// </para>
-        /// </remarks>
         public static void SerializeToJsonUnescaped(
             string path,
             DictionaryMaxlength dictionary = null)
@@ -707,11 +216,7 @@ namespace OpenccNetLib
             };
 
             var instance = dictionary ?? FromDicts();
-
-            var json = JsonSerializer.Serialize(instance, options);
-
-            // Convert remaining UTF-16 surrogate escape pairs into readable Unicode
-            json = DecodeJsonSurrogatePairs(json);
+            var json = DecodeJsonSurrogatePairs(JsonSerializer.Serialize(instance, options));
 
             File.WriteAllText(
                 path,
@@ -719,108 +224,41 @@ namespace OpenccNetLib
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         }
 
-        /// <summary>
-        /// Loads and normalizes a dictionary from a JSON file at the specified path.
-        /// </summary>
-        /// <param name="path">
-        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
-        /// path to the JSON dictionary file.
-        /// </param>
-        /// <returns>
-        /// The deserialized and normalized <see cref="DictionaryMaxlength"/> instance.
-        /// </returns>
         public static DictionaryMaxlength DeserializedFromJson(string path)
-        {
-            return FromJson(path);
-        }
+            => FromJson(path);
 
-        #region FromDicts
-
-        /// <summary>
-        /// Maps internal OpenCC dictionary slot names to their default
-        /// dictionary text file names.
-        ///
-        /// <para>
-        /// These slot names form the stable internal dictionary contract used by
-        /// <see cref="DictionaryMaxlength"/>, <c>DictRefs</c>, starter indexes,
-        /// and future acceleration structures such as <c>StarterUnion</c>
-        /// and <c>UnionCache</c>.
-        /// </para>
-        ///
-        /// <para>
-        /// Custom dictionaries must attach to one of these existing slots through
-        /// append or override operations. Arbitrary dynamic slots are intentionally
-        /// not supported in order to preserve OpenCC-compatible dictionary topology
-        /// and deterministic conversion behavior.
-        /// </para>
-        /// </summary>
         private static readonly Dictionary<DictSlot, string> SlotFiles =
             new Dictionary<DictSlot, string>
             {
                 [DictSlot.STCharacters] = "STCharacters.txt",
                 [DictSlot.STPhrases] = "STPhrases.txt",
                 [DictSlot.STPunctuations] = "STPunctuations.txt",
-
                 [DictSlot.TSCharacters] = "TSCharacters.txt",
                 [DictSlot.TSPhrases] = "TSPhrases.txt",
                 [DictSlot.TSPunctuations] = "TSPunctuations.txt",
-
                 [DictSlot.TWPhrases] = "TWPhrases.txt",
                 [DictSlot.TWPhrasesRev] = "TWPhrasesRev.txt",
                 [DictSlot.TWVariants] = "TWVariants.txt",
                 [DictSlot.TWVariantsPhrases] = "TWVariantsPhrases.txt",
                 [DictSlot.TWVariantsRev] = "TWVariantsRev.txt",
                 [DictSlot.TWVariantsRevPhrases] = "TWVariantsRevPhrases.txt",
-
                 [DictSlot.HKPhrases] = "HKPhrases.txt",
                 [DictSlot.HKPhrasesRev] = "HKPhrasesRev.txt",
                 [DictSlot.HKVariants] = "HKVariants.txt",
                 [DictSlot.HKVariantsPhrases] = "HKVariantsPhrases.txt",
                 [DictSlot.HKVariantsRev] = "HKVariantsRev.txt",
                 [DictSlot.HKVariantsRevPhrases] = "HKVariantsRevPhrases.txt",
-
                 [DictSlot.JPSCharacters] = "JPShinjitaiCharacters.txt",
                 [DictSlot.JPSCharactersRev] = "JPShinjitaiCharactersRev.txt",
                 [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt"
             };
 
-        /// <summary>
-        /// Resolves a user-provided dictionary path into a normalized absolute path.
-        ///
-        /// <para>
-        /// Relative paths are resolved against <see cref="AppContext.BaseDirectory"/>,
-        /// matching the built-in dictionary loading behavior.
-        /// </para>
-        ///
-        /// <para>
-        /// Absolute paths are normalized with <see cref="Path.GetFullPath(string)"/>.
-        /// </para>
-        ///
-        /// <para>
-        /// This helper intentionally does not validate file existence. File loading
-        /// and exception behavior are handled by the centralized dictionary loading
-        /// pipeline.
-        /// </para>
-        /// </summary>
-        /// <param name="path">
-        /// User-provided dictionary file or directory path.
-        /// </param>
-        /// <returns>
-        /// A normalized absolute dictionary path.
-        /// </returns>
-        /// <exception cref="ArgumentException">
-        /// The provided path is null, empty, or whitespace.
-        /// </exception>
         private static string ResolveUserPath(string path)
         {
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException(
-                    "Path must not be null or empty.",
-                    nameof(path));
+                throw new ArgumentException("Path must not be null or empty.", nameof(path));
 
-            path = path.Trim();
-
-            path = path.Replace(
+            path = path.Trim().Replace(
                 Path.AltDirectorySeparatorChar,
                 Path.DirectorySeparatorChar);
 
@@ -830,39 +268,6 @@ namespace OpenccNetLib
                     : Path.Combine(AppContext.BaseDirectory, path));
         }
 
-        /// <summary>
-        /// Retrieves a dictionary slot from a <see cref="DictionaryMaxlength"/>
-        /// instance using its stable OpenCC slot name.
-        ///
-        /// <para>
-        /// This helper centralizes slot resolution for append, override,
-        /// normalization, and future acceleration workflows.
-        /// </para>
-        ///
-        /// <para>
-        /// Slot names form part of the internal OpenCC dictionary contract used by
-        /// <c>DictRefs</c>, starter indexes, and future acceleration structures such
-        /// as <c>StarterUnion</c> and <c>UnionCache</c>.
-        /// </para>
-        ///
-        /// <para>
-        /// Only predefined OpenCC-compatible slots are supported. Arbitrary dynamic
-        /// slots are intentionally rejected in order to preserve deterministic
-        /// conversion behavior and stable dictionary topology.
-        /// </para>
-        /// </summary>
-        /// <param name="d">
-        /// Target <see cref="DictionaryMaxlength"/> instance.
-        /// </param>
-        /// <param name="slot">
-        /// OpenCC dictionary slot name.
-        /// </param>
-        /// <returns>
-        /// The resolved <see cref="DictWithMaxLength"/> dictionary slot.
-        /// </returns>
-        /// <exception cref="ArgumentException">
-        /// The specified slot name is not a supported OpenCC dictionary slot.
-        /// </exception>
         private static DictWithMaxLength GetSlot(DictionaryMaxlength d, DictSlot slot)
         {
             switch (slot)
@@ -870,274 +275,93 @@ namespace OpenccNetLib
                 case DictSlot.STCharacters: return d.st_characters;
                 case DictSlot.STPhrases: return d.st_phrases;
                 case DictSlot.STPunctuations: return d.st_punctuations;
-
                 case DictSlot.TSCharacters: return d.ts_characters;
                 case DictSlot.TSPhrases: return d.ts_phrases;
                 case DictSlot.TSPunctuations: return d.ts_punctuations;
-
                 case DictSlot.TWPhrases: return d.tw_phrases;
                 case DictSlot.TWPhrasesRev: return d.tw_phrases_rev;
                 case DictSlot.TWVariants: return d.tw_variants;
                 case DictSlot.TWVariantsPhrases: return d.tw_variants_phrases;
                 case DictSlot.TWVariantsRev: return d.tw_variants_rev;
                 case DictSlot.TWVariantsRevPhrases: return d.tw_variants_rev_phrases;
-
                 case DictSlot.HKPhrases: return d.hk_phrases;
                 case DictSlot.HKPhrasesRev: return d.hk_phrases_rev;
                 case DictSlot.HKVariants: return d.hk_variants;
                 case DictSlot.HKVariantsPhrases: return d.hk_variants_phrases;
                 case DictSlot.HKVariantsRev: return d.hk_variants_rev;
                 case DictSlot.HKVariantsRevPhrases: return d.hk_variants_rev_phrases;
-
                 case DictSlot.JPSCharacters: return d.jps_characters;
                 case DictSlot.JPSCharactersRev: return d.jps_characters_rev;
                 case DictSlot.JPSPhrases: return d.jps_phrases;
-
                 default:
-                    throw new ArgumentException(
-                        "Unknown dictionary slot: " + slot,
-                        nameof(slot));
+                    throw new ArgumentException("Unknown dictionary slot: " + slot, nameof(slot));
             }
         }
 
-        /// <summary>
-        /// Replaces a dictionary slot inside a <see cref="DictionaryMaxlength"/>
-        /// instance using a stable OpenCC slot name.
-        ///
-        /// <para>
-        /// This helper centralizes slot assignment for base dictionary loading,
-        /// override operations, normalization workflows, and future acceleration
-        /// pipelines.
-        /// </para>
-        ///
-        /// <para>
-        /// Slot names form part of the internal OpenCC dictionary contract used by
-        /// <c>DictRefs</c>, starter indexes, and future acceleration structures such
-        /// as <c>StarterUnion</c> and <c>UnionCache</c>.
-        /// </para>
-        ///
-        /// <para>
-        /// Only predefined OpenCC-compatible slots are supported. Arbitrary dynamic
-        /// slots are intentionally rejected in order to preserve deterministic
-        /// conversion behavior, stable dictionary topology, and consistent metadata
-        /// generation.
-        /// </para>
-        /// </summary>
-        /// <param name="d">
-        /// Target <see cref="DictionaryMaxlength"/> instance.
-        /// </param>
-        /// <param name="slot">
-        /// OpenCC dictionary slot name.
-        /// </param>
-        /// <param name="value">
-        /// Replacement dictionary value.
-        /// </param>
-        /// <exception cref="ArgumentException">
-        /// The specified slot name is not a supported OpenCC dictionary slot.
-        /// </exception>
-        private static void SetSlot(DictionaryMaxlength d, DictSlot slot, DictWithMaxLength value)
+        private static void SetSlot(
+            DictionaryMaxlength d,
+            DictSlot slot,
+            DictWithMaxLength value)
         {
             switch (slot)
             {
                 case DictSlot.STCharacters: d.st_characters = value; break;
                 case DictSlot.STPhrases: d.st_phrases = value; break;
                 case DictSlot.STPunctuations: d.st_punctuations = value; break;
-
                 case DictSlot.TSCharacters: d.ts_characters = value; break;
                 case DictSlot.TSPhrases: d.ts_phrases = value; break;
                 case DictSlot.TSPunctuations: d.ts_punctuations = value; break;
-
                 case DictSlot.TWPhrases: d.tw_phrases = value; break;
                 case DictSlot.TWPhrasesRev: d.tw_phrases_rev = value; break;
                 case DictSlot.TWVariants: d.tw_variants = value; break;
                 case DictSlot.TWVariantsPhrases: d.tw_variants_phrases = value; break;
                 case DictSlot.TWVariantsRev: d.tw_variants_rev = value; break;
                 case DictSlot.TWVariantsRevPhrases: d.tw_variants_rev_phrases = value; break;
-
                 case DictSlot.HKPhrases: d.hk_phrases = value; break;
                 case DictSlot.HKPhrasesRev: d.hk_phrases_rev = value; break;
                 case DictSlot.HKVariants: d.hk_variants = value; break;
                 case DictSlot.HKVariantsPhrases: d.hk_variants_phrases = value; break;
                 case DictSlot.HKVariantsRev: d.hk_variants_rev = value; break;
                 case DictSlot.HKVariantsRevPhrases: d.hk_variants_rev_phrases = value; break;
-
                 case DictSlot.JPSCharacters: d.jps_characters = value; break;
                 case DictSlot.JPSCharactersRev: d.jps_characters_rev = value; break;
                 case DictSlot.JPSPhrases: d.jps_phrases = value; break;
-
                 default:
-                    throw new ArgumentException(
-                        "Unknown dictionary slot: " + slot,
-                        nameof(slot));
+                    throw new ArgumentException("Unknown dictionary slot: " + slot, nameof(slot));
             }
         }
 
-        /// <summary>
-        /// Appends custom dictionary entries into an existing OpenCC dictionary slot.
-        ///
-        /// <para>
-        /// Custom entries are loaded through the centralized dictionary loader and
-        /// merged into the target slot using "late-comer wins" behavior, meaning
-        /// appended entries override earlier mappings with the same key.
-        /// </para>
-        ///
-        /// <para>
-        /// This helper is intended for user terminology, organization-specific
-        /// vocabulary, temporary conversion fixes, and domain-specific extensions
-        /// while preserving the existing OpenCC dictionary slot topology.
-        /// </para>
-        ///
-        /// <para>
-        /// After merging, dictionary metadata is fully rebuilt to ensure that
-        /// maximum phrase lengths, starter masks, and derived acceleration metadata
-        /// remain consistent for <c>DictRefs</c>, starter indexes, and future
-        /// acceleration structures such as <c>StarterUnion</c>
-        /// and <c>UnionCache</c>.
-        /// </para>
-        /// </summary>
-        /// <param name="d">
-        /// Target <see cref="DictionaryMaxlength"/> instance.
-        /// </param>
-        /// <param name="slot">
-        /// OpenCC dictionary slot name.
-        /// </param>
-        /// <param name="path">
-        /// Path to the custom dictionary text file.
-        /// </param>
-        /// <exception cref="ArgumentException">
-        /// The specified slot name is not a supported OpenCC dictionary slot.
-        /// </exception>
-        /// <exception cref="FileNotFoundException">
-        /// The specified custom dictionary file could not be found.
-        /// </exception>
         private static void AppendSlot(DictionaryMaxlength d, DictSlot slot, string path)
         {
             var target = GetSlot(d, slot);
             var extra = LoadFile(path);
 
             foreach (var kv in extra.Dict)
-                target.Dict[kv.Key] = kv.Value; // late-comer wins
+                target.Dict[kv.Key] = kv.Value;
 
             RebuildDictionaryMetadata(target);
         }
 
-        /// <summary>
-        /// Fully clears and rebuilds derived metadata for a dictionary slot.
-        ///
-        /// <para>
-        /// This helper is used after mutating an existing dictionary, such as after
-        /// appending custom dictionary entries into a loaded OpenCC slot.
-        /// </para>
-        ///
-        /// <para>
-        /// Unlike <c>EnsureDictionaryMetadata</c>, this method intentionally resets
-        /// existing metadata first. This guarantees that maximum phrase length,
-        /// minimum phrase length, length masks, and starter length masks are
-        /// recalculated from the final merged dictionary content.
-        /// </para>
-        ///
-        /// <para>
-        /// This is important for custom dictionary append mode because newly appended
-        /// entries may introduce longer phrases, new starter characters, or new length
-        /// buckets. Rebuilding keeps the slot safe for <c>DictRefs</c>, starter indexes,
-        /// and future acceleration structures such as <c>StarterUnion</c> and
-        /// <c>UnionCache</c>.
-        /// </para>
-        /// </summary>
-        /// <param name="d">
-        /// Dictionary slot whose derived metadata should be rebuilt.
-        /// </param>
         private static void RebuildDictionaryMetadata(DictWithMaxLength d)
         {
             d.MaxLength = 0;
             d.MinLength = 0;
             d.SetLengthMetadata(0UL, null);
             d.StarterLenMask = null;
-
             EnsureDictionaryMetadata(d);
         }
 
-        /// <summary>
-        /// Loads OpenCC dictionary text files and constructs a fully normalized
-        /// <see cref="DictionaryMaxlength"/> instance.
-        /// </summary>
-        /// <param name="relativeBaseDir">
-        /// Directory containing the base OpenCC dictionary text files, resolved under
-        /// <see cref="AppContext.BaseDirectory"/>. Defaults to <c>dicts</c>.
-        /// </param>
-        /// <param name="overrides">
-        /// Optional dictionary slot -> file path mapping used to fully replace
-        /// specific OpenCC dictionary slots.
-        ///
-        /// Override files completely replace the corresponding built-in slot.
-        /// This mode is intended for advanced users maintaining proprietary or
-        /// fully customized OpenCC dictionary copies.
-        /// </param>
-        /// <param name="appends">
-        /// Optional dictionary slot -> file path mapping used to append custom
-        /// dictionary entries on top of the built-in dictionaries.
-        ///
-        /// Appended entries are loaded after the built-in dictionaries and use
-        /// "late-comer wins" behavior, meaning duplicate keys override earlier
-        /// mappings.
-        ///
-        /// This mode is recommended for user terms, company terminology,
-        /// domain-specific vocabulary, or temporary conversion adjustments.
-        /// </param>
-        /// <returns>
-        /// A fully normalized and metadata-ready
-        /// <see cref="DictionaryMaxlength"/> instance.
-        /// </returns>
-        /// <remarks>
-        /// <para>
-        /// This method follows the OpenCC dictionary slot structure and does not
-        /// support arbitrary dynamic dictionary slots such as <c>user_dict</c>.
-        /// Custom dictionaries must attach to existing OpenCC slots such as
-        /// <c>st_phrases</c> or <c>ts_phrases</c>.
-        /// </para>
-        ///
-        /// <para>
-        /// All dictionaries are parsed through the centralized dictionary loader,
-        /// ensuring consistent normalization, maximum phrase length calculation,
-        /// and metadata rebuilding across TXT, JSON, CBOR, appended, and overridden
-        /// dictionary sources.
-        /// </para>
-        ///
-        /// <para>
-        /// All required base dictionary files under the specified directory must
-        /// exist. If any required file is missing, this method throws a
-        /// <see cref="FileNotFoundException"/> and does not return a partially
-        /// initialized <see cref="DictionaryMaxlength"/> instance.
-        /// </para>
-        ///
-        /// <para>
-        /// Unknown custom dictionary slots throw an
-        /// <see cref="ArgumentException"/> to preserve the internal OpenCC slot
-        /// contract used by <c>DictRefs</c>, starter indexes, and future
-        /// acceleration structures such as <c>StarterUnion</c> and
-        /// <c>UnionCache</c>.
-        /// </para>
-        /// </remarks>
-        /// <exception cref="FileNotFoundException">
-        /// One or more required dictionary files could not be found.
-        /// </exception>
-        /// <exception cref="ArgumentException">
-        /// An unknown custom dictionary slot was provided.
-        /// </exception>
         public static DictionaryMaxlength FromDicts(
             string relativeBaseDir = "dicts",
             IDictionary<DictSlot, string> overrides = null,
             IDictionary<DictSlot, string> appends = null)
         {
             var baseDir = ResolveUserPath(relativeBaseDir);
-
             var instance = new DictionaryMaxlength();
 
             foreach (var slot in DictSlotExtensions.ActiveSlots)
             {
-                var file = SlotFiles[slot];
-                var path = Path.Combine(baseDir, file);
-
+                var path = Path.Combine(baseDir, SlotFiles[slot]);
                 SetSlot(instance, slot, LoadFile(path));
             }
 
@@ -1152,7 +376,7 @@ namespace OpenccNetLib
                 }
             }
 
-            if (appends == null) return EnsureDerivedMetadata(instance);
+            if (appends != null)
             {
                 foreach (var kv in appends)
                 {
@@ -1166,75 +390,41 @@ namespace OpenccNetLib
             return EnsureDerivedMetadata(instance);
         }
 
-        /// <summary>
-        /// Loads a dictionary from a UTF-8-compatible OpenCC text dictionary file.
-        ///
-        /// Each data line is tab-separated as <c>key[TAB]value</c>. Blank lines and
-        /// lines beginning with <c>#</c> are ignored. If the value contains aliases or
-        /// comments separated by spaces, only the first value token is used. Duplicate
-        /// keys use late-comer wins behavior.
-        /// </summary>
-        /// <param name="path">The path to the dictionary text file.</param>
-        /// <returns>
-        /// A <see cref="DictWithMaxLength"/> instance with loaded data and rebuilt
-        /// length/starter metadata.
-        /// </returns>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when the dictionary text file does not exist.
-        /// </exception>
         private static DictWithMaxLength LoadFile(string path)
         {
+            if (!File.Exists(path))
+                throw new FileNotFoundException("Dictionary file not found: " + path, path);
+
             var dict = new Dictionary<string, string>(StringComparer.Ordinal);
-            var maxLength = 0; // start at 0 so empty dict stays 0
+            var maxLength = 0;
             var minLength = int.MaxValue;
             var lengthMask = 0UL;
             HashSet<int> longLengths = null;
 
-            if (!File.Exists(path)) throw new FileNotFoundException($"Dictionary file not found: {path}");
-
             foreach (var line in File.ReadLines(path))
             {
                 var lineSpan = line.AsSpan().Trim();
-
-                // Skip empty lines or comment lines
                 if (lineSpan.IsEmpty || lineSpan[0] == '#')
-                {
                     continue;
-                }
 
-                // Find the index of the first tab character
                 var tabIndex = lineSpan.IndexOf('\t');
+                if (tabIndex == -1)
+                    continue;
 
-                if (tabIndex == -1) continue;
-                var keySpan = lineSpan.Slice(0, tabIndex);
+                var keySpan = lineSpan.Slice(0, tabIndex).Trim();
                 var valueFullSpan = lineSpan.Slice(tabIndex + 1);
-
-                // Find the index of the first space in the value part
                 var firstSpaceIndex = valueFullSpan.IndexOf(' ');
+                var valueSpan = (firstSpaceIndex != -1
+                    ? valueFullSpan.Slice(0, firstSpaceIndex)
+                    : valueFullSpan).Trim();
 
-                var valueSpan =
-                    // If a space is found, take only the part before the first space
-                    firstSpaceIndex != -1
-                        ? valueFullSpan.Slice(0, firstSpaceIndex)
-                        :
-                        // If no space, the entire valueFullSpan is the desired value
-                        valueFullSpan;
+                if (keySpan.IsEmpty || valueSpan.IsEmpty)
+                    continue;
 
-                // Trim any leading/trailing whitespace from the key and the extracted value part
-                keySpan = keySpan.Trim();
-                valueSpan = valueSpan.Trim();
-
-                // Only add if both key and value are non-empty after trimming
-                if (keySpan.IsEmpty || valueSpan.IsEmpty) continue;
-
-                // Convert ReadOnlySpan<char> to string ONLY when storing in the dictionary
                 var key = keySpan.ToString();
-                var value = valueSpan.ToString();
-                dict[key] = value;
+                dict[key] = valueSpan.ToString();
 
                 var keyLength = key.Length;
-                if (keyLength == 0) continue;
-
                 if (keyLength > maxLength) maxLength = keyLength;
                 if (keyLength < minLength) minLength = keyLength;
 
@@ -1249,7 +439,6 @@ namespace OpenccNetLib
 
                     longLengths.Add(keyLength);
                 }
-                // Optional: Handle lines that do not contain a tab separator if needed
             }
 
             if (dict.Count == 0)
@@ -1272,83 +461,10 @@ namespace OpenccNetLib
             };
 
             d.SetLengthMetadata(lengthMask, longLengths);
-            BuildStarterLenMask(d); // 👈 slot in
-
+            BuildStarterLenMask(d);
             return d;
         }
 
-        #endregion // FromDicts
-
-        #region Post Load Custom Dictionary
-
-        /// <summary>
-        /// Applies post-load custom dictionary modifications to an existing
-        /// <see cref="DictionaryMaxlength"/> instance.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This method allows additional custom dictionary files and/or in-memory
-        /// dictionary pairs to be appended to or override specific OpenCC dictionary
-        /// slots after the base dictionary has already been loaded.
-        /// </para>
-        ///
-        /// <para>
-        /// Unlike <see cref="FromDicts"/>, which injects custom dictionaries during
-        /// initial dictionary construction, this method operates on an already-loaded
-        /// dictionary instance from any provider, including:
-        /// </para>
-        ///
-        /// <list type="bullet">
-        /// <item><description>default built-in dictionaries</description></item>
-        /// <item><description>Zstd dictionaries</description></item>
-        /// <item><description>CBOR dictionaries</description></item>
-        /// <item><description>JSON dictionaries</description></item>
-        /// <item><description>pure file-based dictionaries created through <see cref="FromDicts"/></description></item>
-        /// </list>
-        ///
-        /// <para>
-        /// Custom dictionary specifications are applied sequentially in enumeration
-        /// order. Within a single <see cref="CustomDictSpec"/>:
-        /// </para>
-        ///
-        /// <list type="number">
-        /// <item><description>Dictionary files are applied in array order.</description></item>
-        /// <item><description>In-memory pairs are applied after files.</description></item>
-        /// <item><description>Later entries overwrite earlier duplicate keys.</description></item>
-        /// </list>
-        ///
-        /// <para>
-        /// In <see cref="CustomDictMode.Override"/> mode, the final merged result
-        /// replaces the entire target slot.
-        /// </para>
-        ///
-        /// <para>
-        /// The supplied <paramref name="dict"/> instance is modified in place and is
-        /// also returned for convenience.
-        /// </para>
-        /// 
-        /// <para>
-        /// Dictionary metadata such as maximum phrase lengths and starter lookup
-        /// caches are automatically rebuilt after customization.
-        /// </para>
-        /// </remarks>
-        /// <param name="dict">
-        /// Target dictionary instance to customize.
-        /// </param>
-        /// <param name="specs">
-        /// Custom dictionary specifications describing which slots to modify
-        /// and how custom entries should be applied.
-        /// </param>
-        /// <returns>
-        /// The same <see cref="DictionaryMaxlength"/> instance after customization.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="dict"/> is <c>null</c>.
-        /// </exception>
-        /// <exception cref="ArgumentException">
-        /// A custom dictionary specification is invalid, contains no dictionary
-        /// source, or references an unknown dictionary slot.
-        /// </exception>
         public static DictionaryMaxlength WithCustomDicts(
             DictionaryMaxlength dict,
             IEnumerable<CustomDictSpec> specs)
@@ -1361,63 +477,13 @@ namespace OpenccNetLib
 
             foreach (var spec in specs)
             {
-                if (spec == null)
-                    continue;
-
-                ApplyCustomDictSpec(dict, spec);
+                if (spec != null)
+                    ApplyCustomDictSpec(dict, spec);
             }
 
             return EnsureDerivedMetadata(dict);
         }
 
-        /// <summary>
-        /// Applies a single <see cref="CustomDictSpec"/> to a target
-        /// <see cref="DictionaryMaxlength"/> instance.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This is the internal core implementation behind
-        /// <see cref="WithCustomDicts"/>.
-        /// </para>
-        ///
-        /// <para>
-        /// Depending on <see cref="CustomDictMode"/>, custom dictionary entries
-        /// are either appended to the existing slot or used to replace the entire
-        /// slot.
-        /// </para>
-        ///
-        /// <para>
-        /// When both dictionary files and in-memory pairs are provided:
-        /// </para>
-        ///
-        /// <list type="number">
-        /// <item><description>Files are loaded and applied in array order.</description></item>
-        /// <item><description>Pairs are applied after files.</description></item>
-        /// <item><description>Later entries overwrite earlier duplicate keys.</description></item>
-        /// </list>
-        ///
-        /// <para>
-        /// In <see cref="CustomDictMode.Override"/> mode, a temporary slot is built,
-        /// fully populated, and then atomically replaces the original slot after
-        /// metadata reconstruction completes.
-        /// </para>
-        ///
-        /// <para>
-        /// Slot metadata such as maximum phrase lengths and starter lookup caches
-        /// are rebuilt automatically before the slot becomes visible to callers.
-        /// </para>
-        /// </remarks>
-        /// <param name="dict">
-        /// Target dictionary instance to modify.
-        /// </param>
-        /// <param name="spec">
-        /// Custom dictionary specification describing the target slot,
-        /// dictionary sources, and merge behavior.
-        /// </param>
-        /// <exception cref="ArgumentException">
-        /// The specification references an unknown slot, contains no dictionary
-        /// source, or contains an invalid dictionary path.
-        /// </exception>
         private static void ApplyCustomDictSpec(
             DictionaryMaxlength dict,
             CustomDictSpec spec)
@@ -1429,12 +495,17 @@ namespace OpenccNetLib
             var hasPairs = spec.Pairs != null && spec.Pairs.Count > 0;
 
             if (!hasPaths && !hasPairs)
+            {
                 throw new ArgumentException(
                     "CustomDictSpec must provide at least one dictionary source: Paths or Pairs.",
                     nameof(spec));
+            }
 
             var target = spec.Mode == CustomDictMode.Override
-                ? new DictWithMaxLength { Dict = new Dictionary<string, string>(StringComparer.Ordinal) }
+                ? new DictWithMaxLength
+                {
+                    Dict = new Dictionary<string, string>(StringComparer.Ordinal)
+                }
                 : GetSlot(dict, spec.Slot);
 
             if (hasPaths)
@@ -1442,10 +513,13 @@ namespace OpenccNetLib
                 foreach (var path in spec.Paths)
                 {
                     if (string.IsNullOrWhiteSpace(path))
-                        throw new ArgumentException("Custom dictionary path must not be null or empty.", nameof(spec));
+                    {
+                        throw new ArgumentException(
+                            "Custom dictionary path must not be null or empty.",
+                            nameof(spec));
+                    }
 
                     var extra = LoadFile(ResolveUserPath(path));
-
                     foreach (var kv in extra.Dict)
                         target.Dict[kv.Key] = kv.Value;
                 }
@@ -1455,10 +529,8 @@ namespace OpenccNetLib
             {
                 foreach (var kv in spec.Pairs)
                 {
-                    if (string.IsNullOrEmpty(kv.Key))
-                        continue;
-
-                    target.Dict[kv.Key] = kv.Value ?? string.Empty;
+                    if (!string.IsNullOrEmpty(kv.Key))
+                        target.Dict[kv.Key] = kv.Value ?? string.Empty;
                 }
             }
 
@@ -1468,51 +540,28 @@ namespace OpenccNetLib
                 SetSlot(dict, spec.Slot, target);
         }
 
-        #endregion // Post Load Custom Dictionary
-
-        /// <summary>
-        /// Builds a per-starter key-length bitmask for the specified dictionary.
-        /// </summary>
-        /// <param name="d">
-        /// The <see cref="DictWithMaxLength"/> instance whose <see cref="DictWithMaxLength.Dict"/> keys
-        /// are analyzed to populate <see cref="DictWithMaxLength.StarterLenMask"/>.
-        /// </param>
-        /// <remarks>
-        /// <para>
-        /// This method scans all keys in the dictionary and computes, for each unique starter
-        /// (first Unicode character or surrogate pair), a <c>ulong</c> bitmask representing
-        /// which key lengths (1–64) exist for that starter.
-        /// </para>
-        /// <para>
-        /// Each bit position <c>n-1</c> corresponds to the presence of a key of length <c>n</c>.
-        /// Lengths greater than 64 are ignored, as they are extremely rare and do not fit in the 64-bit mask.
-        /// </para>
-        /// <para>
-        /// The resulting <see cref="DictWithMaxLength.StarterLenMask"/> enables fast runtime gating
-        /// in hot lookup paths by allowing quick exclusion of impossible key lengths for a given starter.
-        /// </para>
-        /// </remarks>
         private static void BuildStarterLenMask(DictWithMaxLength d)
         {
             if (d?.Dict == null || d.Dict.Count == 0)
                 return;
 
-            var map = new Dictionary<string, ulong>(Math.Min(d.Dict.Count, 1024), StringComparer.Ordinal);
+            var map = new Dictionary<string, ulong>(
+                Math.Min(d.Dict.Count, 1024),
+                StringComparer.Ordinal);
 
             foreach (var key in d.Dict.Keys)
             {
-                if (string.IsNullOrEmpty(key)) continue;
+                if (string.IsNullOrEmpty(key))
+                    continue;
+
                 var len = key.Length;
-                if (len <= 0) continue;
+                var starter = len >= 2 &&
+                              char.IsHighSurrogate(key[0]) &&
+                              char.IsLowSurrogate(key[1])
+                    ? key.Substring(0, 2)
+                    : key.Substring(0, 1);
 
-                string starter;
-                if (len >= 2 && char.IsHighSurrogate(key[0]) && char.IsLowSurrogate(key[1]))
-                    starter = key.Substring(0, 2);
-                else
-                    starter = key.Substring(0, 1);
-
-                if (!map.TryGetValue(starter, out var mask))
-                    mask = 0UL;
+                map.TryGetValue(starter, out var mask);
 
                 if ((uint)len - 1u < 64u)
                     mask |= 1UL << (len - 1);
@@ -1523,78 +572,54 @@ namespace OpenccNetLib
             d.StarterLenMask = map;
         }
 
-        /// <summary>
-        /// Ensures all derived per-dictionary metadata needed by hot lookup paths
-        /// exists after deserialization from JSON/CBOR/Zstd.
-        /// </summary>
         private static DictionaryMaxlength EnsureDerivedMetadata(DictionaryMaxlength instance)
         {
             if (instance == null)
                 throw new InvalidOperationException("Deserialized dictionary instance was null.");
 
-            if (instance.tw_variants_phrases == null)
-                instance.tw_variants_phrases = new DictWithMaxLength();
-
-            if (instance.hk_variants_phrases == null)
-                instance.hk_variants_phrases = new DictWithMaxLength();
-
-            if (instance.hk_phrases == null)
-                instance.hk_phrases = new DictWithMaxLength();
-
-            if (instance.hk_phrases_rev == null)
-                instance.hk_phrases_rev = new DictWithMaxLength();
-
-            if (instance.jps_characters_rev == null)
-                instance.jps_characters_rev = new DictWithMaxLength();
+            instance.tw_variants_phrases ??= new DictWithMaxLength();
+            instance.hk_variants_phrases ??= new DictWithMaxLength();
+            instance.hk_phrases ??= new DictWithMaxLength();
+            instance.hk_phrases_rev ??= new DictWithMaxLength();
+            instance.jps_characters_rev ??= new DictWithMaxLength();
 
             EnsureDictionaryMetadata(instance.st_characters);
             EnsureDictionaryMetadata(instance.st_phrases);
             EnsureDictionaryMetadata(instance.st_punctuations);
-
             EnsureDictionaryMetadata(instance.ts_characters);
             EnsureDictionaryMetadata(instance.ts_phrases);
             EnsureDictionaryMetadata(instance.ts_punctuations);
-
             EnsureDictionaryMetadata(instance.tw_phrases);
             EnsureDictionaryMetadata(instance.tw_phrases_rev);
             EnsureDictionaryMetadata(instance.tw_variants);
             EnsureDictionaryMetadata(instance.tw_variants_phrases);
             EnsureDictionaryMetadata(instance.tw_variants_rev);
             EnsureDictionaryMetadata(instance.tw_variants_rev_phrases);
-
             EnsureDictionaryMetadata(instance.hk_phrases);
             EnsureDictionaryMetadata(instance.hk_phrases_rev);
             EnsureDictionaryMetadata(instance.hk_variants);
             EnsureDictionaryMetadata(instance.hk_variants_phrases);
             EnsureDictionaryMetadata(instance.hk_variants_rev);
             EnsureDictionaryMetadata(instance.hk_variants_rev_phrases);
-
             EnsureDictionaryMetadata(instance.jps_characters);
             EnsureDictionaryMetadata(instance.jps_characters_rev);
             EnsureDictionaryMetadata(instance.jps_phrases);
 
             EnsureRequiredDictionarySlots(instance);
-
             return instance;
         }
 
-        /// <summary>
-        /// Verifies schema-breaking required dictionary slots are present after
-        /// hydration from bundled JSON/CBOR/Zstd dictionary packs.
-        /// </summary>
         private static void EnsureRequiredDictionarySlots(DictionaryMaxlength instance)
         {
             if (instance.jps_characters_rev.Dict == null ||
                 instance.jps_characters_rev.Dict.Count == 0)
+            {
                 throw new InvalidOperationException(
                     "Required dictionary slot 'jps_characters_rev' is missing or empty. " +
                     "Regenerate dictionary_maxlength assets or include JPShinjitaiCharactersRev.txt.");
+            }
         }
 
-        /// <summary>
-        /// Ensures derived metadata for a single dictionary exists when it is missing
-        /// or incomplete.
-        /// </summary>
         private static void EnsureDictionaryMetadata(DictWithMaxLength d)
         {
             if (d == null)
@@ -1611,7 +636,11 @@ namespace OpenccNetLib
                 return;
             }
 
-            var needsLengthMetadata = d.MaxLength <= 0 || d.MinLength <= 0 || (d.LengthMask == 0UL && d.MaxLength > 0);
+            var needsLengthMetadata =
+                d.MaxLength <= 0 ||
+                d.MinLength <= 0 ||
+                (d.LengthMask == 0UL && d.MaxLength > 0);
+
             if (needsLengthMetadata)
             {
                 var maxLength = 0;
@@ -1650,67 +679,35 @@ namespace OpenccNetLib
                 BuildStarterLenMask(d);
         }
 
-        /// <summary>
-        /// Loads <see cref="DictionaryMaxlength"/> from a CBOR file and ensures
-        /// all derived dictionary metadata is present before returning the instance.
-        /// </summary>
-        /// <param name="relativePath">
-        /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
-        /// path to the CBOR file.
-        /// Default: <c>dicts/dictionary_maxlength.cbor</c>.
-        /// </param>
-        /// <returns>The hydrated <see cref="DictionaryMaxlength"/> instance.</returns>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="relativePath"/> is null or empty.
-        /// </exception>
-        /// <exception cref="FileNotFoundException">If the CBOR file cannot be found.</exception>
-        /// <exception cref="IOException">If the CBOR file cannot be read.</exception>
-        public static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")
+        public static DictionaryMaxlength FromCbor(
+            string relativePath = "dicts/dictionary_maxlength.cbor")
         {
-            if (string.IsNullOrEmpty(relativePath))
+            if (string.IsNullOrWhiteSpace(relativePath))
                 throw new ArgumentException("Path must not be null or empty.", nameof(relativePath));
 
-            var baseDir = AppContext.BaseDirectory;
-            var fullPath = Path.Combine(baseDir, relativePath);
+            var fullPath = Path.IsPathRooted(relativePath)
+                ? relativePath
+                : Path.Combine(AppContext.BaseDirectory, relativePath);
 
             if (!File.Exists(fullPath))
                 throw new FileNotFoundException("CBOR dictionary file not found.", fullPath);
 
-            var bytes = File.ReadAllBytes(fullPath);
+            var cbor = CBORObject.DecodeFromBytes(
+                File.ReadAllBytes(fullPath),
+                CBOREncodeOptions.Default);
 
-            // Decode and materialize the object graph
-            var cbor = CBORObject.DecodeFromBytes(bytes, CBOREncodeOptions.Default);
-            var instance = cbor.ToObject<DictionaryMaxlength>();
-
-            // Normalize older or externally-generated payloads that may not carry
-            // all derived lookup metadata required by the hot conversion paths.
-            return EnsureDerivedMetadata(instance);
+            return EnsureDerivedMetadata(cbor.ToObject<DictionaryMaxlength>());
         }
 
-        /// <summary>
-        /// Serializes the dictionary to CBOR format and saves it to a file.
-        /// </summary>
-        /// <param name="path">The output file path.</param>
-        /// <param name="dictionary">
-        /// Optional preloaded dictionary instance to serialize.
-        /// </param>
         public static void SaveCbor(
             string path,
             DictionaryMaxlength dictionary = null)
         {
             var instance = dictionary ?? FromDicts();
-
             var cbor = CBORObject.FromObject(instance);
             File.WriteAllBytes(path, cbor.EncodeToBytes());
         }
 
-        /// <summary>
-        /// Serializes the dictionary to CBOR format and returns the bytes.
-        /// </summary>
-        /// <param name="dictionary">
-        /// Optional preloaded dictionary instance to serialize.
-        /// </param>
-        /// <returns>CBOR-encoded byte array.</returns>
         public static byte[] ToCborBytes(
             DictionaryMaxlength dictionary = null)
         {
@@ -1719,19 +716,11 @@ namespace OpenccNetLib
                 .EncodeToBytes();
         }
 
-        /// <summary>
-        /// Serializes the dictionary to JSON, compresses it with Zstd, and saves to a file.
-        /// </summary>
-        /// <param name="path">The output file path.</param>
-        /// <param name="dictionary">
-        /// Optional preloaded dictionary instance to serialize.
-        /// </param>
         public static void SaveJsonCompressed(
             string path,
             DictionaryMaxlength dictionary = null)
         {
             var instance = dictionary ?? FromDicts();
-
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(instance);
 
             using (var compressor = new Compressor(19))
@@ -1741,11 +730,6 @@ namespace OpenccNetLib
             }
         }
 
-        /// <summary>
-        /// Loads and normalizes the dictionary from a Zstd-compressed JSON file.
-        /// </summary>
-        /// <param name="path">The path to the compressed file.</param>
-        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
         public static DictionaryMaxlength LoadJsonCompressed(string path)
         {
             var compressed = File.ReadAllBytes(path);
