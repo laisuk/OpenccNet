@@ -643,14 +643,32 @@ namespace OpenccNetLib
 
                 case OpenccConfig.T2Jp:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.JpsCharactersRev, out var r1);
-                    return new DictRefs(r1, u1);
+                    var u1 = GetOrAddUnionFor(
+                        d, UnionKey.JpsCharactersRev, out var r1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 case OpenccConfig.Jp2T:
                 {
-                    var u1 = GetOrAddUnionFor(d, UnionKey.JpsPair, out var r1);
-                    return new DictRefs(r1, u1);
+                    var u1 = GetOrAddUnionFor(
+                        d, UnionKey.JpsPair, out var r1);
+                    var refs = new DictRefs(r1, u1);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r2);
+
+                    return refs.WithRound2(r2, u2);
                 }
 
                 default:

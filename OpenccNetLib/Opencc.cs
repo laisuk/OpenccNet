@@ -2216,10 +2216,11 @@ namespace OpenccNetLib
         /// Converts Traditional Chinese to Japanese Kanji variants.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string T2Jp(string inputText)
+        public string T2Jp(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.T2Jp, false);
+            var refs = GetDictRefs(OpenccConfig.T2Jp, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
@@ -2227,10 +2228,11 @@ namespace OpenccNetLib
         /// Converts Japanese Kanji variants to Traditional Chinese.
         /// </summary>
         /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
-        public string Jp2T(string inputText)
+        public string Jp2T(string inputText, bool punctuation = false)
         {
-            var refs = GetDictRefs(OpenccConfig.Jp2T, false);
+            var refs = GetDictRefs(OpenccConfig.Jp2T, punctuation);
             return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
         }
 
@@ -2289,9 +2291,9 @@ namespace OpenccNetLib
                     case OpenccConfig.Hk2T:
                         return Hk2T(inputText, punctuation);
                     case OpenccConfig.Jp2T:
-                        return Jp2T(inputText);
+                        return Jp2T(inputText, punctuation);
                     case OpenccConfig.T2Jp:
-                        return T2Jp(inputText);
+                        return T2Jp(inputText, punctuation);
                     default:
                         return inputText;
                 }
