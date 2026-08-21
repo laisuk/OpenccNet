@@ -177,6 +177,26 @@ opencc.Config = "invalid_config";
 Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: invalid_config. Using default 's2t'.
 ```
 
+### Example: Frozen Converter
+
+Use a frozen converter when configuration must remain fixed and conversions must be independent of later process-wide
+dictionary changes:
+
+```csharp
+var frozen = new Opencc(OpenccConfig.S2T, isFrozen: true);
+
+Console.WriteLine(frozen.IsFrozen);        // True
+Console.WriteLine(frozen.Convert("汉字")); // 漢字
+
+// Both throw InvalidOperationException:
+frozen.Config = "t2s";
+frozen.SetPreserveIds(true);
+```
+
+Frozen converters own their conversion-plan cache and always use the built-in `DictionaryLib.Provider` as their base.
+Frozen custom-spec converters apply their mappings to that built-in base and are likewise unaffected by later
+`UseCustomDictionary()` or `UseDefaultDictionary()` calls.
+
 > Thread-safety note: `Opencc` instances should not be reconfigured while they are being used by other threads. For
 > parallel conversion, create one instance per configuration and treat it as immutable, or use direct conversion
 > methods.
@@ -621,7 +641,8 @@ OpenccNetLib 1.7.0 adds an isolated per-instance alternative to the existing pro
 public Opencc(
     OpenccConfig configEnum,
     IEnumerable<CustomDictSpec> customDictSpecs,
-    bool isPreserveIds = false)
+    bool isPreserveIds = false,
+    bool isFrozen = false)
 
 public Opencc WithCustomDictionary(
     IEnumerable<CustomDictSpec> customDictSpecs)
@@ -631,7 +652,9 @@ Ordinary `Opencc` instances continue to use the shared process-wide conversion-p
 private plan cache or a private dictionary snapshot. In contrast, the custom-spec constructor snapshots the currently
 active global dictionary provider, applies the `CustomDictSpec` entries to that snapshot in enumeration order, and gives
 the new converter its own isolated internal cache. Instance customization never mutates the active global provider, and
-later global-provider changes do not affect an already-created custom instance.
+later global-provider changes do not affect an already-created custom instance. When `isFrozen` is `true`, the custom
+instance uses `DictionaryLib.Provider` instead of the active global provider as its base and rejects later changes to
+`Config` and `IsPreserveIds`.
 
 The isolated dictionary snapshot belongs to the instance rather than to one configuration. Calling `SetConfig(...)` or
 assigning `Config` on the custom instance continues to use the same snapshot. Multiple custom instances can therefore
@@ -1501,11 +1524,11 @@ conversion behavior and a preserved .NET Standard 2.0 compatibility path.
 
 #### 🔧 Constructors
 
-- `Opencc(string config = null)`  
+- `Opencc(string config = null, bool isPreserveIds = false, bool isFrozen = false)`
   Creates a new converter using a configuration name (e.g., `"s2t"`, `"t2s"`).  
   This overload is compatible with existing code but requires string-based config.
 
-- `Opencc(OpenccConfig configEnum)`  
+- `Opencc(OpenccConfig configEnum, bool isPreserveIds = false, bool isFrozen = false)`
   Creates a new converter using the strongly-typed `OpenccConfig` enum  
   (e.g., `OpenccConfig.S2T`, `OpenccConfig.T2S`).  
   **Recommended for all new code** because it avoids magic strings.
@@ -1548,6 +1571,9 @@ string APIs are provided for backward compatibility and convenience.
 ---
 
 ##### Instance Configuration APIs
+
+- `bool IsFrozen { get; }`
+  Reports whether configuration and IDS-preservation settings were frozen during construction.
 
 - `string Config { get; set; }`  
   Gets or sets the current conversion configuration using a canonical string  

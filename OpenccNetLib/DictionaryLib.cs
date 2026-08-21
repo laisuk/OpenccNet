@@ -355,7 +355,7 @@ namespace OpenccNetLib
         /// <exception cref="FileNotFoundException">
         /// Thrown when the Zstandard dictionary file does not exist.
         /// </exception>
-        private static DictionaryMaxlength FromZstd(
+        internal static DictionaryMaxlength FromZstd(
             string relativePath = "dicts/dictionary_maxlength.zstd")
         {
             if (string.IsNullOrWhiteSpace(relativePath))

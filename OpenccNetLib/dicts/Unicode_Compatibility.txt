@@ -301,35 +301,205 @@
 ⻤	鬼
 
 # ----------------------------------------------------------------------
-# Other Chinese / legacy glyph normalization candidates
+# Chinese allograph / legacy glyph normalization candidates
 #
-# Mined from the Chinese Text Project normalization table after excluding
-# mappings already covered by CJK_Compatibility_Ideographs.txt.
+# Unicode code points representing legacy, variant, or allographic forms
+# of the same Han character, excluding mappings already covered by
+# CJK_Compatibility_Ideographs.txt.
+#
+# Initial entries were mined from the Chinese Text Project normalization
+# table. Additional conservative candidates were cross-checked against
+# OpenCC's staging Allographs.txt. Groups with competing modern regional
+# or Japanese standard forms are intentionally omitted here.
+#
+# Intended for NormalizeUnicodeCompat() only.
 #
 〸	十
 ム	厶
+㑹	會
+㓂	寇
+㓜	幼
+㕘	參
+㝎	定
+㝛	宿
+㝠	冥
+㝡	最
+㡳	底
+㢲	巽
+㣲	微
+㤗	泰
+㤙	恩
+㦯	或
 㦳	㘽
+㦸	戟
+㧞	拔
+㨗	捷
+㫖	旨
+㭊	析
+㳙	涓
+㴠	涵
+㸑	爨
+㸔	看
+㺯	弄
+㾗	痕
+䂖	石
+䆒	究
 䎛	㖈
+䑕	鼠
+䒭	等
+䟦	跋
+䧏	降
+丗	世
+乆	久
+亊	事
+亷	廉
+亾	亡
+仭	仞
+兊	兌
+兠	兜
+冐	冒
+冝	宜
+冦	寇
+凢	凡
+刄	刃
+刋	刊
+卽	即
+厯	歷
+叅	參
+吿	告
 呑	吞
+噐	器
+圅	函
+圡	土
+埀	垂
+塡	填
+夘	卯
+宻	密
+寃	冤
+寕	寧
+寜	寧
 尙	尚
+屛	屏
 岀	出
+嵗	歲
+庻	庶
+彚	彙
+彛	彝
+彞	彝
+徃	往
+恱	悅
+愼	慎
+戞	戛
+戱	戲
+扄	扃
+揑	捏
+揷	插
+敎	教
 敻	夐
+旣	既
+昬	昏
+昻	昂
+曁	暨
+曵	曳
+曺	曹
+槩	概
+槪	概
+淸	清
+湼	涅
+漑	溉
+濓	濂
+濳	潛
+熈	熙
+甞	嘗
+畧	略
+皷	鼓
+眀	明
+硏	研
+竒	奇
+羙	美
+羣	群
 耈	耇
+聼	聽
+苖	苗
+襃	褒
+觧	解
+譛	譖
+賔	賓
+軰	輩
+逹	達
+逺	遠
+邜	卯
+鄕	鄉
+鄷	酆
+鐡	鐵
+閠	閏
+隂	陰
+靣	面
+頥	頤
+顚	顛
 飮	飲
+髙	高
+鼔	鼓
 龺	𠦝
-
-# ----------------------------------------------------------------------
-# CJK Extension glyph normalization candidates
-#
-# Supplementary-plane CJK source forms from the same normalization table.
-#
+𠀋	丈
+𠁊	爽
+𠂻	衷
+𠉀	候
+𠊱	候
 𠑗	㒨
+𠑽	充
+𠕂	再
+𠩄	所
+𠫵	參
+𠰥	若
+𡈽	土
+𡨋	冥
+𡨕	冥
+𡨚	冤
+𡨜	寂
+𡨥	寇
+𡩋	寧
+𡮢	嘗
+𡵯	步
+𡸁	垂
+𡻕	歲
+𢃄	帶
+𢑱	彝
+𢑴	彝
+𢕄	微
+𢖍	衡
+𢦙	或
+𢷤	擯
+𣆨	鼠
 𣔕	𠓲
+𣱵	永
+𣳚	沒
+𣴑	流
+𣵀	涅
+𣶬	涵
 𤈎	㶷
 𤑕	爋
+𤓰	瓜
+𤕤	爽
+𤣥	玄
+𤤽	珍
 𤧩	𤦼
+𤲢	留
+𤼵	發
+𥧌	寐
+𦔳	助
+𦬆	芒
 𧅄	虁
 𧥙	𣁀
+𧺫	起
+𨓜	逸
+𨹓	降
+𨽻	隸
+𨽾	隸
+𪧐	宿
+𫑗	卯
+𫠦	所
+𭁵	寇
 
 # ----------------------------------------------------------------------
 # Punctuation / symbol extraction artifacts

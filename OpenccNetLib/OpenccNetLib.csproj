@@ -25,7 +25,8 @@
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.7.0
 
-            - Added per-instance custom dictionaries with the new Opencc(OpenccConfig, IEnumerable&lt;CustomDictSpec&gt;, bool) constructor.
+            - Added constructor-time frozen Opencc instances with immutable configuration and private plan caches based on DictionaryLib.Provider.
+            - Added per-instance custom dictionaries with the new Opencc(OpenccConfig, IEnumerable&lt;CustomDictSpec&gt;, bool, bool) constructor.
             - Added Opencc.WithCustomDictionary() for creating a new isolated custom converter while preserving the source configuration and IDS setting.
             - Per-instance custom dictionaries are layered on a snapshot of the currently active global dictionary provider without modifying global state.
             - Custom converter instances remain isolated from later global provider changes and retain their custom dictionary when switching configurations.

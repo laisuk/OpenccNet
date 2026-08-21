@@ -10,9 +10,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Add per-instance custom dictionary support with `Opencc(OpenccConfig, IEnumerable<CustomDictSpec>, bool)`. Custom
-  specifications are applied to a snapshot of the currently active dictionary provider and use an isolated per-instance
-  conversion-plan cache without modifying global dictionary state.
+- Add constructor-time frozen `Opencc` instances through the optional trailing `isFrozen` parameter and the read-only
+  `IsFrozen` property. Frozen instances reject later configuration and IDS-preservation changes and use a private
+  conversion-plan cache based on `DictionaryLib.Provider`; frozen custom-spec instances retain isolated custom
+  dictionary state over that same stable base.
+- Add per-instance custom dictionary support with `Opencc(OpenccConfig, IEnumerable<CustomDictSpec>, bool, bool)`.
+  Custom specifications are applied to a snapshot of the currently active dictionary provider and use an isolated
+  per-instance conversion-plan cache without modifying global dictionary state.
 - Add `Opencc.WithCustomDictionary()` as a convenient way to create a new isolated converter using custom dictionary
   specifications while preserving the source converter's configuration and IDS-preservation setting.
 - Support configuration switching on custom `Opencc` instances while retaining the same isolated custom dictionary

@@ -6,7 +6,6 @@ using OpenccNetLib;
 namespace OpenccNetTests;
 
 [TestClass]
-[DoNotParallelize]
 public class DictionaryLibTests
 {
     private const string OutputDir = "test_output";
@@ -104,7 +103,7 @@ public class DictionaryLibTests
         {
             var ex = Assert.Throws<ArgumentException>(() =>
                 DictionaryLib.WithCustomDicts(
-                    DictionaryLib.New(),
+                    DictionaryLib.FromZstd(),
                     new[]
                     {
                         new CustomDictSpec
@@ -240,6 +239,7 @@ public class DictionaryLibTests
 
 
     [TestMethod]
+    [DoNotParallelize]
     public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility()
     {
         var legacyPath = Path.Combine(OutputDir, "legacy_dict_missing_metadata.cbor");
@@ -281,7 +281,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestSerialization()
     {
-        var dict = DictionaryLib.FromDicts();
+        var dict = DictionaryLib.FromZstd();
         var jsonPath = Path.Combine(OutputDir, "test_dict.json");
 
         DictionaryLib.SerializeToJson(jsonPath);
@@ -296,7 +296,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestSerializationUnescaped()
     {
-        var dict = DictionaryLib.FromDicts();
+        var dict = DictionaryLib.FromZstd();
         var jsonPath = Path.Combine(OutputDir, "test_dict_unescaped.json");
 
         // Serialize using unescaped Unicode output
@@ -361,13 +361,13 @@ public class DictionaryLibTests
 
         var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
         Assert.AreEqual(
-            DictionaryLib.FromDicts().hk_phrases.Count,
+            DictionaryLib.FromZstd().hk_phrases.Count,
             loaded.hk_phrases.Count);
         Assert.AreEqual(
-            DictionaryLib.FromDicts().hk_phrases_rev.Count,
+            DictionaryLib.FromZstd().hk_phrases_rev.Count,
             loaded.hk_phrases_rev.Count);
         Assert.AreEqual(
-            DictionaryLib.FromDicts().jps_characters_rev.Count,
+            DictionaryLib.FromZstd().jps_characters_rev.Count,
             loaded.jps_characters_rev.Count);
     }
 
@@ -376,7 +376,7 @@ public class DictionaryLibTests
     public void TestDictLengthMaskAndLongLengths()
     {
         // Load all dictionaries (from dicts folder)
-        var dicts = DictionaryLib.FromDicts();
+        var dicts = DictionaryLib.FromZstd();
 
         // Pick one for inspection
         var d = dicts.st_phrases;
@@ -581,19 +581,22 @@ public class DictionaryLibTests
                 [DictSlot.HKPhrases] = customPath
             });
 
-        Opencc.UseCustomDictionary(dict);
+        Assert.AreEqual("妹丁", dict.hk_phrases.Dict["小女孩"]);
 
-        try
+        var specs = new[]
         {
-            var opencc = new Opencc("s2hkp");
-            Assert.AreEqual(
-                "妹丁侵犯個人私隱權",
-                opencc.Convert("小女孩侵犯个人隐私权"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+            new CustomDictSpec
+            {
+                Slot = DictSlot.HKPhrases,
+                Mode = CustomDictMode.Append,
+                Paths = new[] { customPath }
+            }
+        };
+        var opencc = new Opencc("s2hkp", specs, isFrozen: true);
+
+        Assert.AreEqual(
+            "妹丁侵犯個人私隱權",
+            opencc.Convert("小女孩侵犯个人隐私权"));
     }
 
     [TestMethod]
@@ -611,19 +614,22 @@ public class DictionaryLibTests
                 [DictSlot.STPhrases] = customPath
             });
 
-        Opencc.UseCustomDictionary(dict);
+        Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
 
-        try
+        var specs = new[]
         {
-            var opencc = new Opencc("s2t");
-            Assert.AreEqual(
-                "帕蘭蒂爾是一家公司",
-                opencc.Convert("帕兰蒂尔是一家公司"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+            new CustomDictSpec
+            {
+                Slot = DictSlot.STPhrases,
+                Mode = CustomDictMode.Append,
+                Paths = new[] { customPath }
+            }
+        };
+        var opencc = new Opencc("s2t", specs, isFrozen: true);
+
+        Assert.AreEqual(
+            "帕蘭蒂爾是一家公司",
+            opencc.Convert("帕兰蒂尔是一家公司"));
     }
 
     [TestMethod]
@@ -651,7 +657,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_AppendsCustomStPhraseFromPairs()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -676,7 +682,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_AppendsCustomHkPhraseFromPairs()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -701,7 +707,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverridesCustomHkPhraseFromPairs()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -726,7 +732,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_AppendsCustomHkPhraseRevFromPairs()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -751,7 +757,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverridesJPSCharactersRevFromPairs()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -782,7 +788,7 @@ public class DictionaryLibTests
             "# Custom company terms\n帕兰蒂尔\t帕蘭蒂爾\n",
             Encoding.UTF8);
 
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -809,7 +815,7 @@ public class DictionaryLibTests
             "帕兰蒂尔\t檔案值\n",
             Encoding.UTF8);
 
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -834,7 +840,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverrideReplacesWholeSlot()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -860,7 +866,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverrideReplacesHkVariantPhraseSlot()
     {
-        var dict = DictionaryLib.FromDicts();
+        var dict = DictionaryLib.FromZstd();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -885,148 +891,93 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestTwVariantPhraseAppliesBeforeCharacterVariant()
     {
-        var dict = DictionaryLib.FromDicts();
-        Opencc.UseCustomDictionary(dict);
-
-        try
-        {
-            var opencc = new Opencc("t2tw");
-            Assert.AreEqual("喫茶小舖", opencc.Convert("喫茶小舖"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+        var opencc = new Opencc("t2tw", isFrozen: true);
+        Assert.AreEqual("喫茶小舖", opencc.Convert("喫茶小舖"));
     }
 
     [TestMethod]
     public void TestHkVariantPhraseAppliesBeforeCharacterVariant()
     {
-        var dict = DictionaryLib.FromDicts();
-        Opencc.UseCustomDictionary(dict);
-
-        try
-        {
-            var opencc = new Opencc("t2hk");
-            Assert.AreEqual("喫茶小舖", opencc.Convert("喫茶小舖"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+        var opencc = new Opencc("t2hk", isFrozen: true);
+        Assert.AreEqual("喫茶小舖", opencc.Convert("喫茶小舖"));
     }
 
     [TestMethod]
     public void TestT2JpUsesJPSCharactersRevOnly()
     {
-        var dict = DictionaryLib.FromDicts();
-
-        DictionaryLib.WithCustomDicts(
-            dict,
-            new[]
+        var specs = new[]
+        {
+            new CustomDictSpec
             {
-                new CustomDictSpec
-                {
-                    Slot = DictSlot.JPSCharacters,
-                    Mode = CustomDictMode.Override,
-                    Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
-                },
-                new CustomDictSpec
-                {
-                    Slot = DictSlot.JPSPhrases,
-                    Mode = CustomDictMode.Override,
-                    Pairs = new Dictionary<string, string> { ["惡德"] = "不應使用" }
-                },
-                new CustomDictSpec
-                {
-                    Slot = DictSlot.JPSCharactersRev,
-                    Mode = CustomDictMode.Override,
-                    Pairs = new Dictionary<string, string> { ["惡"] = "悪" }
-                }
-            });
+                Slot = DictSlot.JPSCharacters,
+                Mode = CustomDictMode.Override,
+                Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
+            },
+            new CustomDictSpec
+            {
+                Slot = DictSlot.JPSPhrases,
+                Mode = CustomDictMode.Override,
+                Pairs = new Dictionary<string, string> { ["惡德"] = "不應使用" }
+            },
+            new CustomDictSpec
+            {
+                Slot = DictSlot.JPSCharactersRev,
+                Mode = CustomDictMode.Override,
+                Pairs = new Dictionary<string, string> { ["惡"] = "悪" }
+            }
+        };
+        var opencc = new Opencc("t2jp", specs, isFrozen: true);
 
-        Opencc.UseCustomDictionary(dict);
-
-        try
-        {
-            var opencc = new Opencc("t2jp");
-            Assert.AreEqual("悪德", opencc.Convert("惡德"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+        Assert.AreEqual("悪德", opencc.Convert("惡德"));
     }
 
     [TestMethod]
     public void TestJp2TUsesJpsPhrasesAndCharactersOnly()
     {
-        var dict = DictionaryLib.FromDicts();
-
-        DictionaryLib.WithCustomDicts(
-            dict,
-            new[]
+        var specs = new[]
+        {
+            new CustomDictSpec
             {
-                new CustomDictSpec
-                {
-                    Slot = DictSlot.JPSCharactersRev,
-                    Mode = CustomDictMode.Override,
-                    Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
-                }
-            });
+                Slot = DictSlot.JPSCharactersRev,
+                Mode = CustomDictMode.Override,
+                Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
+            }
+        };
+        var opencc = new Opencc("jp2t", specs, isFrozen: true);
 
-        Opencc.UseCustomDictionary(dict);
-
-        try
-        {
-            var opencc = new Opencc("jp2t");
-            Assert.AreEqual("辨當と惡", opencc.Convert("弁当と悪"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+        Assert.AreEqual("辨當と惡", opencc.Convert("弁当と悪"));
     }
 
     [TestMethod]
     public void TestWithCustomDicts_AppendedCustomDictWorksInConversion()
     {
-        var dict = DictionaryLib.New();
-
-        DictionaryLib.WithCustomDicts(
-            dict,
-            new[]
+        var dict = DictionaryLib.FromZstd();
+        var specs = new[]
+        {
+            new CustomDictSpec
             {
-                new CustomDictSpec
+                Slot = DictSlot.STPhrases,
+                Mode = CustomDictMode.Append,
+                Pairs = new Dictionary<string, string>
                 {
-                    Slot = DictSlot.STPhrases,
-                    Mode = CustomDictMode.Append,
-                    Pairs = new Dictionary<string, string>
-                    {
-                        ["帕兰蒂尔"] = "帕蘭蒂爾"
-                    }
+                    ["帕兰蒂尔"] = "帕蘭蒂爾"
                 }
-            });
+            }
+        };
 
-        Opencc.UseCustomDictionary(dict);
+        DictionaryLib.WithCustomDicts(dict, specs);
+        Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
 
-        try
-        {
-            var opencc = new Opencc("s2t");
-            Assert.AreEqual(
-                "帕蘭蒂爾是一家公司",
-                opencc.Convert("帕兰蒂尔是一家公司"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+        var opencc = new Opencc("s2t", specs, isFrozen: true);
+        Assert.AreEqual(
+            "帕蘭蒂爾是一家公司",
+            opencc.Convert("帕兰蒂尔是一家公司"));
     }
 
     [TestMethod]
     public void TestWithCustomDicts_RejectsEmptySpec()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         var ex = Assert.Throws<ArgumentException>(() =>
             DictionaryLib.WithCustomDicts(
@@ -1045,7 +996,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_RejectsInvalidCustomSlot()
     {
-        var dict = DictionaryLib.New();
+        var dict = DictionaryLib.FromZstd();
 
         var ex = Assert.Throws<ArgumentException>(() =>
             DictionaryLib.WithCustomDicts(
