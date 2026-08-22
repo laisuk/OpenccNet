@@ -1,19 +1,12 @@
-# Experimental Kangxi Radicals normalization
+# Unicode compatibility normalization table.
 #
-# Unicode extraction-artifact normalization table.
+# Format: <source>\t<replacement>
 #
-# Section 1 contains the complete 214-entry Kangxi radical mapping
-# used mainly for zh-Hant text.
+# ----------------------------------------------------------------------
+# Kangxi Radicals
 #
-# Intended ONLY for repairing malformed PDF text extraction
-# (notably PdfPig output that substitutes Kangxi Radical code points
-# for ordinary CJK ideographs).
-#
-# Unicode block:
-#   U+2F00–U+2FD5  Kangxi Radicals (214 entries)
-#
-# Format:
-#   <source>\t<replacement>
+# U+2F00–U+2FD5 (214 entries) mapped to ordinary CJK ideographs.
+# Useful when radical code points appear in ordinary CJK text.
 #
 ⼀	一
 ⼁	丨
@@ -231,13 +224,10 @@
 ⿕	龠
 
 # ----------------------------------------------------------------------
-# zh-Hans / CJK Radicals Supplement
+# Simplified CJK radical forms
 #
-# Simplified radical forms that PdfPig may emit instead of ordinary
-# Simplified Chinese ideographs. The neutral forms at the end were also
-# observed in PdfPig-extracted zh-Hans text.
-#
-# CJK Radicals Supplement: U+2E80–U+2EFF
+# CJK Radicals Supplement forms mapped to ordinary Simplified Chinese
+# ideographs.
 #
 ⺦	丬
 ⺰	纟
@@ -267,7 +257,7 @@
 ⻰	龙
 ⻳	龟
 
-# Additional CJK Radicals Supplement forms mined from CText normalization data
+# Additional CJK Radicals Supplement forms
 ⺋	㔾
 ⺖	忄
 ⺘	扌
@@ -295,24 +285,21 @@
 ⻖	阝
 ⻗	雨
 
-# Neutral radical forms observed in zh-Hans PdfPig output
+# ----------------------------------------------------------------------
+# Other CJK radical forms
+#
+# Radical-form code points mapped to their ordinary ideograph forms.
+#
 ⺟	母
 ⻘	青
 ⻤	鬼
 
 # ----------------------------------------------------------------------
-# Chinese allograph / legacy glyph normalization candidates
+# Chinese allographs and legacy glyphs
 #
-# Unicode code points representing legacy, variant, or allographic forms
-# of the same Han character, excluding mappings already covered by
-# CJK_Compatibility_Ideographs.txt.
-#
-# Initial entries were mined from the Chinese Text Project normalization
-# table. Additional conservative candidates were cross-checked against
-# OpenCC's staging Allographs.txt. Groups with competing modern regional
-# or Japanese standard forms are intentionally omitted here.
-#
-# Intended for NormalizeUnicodeCompat() only.
+# Legacy, variant, or allographic Han forms not already covered by
+# CJK_Compatibility_Ideographs.txt. Ambiguous regional or Japanese
+# standard forms are excluded.
 #
 〸	十
 ム	厶
@@ -502,19 +489,17 @@
 𭁵	寇
 
 # ----------------------------------------------------------------------
-# Punctuation / symbol extraction artifacts
+# Punctuation and symbols
 #
-# Compatibility-like glyph substitutions observed by comparing PdfPig
-# extraction with Pdfium extraction from the same PDF.
+# Compatibility-like punctuation and symbol forms found in extracted text.
 #
 〈	〈
 〉	〉
-# PdfPig may extract an em-dash-like glyph as U+2E3A TWO-EM DASH.
-# Normalize it to U+2014 EM DASH for ordinary CJK text.
-# Comment out this mapping if the original long-dash form should be preserved.
-⸺	—
+# Optional: U+2E3A TWO-EM DASH -> U+2014 EM DASH.
+# Disabled by default because U+2E3A may be intentional.
+# ⸺	—
 
-# Additional punctuation forms mined from CText normalization data
+# Additional punctuation forms
 ‧	·
 ︰	：
 ﹐	，
