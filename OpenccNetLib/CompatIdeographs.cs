@@ -97,12 +97,14 @@ namespace OpenccNetLib
                 while ((rawLine = reader.ReadLine()) != null)
                 {
                     lineNo++;
-                    var line = rawLine.Trim();
-
-                    if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                    
+                    if (string.IsNullOrWhiteSpace(rawLine) ||
+                        rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
+                    {
                         continue;
+                    }
 
-                    var parts = line.Split('\t');
+                    var parts = rawLine.Split('\t');
                     if (parts.Length < 2)
                         throw new ArgumentException("line " + lineNo + ": missing target", nameof(text));
 

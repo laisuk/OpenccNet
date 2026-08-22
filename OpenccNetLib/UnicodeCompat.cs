@@ -237,15 +237,14 @@ namespace OpenccNetLib
             foreach (var rawLine in File.ReadLines(path, Encoding.UTF8))
             {
                 lineNo++;
-                var line = rawLine.Trim();
-
-                if (line.Length == 0 ||
-                    line.StartsWith("#", StringComparison.Ordinal))
+                
+                if (string.IsNullOrWhiteSpace(rawLine) ||
+                    rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                var parts = line.Split('\t');
+                var parts = rawLine.Split('\t');
 
                 if (parts.Length < 2)
                 {
