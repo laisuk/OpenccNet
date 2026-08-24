@@ -26,6 +26,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Internalize the compatibility-ideograph and curated Unicode normalization implementation types. The supported public
+  surface is now `Opencc.NormalizeCompat(...)`, `Opencc.NormalizeUnicodeCompat(...)`, and
+  `Opencc.NormalizeCompatExtended(...)`.
+- Remove the unreleased `NormalizeCompat(string, bool)` overload in favor of the named basic and extended methods.
 - Update DeToFu table data.
 - Internalize `ConversionPlanCache`, `DictRefs`, and `StarterUnion`; these conversion-planning and acceleration types
   are implementation details and are no longer part of the public API surface.
@@ -46,6 +50,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Compatibility
 
+- Code that directly referenced `CompatIdeographs` or the unreleased `NormalizeCompat(string, bool)` overload must
+  migrate to the three named `Opencc.Normalize*` methods. These changes are source- and potentially binary-breaking for
+  consumers of the prerelease API surface, but no released 1.7.0 package exposed the removed overload.
 - Existing high-level dictionary and conversion APIs remain available through `DictionaryLib` and `Opencc`.
 - `DictionaryLib.Provider` continues to expose the built-in default dictionary.
 - `Opencc.UseCustomDictionary()` and `Opencc.UseDefaultDictionary()` retain their process-wide behavior; the new

@@ -544,7 +544,7 @@ public class OpenccNetTests
     {
         Assert.AreEqual(
             "天龍八部書裡的喬峰是契丹人",
-            CompatIdeographs.Builtin().Normalize("天龍八部書裡的喬峰是契丹人"));
+            new Opencc().NormalizeCompat("天龍八部書裡的喬峰是契丹人"));
     }
 
     [TestMethod]

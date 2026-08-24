@@ -220,15 +220,14 @@ namespace OpenccNetTests
         }
 
         [TestMethod]
-        public void NormalizeCompat_Extended_IncludesCompatAndExtendedMappings()
+        public void NormalizeCompatExtended_IncludesCompatAndExtendedMappings()
         {
             var cc = new Opencc();
 
             Assert.AreEqual(
                 "天龍八部書裡的喬峰是契丹人·：",
-                cc.NormalizeCompat(
-                    "天龍八部書裡的喬峰是契丹人‧︰",
-                    extended: true));
+                cc.NormalizeCompatExtended(
+                    "天龍八部書裡的喬峰是契丹人‧︰"));
         }
 
         [TestMethod]
@@ -240,6 +239,36 @@ namespace OpenccNetTests
             Assert.AreSame(
                 input,
                 cc.NormalizeCompat(input));
+        }
+
+        [TestMethod]
+        public void PublicNormalizationApis_PreserveNullEmptyUnmappedAndMalformedText()
+        {
+            var cc = new Opencc();
+            const string unmapped = "普通文本 ABC 😀";
+            const string malformed = "A\uD800中\uDC00Z";
+
+            Assert.AreEqual(string.Empty, cc.NormalizeCompat(null!));
+            Assert.AreEqual(string.Empty, Opencc.NormalizeUnicodeCompat(null!));
+            Assert.AreEqual(string.Empty, cc.NormalizeCompatExtended(null!));
+            Assert.AreSame(string.Empty, cc.NormalizeCompat(string.Empty));
+            Assert.AreSame(string.Empty, Opencc.NormalizeUnicodeCompat(string.Empty));
+            Assert.AreSame(string.Empty, cc.NormalizeCompatExtended(string.Empty));
+            Assert.AreSame(unmapped, cc.NormalizeCompat(unmapped));
+            Assert.AreSame(unmapped, Opencc.NormalizeUnicodeCompat(unmapped));
+            Assert.AreSame(unmapped, cc.NormalizeCompatExtended(unmapped));
+            Assert.AreEqual(malformed, cc.NormalizeCompat(malformed));
+            Assert.AreEqual(malformed, Opencc.NormalizeUnicodeCompat(malformed));
+            Assert.AreEqual(malformed, cc.NormalizeCompatExtended(malformed));
+        }
+
+        [TestMethod]
+        public void NormalizeCompatExtended_DoesNotChainReplacementScalars()
+        {
+            var cc = new Opencc();
+
+            Assert.AreEqual("䂖", cc.NormalizeCompatExtended("䂖"));
+            Assert.AreEqual("石", Opencc.NormalizeUnicodeCompat("䂖"));
         }
 
         [TestMethod]

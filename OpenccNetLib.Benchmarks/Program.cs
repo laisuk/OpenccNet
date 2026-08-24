@@ -72,7 +72,7 @@ namespace OpenccNetLib.Benchmarks
     [MemoryDiagnoser]
     [SimpleJob(warmupCount: 2, iterationCount: 6)]
     [MinColumn, MaxColumn, RankColumn]
-    public class CompatIdeographsHotPathBenchmarks
+    public class InternalCompatIdeographsHotPathBenchmarks
     {
         private CompatIdeographs? _compat;
         private string? _input;
@@ -211,7 +211,7 @@ namespace OpenccNetLib.Benchmarks
             {
                 BenchmarkRunner.Run(new[]
                 {
-                    typeof(CompatIdeographsHotPathBenchmarks),
+                    typeof(InternalCompatIdeographsHotPathBenchmarks),
                     typeof(SplitterHotPathBenchmarks),
                     typeof(IdsSplitterHotPathBenchmarks),
                 });

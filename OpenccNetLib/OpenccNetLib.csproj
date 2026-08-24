@@ -34,6 +34,8 @@
             - Internalized ConversionPlanCache, DictRefs, and StarterUnion as implementation details and simplified conversion-plan/provider ownership.
             - DictionaryLib.Provider remains the public built-in/default dictionary provider.
             - Existing Opencc.UseCustomDictionary() and Opencc.UseDefaultDictionary() retain their process-wide behavior.
+            - Internalized compatibility normalization implementation types; use Opencc.NormalizeCompat, Opencc.NormalizeUnicodeCompat, and Opencc.NormalizeCompatExtended.
+            - Removed the unreleased NormalizeCompat(string, bool) overload; direct CompatIdeographs and two-argument overload consumers must migrate to the three named facade methods.
             - Updated DeToFu table data.
         </PackageReleaseNotes>
         <AssemblyVersion>1.7.0.0</AssemblyVersion>

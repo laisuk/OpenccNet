@@ -5,7 +5,7 @@ using System.Text;
 namespace OpenccNetLib
 {
     /// <summary>
-    /// Provides CJK Compatibility Ideograph normalization utilities.
+    /// Implements internal CJK Compatibility Ideograph normalization.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -25,7 +25,7 @@ namespace OpenccNetLib
     /// ideographs without a decomposition mapping, are preserved unchanged.
     /// </para>
     /// </remarks>
-    public sealed class CompatIdeographs
+    internal sealed class CompatIdeographs
     {
         private const int BmpStart = 0xF900;
         private const int BmpEnd = 0xFAFF;
@@ -62,7 +62,7 @@ namespace OpenccNetLib
         /// per process. Subsequent calls reuse the same dense lookup tables.
         /// </remarks>
         /// <returns>The reusable built-in compatibility normalizer.</returns>
-        public static CompatIdeographs Builtin()
+        internal static CompatIdeographs Builtin()
         {
             return BuiltinTable.Value;
         }
@@ -82,7 +82,7 @@ namespace OpenccNetLib
         /// in either column, or uses a source outside the CJK Compatibility
         /// Ideograph ranges.
         /// </exception>
-        public static CompatIdeographs FromText(string text)
+        internal static CompatIdeographs FromText(string text)
         {
             var table = new CompatIdeographs();
 
@@ -97,7 +97,7 @@ namespace OpenccNetLib
                 while ((rawLine = reader.ReadLine()) != null)
                 {
                     lineNo++;
-                    
+
                     if (string.IsNullOrWhiteSpace(rawLine) ||
                         rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
                     {
@@ -137,7 +137,7 @@ namespace OpenccNetLib
         /// <exception cref="ArgumentException">
         /// <paramref name="scalar"/> is empty or contains more than one Unicode scalar value.
         /// </exception>
-        public string NormalizeScalar(string scalar)
+        internal string NormalizeScalar(string scalar)
         {
             if (scalar == null)
                 throw new ArgumentNullException(nameof(scalar));
@@ -156,7 +156,7 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="ch">The BMP character to normalize.</param>
         /// <returns>The mapped scalar, or the original character when no mapping exists.</returns>
-        public string NormalizeChar(char ch)
+        internal string NormalizeChar(char ch)
         {
             return NormalizeCodePoint(ch);
         }
@@ -171,7 +171,7 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="input">The input text to normalize.</param>
         /// <returns>Text with mapped compatibility ideographs normalized.</returns>
-        public string Normalize(string input)
+        internal string Normalize(string input)
         {
             if (string.IsNullOrEmpty(input))
                 return input ?? string.Empty;
@@ -304,7 +304,7 @@ namespace OpenccNetLib
         /// <exception cref="ArgumentNullException">
         /// <paramref name="builder"/> is <see langword="null"/>.
         /// </exception>
-        public void NormalizeInPlace(StringBuilder builder)
+        internal void NormalizeInPlace(StringBuilder builder)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -315,21 +315,6 @@ namespace OpenccNetLib
             var normalized = Normalize(builder.ToString());
             builder.Length = 0;
             builder.Append(normalized);
-        }
-
-        /// <summary>
-        /// Normalizes mapped CJK Compatibility Ideographs using the built-in table.
-        /// </summary>
-        /// <remarks>
-        /// This is a convenience wrapper around <see cref="Builtin"/> and
-        /// <see cref="Normalize(string)"/>. It performs Unicode compatibility
-        /// normalization as an optional pre-pass before OpenCC conversion.
-        /// </remarks>
-        /// <param name="input">The input text to normalize.</param>
-        /// <returns>Text with mapped compatibility ideographs normalized.</returns>
-        public static string NormalizeCompatIdeographs(string input)
-        {
-            return Builtin().Normalize(input);
         }
 
         internal bool TryNormalizeCodePoint(int codePoint, out string replacement)
@@ -433,15 +418,15 @@ namespace OpenccNetLib
 
         private struct ScalarValue
         {
-            public ScalarValue(int codePoint, string scalar)
+            internal ScalarValue(int codePoint, string scalar)
             {
                 CodePoint = codePoint;
                 Scalar = scalar;
             }
 
-            public int CodePoint { get; }
+            internal int CodePoint { get; }
 
-            public string Scalar { get; }
+            internal string Scalar { get; }
         }
     }
 }

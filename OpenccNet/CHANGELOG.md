@@ -11,6 +11,9 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Changed
 
+- Keep `--norm-compat` behavior compatibility-ideograph-only through `Opencc.NormalizeCompat(...)`; the PDF
+  extraction pipeline continues applying Unicode-only normalization before reflow and optional basic compatibility
+  normalization before conversion.
 - Update DeTofu data table.
 - Adapted custom dict token to newly added instance custom dictionary.
 
