@@ -82,7 +82,6 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 ### Breaking Changes
 
 - Custom dictionary bundles must include the new `JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
-  `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active JP conversion schema.
 
 ### Notes
 

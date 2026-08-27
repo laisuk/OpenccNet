@@ -54,9 +54,7 @@ public class CustomDictSpecTests
     [DataRow("unknown:append:custom.txt")]
     [DataRow("1:append:custom.txt")]
     [DataRow("16:append:custom.txt")]
-    [DataRow("JPVariants:append:custom.txt")]
-    [DataRow("JPVariantsRev:append:custom.txt")]
-    public void Parse_RejectsUnknownNumericAndRetiredSlots(string value)
+    public void Parse_RejectsUnknownAndNumericSlots(string value)
     {
         Assert.Throws<ArgumentException>(() => CustomDictSpec.Parse(value));
     }
@@ -122,7 +120,6 @@ public class CustomDictSpecTests
         }
 
         Assert.IsFalse(DictSlotExtensions.TryParse("16", out _));
-        Assert.IsFalse(DictSlotExtensions.TryParse("JPVariants", out _));
         Assert.IsFalse(((DictSlot)16).IsActive());
         Assert.Throws<ArgumentOutOfRangeException>(() => ((DictSlot)16).ToCanonicalName());
     }

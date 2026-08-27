@@ -197,9 +197,8 @@ Direct Hong Kong phrase slots are customizable too: `DictSlot.HKPhrases` is used
 `DictSlot.HKPhrasesRev` is used by `hk2sp`.
 Japanese Shinjitai slots follow upstream OpenCC commit `93ee7f7`: `JPShinjitaiCharacters.txt` is the
 authoritative character mapping source, `JPShinjitaiCharactersRev.txt` is generated from it and used by `t2jp`,
-and `jp2t` uses `JPShinjitaiPhrases.txt` plus `JPShinjitaiCharacters.txt`. `JPVariants.txt` and
-`JPVariantsRev.txt` are no longer part of the active schema. Custom `FromDicts`, JSON, CBOR, or Zstd dictionary
-bundles must be regenerated or include the new non-empty `jps_characters_rev` slot.
+and `jp2t` uses `JPShinjitaiPhrases.txt` plus `JPShinjitaiCharacters.txt`. Custom `FromDicts`, JSON, CBOR, or Zstd
+dictionary bundles must include the non-empty `jps_characters_rev` slot.
 
 ```csharp
 using OpenccNetLib;
@@ -381,4 +380,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) f
 
 **OpenccNet** is not affiliated with the original **OpenCC** project, but aims to provide a compatible and
 high-performance solution for .NET developers.
-

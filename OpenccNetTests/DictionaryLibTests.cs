@@ -73,51 +73,19 @@ public class DictionaryLibTests
             [DictSlot.HKVariantsRev] = 12,
             [DictSlot.HKVariantsRevPhrases] = 13,
             [DictSlot.JPSCharacters] = 14,
-            [DictSlot.JPSPhrases] = 15
+            [DictSlot.JPSPhrases] = 15,
+            [DictSlot.TWVariantsPhrases] = 18,
+            [DictSlot.HKVariantsPhrases] = 19,
+            [DictSlot.JPSCharactersRev] = 20,
+            [DictSlot.HKPhrases] = 21,
+            [DictSlot.HKPhrasesRev] = 22
         };
 
         foreach (var pair in publishedValues)
             Assert.AreEqual(pair.Value, (int)pair.Key);
 
-        Assert.IsTrue(Enum.TryParse("JPVariants", out DictSlot jpVariants));
-        Assert.AreEqual(16, (int)jpVariants);
-        Assert.IsTrue(Enum.TryParse("JPVariantsRev", out DictSlot jpVariantsRev));
-        Assert.AreEqual(17, (int)jpVariantsRev);
-
-        Assert.IsNotNull(typeof(DictSlot).GetField("JPVariants")
-            ?.GetCustomAttributes(typeof(ObsoleteAttribute), false).SingleOrDefault());
-        Assert.IsNotNull(typeof(DictSlot).GetField("JPVariantsRev")
-            ?.GetCustomAttributes(typeof(ObsoleteAttribute), false).SingleOrDefault());
-
-        Assert.IsGreaterThan(17, (int)DictSlot.TWVariantsPhrases);
-        Assert.IsGreaterThan(17, (int)DictSlot.HKVariantsPhrases);
-        Assert.IsGreaterThan(17, (int)DictSlot.JPSCharactersRev);
-        Assert.IsGreaterThan(17, (int)DictSlot.HKPhrases);
-        Assert.IsGreaterThan(17, (int)DictSlot.HKPhrasesRev);
-    }
-
-    [TestMethod]
-    public void TestWithCustomDicts_RejectsRetiredNumericSlots()
-    {
-        foreach (var retiredValue in new[] { 16, 17 })
-        {
-            var ex = Assert.Throws<ArgumentException>(() =>
-                DictionaryLib.WithCustomDicts(
-                    DictionaryLib.FromZstd(),
-                    new[]
-                    {
-                        new CustomDictSpec
-                        {
-                            Slot = (DictSlot)retiredValue,
-                            Pairs = new Dictionary<string, string>
-                            {
-                                ["test"] = "value"
-                            }
-                        }
-                    }));
-
-            Assert.Contains("Unknown dictionary slot", ex.Message);
-        }
+        Assert.IsFalse(Enum.IsDefined(typeof(DictSlot), 16));
+        Assert.IsFalse(Enum.IsDefined(typeof(DictSlot), 17));
     }
 
     [TestMethod]
@@ -191,32 +159,6 @@ public class DictionaryLibTests
             var ex = Assert.Throws<FileNotFoundException>(() => DictionaryLib.FromDicts(tempDir));
             StringAssert.Contains(ex.Message, missingFile);
         }
-    }
-
-    [TestMethod]
-    public void TestFromDicts_DoesNotRequireLegacyJpVariantFiles()
-    {
-        var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
-        var tempDir = Path.Combine(OutputDir, "dicts_without_legacy_jp_variants");
-
-        if (Directory.Exists(tempDir))
-            Directory.Delete(tempDir, recursive: true);
-
-        Directory.CreateDirectory(tempDir);
-
-        foreach (var sourceFile in Directory.EnumerateFiles(sourceDir))
-        {
-            var fileName = Path.GetFileName(sourceFile);
-
-            if (fileName == "JPVariants.txt" || fileName == "JPVariantsRev.txt")
-                continue;
-
-            File.Copy(sourceFile, Path.Combine(tempDir, fileName));
-        }
-
-        var dict = DictionaryLib.FromDicts(tempDir);
-
-        AssertMetadataValid(dict.jps_characters_rev);
     }
 
     [TestMethod]

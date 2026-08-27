@@ -10,7 +10,7 @@ namespace OpenccNetLib
     /// </summary>
     /// <remarks>
     /// Parsing is case-insensitive, but accepts only canonical active-slot names.
-    /// Numeric enum strings, undefined values, and retired slots are not accepted.
+    /// Numeric enum strings and undefined values are not accepted.
     /// Use <see cref="ActiveSlots"/> for discovery and
     /// <see cref="CustomDictSpec.Parse(string)"/> to parse a complete portable
     /// custom-dictionary token.
@@ -49,7 +49,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Gets all currently supported dictionary slots in stable enum order.
-        /// Retired compatibility values are excluded.
+        /// Undefined numeric gaps are excluded.
         /// </summary>
         public static IReadOnlyList<DictSlot> ActiveSlots { get; } = new ReadOnlyCollection<DictSlot>(ActiveSlotArray);
 
@@ -69,7 +69,7 @@ namespace OpenccNetLib
         /// <param name="slot">The active dictionary slot.</param>
         /// <returns>The canonical slot name.</returns>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// <paramref name="slot"/> is undefined or retired.
+        /// <paramref name="slot"/> is undefined.
         /// </exception>
         public static string ToCanonicalName(this DictSlot slot)
         {
@@ -77,7 +77,7 @@ namespace OpenccNetLib
                 throw new ArgumentOutOfRangeException(
                     nameof(slot),
                     slot,
-                    "Unknown or retired dictionary slot.");
+                    "Unknown dictionary slot.");
 
             return slot.ToString();
         }
@@ -89,7 +89,7 @@ namespace OpenccNetLib
         /// <param name="slot">The parsed active slot when this method returns <c>true</c>.</param>
         /// <returns>
         /// <c>true</c> when <paramref name="value"/> names an active slot; otherwise,
-        /// <c>false</c>. Numeric enum strings and retired names return <c>false</c>.
+        /// <c>false</c>. Numeric enum strings return <c>false</c>.
         /// </returns>
         public static bool TryParse(string value, out DictSlot slot)
         {
@@ -103,7 +103,7 @@ namespace OpenccNetLib
         /// <param name="value">The canonical name to parse. Matching is case-insensitive.</param>
         /// <returns>The parsed active dictionary slot.</returns>
         /// <exception cref="ArgumentException">
-        /// <paramref name="value"/> is null, empty, numeric, unknown, or retired.
+        /// <paramref name="value"/> is null, empty, numeric, or unknown.
         /// </exception>
         public static DictSlot Parse(string value)
         {

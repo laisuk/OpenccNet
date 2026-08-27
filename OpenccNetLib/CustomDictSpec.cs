@@ -107,7 +107,7 @@ namespace OpenccNetLib
         /// <returns>The parsed custom dictionary specification.</returns>
         /// <exception cref="System.ArgumentException">
         /// <paramref name="value"/> is null or malformed; contains a numeric,
-        /// unknown, or obsolete slot; contains an unsupported mode; or has an empty
+        /// unknown slot; contains an unsupported mode; or has an empty
         /// path.
         /// </exception>
         public static CustomDictSpec Parse(string value)

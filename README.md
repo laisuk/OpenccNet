@@ -719,8 +719,8 @@ A portable custom-dictionary token has this grammar:
 ```
 
 Use `CustomDictSpec.Parse(...)` when a specification comes from configuration, a command line, or another portable
-string source. Slot and mode matching is case-insensitive. Slot parsing is strict: numeric enum strings, unknown names,
-and the obsolete `JPVariants` and `JPVariantsRev` slots are rejected. The parser splits the token into no more than
+string source. Slot and mode matching is case-insensitive. Slot parsing is strict: numeric enum strings and unknown names
+are rejected. The parser splits the token into no more than
 three fields, preserving Windows drive-letter paths and relative paths containing additional colons. It validates the
 specification syntax but does not check whether the file exists; dictionary loading reports missing or unreadable files.
 
@@ -1029,12 +1029,8 @@ var opencc = new Opencc("s2t");
 
 Japanese Shinjitai dictionary layout follows upstream OpenCC commit `93ee7f7`: `JPShinjitaiCharacters.txt`
 is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse dictionary
-used by `t2jp`. `JPVariants.txt` and `JPVariantsRev.txt` are no longer part of the active dictionary schema. Users who
-provide custom dictionary bundles, JSON, CBOR, or Zstd packs must regenerate those bundles or include the new non-empty
-`JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot. The retired `DictSlot.JPVariants` and
-`DictSlot.JPVariantsRev` enum members remain defined as obsolete compatibility sentinels with their original numeric
-values. Custom dictionary APIs reject these inactive slots rather than silently redirecting their values to a different
-dictionary.
+used by `t2jp`. Custom dictionary bundles, JSON, CBOR, or Zstd packs must include the non-empty
+`JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
 
 #### Recommended usage
 
@@ -1958,4 +1954,3 @@ for bundled OpenCC lexicons (_Apache License 2.0_).
 
 **OpenccNet** is not affiliated with the original **OpenCC** project, but aims to provide a compatible and
 high-performance solution for .NET developers.
-

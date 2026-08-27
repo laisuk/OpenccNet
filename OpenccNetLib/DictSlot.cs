@@ -61,20 +61,6 @@ namespace OpenccNetLib
         /// <summary>Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.</summary>
         JPSPhrases = 15,
 
-        /// <summary>
-        /// Retired Japanese variant dictionary slot retained only for source and numeric compatibility.
-        /// </summary>
-        /// <remarks>This slot is not accepted by custom dictionary APIs.</remarks>
-        [System.Obsolete("JPVariants is no longer an active dictionary slot.", false)]
-        JPVariants = 16,
-
-        /// <summary>
-        /// Retired reverse Japanese variant dictionary slot retained only for source and numeric compatibility.
-        /// </summary>
-        /// <remarks>This slot is not accepted by custom dictionary APIs.</remarks>
-        [System.Obsolete("JPVariantsRev is no longer an active dictionary slot.", false)]
-        JPVariantsRev = 17,
-
         /// <summary>Traditional-to-Taiwan phrase variant mappings applied before <see cref="TWVariants"/>.</summary>
         TWVariantsPhrases = 18,
 
