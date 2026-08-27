@@ -265,8 +265,8 @@ OpenccNetLib supports three optional preprocessing operations through the `Openc
 - `Opencc.NormalizeCompatExtended(...)` combines both tables in one pass. The compatibility-ideograph table has
   precedence, and emitted replacements are not normalized again, so mappings do not chain accidentally.
 
-These operations are text preprocessing, not OpenCC linguistic conversion, and they are not general-purpose Unicode
-NFC, NFD, NFKC, or NFKD normalization. They do not change dictionaries, phrase matching, regional selection, script
+These operations are text preprocessing, not OpenCC linguistic conversion, and they are not general-purpose Unicode NFC,
+NFD, NFKC, or NFKD normalization. They do not change dictionaries, phrase matching, regional selection, script
 detection, or OpenCC punctuation conversion. Unmapped text and malformed UTF-16 surrogates are preserved; when no
 mapping applies, the original string instance is returned.
 
@@ -306,8 +306,8 @@ Console.WriteLine(Opencc.NormalizeUnicodeCompat("⾣〸ム敻耈‧︰﹐"));
 
 This mode intentionally does not apply the separate CJK Compatibility Ideograph table. The curated table includes
 mappings such as `‧ → ·`, `︰ → ：`, `﹐ → ，`, `﹑ → 、`, `﹔ → ；`, `﹕ → ：`, `﹖ → ？`,
-`﹗ → ！`, and the extraction repair `⸺ → —`. It is scoped to Chinese/CJK-Chinese text; Japanese- and
-Korean-specific compatibility normalization is outside its scope.
+`﹗ → ！`, and the extraction repair `⸺ → —`. It is scoped to Chinese/CJK-Chinese text; Japanese- and Korean-specific
+compatibility normalization is outside its scope.
 
 #### Combined extended normalization
 
@@ -324,11 +324,11 @@ Console.WriteLine(converted);
 ```
 
 Use `NormalizeCompatExtended(...)` when both mapping layers are wanted. The former two-argument `NormalizeCompat`
-overload was removed before the 1.7.0 release; use the named basic or extended method instead.
-The CLI `-n` / `--norm-compat` option remains compatibility-ideograph-only. In the `pdf` pipeline, curated
-Unicode-only normalization is applied automatically immediately after extraction and before paragraph reflow; when
-`--norm-compat` is also requested, the basic compatibility-ideograph pass is applied later before OpenCC conversion.
-The CLI does not silently substitute combined extended normalization, so the established ordering and precedence remain
+overload was removed before the 1.7.0 release; use the named basic or extended method instead. The CLI `-n` /
+`--norm-compat` option remains compatibility-ideograph-only. In the `pdf` pipeline, curated Unicode-only normalization
+is applied automatically immediately after extraction and before paragraph reflow; when
+`--norm-compat` is also requested, the basic compatibility-ideograph pass is applied later before OpenCC conversion. The
+CLI does not silently substitute combined extended normalization, so the established ordering and precedence remain
 unchanged.
 
 #### Compatibility normalization APIs
@@ -353,6 +353,7 @@ Opencc.NormalizeCompatExtended(...)
 >
 > Both `source` and `target` must contain exactly one valid Unicode scalar. Sources must be non-ASCII. Malformed or
 > scalar-length-changing rows are rejected when the table is loaded.
+
 ### DeTofu Display Compatibility
 
 DeTofu is an optional display-compatibility pass for rare non-BMP CJK extension characters. Some systems, browsers,
@@ -972,7 +973,22 @@ ignored, comments are supported, and duplicate keys use late-comer wins behavior
 人工智能	人工智慧
 ```
 
-Short append example:
+Leading whitespace in dictionary keys and values is preserved and may be used for context-sensitive rules. For example,
+a `TSPhrases` custom dictionary can preserve the authorship marker in `巴金 著`:
+
+``` text
+# Preserve 著 when preceded by a space
+ 著   著
+```
+
+> Such rules should be used with care. Whitespace and punctuation may become segmentation boundaries for larger inputs,
+> so a dictionary key that crosses a delimiter is not guaranteed to match in all conversion paths. Prefer ordinary
+> phrase keys without delimiter boundaries when reliable matching for large text is required.
+>
+> Custom entries must target the dictionary slot used by the conversion stage where the mapping occurs. Multi-stage
+> configurations may require custom entries in more than one slot.
+
+#### Short append example:
 
 ```csharp
 var dictionary = DictionaryLib.FromDicts(

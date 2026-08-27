@@ -1042,7 +1042,9 @@ namespace OpenccNetLib
 
             foreach (var line in File.ReadLines(path))
             {
-                var lineSpan = line.AsSpan().Trim();
+                // Match Rust behavior: remove trailing whitespace only.
+                // Leading whitespace is dictionary data and must be preserved.
+                var lineSpan = line.AsSpan().TrimEnd();
 
                 // Skip empty lines or comment lines
                 if (lineSpan.IsEmpty || lineSpan[0] == '#')
@@ -1054,23 +1056,34 @@ namespace OpenccNetLib
                 var tabIndex = lineSpan.IndexOf('\t');
 
                 if (tabIndex == -1) continue;
+
+                // IMPORTANT: do not trim keySpan.
                 var keySpan = lineSpan.Slice(0, tabIndex);
                 var valueFullSpan = lineSpan.Slice(tabIndex + 1);
 
-                // Find the index of the first space in the value part
-                var firstSpaceIndex = valueFullSpan.IndexOf(' ');
+                // Match Rust split_whitespace().next():
+                // but keep leading whitespace in the value as member of the first token.
+                var valueEnd = 0;
+                var seenNonWhitespace = false;
 
-                var valueSpan =
-                    // If a space is found, take only the part before the first space
-                    firstSpaceIndex != -1
-                        ? valueFullSpan.Slice(0, firstSpaceIndex)
-                        :
-                        // If no space, the entire valueFullSpan is the desired value
-                        valueFullSpan;
+                while (valueEnd < valueFullSpan.Length)
+                {
+                    var ch = valueFullSpan[valueEnd];
 
-                // Trim any leading/trailing whitespace from the key and the extracted value part
-                keySpan = keySpan.Trim();
-                valueSpan = valueSpan.Trim();
+                    if (char.IsWhiteSpace(ch))
+                    {
+                        if (seenNonWhitespace)
+                            break;
+                    }
+                    else
+                    {
+                        seenNonWhitespace = true;
+                    }
+
+                    valueEnd++;
+                }
+
+                var valueSpan = valueFullSpan.Slice(0, valueEnd);
 
                 // Only add if both key and value are non-empty after trimming
                 if (keySpan.IsEmpty || valueSpan.IsEmpty) continue;

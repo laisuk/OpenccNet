@@ -52,6 +52,10 @@
         <None Update="Data\my_tw_rev_dict.txt">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+
+        <None Update="Data\my_ts_dict.txt">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <!-- Runtime asset required by PdfPig PDF extraction cleanup -->
