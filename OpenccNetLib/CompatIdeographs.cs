@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace OpenccNetLib
@@ -317,7 +318,7 @@ namespace OpenccNetLib
             builder.Append(normalized);
         }
 
-        internal bool TryNormalizeCodePoint(int codePoint, out string replacement)
+        private bool TryNormalizeCodePoint(int codePoint, out string replacement)
         {
             if (codePoint >= BmpStart && codePoint <= BmpEnd)
             {
@@ -427,6 +428,59 @@ namespace OpenccNetLib
             internal int CodePoint { get; }
 
             internal string Scalar { get; }
+        }
+
+        /// <summary>
+        /// Maps one Unicode code point using the built-in CJK Compatibility
+        /// Ideograph table.
+        /// </summary>
+        /// <param name="codePoint">Unicode code point to normalize.</param>
+        /// <returns>
+        /// The mapped Unicode code point when a compatibility mapping exists;
+        /// otherwise, the original <paramref name="codePoint"/>.
+        /// </returns>
+        /// <remarks>
+        /// The bundled compatibility table is defined as one Unicode scalar to one
+        /// Unicode scalar for the mappings used by the normalization pipeline.
+        ///
+        /// This primitive mapping API is used internally by combined normalization to
+        /// avoid temporary strings and repeated scalar parsing.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int MapCodePoint(int codePoint)
+        {
+            if (codePoint >= BmpStart && codePoint <= BmpEnd)
+            {
+                var replacement = _bmp[codePoint - BmpStart];
+
+                if (replacement.Length == 1)
+                    return replacement[0];
+
+                return char.ConvertToUtf32(
+                    replacement[0],
+                    replacement[1]);
+            }
+
+            if (codePoint < SuppStart || codePoint > SuppEnd) return codePoint;
+            {
+                var replacement = _supp[codePoint - SuppStart];
+                var original = CharFromCodePoint(codePoint);
+
+                if (string.Equals(
+                        replacement,
+                        original,
+                        StringComparison.Ordinal))
+                {
+                    return codePoint;
+                }
+
+                return replacement.Length == 1
+                    ? replacement[0]
+                    : char.ConvertToUtf32(
+                        replacement[0],
+                        replacement[1]);
+            }
+
         }
     }
 }

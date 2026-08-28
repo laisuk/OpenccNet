@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace OpenccNetLib
@@ -29,18 +29,89 @@ namespace OpenccNetLib
     /// </remarks>
     internal sealed class UnicodeCompat
     {
+        /// <summary>
+        /// Lazily initialized singleton containing the built-in Unicode compatibility
+        /// normalization tables.
+        /// </summary>
+        /// <remarks>
+        /// Initialization loads the curated extended Unicode compatibility mappings
+        /// together with the shared CJK Compatibility Ideograph normalizer at most once
+        /// per process. Subsequent calls reuse the cached instance.
+        /// </remarks>
         private static readonly Lazy<UnicodeCompat> BuiltinTable =
             new Lazy<UnicodeCompat>(LoadBuiltinTable);
 
+        /// <summary>
+        /// Built-in CJK Compatibility Ideograph normalizer used by combined
+        /// compatibility normalization.
+        /// </summary>
+        /// <remarks>
+        /// This table is applied after the curated extended Unicode compatibility
+        /// mapping when extended normalization is requested.
+        /// </remarks>
         private readonly CompatIdeographs _compat;
-        private readonly Dictionary<int, int> _extended;
 
+        /// <summary>
+        /// Number of low-order bits used to address an entry within a mapping page.
+        /// </summary>
+        /// <remarks>
+        /// Each page contains 256 Unicode code points. Using fixed-size pages keeps
+        /// lookups array-based while avoiding allocation of one large table covering
+        /// the entire Unicode range.
+        /// </remarks>
+        private const int PageShift = 8;
+
+        /// <summary>
+        /// Number of Unicode code points stored in each lazily allocated mapping page.
+        /// </summary>
+        private const int PageSize = 1 << PageShift;
+
+        /// <summary>
+        /// Bit mask used to obtain the offset of a code point within its mapping page.
+        /// </summary>
+        private const int PageMask = PageSize - 1;
+
+        /// <summary>
+        /// Number of pages required to address the full Unicode scalar range
+        /// U+0000 through U+10FFFF.
+        /// </summary>
+        private const int PageCount = (0x10FFFF >> PageShift) + 1;
+
+        /// <summary>
+        /// Sparse paged lookup table for the curated Unicode compatibility mappings.
+        /// </summary>
+        /// <remarks>
+        /// The outer array always exists, but individual 256-entry pages are allocated
+        /// only when at least one mapping falls within that page.
+        ///
+        /// Each populated entry stores <c>replacement + 1</c>. A zero value therefore
+        /// means "unmapped" while still allowing U+0000 to be represented as a valid
+        /// replacement code point.
+        /// </remarks>
+        private readonly int[][] _extendedPages;
+
+        /// <summary>
+        /// Initializes a Unicode compatibility normalizer from the built-in CJK
+        /// compatibility table and the curated extended mapping pages.
+        /// </summary>
+        /// <param name="compat">
+        /// Built-in CJK Compatibility Ideograph normalizer.
+        /// </param>
+        /// <param name="extendedPages">
+        /// Sparse paged lookup table containing the curated Unicode compatibility
+        /// mappings.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="compat"/> or <paramref name="extendedPages"/> is
+        /// <see langword="null"/>.
+        /// </exception>
         private UnicodeCompat(
             CompatIdeographs compat,
-            Dictionary<int, int> extended)
+            int[][] extendedPages)
         {
             _compat = compat ?? throw new ArgumentNullException(nameof(compat));
-            _extended = extended ?? throw new ArgumentNullException(nameof(extended));
+            _extendedPages = extendedPages ??
+                             throw new ArgumentNullException(nameof(extendedPages));
         }
 
         /// <summary>
@@ -192,52 +263,112 @@ namespace OpenccNetLib
             return -1;
         }
 
+        /// <summary>
+        /// Attempts to normalize one Unicode code point using the configured
+        /// compatibility tables.
+        /// </summary>
+        /// <param name="codePoint">Unicode code point to normalize.</param>
+        /// <param name="includeCompat">
+        /// <see langword="true"/> to additionally apply CJK Compatibility Ideograph
+        /// normalization after the curated extended mapping.
+        /// </param>
+        /// <param name="replacement">
+        /// Receives the normalized code point when a mapping changes the input.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> when the resulting code point differs from the
+        /// input; otherwise <see langword="false"/>.
+        /// </returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool TryGetMapping(
             int codePoint,
             bool includeCompat,
             out int replacement)
         {
-            if (!includeCompat ||
-                !_compat.TryNormalizeCodePoint(codePoint, out var compatReplacement))
-                return _extended.TryGetValue(codePoint, out replacement);
-            replacement = ReadSingleScalar(
-                compatReplacement,
-                lineNo: 0,
-                field: "compatibility target");
-            return true;
+            var mapped = MapExtended(codePoint);
+
+            if (includeCompat)
+                mapped = _compat.MapCodePoint(mapped);
+
+            replacement = mapped;
+            return mapped != codePoint;
+        }
+
+        /// <summary>
+        /// Maps one Unicode code point using the curated extended compatibility table.
+        /// </summary>
+        /// <param name="codePoint">Unicode code point to normalize.</param>
+        /// <returns>
+        /// The mapped code point when an extended compatibility mapping exists;
+        /// otherwise, the original <paramref name="codePoint"/>.
+        /// </returns>
+        /// <remarks>
+        /// This method performs only the curated
+        /// <c>Unicode_Compatibility.txt</c> lookup. It does not apply the separate
+        /// CJK Compatibility Ideograph table.
+        ///
+        /// Lookup is allocation-free and uses at most two array accesses.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int MapExtended(int codePoint)
+        {
+            var page = _extendedPages[codePoint >> PageShift];
+
+            if (page == null)
+                return codePoint;
+
+            var mapped = page[codePoint & PageMask];
+
+            return mapped == 0
+                ? codePoint
+                : mapped - 1;
         }
 
         private static UnicodeCompat LoadBuiltinTable()
         {
             return new UnicodeCompat(
                 CompatIdeographs.Builtin(),
-                LoadExtendedMap());
+                LoadExtendedPages());
         }
 
         /// <summary>
-        /// Loads the sparse curated normalization table.
+        /// Loads the curated Unicode compatibility mapping table into a sparse
+        /// paged lookup structure.
         /// </summary>
         /// <remarks>
         /// Each non-comment line must contain exactly two tab-separated columns:
         /// one non-ASCII source Unicode scalar and one target Unicode scalar.
+        ///
+        /// Pages are allocated lazily in blocks of 256 code points. This avoids
+        /// dictionary lookup overhead during normalization while keeping memory usage
+        /// proportional to the Unicode regions actually used by the mapping table.
+        ///
         /// ASCII source mappings are rejected to prevent accidental rewriting of
-        /// markup and structured-text syntax, including XML/OpenXML content.
-        /// Invalid rows fail fast so bundled mapping mistakes cannot be silently ignored.
+        /// markup and structured-text syntax, including XML and OpenXML content.
+        /// Invalid rows fail fast so bundled mapping mistakes cannot be silently
+        /// ignored.
         /// </remarks>
-        private static Dictionary<int, int> LoadExtendedMap()
+        /// <returns>
+        /// A sparse paged table containing the curated compatibility mappings.
+        /// </returns>
+        /// <exception cref="InvalidDataException">
+        /// A mapping row is malformed, contains an invalid Unicode scalar, contains
+        /// too many columns, or uses an ASCII source character.
+        /// </exception>
+        private static int[][] LoadExtendedPages()
         {
-            var map = new Dictionary<int, int>(256);
+            var pages = new int[PageCount][];
             var path = GetBuiltinUnicodeCompatPath();
 
             if (!File.Exists(path))
-                return map;
+                return pages;
 
             var lineNo = 0;
 
             foreach (var rawLine in File.ReadLines(path, Encoding.UTF8))
             {
                 lineNo++;
-                
+
                 if (string.IsNullOrWhiteSpace(rawLine) ||
                     rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
                 {
@@ -262,7 +393,7 @@ namespace OpenccNetLib
                     parts[0].Trim(),
                     lineNo,
                     "source");
-                
+
                 if (source <= 0x7F)
                 {
                     throw new InvalidDataException(
@@ -274,10 +405,35 @@ namespace OpenccNetLib
                     lineNo,
                     "target");
 
-                map[source] = target;
+                SetExtendedMapping(pages, source, target);
             }
 
-            return map;
+            return pages;
+        }
+
+        /// <summary>
+        /// Stores one source-to-target Unicode mapping in the paged lookup table.
+        /// </summary>
+        /// <param name="pages">Destination paged lookup table.</param>
+        /// <param name="source">Source Unicode code point.</param>
+        /// <param name="target">Replacement Unicode code point.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void SetExtendedMapping(
+            int[][] pages,
+            int source,
+            int target)
+        {
+            var pageIndex = source >> PageShift;
+            var page = pages[pageIndex];
+
+            if (page == null)
+            {
+                page = new int[PageSize];
+                pages[pageIndex] = page;
+            }
+
+            // Zero means unmapped, so store target + 1.
+            page[source & PageMask] = target + 1;
         }
 
         /// <summary>
