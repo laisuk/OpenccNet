@@ -1,10 +1,7 @@
 # Unicode compatibility normalization table.
-#
 # Format: <source>\t<replacement>
 #
-# ----------------------------------------------------------------------
 # Kangxi Radicals
-#
 # U+2F00–U+2FD5 (214 entries) mapped to ordinary CJK ideographs.
 # Useful when radical code points appear in ordinary CJK text.
 #
@@ -223,11 +220,8 @@
 ⿔	龜
 ⿕	龠
 
-# ----------------------------------------------------------------------
 # Simplified CJK radical forms
-#
-# CJK Radicals Supplement forms mapped to ordinary Simplified Chinese
-# ideographs.
+# CJK Radicals Supplement forms mapped to ordinary Simplified Chinese ideographs.
 #
 ⺦	丬
 ⺰	纟
@@ -285,18 +279,14 @@
 ⻖	阝
 ⻗	雨
 
-# ----------------------------------------------------------------------
 # Other CJK radical forms
-#
 # Radical-form code points mapped to their ordinary ideograph forms.
 #
 ⺟	母
 ⻘	青
 ⻤	鬼
 
-# ----------------------------------------------------------------------
 # Chinese allographs and legacy glyphs
-#
 # Legacy, variant, or allographic Han forms not already covered by
 # CJK_Compatibility_Ideographs.txt. Ambiguous regional or Japanese
 # standard forms are excluded.
@@ -488,9 +478,7 @@
 𫠦	所
 𭁵	寇
 
-# ----------------------------------------------------------------------
 # Punctuation and symbols
-#
 # Compatibility-like punctuation and symbol forms found in extracted text.
 #
 〈	〈
