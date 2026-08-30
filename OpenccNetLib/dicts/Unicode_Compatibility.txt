@@ -484,7 +484,6 @@
 〈	〈
 〉	〉
 # Optional: U+2E3A TWO-EM DASH -> U+2014 EM DASH.
-# Disabled by default because U+2E3A may be intentional.
 # ⸺	—
 
 # Additional punctuation forms
