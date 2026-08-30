@@ -70,9 +70,9 @@ projects with a focus on performance and minimal memory usage.
 ## Installation
 
 - Add the library to your project via NuGet or reference the source code directly.
-- Add required dependencies of dictionary files to library root.
-    - `dicts\dictionary_maxlength.zstd` Default dictionary file.
-    - `dicts\*.*` Others dictionary files for different configurations.
+- The built-in Zstandard dictionary is embedded in `OpenccNetLib`; normal conversion does not require dictionary files
+  beside the assembly. External files under `dicts\` are needed only for explicit loader, customization, and dictionary
+  generation workflows.
 
 Install via NuGet:
 
@@ -530,8 +530,18 @@ Console.WriteLine(result); // Output: 2 (for Simplified)
 
 ### User Custom Dictionaries
 
-By default, OpenccNetLib uses the built-in Zstandard-compressed lexicon. For advanced custom dictionary workflows, build
-or customize a `DictionaryMaxlength` instance, then activate it **before** creating `Opencc` instances.
+By default, OpenccNetLib lazily uses the Zstandard-compressed lexicon embedded in the library assembly, including in
+hosts such as Blazor WebAssembly where no physical dictionary file is available. Advanced workflows can load or
+customize a `DictionaryMaxlength` and choose either instance or process-wide ownership.
+
+Normal Blazor WebAssembly usage needs no dictionary download. When an application intentionally supplies a different
+compressed dictionary, it can keep that dictionary instance-scoped:
+
+```csharp
+var bytes = await Http.GetByteArrayAsync("custom-dictionary.zstd");
+var dm = DictionaryLib.FromZstdBytes(bytes);
+var cc = new Opencc("s2t", dm);
+```
 
 ```csharp
 DictionaryMaxlength DictionaryLib.FromDicts(
@@ -648,7 +658,7 @@ Instance specs are layered on the active global dictionary snapshot. For example
 mapping and its own overlay, while the active global provider receives only the global mapping:
 
 ```csharp
-var globalDictionary = DictionaryLib.New();
+var globalDictionary = DictionaryLib.FromZstd();
 DictionaryLib.WithCustomDicts(globalDictionary, new[]
 {
     new CustomDictSpec
@@ -700,6 +710,7 @@ Choose the API according to the required scope:
 | API                                               | Behavior                                                               |
 |---------------------------------------------------|------------------------------------------------------------------------|
 | `Opencc.UseCustomDictionary(DictionaryMaxlength)` | Process-wide/global; ordinary instances use the shared active provider |
+| `new Opencc(config, DictionaryMaxlength)`         | Uses the supplied base through an isolated instance-owned cache        |
 | `new Opencc(config, specs)`                       | Isolated per-instance dictionary snapshot and internal cache           |
 | `cc.WithCustomDictionary(specs)`                  | New isolated instance; the source instance is unchanged                |
 
@@ -731,7 +742,7 @@ var parsed = CustomDictSpec.Parse(
     @"hkphrasesrev:append:data\my_hk_dict.txt");
 
 var parsedDict = DictionaryLib.WithCustomDicts(
-    DictionaryLib.New(),
+    DictionaryLib.FromZstd(),
     new[] { parsed });
 ```
 
@@ -744,7 +755,7 @@ var typed = CustomDictSpec.FromFile(
     CustomDictMode.Append);
 
 var typedDict = DictionaryLib.WithCustomDicts(
-    DictionaryLib.New(),
+    DictionaryLib.FromZstd(),
     new[] { typed });
 ```
 
@@ -814,7 +825,7 @@ Console.WriteLine(cc.Convert("小女孩问：什么是个人隐私权？"));
 For in-memory pairs, apply a post-load custom spec:
 
 ```csharp
-var dict = DictionaryLib.New();
+var dict = DictionaryLib.FromZstd();
 
 DictionaryLib.WithCustomDicts(
     dict,
@@ -864,7 +875,7 @@ additional slot-level changes.
 using System.Collections.Generic;
 using OpenccNetLib;
 
-var dict = DictionaryLib.New();
+var dict = DictionaryLib.FromZstd();
 
 DictionaryLib.WithCustomDicts(
     dict,
@@ -886,8 +897,8 @@ Opencc.UseCustomDictionary(dict);
 var opencc = new Opencc("s2t");
 ```
 
-Post-load customization works with any already loaded provider, including `DictionaryLib.New()`, `FromDicts()`,
-`FromJson()`, `FromCbor()`, or another customized `DictionaryMaxlength` instance.
+Post-load customization should use an independent dictionary returned by `FromZstd()`, `FromDicts()`, `FromJson()`, or
+`FromCbor()`. Avoid modifying `DictionaryLib.New()`/`Provider` in place because it is the shared built-in singleton.
 
 Each `CustomDictSpec` targets one slot. `Paths` is optional and can contain multiple custom dictionary files. `Pairs` is
 optional and contains in-memory entries. At least one of `Paths` or `Pairs` must be supplied. When both are supplied,
@@ -911,7 +922,7 @@ topology unchanged.
 using System.Collections.Generic;
 using OpenccNetLib;
 
-var dict = DictionaryLib.New();
+var dict = DictionaryLib.FromZstd();
 
 DictionaryLib.WithCustomDicts(
     dict,
@@ -1595,13 +1606,14 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 ##### `DictionaryLib` provider APIs
 
 - `static DictionaryMaxlength Provider { get; }`
-  Returns the shared built-in dictionary instance.
+  Lazily returns the shared built-in dictionary from the assembly-embedded Zstandard resource; no external file is
+  required.
 
 - `static DictionaryMaxlength GetActiveProvider()`
   Returns the dictionary instance currently supplied by the active provider delegate.
 
 - `static DictionaryMaxlength New()`
-  Returns the built-in dictionary and resets the active provider to the built-in dictionary.
+  Returns the embedded built-in dictionary and resets the active provider to that dictionary.
 
 - `static void SetDictionaryProvider(DictionaryMaxlength dictionary)`
   Sets the active dictionary provider to a fixed `DictionaryMaxlength` instance and atomically refreshes derived
@@ -1613,7 +1625,12 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 
 ##### `DictionaryLib` loading APIs
 
--
+- `static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")`
+  Loads an independent dictionary from an external filesystem Zstandard file. The default path is retained for
+  backward compatibility. This does not change the active provider.
+
+- `static DictionaryMaxlength FromZstdBytes(byte[] data)`
+  Loads an independent dictionary from caller-provided compressed bytes. This does not change the active provider.
 
 `static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<DictSlot, string> overrides = null, IDictionary<DictSlot, string> appends = null)`
 Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.

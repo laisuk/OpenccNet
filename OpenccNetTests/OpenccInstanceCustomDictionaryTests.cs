@@ -24,11 +24,84 @@ public class OpenccInstanceCustomDictionaryTests
     {
         Assert.Throws<ArgumentNullException>(() => new Opencc(
             OpenccConfig.S2T,
-            null!));
+            customDictSpecs: null!));
 
         var source = new Opencc(OpenccConfig.S2T);
+
         Assert.Throws<ArgumentNullException>(() => source.WithCustomDictionary(
             null!));
+    }
+
+    [TestMethod]
+    public void CustomBaseConstructors_RejectNullBase()
+    {
+        Assert.Throws<ArgumentNullException>(() => new Opencc(
+            OpenccConfig.S2T,
+            customBase: null!));
+
+        Assert.Throws<ArgumentNullException>(() => new Opencc(
+            "s2t",
+            customBase: null!));
+    }
+
+    [TestMethod]
+    public void CustomBaseConstructors_UseSuppliedDictionaryForConversion()
+    {
+        var customBase = CreateDictionaryWithMappings(
+            (DictSlot.STCharacters, "汉", "甲"),
+            (DictSlot.TSCharacters, "漢", "乙"));
+
+        var byEnum = new Opencc(OpenccConfig.S2T, customBase);
+        var byName = new Opencc("t2s", customBase);
+
+        Assert.AreEqual("甲", byEnum.Convert("汉"));
+        Assert.AreEqual("乙", byName.Convert("漢"));
+    }
+
+    [TestMethod]
+    public void CustomBaseInstance_RemainsIsolatedAcrossConfigAndGlobalChanges()
+    {
+        var customBase = CreateDictionaryWithMappings(
+            (DictSlot.STCharacters, "汉", "甲"),
+            (DictSlot.TSCharacters, "漢", "乙"));
+        var custom = new Opencc(OpenccConfig.S2T, customBase);
+        var privateCache = GetPrivateField<ConversionPlanCache>(custom, "_planCache");
+        var globalCache = ConversionPlanCache.Current;
+        var globalProvider = ConversionPlanCache.Provider;
+
+        Assert.IsNotNull(privateCache);
+        Assert.AreNotSame(globalCache, privateCache);
+        Assert.AreEqual("甲", custom.Convert("汉"));
+
+        var replacementGlobal = CreateDictionaryWithMappings(
+            (DictSlot.STCharacters, "汉", "全"),
+            (DictSlot.TSCharacters, "漢", "另"));
+        Opencc.UseCustomDictionary(replacementGlobal);
+
+        custom.SetConfig(OpenccConfig.T2S);
+
+        Assert.AreEqual("乙", custom.Convert("漢"));
+        Assert.AreEqual("另", new Opencc(OpenccConfig.T2S).Convert("漢"));
+        Assert.AreSame(replacementGlobal, ConversionPlanCache.Provider);
+        Assert.AreNotSame(globalProvider, ConversionPlanCache.Provider);
+        Assert.AreNotSame(globalCache, ConversionPlanCache.Current);
+    }
+
+    [TestMethod]
+    public void CustomBaseConstructor_RetainsFrozenAndPreserveIdsSemantics()
+    {
+        var customBase = CreateDictionaryWithMappings(
+            (DictSlot.STCharacters, "汉", "甲"));
+        var custom = new Opencc(
+            OpenccConfig.S2T,
+            customBase,
+            isPreserveIds: true,
+            isFrozen: true);
+
+        Assert.IsTrue(custom.IsFrozen);
+        Assert.IsTrue(custom.IsPreserveIds);
+        Assert.AreEqual("甲", custom.Convert("汉"));
+        Assert.Throws<InvalidOperationException>(() => custom.SetConfig(OpenccConfig.T2S));
     }
 
     [TestMethod]
@@ -277,6 +350,19 @@ public class OpenccInstanceCustomDictionaryTests
                 [key] = value
             }
         };
+    }
+
+    private static DictionaryMaxlength CreateDictionaryWithMappings(
+        params (DictSlot Slot, string Key, string Value)[] mappings)
+    {
+        var dictionary = DictionaryLib.FromDicts();
+        DictionaryLib.WithCustomDicts(
+            dictionary,
+            mappings.Select(mapping => CreateSpec(
+                mapping.Slot,
+                mapping.Key,
+                mapping.Value)));
+        return dictionary;
     }
 
     private static T? GetPrivateField<T>(Opencc instance, string name)

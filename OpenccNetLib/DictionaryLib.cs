@@ -276,6 +276,9 @@ namespace OpenccNetLib
     /// </remarks>
     public static class DictionaryLib
     {
+        private const string BuiltInDictionaryResourceName =
+            "OpenccNetLib.Resources.dictionary_maxlength.zstd";
+
         // --------------------------------------------------------------------------------
         // Lazy loader for the default dictionary
         // --------------------------------------------------------------------------------
@@ -284,12 +287,12 @@ namespace OpenccNetLib
         /// Lazily initializes the default <see cref="DictionaryMaxlength"/> instance  
         /// used by all conversions that do not explicitly specify a custom dictionary set.  
         /// 
-        /// This uses <see cref="FromZstd"/> to load the bundled Zstandard-compressed  
-        /// dictionary data on first access. The initialization is thread-safe and  
+        /// This loads the embedded Zstandard-compressed dictionary resource on first
+        /// access. The initialization is thread-safe and
         /// performed only once per process lifetime.
         /// </summary>
         private static readonly Lazy<DictionaryMaxlength> DefaultLib =
-            new Lazy<DictionaryMaxlength>(() => FromZstd(), isThreadSafe: true);
+            new Lazy<DictionaryMaxlength>(LoadBuiltInDictionary, isThreadSafe: true);
 
         // --------------------------------------------------------------------------------
         // Public accessors and provider management
@@ -300,11 +303,12 @@ namespace OpenccNetLib
         /// This property always returns the same object reference.
         /// </summary>
         /// <remarks>
-        /// The dictionary is lazily initialized from the embedded Zstandard-compressed bundle
-        /// on first access and is safe for concurrent read access from multiple threads.
+        /// The dictionary is lazily initialized from a Zstandard-compressed resource
+        /// embedded in the OpenccNetLib assembly. It does not require an external dictionary
+        /// file and is safe for concurrent read access from multiple threads.
         /// <para>
         /// To obtain a new, independent dictionary instance (e.g., when reloading from
-        /// an external file), use <see cref="FromZstd"/> or other loader methods directly.
+        /// an external file), use <see cref="FromZstd(string)"/> or other loader methods directly.
         /// </para>
         /// </remarks>
         /// <returns>
@@ -327,7 +331,7 @@ namespace OpenccNetLib
         /// <para>
         /// No new dictionary instance is created or allocated.
         /// To explicitly create a separate dictionary instance, use
-        /// <see cref="FromZstd"/> or other loader methods.
+        /// <see cref="FromZstd(string)"/> or other loader methods.
         /// </para>
         /// </remarks>
         /// <returns>
@@ -340,24 +344,62 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads the bundled dictionary from a Zstd-compressed JSON file.
+        /// Loads the canonical built-in dictionary from this assembly's embedded resource.
+        /// </summary>
+        private static DictionaryMaxlength LoadBuiltInDictionary()
+        {
+            var stream = typeof(DictionaryLib).Assembly
+                .GetManifestResourceStream(BuiltInDictionaryResourceName);
+
+            if (stream == null)
+            {
+                throw new InvalidOperationException(
+                    "Embedded dictionary resource was not found: " +
+                    BuiltInDictionaryResourceName);
+            }
+
+            using (stream)
+            {
+                return DeserializeZstd(stream);
+            }
+        }
+
+        /// <summary>
+        /// Loads an independent dictionary from an external Zstandard-compressed JSON file.
         /// </summary>
         /// <param name="relativePath">
         /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
         /// path to the Zstandard-compressed JSON dictionary file.
         /// </param>
         /// <returns>
-        /// The deserialized and normalized <see cref="DictionaryMaxlength"/> instance.
+        /// A new, independent, deserialized and normalized
+        /// <see cref="DictionaryMaxlength"/> instance.
         /// </returns>
+        /// <remarks>
+        /// This filesystem loader is separate from <see cref="Provider"/>, which loads the
+        /// built-in dictionary from an embedded assembly resource. The optional default path
+        /// is retained for backward compatibility with deployments that copy dictionary files.
+        /// <para>
+        /// Unlike <see cref="New"/>, this method does not change the active
+        /// global dictionary provider or clear cached conversion plans.
+        /// Use <see cref="FromZstdBytes(byte[])"/> to load compressed data already in memory.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="relativePath"/> is <see langword="null"/>.
+        /// </exception>
         /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="relativePath"/> is null, empty, or whitespace.
+        /// Thrown when <paramref name="relativePath"/> is empty or whitespace.
         /// </exception>
         /// <exception cref="FileNotFoundException">
         /// Thrown when the Zstandard dictionary file does not exist.
         /// </exception>
-        internal static DictionaryMaxlength FromZstd(
+        public static DictionaryMaxlength FromZstd(
             string relativePath = "dicts/dictionary_maxlength.zstd")
         {
+            if (relativePath == null)
+                throw new ArgumentNullException(nameof(relativePath));
+
             if (string.IsNullOrWhiteSpace(relativePath))
             {
                 throw new ArgumentException(
@@ -377,8 +419,53 @@ namespace OpenccNetLib
             }
 
             using (var inputStream = File.OpenRead(fullPath))
-            using (var decompressionStream =
-                   new DecompressionStream(inputStream))
+            {
+                return DeserializeZstd(inputStream);
+            }
+        }
+
+        /// <summary>
+        /// Loads an independent dictionary from caller-provided Zstandard-compressed JSON data.
+        /// </summary>
+        /// <param name="data">
+        /// Zstandard-compressed JSON dictionary data.
+        /// </param>
+        /// <returns>
+        /// A new, independent, deserialized and normalized
+        /// <see cref="DictionaryMaxlength"/> instance.
+        /// </returns>
+        /// <remarks>
+        /// This in-memory loader is separate from <see cref="Provider"/>, which loads the
+        /// built-in dictionary from an embedded assembly resource.
+        /// <para>
+        /// Unlike <see cref="New"/>, this method does not change the active
+        /// global dictionary provider or clear cached conversion plans.
+        /// Use <see cref="FromZstd(string)"/> to load from a file path.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="data"/> is <see langword="null"/>.
+        /// </exception>
+        public static DictionaryMaxlength FromZstdBytes(byte[] data)
+        {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            using (var inputStream = new MemoryStream(data, writable: false))
+            {
+                return DeserializeZstd(inputStream);
+            }
+        }
+
+        /// <summary>
+        /// Decompresses, deserializes, and normalizes a Zstandard dictionary stream.
+        /// </summary>
+        private static DictionaryMaxlength DeserializeZstd(Stream compressedStream)
+        {
+            if (compressedStream == null)
+                throw new ArgumentNullException(nameof(compressedStream));
+
+            using (var decompressionStream = new DecompressionStream(compressedStream))
             {
                 var instance =
                     JsonSerializer.Deserialize<DictionaryMaxlength>(
@@ -397,7 +484,7 @@ namespace OpenccNetLib
         ///
         /// This method is intended primarily for debugging, development,
         /// interoperability, or external dictionary generation workflows.
-        /// Production applications should prefer the default embedded Zstd dictionaries
+        /// Production applications should prefer the default embedded Zstd dictionary
         /// for best reliability and deployment simplicity.
         /// </summary>
         /// <param name="relativePath">

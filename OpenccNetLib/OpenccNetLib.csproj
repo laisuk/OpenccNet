@@ -25,6 +25,9 @@
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.7.0
 
+            - Embedded the canonical built-in Zstandard dictionary in OpenccNetLib for lazy filesystem-independent default loading.
+            - Added public independent DictionaryLib.FromZstd(string) and DictionaryLib.FromZstdBytes(byte[]) loading APIs.
+            - Added Opencc constructors accepting an explicit DictionaryMaxlength through an instance-owned conversion-plan cache.
             - Added constructor-time frozen Opencc instances with immutable configuration and private plan caches based on DictionaryLib.Provider.
             - Added per-instance custom dictionaries with the new Opencc(OpenccConfig, IEnumerable&lt;CustomDictSpec&gt;, bool, bool) constructor.
             - Added Opencc.WithCustomDictionary() for creating a new isolated custom converter while preserving the source configuration and IDS setting.
@@ -66,6 +69,10 @@
 
     <!-- Dictionary files - included in package and copied to output -->
     <ItemGroup>
+        <!-- Canonical built-in provider data; the logical name is stable across project renames. -->
+        <EmbeddedResource Include="dicts\dictionary_maxlength.zstd"
+                          LogicalName="OpenccNetLib.Resources.dictionary_maxlength.zstd" />
+
         <!-- Include all files under dicts (with extensions) -->
         <None Include="dicts\**\*.*">
             <Pack>true</Pack>

@@ -34,9 +34,8 @@ projects with a focus on performance and minimal memory usage.
 ## Installation
 
 - Add the library to your project via NuGet or reference the source code directly.
-- Add required dependencies of dictionary files to library root.
-    - `dicts\dictionary_maxlength.zstd` Default dictionary file.
-    - `dicts\*.*` Others dictionary files for different configurations.
+- The built-in Zstandard dictionary is embedded in `OpenccNetLib`; normal conversion does not require dictionary files
+  beside the assembly. Files under `dicts\` remain available for explicit external loading and customization workflows.
 
 Install via NuGet:
 
@@ -170,8 +169,9 @@ Console.WriteLine(result); // Output: 2 (for Simplified)
 
 ## Dictionary Files
 
-Ensure the necessary dictionary files are included in your project. Add the following to your `.csproj`.  
-In most case, it is auto-set when package added from `Nuget`:
+No external dictionary file is required for the built-in provider. The package retains `dicts` content for explicit
+filesystem loaders such as `DictionaryLib.FromZstd()` and for customization or dictionary-generation workflows. If a
+source-based deployment needs those external workflows, copy the relevant files explicitly:
 
 ```xml
 
@@ -187,8 +187,16 @@ In most case, it is auto-set when package added from `Nuget`:
 
 ### Using Custom Dictionary
 
-Library default is zstd compressed dictionary Lexicon.
+The library default is the Zstandard-compressed dictionary lexicon embedded in the assembly.
 It can be changed to custom dictionary (`JSON`, `CBOR` or `"baseDir/*.txt"`) prior to instantiate `Opencc()`.
+
+Caller-provided compressed bytes can be loaded without filesystem access and kept instance-scoped:
+
+```csharp
+var bytes = await Http.GetByteArrayAsync("custom-dictionary.zstd");
+var dm = DictionaryLib.FromZstdBytes(bytes);
+var opencc = new Opencc("s2t", dm);
+```
 Custom dictionaries attach to existing `DictSlot` values and can append to or override those slots. Regional variant
 phrase slots are supported too: `DictSlot.TWVariantsPhrases` is applied before `DictSlot.TWVariants`, and
 `DictSlot.HKVariantsPhrases` is applied before `DictSlot.HKVariants`, so phrase exceptions win before character-level

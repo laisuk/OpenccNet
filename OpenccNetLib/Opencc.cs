@@ -823,74 +823,18 @@ namespace OpenccNetLib
 
         #region Lazy Static Dictionary Region
 
-        // --- START Lazy<T> Implementation ---
-
-        // Use Lazy<T> for the dictionary and derived lists
-        // Initialize these in the static constructor.
-        private static Lazy<DictionaryMaxlength> _lazyDictionary;
+        // Keep the character-only static helpers lazy without triggering the default
+        // dictionary when the Opencc type is first accessed.
+        private static readonly Lazy<DictionaryMaxlength> LazyDictionary =
+            new Lazy<DictionaryMaxlength>(
+                () => DictionaryLib.Provider,
+                LazyThreadSafetyMode.ExecutionAndPublication);
 
         /// <summary>
         /// Gets the loaded dictionary set for all conversion types.
-        /// This property will lazily load the default dictionary if no custom one has been set.
+        /// This property lazily loads the built-in default dictionary.
         /// </summary>
-        private static DictionaryMaxlength Dictionary => _lazyDictionary.Value;
-
-        // Static constructor to initialize the Lazy<T> instances.
-        // This runs once, automatically and thread-safely, when the Opencc class is first accessed.
-        static Opencc()
-        {
-            Warmup();
-        }
-
-        /// <summary>
-        /// Preloads the default dictionary and initializes all derived lookup tables  
-        /// used internally by the <see cref="Opencc"/> class.
-        /// </summary>
-        /// <remarks>
-        /// This method is invoked once by the static constructor to ensure that the default  
-        /// <see cref="DictionaryLib"/> instance and its associated conversion metadata  
-        /// (such as starter masks and plan caches) are ready for immediate use.
-        ///
-        /// Optionally, a brief warm-up block can be enabled to trigger JIT compilation,  
-        /// tiered PGO optimization, and initialization of global <see cref="ConversionPlanCache"/>
-        /// entries for the most common conversion paths (<c>S2T</c> and <c>T2S</c>).
-        ///
-        /// Uncomment the warm-up section below if you wish to minimize first-use latency in  
-        /// long-running or GUI applications. For short-lived console tools, it is not necessary.  
-        /// The operation is side effect free and does not modify dictionary contents.
-        /// </remarks>
-        private static void Warmup()
-        {
-            var dict = DictionaryLib.New(); // Load default configuration
-            InitializeLazyLoaders(dict); // Initialize with the default dictionary
-
-            // Optional warm-up for JIT + Tiered PGO + conversion-plan caching.
-            // --------------------------------------------------
-            // Uncomment the section below to pre-cache hot paths
-            // (recommended for GUI or service applications).
-            /*
-            const string text = "預熱文本 Sample 測試 Warmup";
-            var dummy = new Opencc();
-            _ = dummy.S2T(text);
-            _ = dummy.S2T(text, true);
-            _ = dummy.T2S(text);
-            _ = dummy.T2S(text, true);
-            */
-        }
-
-        /// <summary>
-        /// Helper method to create the Lazy<T/> instances for the dictionary and its derived lists.
-        /// This is used both for default loading and when a custom dictionary is provided.
-        /// </summary>
-        /// <param name="initialDictionary">The dictionary instance to use for initialization.</param>
-        private static void InitializeLazyLoaders(DictionaryMaxlength initialDictionary)
-        {
-            // The factory method for _lazyDictionary.
-            // This ensures that the dictionary is set up, and then the derived lists are configured based on it.
-            _lazyDictionary =
-                new Lazy<DictionaryMaxlength>(() => initialDictionary,
-                    LazyThreadSafetyMode.ExecutionAndPublication); // Ensures thread safety for the Lazy<T> itself
-        }
+        private static DictionaryMaxlength Dictionary => LazyDictionary.Value;
 
         // === Public Static Methods for Custom Dictionary Loading (Optional for Users) ===
 
@@ -903,8 +847,8 @@ namespace OpenccNetLib
         /// Call this method to apply a custom dictionary at runtime for specialized  
         /// conversion needs (for example, user-defined terminology or modified mappings).  
         /// <para>
-        /// This operation does <b>not</b> replace or modify the default lazy-loaded  
-        /// dictionary (<c>DefaultLib.Value</c>); only the global planning provider  
+        /// This operation does <b>not</b> replace or modify the default lazy-loaded
+        /// dictionary exposed by <see cref="DictionaryLib.Provider"/>; only the global planning provider
         /// is swapped. Subsequent conversions will use the supplied custom dictionary  
         /// for new plan builds, while the original default remains intact and accessible.  
         /// </para>
@@ -929,7 +873,7 @@ namespace OpenccNetLib
                 throw new ArgumentNullException(nameof(customDictionary), "Custom dictionary cannot be null.");
 
             // Swap only the plan cache provider and clear caches.
-            // The default dictionary (DefaultLib.Value) remains intact.
+            // The built-in DictionaryLib.Provider remains intact.
             ConversionPlanCache.UseProvider(customDictionary);
         }
 
@@ -939,10 +883,11 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// Call this method to revert the active dictionary provider back to the default  
-        /// <see cref="DictionaryMaxlength"/> loaded from embedded resources.  
+        /// <see cref="DictionaryMaxlength"/> loaded from the embedded assembly resource.
         /// <para>
         /// This method resets the planning provider while reusing the original lazy-loaded
-        /// dictionary (<c>DefaultLib.Value</c>), which is neither reloaded nor modified.
+        /// dictionary exposed by <see cref="DictionaryLib.Provider"/>, which is neither
+        /// reloaded nor modified.
         /// </para>
         /// <para>
         /// Thread-safe: the provider swap publishes a fresh global plan cache, discarding
@@ -995,8 +940,6 @@ namespace OpenccNetLib
 
             UseCustomDictionary(custom);
         }
-
-        // --- END Lazy<T> Implementation ---
 
         #endregion // Lazy Static Dictionary Region
 
@@ -1180,6 +1123,123 @@ namespace OpenccNetLib
                 specs);
 
             SetConfigInternal(config, true);
+            _isPreserveIds = isPreserveIds;
+        }
+
+        /// <summary>
+        /// Initializes a new <see cref="Opencc"/> instance with the specified configuration
+        /// and an explicitly supplied base dictionary.
+        /// </summary>
+        /// <param name="config">
+        /// The conversion configuration name, such as <c>s2t</c>, <c>t2s</c>,
+        /// <c>s2tw</c>, or <c>hk2sp</c>.
+        /// </param>
+        /// <param name="customBase">
+        /// The <see cref="DictionaryMaxlength"/> instance to use as the base dictionary
+        /// for this converter.
+        /// </param>
+        /// <param name="isPreserveIds">
+        /// Whether to preserve complete Unicode IDS expressions during conversion.
+        /// Default: <see langword="false"/>.
+        /// </param>
+        /// <param name="isFrozen">
+        /// Whether to make the instance configuration immutable.
+        /// Default: <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// The supplied <paramref name="customBase"/> is used directly as the base of an
+        /// instance-owned <see cref="ConversionPlanCache"/>. The active global dictionary
+        /// provider and <see cref="ConversionPlanCache.Current"/> are not modified.
+        /// </para>
+        /// <para>
+        /// This constructor is useful when a dictionary has been loaded explicitly, for
+        /// example with <see cref="DictionaryLib.FromZstd(string)"/> or
+        /// <see cref="DictionaryLib.FromZstdBytes(byte[])"/>, and should be isolated to a
+        /// specific converter instance.
+        /// </para>
+        /// <para>
+        /// Subsequent configuration changes on this instance reuse the same supplied
+        /// base dictionary.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="customBase"/> is <see langword="null"/>.
+        /// </exception>
+        public Opencc(
+            string config,
+            DictionaryMaxlength customBase,
+            bool isPreserveIds = false,
+            bool isFrozen = false)
+        {
+            if (customBase == null)
+                throw new ArgumentNullException(nameof(customBase));
+
+            IsFrozen = isFrozen;
+
+            _planCache = new ConversionPlanCache(
+                customBase,
+                Array.Empty<CustomDictSpec>());
+
+            SetConfigInternal(config, true);
+            _isPreserveIds = isPreserveIds;
+        }
+
+        /// <summary>
+        /// Initializes a new <see cref="Opencc"/> instance with the specified
+        /// <see cref="OpenccConfig"/> and an explicitly supplied base dictionary.
+        /// </summary>
+        /// <param name="configEnum">
+        /// The <see cref="OpenccConfig"/> conversion configuration to use.
+        /// </param>
+        /// <param name="customBase">
+        /// The <see cref="DictionaryMaxlength"/> instance to use as the base dictionary
+        /// for this converter.
+        /// </param>
+        /// <param name="isPreserveIds">
+        /// Whether to preserve complete Unicode IDS expressions during conversion.
+        /// Default: <see langword="false"/>.
+        /// </param>
+        /// <param name="isFrozen">
+        /// Whether to make the instance configuration immutable.
+        /// Default: <see langword="false"/>.
+        /// </param>
+        /// <remarks>
+        /// <para>
+        /// The supplied <paramref name="customBase"/> is used directly as the base of an
+        /// instance-owned <see cref="ConversionPlanCache"/>. The active global dictionary
+        /// provider and <see cref="ConversionPlanCache.Current"/> are not modified.
+        /// </para>
+        /// <para>
+        /// This constructor is useful when a dictionary has been loaded explicitly, for
+        /// example with <see cref="DictionaryLib.FromZstd(string)"/> or
+        /// <see cref="DictionaryLib.FromZstdBytes(byte[])"/>, and should be isolated to a
+        /// specific converter instance.
+        /// </para>
+        /// <para>
+        /// Subsequent configuration changes on this instance reuse the same supplied
+        /// base dictionary.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="customBase"/> is <see langword="null"/>.
+        /// </exception>
+        public Opencc(
+            OpenccConfig configEnum,
+            DictionaryMaxlength customBase,
+            bool isPreserveIds = false,
+            bool isFrozen = false)
+        {
+            if (customBase == null)
+                throw new ArgumentNullException(nameof(customBase));
+
+            IsFrozen = isFrozen;
+
+            _planCache = new ConversionPlanCache(
+                customBase,
+                Array.Empty<CustomDictSpec>());
+
+            SetConfigInternal(configEnum, false);
             _isPreserveIds = isPreserveIds;
         }
 

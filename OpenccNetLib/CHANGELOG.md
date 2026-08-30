@@ -15,6 +15,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Embed `dictionary_maxlength.zstd` in the OpenccNetLib assembly as the canonical lazy built-in dictionary, removing the
+  default provider's dependency on `AppContext.BaseDirectory` and enabling ordinary conversion in filesystem-free hosts
+  such as Blazor WebAssembly.
+- Make `DictionaryLib.FromZstd(string)` public for independent external-file loading and add
+  `DictionaryLib.FromZstdBytes(byte[])` for independent caller-provided compressed data without introducing a
+  null-literal overload ambiguity.
+- Add `Opencc` constructors accepting an explicit `DictionaryMaxlength` base with an instance-owned conversion-plan
+  cache that remains isolated from the process-wide provider.
 - Add constructor-time frozen `Opencc` instances through the optional trailing `isFrozen` parameter and the read-only
   `IsFrozen` property. Frozen instances reject later configuration and IDS-preservation changes and use a private
   conversion-plan cache based on `DictionaryLib.Provider`; frozen custom-spec instances retain isolated custom
@@ -31,6 +39,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Load `DictionaryLib.Provider` and `DictionaryLib.New()` from the embedded Zstandard resource while preserving lazy,
+  thread-safe singleton initialization and the established global provider-reset behavior of `New()`.
+- Share Zstandard stream decompression, JSON deserialization, and derived-metadata normalization across embedded,
+  filesystem, and byte-array loading paths.
 - Internalize the compatibility-ideograph and curated Unicode normalization implementation types. The supported public
   surface is now `Opencc.NormalizeCompat(...)`, `Opencc.NormalizeUnicodeCompat(...)`, and
   `Opencc.NormalizeCompatExtended(...)`.
@@ -60,6 +72,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   consumers of the prerelease API surface, but no released 1.7.0 package exposed the removed overload.
 - Existing high-level dictionary and conversion APIs remain available through `DictionaryLib` and `Opencc`.
 - `DictionaryLib.Provider` continues to expose the built-in default dictionary.
+- `DictionaryLib.FromZstd(string)` retains its external default path for backward compatibility, while
+  `DictionaryLib.FromZstdBytes(byte[])` provides unambiguous in-memory loading. Both APIs return independent
+  dictionaries without changing global state.
 - `Opencc.UseCustomDictionary()` and `Opencc.UseDefaultDictionary()` retain their process-wide behavior; the new
   per-instance custom dictionary APIs do not modify that global state.
 - Ordinary `Opencc` instances continue to share the process-wide conversion-plan cache and require no migration.
@@ -243,8 +258,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Removed
 
-- Removed the superseded Japanese variant dictionaries from the active dictionary schema, bundled text dictionaries,
-  and Japanese conversion plans.
+- Removed the superseded Japanese variant dictionaries from the active dictionary schema, bundled text dictionaries, and
+  Japanese conversion plans.
 
 ### Breaking Changes
 

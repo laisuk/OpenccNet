@@ -91,6 +91,10 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestProvider_LoadsForwardVariantPhraseSlotsFromZstd()
     {
+        CollectionAssert.Contains(
+            typeof(DictionaryLib).Assembly.GetManifestResourceNames(),
+            "OpenccNetLib.Resources.dictionary_maxlength.zstd");
+
         var dict = DictionaryLib.Provider;
 
         AssertMetadataValid(dict.tw_variants_phrases);
@@ -98,6 +102,7 @@ public class DictionaryLibTests
         AssertMetadataValid(dict.hk_phrases);
         AssertMetadataValid(dict.hk_phrases_rev);
         AssertMetadataValid(dict.jps_characters_rev);
+        Assert.AreEqual("漢字", new Opencc(OpenccConfig.S2T).Convert("汉字"));
     }
 
     [TestMethod]
@@ -158,6 +163,104 @@ public class DictionaryLibTests
 
             var ex = Assert.Throws<FileNotFoundException>(() => DictionaryLib.FromDicts(tempDir));
             StringAssert.Contains(ex.Message, missingFile);
+        }
+    }
+
+    [TestMethod]
+    public void TestFromZstdBytes()
+    {
+        var globalCache = ConversionPlanCache.Current;
+        var globalProvider = ConversionPlanCache.Provider;
+        var path = Path.Combine(
+            AppContext.BaseDirectory,
+            "dicts",
+            "dictionary_maxlength.zstd");
+
+        var bytes = File.ReadAllBytes(path);
+        var dict = DictionaryLib.FromZstdBytes(bytes);
+
+        Assert.IsNotNull(dict);
+        Assert.IsTrue(dict.st_characters.Dict.Count > 0);
+        AssertMetadataValid(dict.st_characters);
+        Assert.AreSame(globalCache, ConversionPlanCache.Current);
+        Assert.AreSame(globalProvider, ConversionPlanCache.Provider);
+
+        var opencc = new Opencc("s2t", dict);
+        Assert.AreEqual("漢字", opencc.Convert("汉字"));
+    }
+
+    [TestMethod]
+    public void TestFromZstdBytesRejectsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => DictionaryLib.FromZstdBytes(null!));
+    }
+
+    [TestMethod]
+    public void TestFromZstdPathRejectsNullWithoutOverloadAmbiguity()
+    {
+        Assert.Throws<ArgumentNullException>(() => DictionaryLib.FromZstd(null!));
+    }
+
+    [TestMethod]
+    public void TestFromZstdPathLoadsExternalFileWithoutChangingGlobalProvider()
+    {
+        var globalCache = ConversionPlanCache.Current;
+        var globalProvider = ConversionPlanCache.Provider;
+        var externalPath = Path.Combine(OutputDir, "external_dictionary.zstd");
+        File.Copy(
+            Path.Combine(
+                AppContext.BaseDirectory,
+                "dicts",
+                "dictionary_maxlength.zstd"),
+            externalPath,
+            overwrite: true);
+
+        var loaded = DictionaryLib.FromZstd(externalPath);
+
+        Assert.AreNotSame(globalProvider, loaded);
+        Assert.AreSame(globalCache, ConversionPlanCache.Current);
+        Assert.AreSame(globalProvider, ConversionPlanCache.Provider);
+        Assert.AreEqual("漢字", new Opencc("s2t", loaded).Convert("汉字"));
+    }
+
+    [TestMethod]
+    [DoNotParallelize]
+    public void TestFromZstdDictionarySupportsGlobalActivationAndDefaultRestoration()
+    {
+        Opencc.UseDefaultDictionary();
+        var builtIn = DictionaryLib.Provider;
+        var loaded = DictionaryLib.FromZstd();
+        DictionaryLib.WithCustomDicts(
+            loaded,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.STCharacters,
+                    Mode = CustomDictMode.Append,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["汉"] = "甲"
+                    }
+                }
+            });
+
+        try
+        {
+            Opencc.UseCustomDictionary(loaded);
+
+            Assert.AreSame(loaded, ConversionPlanCache.Provider);
+            Assert.AreEqual("甲", new Opencc(OpenccConfig.S2T).Convert("汉"));
+
+            var restored = DictionaryLib.New();
+
+            Assert.AreSame(builtIn, restored);
+            Assert.AreSame(DictionaryLib.Provider, ConversionPlanCache.Provider);
+            Assert.AreEqual("漢", new Opencc(OpenccConfig.S2T).Convert("汉"));
+        }
+        finally
+        {
+            Opencc.UseDefaultDictionary();
         }
     }
 
