@@ -265,24 +265,13 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Resolves the deployed built-in DeTofu mapping-file path.
+        /// Loads and parses the embedded built-in DeTofu mappings.
         /// </summary>
-        /// <returns>The absolute or application-relative path rooted at <see cref="AppContext.BaseDirectory"/>.</returns>
-        private static string GetBuiltinTofuPath()
-        {
-            var baseDir = AppContext.BaseDirectory;
-            return Path.Combine(baseDir, "dicts", "CharactersTofu.txt");
-        }
-
-        /// <summary>
-        /// Loads and parses the deployed built-in DeTofu mappings.
-        /// </summary>
-        /// <returns>The parsed entries, or an empty list when the optional mapping file is absent.</returns>
+        /// <returns>The parsed built-in entries.</returns>
         private static List<DeTofuEntry> LoadBuiltinEntries()
         {
-            var path = GetBuiltinTofuPath();
-
-            return !File.Exists(path) ? new List<DeTofuEntry>() : ParseEntries(File.ReadAllText(path, Encoding.UTF8));
+            return ParseEntries(
+                EmbeddedData.ReadText(EmbeddedData.CharactersTofuResourceName));
         }
 
         /// <summary>

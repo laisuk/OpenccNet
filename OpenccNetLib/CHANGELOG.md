@@ -41,13 +41,20 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Load `DictionaryLib.Provider` and `DictionaryLib.New()` from the embedded Zstandard resource while preserving lazy,
   thread-safe singleton initialization and the established global provider-reset behavior of `New()`.
+- Load the built-in CJK compatibility, curated Unicode compatibility, and DeTofu tables from assembly resources. Normal
+  conversion, normalization, and display fallback no longer depend on deployed `dicts` files, including in
+  filesystem-free hosts such as Blazor WebAssembly.
+- Stop copying the four embedded built-in resources as package content while continuing to package the raw OpenCC text
+  dictionaries required by explicit `DictionaryLib.FromDicts()` and dictionary-generation workflows.
 - Share Zstandard stream decompression, JSON deserialization, and derived-metadata normalization across embedded,
   filesystem, and byte-array loading paths.
 - Internalize the compatibility-ideograph and curated Unicode normalization implementation types. The supported public
   surface is now `Opencc.NormalizeCompat(...)`, `Opencc.NormalizeUnicodeCompat(...)`, and
   `Opencc.NormalizeCompatExtended(...)`.
 - Remove the unreleased `NormalizeCompat(string, bool)` overload in favor of the named basic and extended methods.
-- Update DeToFu table data.
+- Update DeTofu table data and compact `CharactersTofu.txt` to the supported three-column format.
+- Keep segmented conversion on the sequential path when the runtime reports one available processor, avoiding parallel
+  chunk construction and `Parallel.For` overhead while preserving the existing multicore thresholds and output.
 - Internalize `ConversionPlanCache`, `DictRefs`, and `StarterUnion`; these conversion-planning and acceleration types
   are implementation details and are no longer part of the public API surface.
 - Centralize active dictionary provider and conversion-plan cache ownership in `ConversionPlanCache`.
@@ -72,7 +79,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   consumers of the prerelease API surface, but no released 1.7.0 package exposed the removed overload.
 - Existing high-level dictionary and conversion APIs remain available through `DictionaryLib` and `Opencc`.
 - `DictionaryLib.Provider` continues to expose the built-in default dictionary.
-- `DictionaryLib.FromZstd(string)` retains its external default path for backward compatibility, while
+- `DictionaryLib.FromZstd(string)` loads an explicitly supplied external path, while
   `DictionaryLib.FromZstdBytes(byte[])` provides unambiguous in-memory loading. Both APIs return independent
   dictionaries without changing global state.
 - `Opencc.UseCustomDictionary()` and `Opencc.UseDefaultDictionary()` retain their process-wide behavior; the new

@@ -169,21 +169,12 @@ Console.WriteLine(result); // Output: 2 (for Simplified)
 
 ## Dictionary Files
 
-No external dictionary file is required for the built-in provider. The package retains `dicts` content for explicit
-filesystem loaders such as `DictionaryLib.FromZstd()` and for customization or dictionary-generation workflows. If a
-source-based deployment needs those external workflows, copy the relevant files explicitly:
-
-```xml
-
-<ItemGroup>
-    <None Update="dicts\dictionary_maxlength.zstd">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <Pack>true</Pack>
-        <PackagePath>contentFiles\any\any\dicts\dictionary_maxlength.zstd</PackagePath>
-    </None>
-    <!-- Repeat for other dictionary files -->
-</ItemGroup>
-```
+No external dictionary file is required for the built-in provider. The package retains the raw OpenCC dictionary text
+files under `dicts` for `DictionaryLib.FromDicts()` and customization or dictionary-generation workflows. The bundled
+`dictionary_maxlength.zstd` is embedded in the assembly and is not copied as package content. To use
+`DictionaryLib.FromZstd(path)`, applications must supply their own external Zstandard dictionary file explicitly.
+The built-in CJK compatibility, curated Unicode compatibility, and DeTofu tables are also embedded, so their default
+normalization and display-fallback paths do not require loose data files beside the assembly.
 
 ### Using Custom Dictionary
 

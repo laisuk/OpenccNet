@@ -5,6 +5,60 @@ using System.Text;
 
 namespace OpenccNetLib
 {
+    internal static class EmbeddedData
+    {
+        internal const string CompatIdeographsResourceName =
+            "OpenccNetLib.Resources.CJK_Compatibility_Ideographs.txt";
+
+        internal const string UnicodeCompatResourceName =
+            "OpenccNetLib.Resources.Unicode_Compatibility.txt";
+
+        internal const string CharactersTofuResourceName =
+            "OpenccNetLib.Resources.CharactersTofu.txt";
+
+        /// <summary>
+        /// Loads the canonical built-in Embedded Data from this assembly's embedded resource.
+        /// </summary>
+        internal static string ReadText(string resourceName)
+        {
+            var assembly = typeof(EmbeddedData).Assembly;
+
+            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Embedded resource not found: {resourceName}");
+                }
+
+                using (var reader = new StreamReader(
+                           stream,
+                           Encoding.UTF8,
+                           detectEncodingFromByteOrderMarks: true))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+        }
+
+        internal static TextReader OpenText(string resourceName)
+        {
+            var assembly = typeof(EmbeddedData).Assembly;
+            var stream = assembly.GetManifestResourceStream(resourceName);
+
+            if (stream == null)
+            {
+                throw new InvalidOperationException(
+                    $"Embedded resource not found: {resourceName}");
+            }
+
+            return new StreamReader(
+                stream,
+                Encoding.UTF8,
+                detectEncodingFromByteOrderMarks: true);
+        }
+    }
+
     /// <summary>
     /// Implements internal CJK Compatibility Ideograph normalization.
     /// </summary>
@@ -362,17 +416,10 @@ namespace OpenccNetLib
                 " is outside CJK Compatibility Ideograph ranges");
         }
 
-        private static string GetBuiltinCompatPath()
-        {
-            var baseDir = AppContext.BaseDirectory;
-            return Path.Combine(baseDir, "dicts", "CJK_Compatibility_Ideographs.txt");
-        }
-
         private static CompatIdeographs LoadBuiltinTable()
         {
-            var path = GetBuiltinCompatPath();
-
-            return !File.Exists(path) ? new CompatIdeographs() : FromText(File.ReadAllText(path, Encoding.UTF8));
+            return FromText(
+                EmbeddedData.ReadText(EmbeddedData.CompatIdeographsResourceName));
         }
 
         private static ScalarValue ReadSingleScalar(string value, int lineNo, string field)
@@ -480,7 +527,6 @@ namespace OpenccNetLib
                         replacement[0],
                         replacement[1]);
             }
-
         }
     }
 }

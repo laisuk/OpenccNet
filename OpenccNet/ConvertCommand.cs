@@ -107,6 +107,13 @@ internal static class ConvertCommand
             Description = "Normalize CJK Compatibility Ideographs before conversion."
         };
 
+        var normCompatExtendedOption = new Option<bool>("--norm-compat-extended", "-E")
+        {
+            DefaultValueFactory = _ => false,
+            Description =
+                "Apply extended Unicode compatibility normalization before conversion."
+        };
+
         var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
@@ -130,6 +137,7 @@ internal static class ConvertCommand
             deTofuFileOption,
             keepIdsOption,
             normCompatOption,
+            normCompatExtendedOption,
             customDictOption,
             inputEncodingOption,
             outputEncodingOption
@@ -194,12 +202,23 @@ internal static class ConvertCommand
             var deTofuFile = pr.GetValue(deTofuFileOption);
             var keepIds = pr.GetValue(keepIdsOption);
             var normCompat = pr.GetValue(normCompatOption);
+            var normCompatExtended = pr.GetValue(normCompatExtendedOption);
             var inputEnc = pr.GetValue(inputEncodingOption)!;
             var outputEnc = pr.GetValue(outputEncodingOption)!;
             var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             return await RunConversionAsync(
-                inputFile, outputFile, config, punct, inputEnc, outputEnc, deTofu, deTofuFile, keepIds, normCompat,
+                inputFile,
+                outputFile,
+                config,
+                punct,
+                inputEnc,
+                outputEnc,
+                deTofu,
+                deTofuFile,
+                keepIds,
+                normCompat,
+                normCompatExtended,
                 customDicts
             );
         });
@@ -219,6 +238,7 @@ internal static class ConvertCommand
         string? deTofuFile,
         bool keepIds,
         bool normCompat,
+        bool normCompatExtended,
         string[] customDicts)
     {
         try
@@ -252,7 +272,11 @@ internal static class ConvertCommand
                 : new Opencc(config, customSpecs, keepIds);
 
             var inputStr = await ReadInputAsync(inputFile, inputEnc);
-            if (normCompat)
+            if (normCompatExtended)
+            {
+                inputStr = opencc.NormalizeCompatExtended(inputStr);
+            }
+            else if (normCompat)
             {
                 inputStr = opencc.NormalizeCompat(inputStr);
             }
@@ -275,6 +299,11 @@ internal static class ConvertCommand
             lock (ConsoleLock)
             {
                 var options = new List<string>();
+
+                if (normCompatExtended)
+                    options.Add("norm-compat-extended");
+                else if (normCompat)
+                    options.Add("norm-compat");
 
                 if (!string.IsNullOrEmpty(deTofu))
                     options.Add($"detofu:{deTofu}");

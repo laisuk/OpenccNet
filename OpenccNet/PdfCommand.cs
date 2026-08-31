@@ -95,6 +95,13 @@ internal static class PdfCommand
                 "Normalize CJK Compatibility Ideographs before conversion."
         };
 
+        var normCompatExtendedOption = new Option<bool>("--norm-compat-extended", "-E")
+        {
+            DefaultValueFactory = _ => false,
+            Description =
+                "Apply extended Unicode compatibility normalization before conversion."
+        };
+
         var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
@@ -123,6 +130,7 @@ internal static class PdfCommand
             quietOption,
             extractOption,
             normCompatOption,
+            normCompatExtendedOption,
             customDictOption
         };
 
@@ -150,6 +158,7 @@ internal static class PdfCommand
                 quiet: parseResult.GetValue(quietOption),
                 extractOnly: parseResult.GetValue(extractOption),
                 normCompat: parseResult.GetValue(normCompatOption),
+                normCompatExtended: parseResult.GetValue(normCompatExtendedOption),
                 customDictArgs:
                 parseResult.GetValue(customDictOption) ??
                 Array.Empty<string>(),
@@ -169,6 +178,7 @@ internal static class PdfCommand
         bool quiet,
         bool extractOnly,
         bool normCompat,
+        bool normCompatExtended,
         string[] customDictArgs,
         CancellationToken cancellationToken)
     {
@@ -192,6 +202,7 @@ internal static class PdfCommand
                 config,
                 punctuation,
                 normCompat,
+                normCompatExtended,
                 customDictArgs,
                 quiet);
 
@@ -241,6 +252,7 @@ internal static class PdfCommand
                     config!,
                     punctuation,
                     normCompat,
+                    normCompatExtended,
                     customDictArgs);
             }
 
@@ -316,6 +328,7 @@ internal static class PdfCommand
         string? config,
         bool punctuation,
         bool normCompat,
+        bool normCompatExtended,
         string[] customDictArgs,
         bool quiet)
     {
@@ -340,6 +353,13 @@ internal static class PdfCommand
         {
             CliUtils.WriteInfo(
                 "--norm-compat has no effect in --extract mode.",
+                quiet);
+        }
+
+        if (normCompatExtended)
+        {
+            CliUtils.WriteInfo(
+                "--norm-compat-extended has no effect in --extract mode.",
                 quiet);
         }
 
@@ -371,6 +391,7 @@ internal static class PdfCommand
         string config,
         bool punctuation,
         bool normCompat,
+        bool normCompatExtended,
         string[] customDictArgs)
     {
         // Custom provider selection must happen before Opencc construction.
@@ -381,8 +402,14 @@ internal static class PdfCommand
             ? new Opencc(config)
             : new Opencc(config, customSpecs);
 
-        if (normCompat)
+        if (normCompatExtended)
+        {
+            text = converter.NormalizeCompatExtended(text);
+        }
+        else if (normCompat)
+        {
             text = converter.NormalizeCompat(text);
+        }
 
         return converter.Convert(
             text,

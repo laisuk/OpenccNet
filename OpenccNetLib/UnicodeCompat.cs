@@ -358,54 +358,54 @@ namespace OpenccNetLib
         private static int[][] LoadExtendedPages()
         {
             var pages = new int[PageCount][];
-            var path = GetBuiltinUnicodeCompatPath();
 
-            if (!File.Exists(path))
-                return pages;
-
-            var lineNo = 0;
-
-            foreach (var rawLine in File.ReadLines(path, Encoding.UTF8))
+            using (var reader = EmbeddedData.OpenText(EmbeddedData.UnicodeCompatResourceName))
             {
-                lineNo++;
+                var lineNo = 0;
+                string rawLine;
 
-                if (string.IsNullOrWhiteSpace(rawLine) ||
-                    rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
+                while ((rawLine = reader.ReadLine()) != null)
                 {
-                    continue;
+                    lineNo++;
+
+                    if (string.IsNullOrWhiteSpace(rawLine) ||
+                        rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var parts = rawLine.Split('\t');
+
+                    if (parts.Length < 2)
+                    {
+                        throw new InvalidDataException(
+                            $"line {lineNo}: missing target");
+                    }
+
+                    if (parts.Length > 2)
+                    {
+                        throw new InvalidDataException(
+                            $"line {lineNo}: too many columns");
+                    }
+
+                    var source = ReadSingleScalar(
+                        parts[0].Trim(),
+                        lineNo,
+                        "source");
+
+                    if (source <= 0x7F)
+                    {
+                        throw new InvalidDataException(
+                            $"line {lineNo}: source must not be an ASCII character");
+                    }
+
+                    var target = ReadSingleScalar(
+                        parts[1].Trim(),
+                        lineNo,
+                        "target");
+
+                    SetExtendedMapping(pages, source, target);
                 }
-
-                var parts = rawLine.Split('\t');
-
-                if (parts.Length < 2)
-                {
-                    throw new InvalidDataException(
-                        $"line {lineNo}: missing target");
-                }
-
-                if (parts.Length > 2)
-                {
-                    throw new InvalidDataException(
-                        $"line {lineNo}: too many columns");
-                }
-
-                var source = ReadSingleScalar(
-                    parts[0].Trim(),
-                    lineNo,
-                    "source");
-
-                if (source <= 0x7F)
-                {
-                    throw new InvalidDataException(
-                        $"line {lineNo}: source must not be an ASCII character");
-                }
-
-                var target = ReadSingleScalar(
-                    parts[1].Trim(),
-                    lineNo,
-                    "target");
-
-                SetExtendedMapping(pages, source, target);
             }
 
             return pages;
@@ -505,14 +505,6 @@ namespace OpenccNetLib
             return lineNo > 0
                 ? $"line {lineNo}: "
                 : string.Empty;
-        }
-
-        private static string GetBuiltinUnicodeCompatPath()
-        {
-            return Path.Combine(
-                AppContext.BaseDirectory,
-                "dicts",
-                "Unicode_Compatibility.txt");
         }
     }
 }

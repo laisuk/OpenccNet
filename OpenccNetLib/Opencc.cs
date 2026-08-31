@@ -1465,6 +1465,28 @@ namespace OpenccNetLib
             StarterUnion union,
             bool preserveIds = false)
         {
+            return SegmentReplaceForProcessorCount(
+                text,
+                dictionaries,
+                union,
+                preserveIds,
+                Environment.ProcessorCount);
+        }
+
+        /// <summary>
+        /// Implements one segmented conversion round using the supplied processor count.
+        /// </summary>
+        /// <remarks>
+        /// The processor-count parameter keeps the runtime policy independently testable
+        /// without changing the public conversion API or relying on the test host's CPU count.
+        /// </remarks>
+        internal static string SegmentReplaceForProcessorCount(
+            string text,
+            DictWithMaxLength[] dictionaries,
+            StarterUnion union,
+            bool preserveIds,
+            int processorCount)
+        {
             if (string.IsNullOrEmpty(text))
                 return string.Empty;
 
@@ -1494,9 +1516,13 @@ namespace OpenccNetLib
             var sb = new StringBuilder(
                 textLength + (textLength >> 4)); // +6.25% headroom
 
-            // Sequential path for small or moderately sized input.
-            if (splitRanges.Count <= ConvertTuning.ParallelRangeGate &&
-                textLength <= ConvertTuning.ParallelTextGate)
+            // Sequential path for single-processor runtimes and for small or
+            // moderately sized input. In particular, do not build chunks only to
+            // execute Parallel.For with MaxDegreeOfParallelism = 1.
+            if (!ShouldRunSegmentReplaceInParallel(
+                    textLength,
+                    splitRanges.Count,
+                    processorCount))
             {
                 for (var i = 0; i < splitRanges.Count; i++)
                 {
@@ -1521,7 +1547,7 @@ namespace OpenccNetLib
             var parts = new string[chunks.Count];
             var po = new ParallelOptions
             {
-                MaxDegreeOfParallelism = Environment.ProcessorCount
+                MaxDegreeOfParallelism = processorCount
             };
 
             Parallel.For(0, chunks.Count, po, cIdx =>
@@ -1552,6 +1578,24 @@ namespace OpenccNetLib
                 sb.Append(parts[i]);
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Determines whether segmented conversion should use the existing parallel path.
+        /// </summary>
+        /// <remarks>
+        /// A single available processor can never benefit from the chunked path. For
+        /// multicore runtimes, the existing range and text gates are preserved exactly.
+        /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool ShouldRunSegmentReplaceInParallel(
+            int textLength,
+            int rangeCount,
+            int processorCount)
+        {
+            return processorCount > 1 &&
+                   (rangeCount > ConvertTuning.ParallelRangeGate ||
+                    textLength > ConvertTuning.ParallelTextGate);
         }
 
         #endregion

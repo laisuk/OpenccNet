@@ -25,8 +25,10 @@
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.7.0
 
-            - Embedded the canonical built-in Zstandard dictionary in OpenccNetLib for lazy filesystem-independent default loading.
-            - Added public independent DictionaryLib.FromZstd(string) and DictionaryLib.FromZstdBytes(byte[]) loading APIs.
+            - Embedded the canonical built-in Zstandard dictionary for lazy, filesystem-independent default dictionary loading.
+            - Embedded the built-in CJK compatibility, Unicode compatibility, and DeTofu tables, removing filesystem dependencies from the default normalization and DeTofu paths.
+            - Built-in conversion, compatibility normalization, and DeTofu data are now loaded directly from assembly resources, improving deployment compatibility including Blazor WebAssembly.
+            - Added public independent DictionaryLib.FromZstd(string) and DictionaryLib.FromZstdBytes(byte[]) loading APIs; FromZstd(string) requires an explicit caller-supplied external file.
             - Added Opencc constructors accepting an explicit DictionaryMaxlength through an instance-owned conversion-plan cache.
             - Added constructor-time frozen Opencc instances with immutable configuration and private plan caches based on DictionaryLib.Provider.
             - Added per-instance custom dictionaries with the new Opencc(OpenccConfig, IEnumerable&lt;CustomDictSpec&gt;, bool, bool) constructor.
@@ -39,7 +41,9 @@
             - Existing Opencc.UseCustomDictionary() and Opencc.UseDefaultDictionary() retain their process-wide behavior.
             - Internalized compatibility normalization implementation types; use Opencc.NormalizeCompat, Opencc.NormalizeUnicodeCompat, and Opencc.NormalizeCompatExtended.
             - Removed the unreleased NormalizeCompat(string, bool) overload; direct CompatIdeographs and two-argument overload consumers must migrate to the three named facade methods.
-            - Updated DeToFu table data.
+            - Avoided parallel chunking overhead for segmented conversion when only one processor is available while preserving multicore thresholds and output behavior.
+            - Updated DeTofu table data and compacted the built-in CharactersTofu table to its three-column format.
+            - Removed redundant packaged copies of built-in resource data while retaining raw OpenCC dictionary files for DictionaryLib.FromDicts().
         </PackageReleaseNotes>
         <AssemblyVersion>1.7.0.0</AssemblyVersion>
         <FileVersion>1.7.0.0</FileVersion>
@@ -56,10 +60,6 @@
     <!-- Include icon file in package -->
     <ItemGroup>
         <None Include="Images/icon.png" Pack="true" PackagePath="/"/>
-        <None Update="dicts\Unicode_Compatibility.txt">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-        </None>
     </ItemGroup>
 
     <!-- Include README in package -->
@@ -71,10 +71,26 @@
     <ItemGroup>
         <!-- Canonical built-in provider data; the logical name is stable across project renames. -->
         <EmbeddedResource Include="dicts\dictionary_maxlength.zstd"
-                          LogicalName="OpenccNetLib.Resources.dictionary_maxlength.zstd" />
+                          LogicalName="OpenccNetLib.Resources.dictionary_maxlength.zstd"/>
+
+        <!-- Built-in Unicode compatibility normalization tables. -->
+        <EmbeddedResource Include="dicts\CJK_Compatibility_Ideographs.txt"
+                          LogicalName="OpenccNetLib.Resources.CJK_Compatibility_Ideographs.txt"/>
+
+        <EmbeddedResource Include="dicts\Unicode_Compatibility.txt"
+                          LogicalName="OpenccNetLib.Resources.Unicode_Compatibility.txt"/>
+
+        <!-- Built-in DeTofu fallback table. -->
+        <EmbeddedResource Include="dicts\CharactersTofu.txt"
+                          LogicalName="OpenccNetLib.Resources.CharactersTofu.txt"/>
 
         <!-- Include all files under dicts (with extensions) -->
-        <None Include="dicts\**\*.*">
+        <None Include="dicts\**\*.*"
+              Exclude="
+        dicts\dictionary_maxlength.zstd;
+        dicts\CJK_Compatibility_Ideographs.txt;
+        dicts\Unicode_Compatibility.txt;
+        dicts\CharactersTofu.txt">
             <Pack>true</Pack>
             <PackagePath>contentFiles\any\any\dicts\%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
             <PackageCopyToOutput>true</PackageCopyToOutput>

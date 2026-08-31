@@ -149,13 +149,23 @@ Usage:
   OpenccNet convert [options]
 
 Options:
-  -i, --input              Read original text from file <input>
-  -o, --output             Write original text to file <output>
-  -c, --config (REQUIRED)  Conversion configuration: s2t|s2tw|s2twp|s2hkp|s2hk|t2s|tw2s|tw2sp|hk2sp|t2hkp|hk2tp|hk2s|jp2t|t2jp
-  -p, --punct              Punctuation conversion. [default: False]
-  --in-enc                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
-  --out-enc                Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
-  -?, -h, --help           Show help and usage information
+  -i, --input <input>               Read original text from file <input>
+  -o, --output <output>             Write original text to file <output>
+  -c, --config <config> (REQUIRED)  Conversion configuration.
+                                    Valid options: s2t, t2s, s2tw, tw2s, s2twp, tw2sp, s2hkp, hk2sp, t2hkp, hk2tp, s2hk,
+                                    hk2s, t2tw, tw2t, t2twp, tw2tp, t2hk, hk2t, t2jp, jp2t
+  -p, --punct                       Punctuation conversion.
+  --detofu <detofu>                 Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f,
+                                    ext-g, ext-h, ext-i
+  --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings
+                                    override built-in mappings (requires --detofu)
+  -I, --keep-ids                    Preserve Unicode IDS expressions during conversion.
+  -n, --norm-compat                 Normalize CJK Compatibility Ideographs before conversion.
+  -E, --norm-compat-extended        Apply extended Unicode compatibility normalization before conversion.
+  -D, --custom-dict <custom-dict>   Load custom dictionary: <slot>:<mode>:<path>.
+  --in-enc <in-enc>                 Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
+  --out-enc <out-enc>               Encoding for output: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS [default: UTF-8]
+  -?, -h, --help                    Show help and usage information
 ```
 
 ```bash
@@ -193,9 +203,18 @@ Options:
   -p, --punct            Enable punctuation conversion.
   -H, --header           Add [Page x/y] headers to the extracted text.
   -r, --reflow           Reflow CJK paragraphs into continuous lines.
-  --compact              Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
+  -C, --compact          Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
   -q, --quiet            Suppress status and progress output; only errors will be shown.
   -e, --extract          Extract text from PDF only (no OpenCC conversion).
+  -n, --norm-compat      Normalize CJK Compatibility Ideographs before conversion.
+  -E, --norm-compat-extended
+                         Apply extended Unicode compatibility normalization before conversion.
+  -D, --custom-dict <custom-dict>
+                         Load custom dictionary: <slot>:<mode>:<path>.
   -?, -h, --help         Show help and usage information
 
 ```
+
+`--norm-compat` applies only CJK Compatibility Ideograph mappings. `--norm-compat-extended` applies both the
+compatibility-ideograph and curated Unicode compatibility tables; it takes precedence if both flags are supplied.
+Neither flag affects `pdf --extract` output.

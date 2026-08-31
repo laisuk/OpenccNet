@@ -19,6 +19,14 @@
         <PackageId>openccnet.cli</PackageId>
         <Authors>Laisuk Lai</Authors>
         <Description>Convert text and Office files using OpenccNetLib with CLI support.</Description>
+        <PackageReleaseNotes>OpenccNet CLI v1.7.0
+
+            - Added -E / --norm-compat-extended to convert and pdf for combined CJK compatibility-ideograph and curated Unicode compatibility normalization.
+            - Kept -n / --norm-compat compatibility-ideograph-only; extended normalization takes precedence when both flags are supplied.
+            - Normalization flags remain conversion-only and have no effect in pdf --extract mode.
+            - Updated custom dictionary handling for the OpenccNetLib instance-owned dictionary APIs.
+            - Updated DeTofu data through OpenccNetLib v1.7.0.
+        </PackageReleaseNotes>
         <PackageOutputPath>./nupkg</PackageOutputPath>
         <ApplicationIcon>assets\icon.ico</ApplicationIcon>
         <IncludeSymbols>true</IncludeSymbols>

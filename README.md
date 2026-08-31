@@ -316,20 +316,19 @@ using OpenccNetLib;
 
 var cc = new Opencc(OpenccConfig.T2S);
 string normalized =
-    cc.NormalizeCompatExtended("天龍八部書裡的喬峰是契丹人‧︰");
+    cc.NormalizeCompatExtended("天龍八部書裡的喬峰是契丹人‧聼聼竒羙⽟䂖甁噐⾳");
 string converted = cc.Convert(normalized);
 
 Console.WriteLine(converted);
-// Output: 天龙八部书里的乔峰是契丹人·：
+// Output: 天龙八部书里的乔峰是契丹人·听听奇美玉石甁器音
 ```
 
 Use `NormalizeCompatExtended(...)` when both mapping layers are wanted. The former two-argument `NormalizeCompat`
-overload was removed before the 1.7.0 release; use the named basic or extended method instead. The CLI `-n` /
-`--norm-compat` option remains compatibility-ideograph-only. In the `pdf` pipeline, curated Unicode-only normalization
-is applied automatically immediately after extraction and before paragraph reflow; when
-`--norm-compat` is also requested, the basic compatibility-ideograph pass is applied later before OpenCC conversion. The
-CLI does not silently substitute combined extended normalization, so the established ordering and precedence remain
-unchanged.
+overload was removed before the 1.7.0 release; use the named basic or extended method instead. In the CLI, `-n` /
+`--norm-compat` remains compatibility-ideograph-only, while `-E` / `--norm-compat-extended` selects combined extended
+normalization and takes precedence if both flags are supplied. In the `pdf` pipeline, curated Unicode-only normalization
+is applied automatically immediately after extraction and before paragraph reflow; the selected optional normalization
+pass is then applied before OpenCC conversion. Neither optional flag affects `pdf --extract` output.
 
 #### Compatibility normalization APIs
 
@@ -339,9 +338,10 @@ Opencc.NormalizeUnicodeCompat(...)
 Opencc.NormalizeCompatExtended(...)
 ```
 
-> **Advanced users**: `dicts/Unicode_Compatibility.txt` may be customized for project-specific curated mappings used by
-> `NormalizeUnicodeCompat(...)` and `NormalizeCompatExtended(...)`. This does not customize the built-in CJK
-> Compatibility Ideograph table.
+> **Contributors and source builders**: the canonical `dicts/Unicode_Compatibility.txt` table is embedded at build time
+> and used by `NormalizeUnicodeCompat(...)` and `NormalizeCompatExtended(...)`. Editing or deploying a loose copy beside
+> the application does not replace the embedded runtime table. Rebuild `OpenccNetLib` after changing the source table.
+> This table is separate from the built-in CJK Compatibility Ideograph table.
 >
 > Dictionary format:
 > ```
@@ -489,7 +489,7 @@ Example:
 Blank lines and lines beginning with `#` are ignored. The extension column accepts compact `B`-`I` values and legacy
 `ExtB`-`ExtI` values.
 
-Built-in mappings are loaded from `dicts/TSCharactersTofu.txt`. Custom files and custom pairs are applied after the
+Built-in mappings are loaded from the embedded `CharactersTofu.txt` resource. Custom files and custom pairs are applied after the
 built-in mappings. File mappings override built-in mappings for the same tofu-risk character, and custom pairs do the
 same. Later mappings override earlier mappings when the same tofu-risk character is provided.
 
@@ -658,7 +658,7 @@ Instance specs are layered on the active global dictionary snapshot. For example
 mapping and its own overlay, while the active global provider receives only the global mapping:
 
 ```csharp
-var globalDictionary = DictionaryLib.FromZstd();
+var globalDictionary = DictionaryLib.FromDicts();
 DictionaryLib.WithCustomDicts(globalDictionary, new[]
 {
     new CustomDictSpec
@@ -742,7 +742,7 @@ var parsed = CustomDictSpec.Parse(
     @"hkphrasesrev:append:data\my_hk_dict.txt");
 
 var parsedDict = DictionaryLib.WithCustomDicts(
-    DictionaryLib.FromZstd(),
+    DictionaryLib.FromDicts(),
     new[] { parsed });
 ```
 
@@ -755,7 +755,7 @@ var typed = CustomDictSpec.FromFile(
     CustomDictMode.Append);
 
 var typedDict = DictionaryLib.WithCustomDicts(
-    DictionaryLib.FromZstd(),
+    DictionaryLib.FromDicts(),
     new[] { typed });
 ```
 
@@ -825,7 +825,7 @@ Console.WriteLine(cc.Convert("小女孩问：什么是个人隐私权？"));
 For in-memory pairs, apply a post-load custom spec:
 
 ```csharp
-var dict = DictionaryLib.FromZstd();
+var dict = DictionaryLib.FromDicts();
 
 DictionaryLib.WithCustomDicts(
     dict,
@@ -875,7 +875,7 @@ additional slot-level changes.
 using System.Collections.Generic;
 using OpenccNetLib;
 
-var dict = DictionaryLib.FromZstd();
+var dict = DictionaryLib.FromDicts();
 
 DictionaryLib.WithCustomDicts(
     dict,
@@ -897,7 +897,7 @@ Opencc.UseCustomDictionary(dict);
 var opencc = new Opencc("s2t");
 ```
 
-Post-load customization should use an independent dictionary returned by `FromZstd()`, `FromDicts()`, `FromJson()`, or
+Post-load customization should use an independent dictionary returned by `FromZstd(path)`, `FromDicts()`, `FromJson()`, or
 `FromCbor()`. Avoid modifying `DictionaryLib.New()`/`Provider` in place because it is the shared built-in singleton.
 
 Each `CustomDictSpec` targets one slot. `Paths` is optional and can contain multiple custom dictionary files. `Pairs` is
@@ -922,7 +922,7 @@ topology unchanged.
 using System.Collections.Generic;
 using OpenccNetLib;
 
-var dict = DictionaryLib.FromZstd();
+var dict = DictionaryLib.FromDicts();
 
 DictionaryLib.WithCustomDicts(
     dict,
@@ -1625,9 +1625,8 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 
 ##### `DictionaryLib` loading APIs
 
-- `static DictionaryMaxlength FromZstd(string relativePath = "dicts/dictionary_maxlength.zstd")`
-  Loads an independent dictionary from an external filesystem Zstandard file. The default path is retained for
-  backward compatibility. This does not change the active provider.
+- `static DictionaryMaxlength FromZstd(string relativePath)`
+  Loads an independent dictionary from a caller-supplied external filesystem Zstandard file. This does not change the active provider.
 
 - `static DictionaryMaxlength FromZstdBytes(byte[] data)`
   Loads an independent dictionary from caller-provided compressed bytes. This does not change the active provider.
@@ -1755,6 +1754,7 @@ Options:
                                     --detofu)
   -I, --keep-ids                    Preserve Unicode IDS expressions during conversion.
   -n, --norm-compat                 Normalize CJK Compatibility Ideographs before conversion.
+  -E, --norm-compat-extended        Apply extended Unicode compatibility normalization before conversion.
   -D, --custom-dict <custom-dict>   Load custom dictionary: <slot>:<mode>:<path>.
                                     Example: HkPhrasesRev:append:my_hk_dict.txt
                                     Available slots: STCharacters, STPhrases, STPunctuations, TSCharacters, TSPhrases, TSPunctuations, TWPhrases, TWPhrasesRev, 
@@ -1838,6 +1838,7 @@ Options:
   -q, --quiet                      Suppress status and progress output; only errors will be shown.
   -e, --extract                    Extract text from PDF only (no OpenCC conversion).
   -n, --norm-compat                Normalize CJK Compatibility Ideographs before conversion.
+  -E, --norm-compat-extended       Apply extended Unicode compatibility normalization before conversion.
   -D, --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>.
                                    Example: HkPhrasesRev:append:my_hk_dict.txt
                                    Available slots: STCharacters, STPhrases, STPunctuations, TSCharacters, TSPhrases, TSPunctuations, TWPhrases, TWPhrasesRev, 

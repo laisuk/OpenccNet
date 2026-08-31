@@ -1,4 +1,5 @@
-﻿using BenchmarkDotNet.Attributes;
+﻿using System.Diagnostics;
+using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Exporters.Csv;
 using BenchmarkDotNet.Running;
 
@@ -197,10 +198,56 @@ namespace OpenccNetLib.Benchmarks
         }
     }
 
+    [MemoryDiagnoser]
+    [SimpleJob(warmupCount: 1, iterationCount: 10)]
+    [MinColumn, MaxColumn, RankColumn]
+    [CsvExporter(CsvSeparator.Comma)]
+    [MarkdownExporter, RPlotExporter]
+    public class OpenccSingleProcessorBenchmarks
+    {
+        private Opencc? _opencc;
+        private string? _inputText;
+
+        [Params(100, 1_000, 10_000, 100_000, 1_000_000)]
+        public int Size;
+
+        [GlobalSetup]
+        public void Setup()
+        {
+            // Pin the BenchmarkDotNet benchmark process to logical processor 0.
+            // This constrains the process, including Opencc conversion and runtime
+            // helper threads, to a single logical CPU.
+            if (OperatingSystem.IsWindows())
+            {
+                Process.GetCurrentProcess().ProcessorAffinity = (nint)1;
+            }
+
+            _opencc = new Opencc("s2t");
+
+            var fullText =
+                File.ReadAllText("Samples/QuanZhiDuZheShiJiao_Hans.txt");
+
+            _inputText =
+                fullText[..Math.Min(Size, fullText.Length)];
+        }
+
+        [Benchmark]
+        public void BM_Convert_Sized_SingleProcessor()
+        {
+            var _ = _opencc!.Convert(_inputText!);
+        }
+    }
+
     public static class Program
     {
         public static void Main(string[] args)
         {
+            if (args.Contains("--single-cpu", StringComparer.OrdinalIgnoreCase))
+            {
+                BenchmarkRunner.Run<OpenccSingleProcessorBenchmarks>();
+                return;
+            }
+
             if (args.Contains("--ids", StringComparer.OrdinalIgnoreCase))
             {
                 BenchmarkRunner.Run<IdsPreservationBenchmarks>();

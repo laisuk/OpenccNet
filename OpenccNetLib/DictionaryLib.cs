@@ -377,8 +377,8 @@ namespace OpenccNetLib
         /// </returns>
         /// <remarks>
         /// This filesystem loader is separate from <see cref="Provider"/>, which loads the
-        /// built-in dictionary from an embedded assembly resource. The optional default path
-        /// is retained for backward compatibility with deployments that copy dictionary files.
+        /// built-in dictionary from an embedded assembly resource. Callers must provide the
+        /// path to an external dictionary file explicitly.
         /// <para>
         /// Unlike <see cref="New"/>, this method does not change the active
         /// global dictionary provider or clear cached conversion plans.
@@ -394,8 +394,7 @@ namespace OpenccNetLib
         /// <exception cref="FileNotFoundException">
         /// Thrown when the Zstandard dictionary file does not exist.
         /// </exception>
-        public static DictionaryMaxlength FromZstd(
-            string relativePath = "dicts/dictionary_maxlength.zstd")
+        public static DictionaryMaxlength FromZstd(string relativePath)
         {
             if (relativePath == null)
                 throw new ArgumentNullException(nameof(relativePath));

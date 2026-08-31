@@ -10,6 +10,23 @@ public class DictionaryLibTests
 {
     private const string OutputDir = "test_output";
 
+    private static byte[] ReadBuiltInZstdBytes()
+    {
+        using var stream = typeof(DictionaryLib).Assembly.GetManifestResourceStream(
+            "OpenccNetLib.Resources.dictionary_maxlength.zstd");
+
+        Assert.IsNotNull(stream, "The built-in Zstd dictionary must remain embedded.");
+
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        return buffer.ToArray();
+    }
+
+    private static DictionaryMaxlength CreateIndependentBuiltInDictionary()
+    {
+        return DictionaryLib.FromZstdBytes(ReadBuiltInZstdBytes());
+    }
+
     private static void AssertMetadataValid(DictWithMaxLength d)
     {
         Assert.IsGreaterThan(0, d.Count);
@@ -171,13 +188,7 @@ public class DictionaryLibTests
     {
         var globalCache = ConversionPlanCache.Current;
         var globalProvider = ConversionPlanCache.Provider;
-        var path = Path.Combine(
-            AppContext.BaseDirectory,
-            "dicts",
-            "dictionary_maxlength.zstd");
-
-        var bytes = File.ReadAllBytes(path);
-        var dict = DictionaryLib.FromZstdBytes(bytes);
+        var dict = DictionaryLib.FromZstdBytes(ReadBuiltInZstdBytes());
 
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Dict.Count > 0);
@@ -206,21 +217,24 @@ public class DictionaryLibTests
     {
         var globalCache = ConversionPlanCache.Current;
         var globalProvider = ConversionPlanCache.Provider;
-        var externalPath = Path.Combine(OutputDir, "external_dictionary.zstd");
-        File.Copy(
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "dicts",
-                "dictionary_maxlength.zstd"),
-            externalPath,
-            overwrite: true);
+        var externalPath = Path.Combine(
+            Path.GetTempPath(),
+            "OpenccNetTests_" + Guid.NewGuid().ToString("N") + ".zstd");
+        File.WriteAllBytes(externalPath, ReadBuiltInZstdBytes());
 
-        var loaded = DictionaryLib.FromZstd(externalPath);
+        try
+        {
+            var loaded = DictionaryLib.FromZstd(externalPath);
 
-        Assert.AreNotSame(globalProvider, loaded);
-        Assert.AreSame(globalCache, ConversionPlanCache.Current);
-        Assert.AreSame(globalProvider, ConversionPlanCache.Provider);
-        Assert.AreEqual("漢字", new Opencc("s2t", loaded).Convert("汉字"));
+            Assert.AreNotSame(globalProvider, loaded);
+            Assert.AreSame(globalCache, ConversionPlanCache.Current);
+            Assert.AreSame(globalProvider, ConversionPlanCache.Provider);
+            Assert.AreEqual("漢字", new Opencc("s2t", loaded).Convert("汉字"));
+        }
+        finally
+        {
+            File.Delete(externalPath);
+        }
     }
 
     [TestMethod]
@@ -229,7 +243,7 @@ public class DictionaryLibTests
     {
         Opencc.UseDefaultDictionary();
         var builtIn = DictionaryLib.Provider;
-        var loaded = DictionaryLib.FromZstd();
+        var loaded = CreateIndependentBuiltInDictionary();
         DictionaryLib.WithCustomDicts(
             loaded,
             new[]
@@ -326,7 +340,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestSerialization()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
         var jsonPath = Path.Combine(OutputDir, "test_dict.json");
 
         DictionaryLib.SerializeToJson(jsonPath);
@@ -341,7 +355,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestSerializationUnescaped()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
         var jsonPath = Path.Combine(OutputDir, "test_dict_unescaped.json");
 
         // Serialize using unescaped Unicode output
@@ -406,13 +420,13 @@ public class DictionaryLibTests
 
         var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
         Assert.AreEqual(
-            DictionaryLib.FromZstd().hk_phrases.Count,
+            CreateIndependentBuiltInDictionary().hk_phrases.Count,
             loaded.hk_phrases.Count);
         Assert.AreEqual(
-            DictionaryLib.FromZstd().hk_phrases_rev.Count,
+            CreateIndependentBuiltInDictionary().hk_phrases_rev.Count,
             loaded.hk_phrases_rev.Count);
         Assert.AreEqual(
-            DictionaryLib.FromZstd().jps_characters_rev.Count,
+            CreateIndependentBuiltInDictionary().jps_characters_rev.Count,
             loaded.jps_characters_rev.Count);
     }
 
@@ -421,7 +435,7 @@ public class DictionaryLibTests
     public void TestDictLengthMaskAndLongLengths()
     {
         // Load all dictionaries (from dicts folder)
-        var dicts = DictionaryLib.FromZstd();
+        var dicts = CreateIndependentBuiltInDictionary();
 
         // Pick one for inspection
         var d = dicts.st_phrases;
@@ -702,7 +716,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_AppendsCustomStPhraseFromPairs()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -727,7 +741,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_AppendsCustomHkPhraseFromPairs()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -752,7 +766,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverridesCustomHkPhraseFromPairs()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -777,7 +791,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_AppendsCustomHkPhraseRevFromPairs()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -802,7 +816,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverridesJPSCharactersRevFromPairs()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -833,7 +847,7 @@ public class DictionaryLibTests
             "# Custom company terms\n帕兰蒂尔\t帕蘭蒂爾\n",
             Encoding.UTF8);
 
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -860,7 +874,7 @@ public class DictionaryLibTests
             "帕兰蒂尔\t檔案值\n",
             Encoding.UTF8);
 
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -885,7 +899,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverrideReplacesWholeSlot()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -911,7 +925,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_OverrideReplacesHkVariantPhraseSlot()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         DictionaryLib.WithCustomDicts(
             dict,
@@ -996,7 +1010,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_AppendedCustomDictWorksInConversion()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
         var specs = new[]
         {
             new CustomDictSpec
@@ -1022,7 +1036,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_RejectsEmptySpec()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         var ex = Assert.Throws<ArgumentException>(() =>
             DictionaryLib.WithCustomDicts(
@@ -1041,7 +1055,7 @@ public class DictionaryLibTests
     [TestMethod]
     public void TestWithCustomDicts_RejectsInvalidCustomSlot()
     {
-        var dict = DictionaryLib.FromZstd();
+        var dict = CreateIndependentBuiltInDictionary();
 
         var ex = Assert.Throws<ArgumentException>(() =>
             DictionaryLib.WithCustomDicts(
