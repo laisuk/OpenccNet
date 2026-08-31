@@ -24,102 +24,102 @@ namespace OpenccNetLib
         /// <summary>
         /// Simplified Chinese → Traditional Chinese (General Standard).
         /// </summary>
-        S2T,
+        S2T = 0,
 
         /// <summary>
         /// Traditional Chinese → Simplified Chinese (General Standard).
         /// </summary>
-        T2S,
+        T2S = 1,
 
         /// <summary>
         /// Simplified Chinese → Traditional Chinese (Taiwan Standard).
         /// </summary>
-        S2Tw,
+        S2Tw = 2,
 
         /// <summary>
         /// Traditional Chinese (Taiwan Standard) → Simplified Chinese.
         /// </summary>
-        Tw2S,
+        Tw2S = 3,
 
         /// <summary>
         /// Simplified Chinese → Traditional Chinese (Taiwan Standard, with Taiwan idioms).
         /// </summary>
-        S2Twp,
+        S2Twp = 4,
 
         /// <summary>
         /// Traditional Chinese (Taiwan Standard, with idioms) → Simplified Chinese.
         /// </summary>
-        Tw2Sp,
+        Tw2Sp = 5,
 
         /// <summary>
         /// Simplified Chinese → Traditional Chinese (Hong Kong Standard).
         /// </summary>
-        S2Hk,
+        S2Hk = 6,
 
         /// <summary>
         /// Traditional Chinese (Hong Kong Standard) → Simplified Chinese.
         /// </summary>
-        Hk2S,
+        Hk2S = 7,
 
         /// <summary>
         /// Traditional Chinese (General Standard) → Traditional Chinese (Taiwan Standard).
         /// </summary>
-        T2Tw,
+        T2Tw = 8,
 
         /// <summary>
         /// Traditional Chinese (General Standard) → Traditional Chinese (Taiwan, with idioms).
         /// </summary>
-        T2Twp,
+        T2Twp = 9,
 
         /// <summary>
         /// Traditional Chinese (Taiwan Standard) → Traditional Chinese (General Standard).
         /// </summary>
-        Tw2T,
+        Tw2T = 10,
 
         /// <summary>
         /// Traditional Chinese (Taiwan, with idioms) → Traditional Chinese (General Standard).
         /// </summary>
-        Tw2Tp,
+        Tw2Tp = 11,
 
         /// <summary>
         /// Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard).
         /// </summary>
-        T2Hk,
+        T2Hk = 12,
 
         /// <summary>
         /// Traditional Chinese (Hong Kong Standard) → Traditional Chinese (General Standard).
         /// </summary>
-        Hk2T,
+        Hk2T = 13,
 
         /// <summary>
         /// Traditional Japanese Kyujitai → Japanese Shinjitai.
         /// </summary>
-        T2Jp,
+        T2Jp = 14,
 
         /// <summary>
         /// Japanese Shinjitai → Traditional Japanese Kyujitai.
         /// </summary>
-        Jp2T,
+        Jp2T = 15,
 
         /// <summary>
         /// Simplified Chinese → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
         /// </summary>
-        S2Hkp,
+        S2Hkp = 16,
 
         /// <summary>
         /// Traditional Chinese (Hong Kong Standard, with phrases) → Simplified Chinese.
         /// </summary>
-        Hk2Sp,
+        Hk2Sp = 17,
 
         /// <summary>
         /// Traditional Chinese (General Standard) → Traditional Chinese (Hong Kong Standard, with Hong Kong phrases).
         /// </summary>
-        T2Hkp,
+        T2Hkp = 18,
 
         /// <summary>
         /// Traditional Chinese (Hong Kong Standard, with phrases) → Traditional Chinese (General Standard).
         /// </summary>
-        Hk2Tp
+        Hk2Tp = 19
     }
 
     /// <summary>
