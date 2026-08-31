@@ -14,6 +14,7 @@ projects with a focus on performance and minimal memory usage.
 ## Table of Contents
 
 - [Features](#features)
+- [Live Demo: CJK Conversion Tool](#live-demo-cjk-conversion-tool)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Office Document & EPUB Conversion](#-office-document--epub-conversion)
@@ -66,6 +67,21 @@ projects with a focus on performance and minimal memory usage.
 - **.NET Standard 2.0 compatible** (.NET Core 2.0+, .NET 5/6/7/8/9/10 and later), with an optimized .NET 9.0+
   implementation path  
   (cross-platform: Windows, Linux, macOS; usable from .NET implementations supporting .NET Standard 2.0)
+
+---
+
+## Live Demo: CJK Conversion Tool
+
+Try **OpenccNetLib** directly in your browser:
+
+**[Launch the Live Demo](https://laisuk.github.io/OpenccNetLibWasmDemo/)**
+
+Supports CJK text conversion, punctuation conversion, Unicode compatibility normalization, text-file encodings, and
+**DOCX / XLSX / PPTX / EPUB** conversion.
+
+Runs entirely locally in your browser via **WebAssembly** — no text or files are uploaded.
+
+---
 
 ## Installation
 
@@ -316,7 +332,7 @@ using OpenccNetLib;
 
 var cc = new Opencc(OpenccConfig.T2S);
 string normalized =
-    cc.NormalizeCompatExtended("天龍八部書裡的喬峰是契丹人‧聼聼竒羙⽟䂖甁噐⾳");
+    cc.NormalizeCompatExtended("天龍八部書裡的喬峰是契丹人‧聼聼竒羙⽟䂖甁噐⾳");
 string converted = cc.Convert(normalized);
 
 Console.WriteLine(converted);
@@ -489,9 +505,9 @@ Example:
 Blank lines and lines beginning with `#` are ignored. The extension column accepts compact `B`-`I` values and legacy
 `ExtB`-`ExtI` values.
 
-Built-in mappings are loaded from the embedded `CharactersTofu.txt` resource. Custom files and custom pairs are applied after the
-built-in mappings. File mappings override built-in mappings for the same tofu-risk character, and custom pairs do the
-same. Later mappings override earlier mappings when the same tofu-risk character is provided.
+Built-in mappings are loaded from the embedded `CharactersTofu.txt` resource. Custom files and custom pairs are applied
+after the built-in mappings. File mappings override built-in mappings for the same tofu-risk character, and custom pairs
+do the same. Later mappings override earlier mappings when the same tofu-risk character is provided.
 
 Characters without built-in or custom fallback mappings are preserved unchanged, even if they belong to an enabled CJK
 extension block. DeTofu is non-destructive: it never replaces unknown characters with `?`, `□`, `�`, or empty text.
@@ -730,10 +746,10 @@ A portable custom-dictionary token has this grammar:
 ```
 
 Use `CustomDictSpec.Parse(...)` when a specification comes from configuration, a command line, or another portable
-string source. Slot and mode matching is case-insensitive. Slot parsing is strict: numeric enum strings and unknown names
-are rejected. The parser splits the token into no more than
-three fields, preserving Windows drive-letter paths and relative paths containing additional colons. It validates the
-specification syntax but does not check whether the file exists; dictionary loading reports missing or unreadable files.
+string source. Slot and mode matching is case-insensitive. Slot parsing is strict: numeric enum strings and unknown
+names are rejected. The parser splits the token into no more than three fields, preserving Windows drive-letter paths
+and relative paths containing additional colons. It validates the specification syntax but does not check whether the
+file exists; dictionary loading reports missing or unreadable files.
 
 ```csharp
 using OpenccNetLib;
@@ -897,7 +913,8 @@ Opencc.UseCustomDictionary(dict);
 var opencc = new Opencc("s2t");
 ```
 
-Post-load customization should use an independent dictionary returned by `FromZstd(path)`, `FromDicts()`, `FromJson()`, or
+Post-load customization should use an independent dictionary returned by `FromZstd(path)`, `FromDicts()`, `FromJson()`,
+or
 `FromCbor()`. Avoid modifying `DictionaryLib.New()`/`Provider` in place because it is the shared built-in singleton.
 
 Each `CustomDictSpec` targets one slot. `Paths` is optional and can contain multiple custom dictionary files. `Pairs` is
@@ -1626,7 +1643,8 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 ##### `DictionaryLib` loading APIs
 
 - `static DictionaryMaxlength FromZstd(string relativePath)`
-  Loads an independent dictionary from a caller-supplied external filesystem Zstandard file. This does not change the active provider.
+  Loads an independent dictionary from a caller-supplied external filesystem Zstandard file. This does not change the
+  active provider.
 
 - `static DictionaryMaxlength FromZstdBytes(byte[] data)`
   Loads an independent dictionary from caller-provided compressed bytes. This does not change the active provider.
