@@ -9,8 +9,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
-        <PackageReference Include="MSTest" Version="4.3.3" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0"/>
+        <PackageReference Include="MSTest" Version="4.3.3"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -18,21 +18,22 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj" />
+        <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="滕王阁序.docx">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-      <None Update="data\dictionary_maxlength.cbor">
-        <Pack>false</Pack>
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
-      <None Update="data\dictionary_maxlength.json">
-        <Pack>false</Pack>
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
+        <None Update="滕王阁序.docx">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="..\OpenccNetLib\data\dictionary_maxlength.cbor"
+              Link="data\dictionary_maxlength.cbor"
+              CopyToOutputDirectory="PreserveNewest"
+              Pack="false"/>
+
+        <None Include="..\OpenccNetLib\data\dictionary_maxlength.json"
+              Link="data\dictionary_maxlength.json"
+              CopyToOutputDirectory="PreserveNewest"
+              Pack="false"/>
     </ItemGroup>
 
 </Project>
