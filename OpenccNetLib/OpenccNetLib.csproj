@@ -27,7 +27,9 @@
 
             - Embedded the canonical built-in Zstandard dictionary for lazy, filesystem-independent default dictionary loading.
             - Embedded the built-in CJK compatibility, Unicode compatibility, and DeTofu tables, removing filesystem dependencies from the default normalization and DeTofu paths.
-            - Built-in conversion, compatibility normalization, and DeTofu data are now loaded directly from assembly resources, improving deployment compatibility including Blazor WebAssembly.
+            - Built-in conversion, compatibility normalization, and DeToFu data are now loaded directly from assembly resources, improving deployment compatibility including Blazor WebAssembly.
+            - Migrated dictionary JSON and Zstd-JSON serialization to source-generated System.Text.Json metadata, improving trimming and NativeAOT compatibility while preserving existing dictionary formats and derived lookup metadata.
+            - Fixed built-in Zstd dictionary loading and conversion in NativeAOT applications where reflection-based System.Text.Json serialization is disabled.
             - Added public independent DictionaryLib.FromZstd(string) and DictionaryLib.FromZstdBytes(byte[]) loading APIs; FromZstd(string) requires an explicit caller-supplied external file.
             - Added Opencc constructors accepting an explicit DictionaryMaxlength through an instance-owned conversion-plan cache.
             - Added constructor-time frozen Opencc instances with immutable configuration and private plan caches based on DictionaryLib.Provider.

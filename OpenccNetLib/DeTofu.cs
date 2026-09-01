@@ -83,11 +83,9 @@ namespace OpenccNetLib
     /// </remarks>
     public static class DeTofu
     {
-        private static readonly Lazy<List<DeTofuEntry>> BuiltinEntries =
-            new Lazy<List<DeTofuEntry>>(LoadBuiltinEntries);
+        private static readonly Lazy<List<DeTofuEntry>> BuiltinEntries = new(LoadBuiltinEntries);
 
-        private static readonly Lazy<Dictionary<int, string>[]> BuiltinMaps =
-            new Lazy<Dictionary<int, string>[]>(CreateBuiltinMaps);
+        private static readonly Lazy<Dictionary<int, string>[]> BuiltinMaps = new(CreateBuiltinMaps);
 
         /// <summary>
         /// Parses a textual DeTofu level into a <see cref="DeTofuLevel"/> value.
@@ -196,8 +194,9 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This method uses cached built-in fallback mappings loaded from
-        /// <c>dicts/CharactersTofu.txt</c>. To add or override mappings, build a reusable
-        /// <see cref="DeTofuMap"/> with <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>.
+        /// the assembly's embedded <c>CharactersTofu.txt</c> resource. To add or
+        /// override mappings, build a reusable <see cref="DeTofuMap"/> with
+        /// <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>.
         /// </para>
         /// <para>
         /// The method is non-destructive: characters without a fallback mapping are preserved
@@ -228,28 +227,25 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(text))
                 return entries;
 
-            using (var reader = new StringReader(text))
+            using var reader = new StringReader(text);
+            while (reader.ReadLine() is { } line)
             {
-                string line;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    line = line.Trim();
+                line = line.Trim();
 
-                    if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
-                        continue;
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                    continue;
 
-                    var parts = line.Split('\t');
-                    if (parts.Length < 3)
-                        continue;
+                var parts = line.Split('\t');
+                if (parts.Length < 3)
+                    continue;
 
-                    var tofu = ReadFirstScalarValue(parts[0].Trim());
-                    var fallback = ReadFirstScalar(parts[1].Trim());
+                var tofu = ReadFirstScalarValue(parts[0].Trim());
+                var fallback = ReadFirstScalar(parts[1].Trim());
 
-                    if (!tofu.HasValue || fallback == null || !TryParseLevel(parts[2], out var ext))
-                        continue;
+                if (!tofu.HasValue || fallback == null || !TryParseLevel(parts[2], out var ext))
+                    continue;
 
-                    entries.Add(new DeTofuEntry(tofu.Value, fallback, ext));
-                }
+                entries.Add(new DeTofuEntry(tofu.Value, fallback, ext));
             }
 
             return entries;
@@ -444,7 +440,7 @@ namespace OpenccNetLib
     /// <para>
     /// <see cref="DeTofuMap"/> is useful when callers want to build a fallback table once
     /// and reuse it across many strings, or layer application-specific fallback data on top
-    /// of the built-in mappings from <c>dicts/CharactersTofu.txt</c>.
+    /// of the built-in mappings from the embedded <c>CharactersTofu.txt</c> resource.
     /// </para>
     /// <para>
     /// Custom files and custom pairs are applied after the built-in mappings. Later mappings
@@ -471,8 +467,9 @@ namespace OpenccNetLib
         /// Builds a DeTofu map from the library's built-in compatibility data.
         /// </summary>
         /// <remarks>
-        /// Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>. Only entries
-        /// at or above the specified threshold are included. For example,
+        /// Built-in mappings are loaded from the assembly's embedded
+        /// <c>CharactersTofu.txt</c> resource. Only entries at or above the specified
+        /// threshold are included. For example,
         /// <see cref="DeTofuLevel.ExtB"/> includes mapped Extension B and later entries, while
         /// <see cref="DeTofuLevel.ExtI"/> includes mapped Extension I entries only.
         /// </remarks>

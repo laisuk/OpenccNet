@@ -137,12 +137,13 @@ namespace OpenccNetLib
         /// </returns>
         public string ApplySegmentReplace(
             string inputText,
-            Func<string, DictWithMaxLength[], StarterUnion, bool, string> segmentReplace, bool preserveIds)
+            Func<string, DictWithMaxLength[], StarterUnion, bool, string> segmentReplace,
+            bool preserveIds)
         {
             var output = segmentReplace(inputText, _round1.Dicts, _round1.Union, preserveIds);
-            if (_round2 is Round r2)
+            if (_round2 is { } r2)
                 output = segmentReplace(output, r2.Dicts, r2.Union, preserveIds);
-            if (_round3 is Round r3)
+            if (_round3 is { } r3)
                 output = segmentReplace(output, r3.Dicts, r3.Union, preserveIds);
             return output;
         }

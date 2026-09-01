@@ -1101,15 +1101,15 @@ namespace OpenccNetLib
                 }
             }
 
-            if (appends == null) return EnsureDerivedMetadata(instance);
-            {
-                foreach (var kv in appends)
-                {
-                    if (!kv.Key.IsActive())
-                        throw new ArgumentException("Unknown dictionary slot: " + kv.Key);
+            if (appends == null)
+                return EnsureDerivedMetadata(instance);
 
-                    AppendSlot(instance, kv.Key, ResolveUserPath(kv.Value));
-                }
+            foreach (var kv in appends)
+            {
+                if (!kv.Key.IsActive())
+                    throw new ArgumentException("Unknown dictionary slot: " + kv.Key);
+
+                AppendSlot(instance, kv.Key, ResolveUserPath(kv.Value));
             }
 
             return EnsureDerivedMetadata(instance);
@@ -1206,8 +1206,7 @@ namespace OpenccNetLib
                 }
                 else
                 {
-                    if (longLengths == null)
-                        longLengths = new HashSet<int>();
+                    longLengths ??= new HashSet<int>();
 
                     longLengths.Add(keyLength);
                 }
@@ -1387,8 +1386,8 @@ namespace OpenccNetLib
             if (!spec.Slot.IsActive())
                 throw new ArgumentException("Unknown dictionary slot: " + spec.Slot, nameof(spec));
 
-            var hasPaths = spec.Paths != null && spec.Paths.Length > 0;
-            var hasPairs = spec.Pairs != null && spec.Pairs.Count > 0;
+            var hasPaths = spec.Paths is { Length: > 0 };
+            var hasPairs = spec.Pairs is { Count: > 0 };
 
             if (!hasPaths && !hasPairs)
                 throw new ArgumentException(
@@ -1591,8 +1590,7 @@ namespace OpenccNetLib
                     }
                     else
                     {
-                        if (longLengths == null)
-                            longLengths = new HashSet<int>();
+                        longLengths ??= new HashSet<int>();
 
                         longLengths.Add(keyLength);
                     }

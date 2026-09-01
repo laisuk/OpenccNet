@@ -44,8 +44,7 @@ namespace OpenccNetLib
 
         private static readonly Dictionary<string, DictSlot> SlotsByName = CreateSlotsByName();
 
-        private static readonly HashSet<DictSlot> ActiveSlotSet =
-            new HashSet<DictSlot>(ActiveSlotArray);
+        private static readonly HashSet<DictSlot> ActiveSlotSet = new(ActiveSlotArray);
 
         /// <summary>
         /// Gets all currently supported dictionary slots in stable enum order.

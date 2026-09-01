@@ -156,11 +156,11 @@ namespace OpenccNetLib
     /// </remarks>
     public static class OfficeDocConverter
     {
-        private static readonly Regex XlsxInlineStringCellRegex = new Regex(
+        private static readonly Regex XlsxInlineStringCellRegex = new(
             "<c\\b(?=[^>]*\\bt=(?:\"inlineStr\"|'inlineStr'))[^>]*>.*?</c>",
             RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        private static readonly Regex XlsxTextNodeRegex = new Regex(
+        private static readonly Regex XlsxTextNodeRegex = new(
             "(<t\\b[^>]*>)(.*?)(</t>)",
             RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
@@ -942,51 +942,49 @@ namespace OpenccNetLib
 
             try
             {
-                using (var inputStream = new MemoryStream(
-                           inputBytes,
-                           0,
-                           inputBytes.Length,
-                           writable: false,
-                           publiclyVisible: false))
-                using (var inputArchive = new ZipArchive(inputStream, ZipArchiveMode.Read, leaveOpen: false))
-                using (var outputStream = new MemoryStream())
+                using var inputStream = new MemoryStream(
+                    inputBytes,
+                    0,
+                    inputBytes.Length,
+                    writable: false,
+                    publiclyVisible: false);
+                using var inputArchive = new ZipArchive(inputStream, ZipArchiveMode.Read, leaveOpen: false);
+                using var outputStream = new MemoryStream();
+                int convertedCount;
+
+                using (var outputArchive = new ZipArchive(
+                           outputStream,
+                           ZipArchiveMode.Create,
+                           leaveOpen: true))
                 {
-                    int convertedCount;
+                    convertedCount = ProcessArchive(
+                        inputArchive,
+                        outputArchive,
+                        format,
+                        converter,
+                        punctuation,
+                        keepFont);
+                }
 
-                    using (var outputArchive = new ZipArchive(
-                               outputStream,
-                               ZipArchiveMode.Create,
-                               leaveOpen: true))
-                    {
-                        convertedCount = ProcessArchive(
-                            inputArchive,
-                            outputArchive,
-                            format,
-                            converter,
-                            punctuation,
-                            keepFont);
-                    }
-
-                    if (convertedCount == 0)
-                    {
-                        return new CoreResult
-                        {
-                            Success = false,
-                            Message = "No convertible XML/XHTML fragments found for format '" + formatId + "'.",
-                            OutputBytes = null
-                        };
-                    }
-
-                    var resultBytes = outputStream.ToArray();
-                    ValidateZipBytes(resultBytes);
-
+                if (convertedCount == 0)
+                {
                     return new CoreResult
                     {
-                        Success = true,
-                        Message = "Converted " + convertedCount + " fragment(s) successfully.",
-                        OutputBytes = resultBytes
+                        Success = false,
+                        Message = "No convertible XML/XHTML fragments found for format '" + formatId + "'.",
+                        OutputBytes = null
                     };
                 }
+
+                var resultBytes = outputStream.ToArray();
+                ValidateZipBytes(resultBytes);
+
+                return new CoreResult
+                {
+                    Success = true,
+                    Message = "Converted " + convertedCount + " fragment(s) successfully.",
+                    OutputBytes = resultBytes
+                };
             }
             catch (Exception ex)
             {
@@ -1372,14 +1370,12 @@ namespace OpenccNetLib
         /// </summary>
         private static string ReadEntryText(ZipArchiveEntry entry)
         {
-            using (var stream = entry.Open())
-            using (var reader = new StreamReader(
-                       stream,
-                       Encoding.UTF8,
-                       detectEncodingFromByteOrderMarks: true))
-            {
-                return reader.ReadToEnd();
-            }
+            using var stream = entry.Open();
+            using var reader = new StreamReader(
+                stream,
+                Encoding.UTF8,
+                detectEncodingFromByteOrderMarks: true);
+            return reader.ReadToEnd();
         }
 
         /// <summary>
@@ -1401,11 +1397,9 @@ namespace OpenccNetLib
                 sourceEntry,
                 compressionLevel);
 
-            using (var stream = outputEntry.Open())
-            using (var writer = new StreamWriter(stream, Encoding.UTF8))
-            {
-                writer.Write(text);
-            }
+            using var stream = outputEntry.Open();
+            using var writer = new StreamWriter(stream, Encoding.UTF8);
+            writer.Write(text);
         }
 
         /// <summary>
@@ -1424,11 +1418,9 @@ namespace OpenccNetLib
             if (IsDirectoryEntry(inputEntry))
                 return;
 
-            using (var input = inputEntry.Open())
-            using (var output = outputEntry.Open())
-            {
-                input.CopyTo(output);
-            }
+            using var input = inputEntry.Open();
+            using var output = outputEntry.Open();
+            input.CopyTo(output);
         }
 
         /// <summary>
@@ -1580,26 +1572,22 @@ namespace OpenccNetLib
         /// <param name="bytes">The generated package bytes.</param>
         private static void ValidateZipBytes(byte[] bytes)
         {
-            using (var stream = new MemoryStream(bytes, writable: false))
-            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
-            {
-                _ = archive.Entries.Count;
-            }
+            using var stream = new MemoryStream(bytes, writable: false);
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+            _ = archive.Entries.Count;
         }
 
         /// <summary>Confirms that a completed filesystem package is a readable ZIP archive.</summary>
         /// <param name="path">Path to the generated temporary package.</param>
         private static void ValidateZipFile(string path)
         {
-            using (var stream = new FileStream(
-                       path,
-                       FileMode.Open,
-                       FileAccess.Read,
-                       FileShare.Read))
-            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read))
-            {
-                _ = archive.Entries.Count;
-            }
+            using var stream = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read);
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+            _ = archive.Entries.Count;
         }
 
         /// <summary>

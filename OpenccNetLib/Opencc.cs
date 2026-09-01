@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 
 namespace OpenccNetLib
 {
+    #region OpenccConfig and OpenccConfigExtensions Region
+
     /// <summary>
     /// Represents all supported OpenCC conversion configurations.
     /// </summary>
@@ -168,6 +170,8 @@ namespace OpenccNetLib
         }
     }
 
+    #endregion // OpenccConfig and OpenccConfigExtensions Region
+
     /// <summary>
     /// Main class for OpenCC text conversion. Provides methods for various conversion directions
     /// (Simplified-Traditional, Traditional-Simplified, etc.) and supports multi-stage, high-performance conversion.
@@ -175,13 +179,12 @@ namespace OpenccNetLib
     public class Opencc
     {
         // Regex for stripping non-Chinese and non-symbol characters.
-        private static readonly Regex StripRegex = new Regex(
+        private static readonly Regex StripRegex = new(
             @"[!-/:-@\[-`{-~\t\n\v\f\r 0-9A-Za-z_著]",
             RegexOptions.Compiled);
 
         // Thread-local StringBuilder for efficient string concatenation.
-        private static readonly ThreadLocal<StringBuilder> StringBuilderCache =
-            new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
+        private static readonly ThreadLocal<StringBuilder> StringBuilderCache = new(() => new StringBuilder(1024));
 
         private const int CachedStringBuilderTrimThreshold = 64 * 1024;
 
@@ -278,26 +281,26 @@ namespace OpenccNetLib
         /// </remarks>
         private static readonly ConfigEntry[] ConfigMap =
         {
-            new ConfigEntry(OpenccConfig.S2T, "s2t"),
-            new ConfigEntry(OpenccConfig.T2S, "t2s"),
-            new ConfigEntry(OpenccConfig.S2Tw, "s2tw"),
-            new ConfigEntry(OpenccConfig.Tw2S, "tw2s"),
-            new ConfigEntry(OpenccConfig.S2Twp, "s2twp"),
-            new ConfigEntry(OpenccConfig.S2Hkp, "s2hkp"),
-            new ConfigEntry(OpenccConfig.Tw2Sp, "tw2sp"),
-            new ConfigEntry(OpenccConfig.Hk2Sp, "hk2sp"),
-            new ConfigEntry(OpenccConfig.S2Hk, "s2hk"),
-            new ConfigEntry(OpenccConfig.Hk2S, "hk2s"),
-            new ConfigEntry(OpenccConfig.T2Tw, "t2tw"),
-            new ConfigEntry(OpenccConfig.Tw2T, "tw2t"),
-            new ConfigEntry(OpenccConfig.T2Twp, "t2twp"),
-            new ConfigEntry(OpenccConfig.Tw2Tp, "tw2tp"),
-            new ConfigEntry(OpenccConfig.T2Hk, "t2hk"),
-            new ConfigEntry(OpenccConfig.Hk2T, "hk2t"),
-            new ConfigEntry(OpenccConfig.T2Jp, "t2jp"),
-            new ConfigEntry(OpenccConfig.Jp2T, "jp2t"),
-            new ConfigEntry(OpenccConfig.T2Hkp, "t2hkp"),
-            new ConfigEntry(OpenccConfig.Hk2Tp, "hk2tp"),
+            new(OpenccConfig.S2T, "s2t"),
+            new(OpenccConfig.T2S, "t2s"),
+            new(OpenccConfig.S2Tw, "s2tw"),
+            new(OpenccConfig.Tw2S, "tw2s"),
+            new(OpenccConfig.S2Twp, "s2twp"),
+            new(OpenccConfig.S2Hkp, "s2hkp"),
+            new(OpenccConfig.Tw2Sp, "tw2sp"),
+            new(OpenccConfig.Hk2Sp, "hk2sp"),
+            new(OpenccConfig.S2Hk, "s2hk"),
+            new(OpenccConfig.Hk2S, "hk2s"),
+            new(OpenccConfig.T2Tw, "t2tw"),
+            new(OpenccConfig.Tw2T, "tw2t"),
+            new(OpenccConfig.T2Twp, "t2twp"),
+            new(OpenccConfig.Tw2Tp, "tw2tp"),
+            new(OpenccConfig.T2Hk, "t2hk"),
+            new(OpenccConfig.Hk2T, "hk2t"),
+            new(OpenccConfig.T2Jp, "t2jp"),
+            new(OpenccConfig.Jp2T, "jp2t"),
+            new(OpenccConfig.T2Hkp, "t2hkp"),
+            new(OpenccConfig.Hk2Tp, "hk2tp"),
         };
 
         /// <summary>
@@ -825,7 +828,7 @@ namespace OpenccNetLib
         // Keep the character-only static helpers lazy without triggering the default
         // dictionary when the Opencc type is first accessed.
         private static readonly Lazy<DictionaryMaxlength> LazyDictionary =
-            new Lazy<DictionaryMaxlength>(
+            new(
                 () => DictionaryLib.Provider,
                 LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -1595,9 +1598,9 @@ namespace OpenccNetLib
                     textLength > ConvertTuning.ParallelTextGate);
         }
 
-        #endregion
+        #endregion // Pre-Splitting and Pre-Chunking Region
 
-        #region Core Convertion Region
+        #region Core Conversion Region
 
         /// <summary>
         /// Converts text using one or more dictionaries, matching the longest possible key
@@ -1749,8 +1752,7 @@ namespace OpenccNetLib
 #if NET9_0_OR_GREATER
                             if (!d.TryGetValue(textSpan.Slice(i, step), out var repl)) continue;
 #else
-                            if (keyStep == null)
-                                keyStep = new string(keyBuffer, 0, step);
+                            keyStep ??= new string(keyBuffer, 0, step);
                             if (!d.TryGetValue(keyStep, out var repl)) continue;
 #endif
 
@@ -1785,8 +1787,7 @@ namespace OpenccNetLib
 #if NET9_0_OR_GREATER
                             if (!d.TryGetValue(textSpan.Slice(i, len), out var repl)) continue;
 #else
-                            if (key == null)
-                                key = new string(keyBuffer, 0, len);
+                            key ??= new string(keyBuffer, 0, len);
                             if (!d.TryGetValue(key, out var repl)) continue;
 #endif
 
@@ -2118,7 +2119,7 @@ namespace OpenccNetLib
         }
 #endif
 
-        #endregion
+        #endregion // Core Conversion Region
 
         #region Direct API and General Conversion Region
 
@@ -2674,9 +2675,9 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This optional preprocessing operation combines <see cref="NormalizeCompat(string)"/> and
-        /// <see cref="NormalizeUnicodeCompat(string)"/> coverage in one scalar-by-scalar pass. The built-in
-        /// compatibility-ideograph mapping has precedence when both tables contain a source. A replacement
-        /// is emitted directly and is not remapped again, preventing accidental chained normalization.
+        /// <see cref="NormalizeUnicodeCompat(string)"/> coverage in a single normalization pass.
+        /// The curated Unicode compatibility mapping is applied first, followed by the built-in
+        /// CJK Compatibility Ideograph mapping to the resulting scalar.
         /// </para>
         /// <para>
         /// This is not OpenCC linguistic conversion and is not general-purpose NFC, NFD, NFKC, or NFKD.
@@ -2746,7 +2747,7 @@ namespace OpenccNetLib
         /// <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>,
         /// <see cref="DeTofuMap.WithCustomFile(string)"/>, and
         /// <see cref="DeTofuMap.Convert(string)"/>.
-        /// Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>.
+        /// Built-in mappings are loaded from assembly’s embedded <c>CharactersTofu.txt</c>.
         /// </para>
         /// <para>
         /// Custom mappings are applied after the built-in table. If the same tofu-risk character exists
@@ -2797,7 +2798,7 @@ namespace OpenccNetLib
         /// <see cref="DeTofuMap.Builtin(DeTofuLevel)"/>,
         /// <see cref="DeTofuMap.WithCustomPairs(IEnumerable{KeyValuePair{string, string}})"/>,
         /// and <see cref="DeTofuMap.Convert(string)"/>.
-        /// Built-in mappings are loaded from <c>dicts/CharactersTofu.txt</c>.
+        /// Built-in mappings are loaded from assembly’s embedded <c>CharactersTofu.txt</c>.
         /// </para>
         /// <para>
         /// Custom mappings are applied after the built-in table. If the same tofu-risk character exists

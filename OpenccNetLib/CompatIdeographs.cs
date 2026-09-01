@@ -17,28 +17,24 @@ namespace OpenccNetLib
             "OpenccNetLib.Resources.CharactersTofu.txt";
 
         /// <summary>
-        /// Loads the canonical built-in Embedded Data from this assembly's embedded resource.
+        /// Loads the specified built-in text data from this assembly's embedded resources.
         /// </summary>
         internal static string ReadText(string resourceName)
         {
             var assembly = typeof(EmbeddedData).Assembly;
 
-            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream == null)
             {
-                if (stream == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Embedded resource not found: {resourceName}");
-                }
-
-                using (var reader = new StreamReader(
-                           stream,
-                           Encoding.UTF8,
-                           detectEncodingFromByteOrderMarks: true))
-                {
-                    return reader.ReadToEnd();
-                }
+                throw new InvalidOperationException(
+                    $"Embedded resource not found: {resourceName}");
             }
+
+            using var reader = new StreamReader(
+                stream,
+                Encoding.UTF8,
+                detectEncodingFromByteOrderMarks: true);
+            return reader.ReadToEnd();
         }
 
         internal static TextReader OpenText(string resourceName)
@@ -90,8 +86,7 @@ namespace OpenccNetLib
         private const int SuppEnd = 0x2FA1F;
         private const int SuppLen = SuppEnd - SuppStart + 1;
 
-        private static readonly Lazy<CompatIdeographs> BuiltinTable =
-            new Lazy<CompatIdeographs>(LoadBuiltinTable);
+        private static readonly Lazy<CompatIdeographs> BuiltinTable = new(LoadBuiltinTable);
 
         private readonly string[] _bmp;
         private readonly string[] _supp;
@@ -112,8 +107,8 @@ namespace OpenccNetLib
         /// Returns the cached built-in compatibility ideograph normalizer.
         /// </summary>
         /// <remarks>
-        /// The bundled mapping data is loaded from
-        /// <c>dicts/CJK_Compatibility_Ideographs.txt</c> and parsed at most once
+        /// The bundled mapping data is loaded from the assembly's embedded
+        /// <c>CJK_Compatibility_Ideographs.txt</c> resource and parsed at most once
         /// per process. Subsequent calls reuse the same dense lookup tables.
         /// </remarks>
         /// <returns>The reusable built-in compatibility normalizer.</returns>
@@ -144,33 +139,32 @@ namespace OpenccNetLib
             if (string.IsNullOrEmpty(text))
                 return table;
 
-            using (var reader = new StringReader(text))
+            using var reader = new StringReader(text);
+            var lineNo = 0;
+
+            while (reader.ReadLine() is { } rawLine)
             {
-                string rawLine;
-                var lineNo = 0;
+                lineNo++;
 
-                while ((rawLine = reader.ReadLine()) != null)
+                if (string.IsNullOrWhiteSpace(rawLine) ||
+                    rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
                 {
-                    lineNo++;
-
-                    if (string.IsNullOrWhiteSpace(rawLine) ||
-                        rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    var parts = rawLine.Split('\t');
-                    if (parts.Length < 2)
-                        throw new ArgumentException("line " + lineNo + ": missing target", nameof(text));
-
-                    if (parts.Length > 2)
-                        throw new ArgumentException("line " + lineNo + ": too many columns", nameof(text));
-
-                    var src = ReadSingleScalar(parts[0].Trim(), lineNo, "source");
-                    var dst = ReadSingleScalar(parts[1].Trim(), lineNo, "target");
-
-                    table.Set(src.CodePoint, dst.Scalar, lineNo);
+                    continue;
                 }
+
+                var parts = rawLine.Split('\t');
+                switch (parts.Length)
+                {
+                    case < 2:
+                        throw new ArgumentException("line " + lineNo + ": missing target", nameof(text));
+                    case > 2:
+                        throw new ArgumentException("line " + lineNo + ": too many columns", nameof(text));
+                }
+
+                var src = ReadSingleScalar(parts[0].Trim(), lineNo, "source");
+                var dst = ReadSingleScalar(parts[1].Trim(), lineNo, "target");
+
+                table.Set(src.CodePoint, dst.Scalar, lineNo);
             }
 
             return table;
@@ -255,7 +249,7 @@ namespace OpenccNetLib
                 if (ch == '\uD87E' && i + 1 < input.Length)
                 {
                     var low = input[i + 1];
-                    if (low >= '\uDC00' && low <= '\uDE1F')
+                    if (low is >= '\uDC00' and <= '\uDE1F')
                     {
                         var codePoint = char.ConvertToUtf32(ch, low);
                         output.Append(_supp[codePoint - SuppStart]);
@@ -333,7 +327,7 @@ namespace OpenccNetLib
                 else if (ch == '\uD87E' && i + 1 < input.Length)
                 {
                     var low = input[i + 1];
-                    if (low < '\uDC00' || low > '\uDE1F') continue;
+                    if (low is < '\uDC00' or > '\uDE1F') continue;
                     var mapping = _supp[char.ConvertToUtf32(ch, low) - SuppStart];
                     if (mapping.Length != 2 || mapping[0] != ch || mapping[1] != low)
                         return i;
@@ -374,22 +368,22 @@ namespace OpenccNetLib
 
         private bool TryNormalizeCodePoint(int codePoint, out string replacement)
         {
-            if (codePoint >= BmpStart && codePoint <= BmpEnd)
+            switch (codePoint)
             {
-                replacement = _bmp[codePoint - BmpStart];
-                return replacement.Length != 1 || replacement[0] != (char)codePoint;
+                case >= BmpStart and <= BmpEnd:
+                    replacement = _bmp[codePoint - BmpStart];
+                    return replacement.Length != 1 || replacement[0] != (char)codePoint;
+                case >= SuppStart and <= SuppEnd:
+                {
+                    replacement = _supp[codePoint - SuppStart];
+
+                    var original = CharFromCodePoint(codePoint);
+                    return !string.Equals(replacement, original, StringComparison.Ordinal);
+                }
+                default:
+                    replacement = null;
+                    return false;
             }
-
-            if (codePoint >= SuppStart && codePoint <= SuppEnd)
-            {
-                replacement = _supp[codePoint - SuppStart];
-
-                var original = CharFromCodePoint(codePoint);
-                return !string.Equals(replacement, original, StringComparison.Ordinal);
-            }
-
-            replacement = null;
-            return false;
         }
 
         private string NormalizeCodePoint(int codePoint)
@@ -399,21 +393,19 @@ namespace OpenccNetLib
 
         private void Set(int sourceCodePoint, string targetScalar, int lineNo)
         {
-            if (sourceCodePoint >= BmpStart && sourceCodePoint <= BmpEnd)
+            switch (sourceCodePoint)
             {
-                _bmp[sourceCodePoint - BmpStart] = targetScalar;
-                return;
+                case >= BmpStart and <= BmpEnd:
+                    _bmp[sourceCodePoint - BmpStart] = targetScalar;
+                    return;
+                case >= SuppStart and <= SuppEnd:
+                    _supp[sourceCodePoint - SuppStart] = targetScalar;
+                    return;
+                default:
+                    throw new ArgumentException(
+                        "line " + lineNo + ": source U+" + sourceCodePoint.ToString("X4") +
+                        " is outside CJK Compatibility Ideograph ranges");
             }
-
-            if (sourceCodePoint >= SuppStart && sourceCodePoint <= SuppEnd)
-            {
-                _supp[sourceCodePoint - SuppStart] = targetScalar;
-                return;
-            }
-
-            throw new ArgumentException(
-                "line " + lineNo + ": source U+" + sourceCodePoint.ToString("X4") +
-                " is outside CJK Compatibility Ideograph ranges");
         }
 
         private static CompatIdeographs LoadBuiltinTable()
@@ -453,10 +445,9 @@ namespace OpenccNetLib
 
         private static string CharFromCodePoint(int codePoint)
         {
-            if (codePoint >= 0xD800 && codePoint <= 0xDFFF)
-                return new string((char)codePoint, 1);
-
-            return char.ConvertFromUtf32(codePoint);
+            return codePoint is >= 0xD800 and <= 0xDFFF
+                ? new string((char)codePoint, 1)
+                : char.ConvertFromUtf32(codePoint);
         }
 
         private static string LinePrefix(int lineNo)
@@ -496,36 +487,40 @@ namespace OpenccNetLib
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal int MapCodePoint(int codePoint)
         {
-            if (codePoint >= BmpStart && codePoint <= BmpEnd)
+            switch (codePoint)
             {
-                var replacement = _bmp[codePoint - BmpStart];
-
-                if (replacement.Length == 1)
-                    return replacement[0];
-
-                return char.ConvertToUtf32(
-                    replacement[0],
-                    replacement[1]);
-            }
-
-            if (codePoint < SuppStart || codePoint > SuppEnd) return codePoint;
-            {
-                var replacement = _supp[codePoint - SuppStart];
-                var original = CharFromCodePoint(codePoint);
-
-                if (string.Equals(
-                        replacement,
-                        original,
-                        StringComparison.Ordinal))
+                case >= BmpStart and <= BmpEnd:
                 {
-                    return codePoint;
-                }
+                    var replacement = _bmp[codePoint - BmpStart];
 
-                return replacement.Length == 1
-                    ? replacement[0]
-                    : char.ConvertToUtf32(
+                    if (replacement.Length == 1)
+                        return replacement[0];
+
+                    return char.ConvertToUtf32(
                         replacement[0],
                         replacement[1]);
+                }
+                case < SuppStart or > SuppEnd:
+                    return codePoint;
+                default:
+                {
+                    var replacement = _supp[codePoint - SuppStart];
+                    var original = CharFromCodePoint(codePoint);
+
+                    if (string.Equals(
+                            replacement,
+                            original,
+                            StringComparison.Ordinal))
+                    {
+                        return codePoint;
+                    }
+
+                    return replacement.Length == 1
+                        ? replacement[0]
+                        : char.ConvertToUtf32(
+                            replacement[0],
+                            replacement[1]);
+                }
             }
         }
     }

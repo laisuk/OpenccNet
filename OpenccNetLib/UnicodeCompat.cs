@@ -10,8 +10,8 @@ namespace OpenccNetLib
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This internal normalizer loads the curated mappings from
-    /// <c>dicts/Unicode_Compatibility.txt</c>. The table contains selected
+    /// This internal normalizer loads the curated mappings from the assembly's
+    /// embedded <c>Unicode_Compatibility.txt</c> resource. The table contains selected
     /// Unicode radicals, glyph variants, punctuation forms, and known text-extraction
     /// artifacts that are useful when normalizing CJK text.
     /// </para>
@@ -38,8 +38,7 @@ namespace OpenccNetLib
         /// together with the shared CJK Compatibility Ideograph normalizer at most once
         /// per process. Subsequent calls reuse the cached instance.
         /// </remarks>
-        private static readonly Lazy<UnicodeCompat> BuiltinTable =
-            new Lazy<UnicodeCompat>(LoadBuiltinTable);
+        private static readonly Lazy<UnicodeCompat> BuiltinTable = new(LoadBuiltinTable);
 
         /// <summary>
         /// Built-in CJK Compatibility Ideograph normalizer used by combined
@@ -359,53 +358,48 @@ namespace OpenccNetLib
         {
             var pages = new int[PageCount][];
 
-            using (var reader = EmbeddedData.OpenText(EmbeddedData.UnicodeCompatResourceName))
+            using var reader = EmbeddedData.OpenText(EmbeddedData.UnicodeCompatResourceName);
+            var lineNo = 0;
+
+            while (reader.ReadLine() is { } rawLine)
             {
-                var lineNo = 0;
-                string rawLine;
+                lineNo++;
 
-                while ((rawLine = reader.ReadLine()) != null)
+                if (string.IsNullOrWhiteSpace(rawLine) ||
+                    rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
                 {
-                    lineNo++;
+                    continue;
+                }
 
-                    if (string.IsNullOrWhiteSpace(rawLine) ||
-                        rawLine.TrimStart().StartsWith("#", StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
+                var parts = rawLine.Split('\t');
 
-                    var parts = rawLine.Split('\t');
-
-                    if (parts.Length < 2)
-                    {
+                switch (parts.Length)
+                {
+                    case < 2:
                         throw new InvalidDataException(
                             $"line {lineNo}: missing target");
-                    }
-
-                    if (parts.Length > 2)
-                    {
+                    case > 2:
                         throw new InvalidDataException(
                             $"line {lineNo}: too many columns");
-                    }
-
-                    var source = ReadSingleScalar(
-                        parts[0].Trim(),
-                        lineNo,
-                        "source");
-
-                    if (source <= 0x7F)
-                    {
-                        throw new InvalidDataException(
-                            $"line {lineNo}: source must not be an ASCII character");
-                    }
-
-                    var target = ReadSingleScalar(
-                        parts[1].Trim(),
-                        lineNo,
-                        "target");
-
-                    SetExtendedMapping(pages, source, target);
                 }
+
+                var source = ReadSingleScalar(
+                    parts[0].Trim(),
+                    lineNo,
+                    "source");
+
+                if (source <= 0x7F)
+                {
+                    throw new InvalidDataException(
+                        $"line {lineNo}: source must not be an ASCII character");
+                }
+
+                var target = ReadSingleScalar(
+                    parts[1].Trim(),
+                    lineNo,
+                    "target");
+
+                SetExtendedMapping(pages, source, target);
             }
 
             return pages;

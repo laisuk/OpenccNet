@@ -48,8 +48,7 @@ namespace OpenccNetLib
         /// Existing conversions that retain the previous cache instance may safely
         /// finish using that instance.
         /// </remarks>
-        private static ConversionPlanCache _current =
-            new ConversionPlanCache(() => DictionaryLib.Provider);
+        private static ConversionPlanCache _current = new(() => DictionaryLib.Provider);
 
         /// <summary>
         /// Defines the semantic slot identifiers used to group dictionaries
@@ -171,16 +170,13 @@ namespace OpenccNetLib
         private readonly Func<DictionaryMaxlength> _dictionaryProvider;
 
         // Primary cache: (config, punct) -> DictRefs (rounds include unions)
-        private readonly ConcurrentDictionary<PlanKey, DictRefs> _planCache =
-            new ConcurrentDictionary<PlanKey, DictRefs>();
+        private readonly ConcurrentDictionary<PlanKey, DictRefs> _planCache = new();
 
         // Secondary cache: round layout (list of dict IDs) -> StarterUnion
-        private readonly ConcurrentDictionary<UnionKey, StarterUnion> _unionCacheByKey =
-            new ConcurrentDictionary<UnionKey, StarterUnion>();
+        private readonly ConcurrentDictionary<UnionKey, StarterUnion> _unionCacheByKey = new();
 
         // Cache the dictionary arrays for each union slot within this cache instance.
-        private readonly ConcurrentDictionary<UnionKey, DictWithMaxLength[]> _dictArrayCacheByKey =
-            new ConcurrentDictionary<UnionKey, DictWithMaxLength[]>();
+        private readonly ConcurrentDictionary<UnionKey, DictWithMaxLength[]> _dictArrayCacheByKey = new();
 
         /// <summary>
         /// Gets the process-wide cache currently used by the conversion facade.
