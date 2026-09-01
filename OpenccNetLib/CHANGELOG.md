@@ -71,6 +71,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   customizations.
 - Preserve the existing shared-cache fast path for ordinary `Opencc` instances; no private dictionary or
   `ConversionPlanCache` is allocated unless per-instance custom dictionary specifications are explicitly supplied.
+- Migrated dictionary JSON and Zstd-JSON serialization to source-generated System.Text.Json metadata, improving trimming
+  and NativeAOT compatibility while preserving existing dictionary formats and runtime metadata rebuilding.
+
+### Fixed
+
+- Fixed built-in Zstd dictionary loading and conversion failing in NativeAOT applications when reflection-based JSON
+  serialization is disabled.
 
 ### Compatibility
 

@@ -22,7 +22,7 @@ namespace OpenccNetLib
         /// The mapping of keys to values for conversion.
         /// </summary>
         [JsonInclude]
-        public Dictionary<string, string> Dict { get; set; } = new Dictionary<string, string>(StringComparer.Ordinal);
+        public Dictionary<string, string> Dict { get; set; } = new(StringComparer.Ordinal);
 
         /// <summary>
         /// The maximum length, in UTF-16 code units, of any key in the dictionary.
@@ -160,107 +160,107 @@ namespace OpenccNetLib
         /// <summary>
         /// Simplified-to-Traditional character mappings.
         /// </summary>
-        public DictWithMaxLength st_characters { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength st_characters { get; set; } = new();
 
         /// <summary>
         /// Simplified-to-Traditional phrase mappings.
         /// </summary>
-        public DictWithMaxLength st_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength st_phrases { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Simplified character mappings.
         /// </summary>
-        public DictWithMaxLength ts_characters { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength ts_characters { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Simplified phrase mappings.
         /// </summary>
-        public DictWithMaxLength ts_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength ts_phrases { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Taiwan phrase mappings.
         /// </summary>
-        public DictWithMaxLength tw_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength tw_phrases { get; set; } = new();
 
         /// <summary>
         /// Taiwan-to-Traditional phrase mappings.
         /// </summary>
-        public DictWithMaxLength tw_phrases_rev { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength tw_phrases_rev { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Taiwan character variant mappings.
         /// </summary>
-        public DictWithMaxLength tw_variants { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength tw_variants { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Taiwan phrase variant mappings applied before character variants.
         /// </summary>
-        public DictWithMaxLength tw_variants_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength tw_variants_phrases { get; set; } = new();
 
         /// <summary>
         /// Taiwan-to-Traditional character variant mappings.
         /// </summary>
-        public DictWithMaxLength tw_variants_rev { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength tw_variants_rev { get; set; } = new();
 
         /// <summary>
         /// Taiwan-to-Traditional phrase variant mappings.
         /// </summary>
-        public DictWithMaxLength tw_variants_rev_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength tw_variants_rev_phrases { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Hong Kong phrase mappings.
         /// </summary>
-        public DictWithMaxLength hk_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength hk_phrases { get; set; } = new();
 
         /// <summary>
         /// Hong Kong-to-Traditional phrase mappings.
         /// </summary>
-        public DictWithMaxLength hk_phrases_rev { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength hk_phrases_rev { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Hong Kong character variant mappings.
         /// </summary>
-        public DictWithMaxLength hk_variants { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength hk_variants { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Hong Kong phrase variant mappings applied before character variants.
         /// </summary>
-        public DictWithMaxLength hk_variants_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength hk_variants_phrases { get; set; } = new();
 
         /// <summary>
         /// Hong Kong-to-Traditional character variant mappings.
         /// </summary>
-        public DictWithMaxLength hk_variants_rev { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength hk_variants_rev { get; set; } = new();
 
         /// <summary>
         /// Hong Kong-to-Traditional phrase variant mappings.
         /// </summary>
-        public DictWithMaxLength hk_variants_rev_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength hk_variants_rev_phrases { get; set; } = new();
 
         /// <summary>
         /// Japanese Shinjitai-to-Traditional Kyujitai character mappings.
         /// </summary>
-        public DictWithMaxLength jps_characters { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength jps_characters { get; set; } = new();
 
         /// <summary>
         /// Traditional Kyujitai-to-Japanese Shinjitai character mappings.
         /// </summary>
-        public DictWithMaxLength jps_characters_rev { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength jps_characters_rev { get; set; } = new();
 
         /// <summary>
         /// Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.
         /// </summary>
-        public DictWithMaxLength jps_phrases { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength jps_phrases { get; set; } = new();
 
         /// <summary>
         /// Simplified-to-Traditional punctuation mappings.
         /// </summary>
-        public DictWithMaxLength st_punctuations { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength st_punctuations { get; set; } = new();
 
         /// <summary>
         /// Traditional-to-Simplified punctuation mappings.
         /// </summary>
-        public DictWithMaxLength ts_punctuations { get; set; } = new DictWithMaxLength();
+        public DictWithMaxLength ts_punctuations { get; set; } = new();
     }
     // ReSharper restore InconsistentNaming
 
@@ -279,6 +279,21 @@ namespace OpenccNetLib
         private const string BuiltInDictionaryResourceName =
             "OpenccNetLib.Resources.dictionary_maxlength.zstd";
 
+        private static readonly DictionaryJsonContext IndentedJsonContext =
+            new(
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+        private static readonly DictionaryJsonContext IndentedUnescapedJsonContext =
+            new(
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                });
+
         // --------------------------------------------------------------------------------
         // Lazy loader for the default dictionary
         // --------------------------------------------------------------------------------
@@ -291,8 +306,7 @@ namespace OpenccNetLib
         /// access. The initialization is thread-safe and
         /// performed only once per process lifetime.
         /// </summary>
-        private static readonly Lazy<DictionaryMaxlength> DefaultLib =
-            new Lazy<DictionaryMaxlength>(LoadBuiltInDictionary, isThreadSafe: true);
+        private static readonly Lazy<DictionaryMaxlength> DefaultLib = new(LoadBuiltInDictionary, isThreadSafe: true);
 
         // --------------------------------------------------------------------------------
         // Public accessors and provider management
@@ -417,10 +431,8 @@ namespace OpenccNetLib
                     fullPath);
             }
 
-            using (var inputStream = File.OpenRead(fullPath))
-            {
-                return DeserializeZstd(inputStream);
-            }
+            using var inputStream = File.OpenRead(fullPath);
+            return DeserializeZstd(inputStream);
         }
 
         /// <summary>
@@ -450,10 +462,8 @@ namespace OpenccNetLib
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            using (var inputStream = new MemoryStream(data, writable: false))
-            {
-                return DeserializeZstd(inputStream);
-            }
+            using var inputStream = new MemoryStream(data, writable: false);
+            return DeserializeZstd(inputStream);
         }
 
         /// <summary>
@@ -464,14 +474,13 @@ namespace OpenccNetLib
             if (compressedStream == null)
                 throw new ArgumentNullException(nameof(compressedStream));
 
-            using (var decompressionStream = new DecompressionStream(compressedStream))
-            {
-                var instance =
-                    JsonSerializer.Deserialize<DictionaryMaxlength>(
-                        decompressionStream);
+            using var decompressionStream = new DecompressionStream(compressedStream);
+            var instance =
+                JsonSerializer.Deserialize(
+                    decompressionStream,
+                    DictionaryJsonContext.Default.DictionaryMaxlength);
 
-                return EnsureDerivedMetadata(instance);
-            }
+            return EnsureDerivedMetadata(instance);
         }
 
         /// <summary>
@@ -528,13 +537,13 @@ namespace OpenccNetLib
                     fullPath);
             }
 
-            using (var stream = File.OpenRead(fullPath))
-            {
-                var instance =
-                    JsonSerializer.Deserialize<DictionaryMaxlength>(stream);
+            using var stream = File.OpenRead(fullPath);
+            var instance =
+                JsonSerializer.Deserialize(
+                    stream,
+                    DictionaryJsonContext.Default.DictionaryMaxlength);
 
-                return EnsureDerivedMetadata(instance);
-            }
+            return EnsureDerivedMetadata(instance);
         }
 
         /// <summary>
@@ -560,10 +569,7 @@ namespace OpenccNetLib
                 path,
                 JsonSerializer.Serialize(
                     instance,
-                    new JsonSerializerOptions
-                    {
-                        WriteIndented = true
-                    }));
+                    IndentedJsonContext.DictionaryMaxlength));
         }
 
         /// <summary>
@@ -579,7 +585,7 @@ namespace OpenccNetLib
         /// into a full Unicode scalar via <see cref="char.ConvertFromUtf32(int)"/>.
         /// </remarks>
         private static readonly Regex SurrogatePairRegex =
-            new Regex(@"\\u(?<hi>[dD][89ABab][0-9A-Fa-f]{2})\\u(?<lo>[dD][CDEFcdef][0-9A-Fa-f]{2})",
+            new(@"\\u(?<hi>[dD][89ABab][0-9A-Fa-f]{2})\\u(?<lo>[dD][CDEFcdef][0-9A-Fa-f]{2})",
                 RegexOptions.Compiled);
 
         /// <summary>
@@ -638,15 +644,11 @@ namespace OpenccNetLib
             string path,
             DictionaryMaxlength dictionary = null)
         {
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-
             var instance = dictionary ?? FromDicts();
 
-            var json = JsonSerializer.Serialize(instance, options);
+            var json = JsonSerializer.Serialize(
+                instance,
+                IndentedUnescapedJsonContext.DictionaryMaxlength);
 
             // Convert remaining UTF-16 surrogate escape pairs into readable Unicode
             json = DecodeJsonSurrogatePairs(json);
@@ -672,6 +674,19 @@ namespace OpenccNetLib
             return FromJson(path);
         }
 
+        /// <summary>
+        /// Deserializes an in-memory JSON dictionary using source-generated metadata
+        /// and restores all derived lookup metadata.
+        /// </summary>
+        internal static DictionaryMaxlength DeserializeJson(string json)
+        {
+            var instance = JsonSerializer.Deserialize(
+                json,
+                DictionaryJsonContext.Default.DictionaryMaxlength);
+
+            return EnsureDerivedMetadata(instance);
+        }
+
         #region FromDicts
 
         /// <summary>
@@ -692,7 +707,7 @@ namespace OpenccNetLib
         /// </para>
         /// </summary>
         private static readonly Dictionary<DictSlot, string> SlotFiles =
-            new Dictionary<DictSlot, string>
+            new()
             {
                 [DictSlot.STCharacters] = "STCharacters.txt",
                 [DictSlot.STPhrases] = "STPhrases.txt",
@@ -1479,20 +1494,15 @@ namespace OpenccNetLib
             if (instance == null)
                 throw new InvalidOperationException("Deserialized dictionary instance was null.");
 
-            if (instance.tw_variants_phrases == null)
-                instance.tw_variants_phrases = new DictWithMaxLength();
+            instance.tw_variants_phrases ??= new DictWithMaxLength();
 
-            if (instance.hk_variants_phrases == null)
-                instance.hk_variants_phrases = new DictWithMaxLength();
+            instance.hk_variants_phrases ??= new DictWithMaxLength();
 
-            if (instance.hk_phrases == null)
-                instance.hk_phrases = new DictWithMaxLength();
+            instance.hk_phrases ??= new DictWithMaxLength();
 
-            if (instance.hk_phrases_rev == null)
-                instance.hk_phrases_rev = new DictWithMaxLength();
+            instance.hk_phrases_rev ??= new DictWithMaxLength();
 
-            if (instance.jps_characters_rev == null)
-                instance.jps_characters_rev = new DictWithMaxLength();
+            instance.jps_characters_rev ??= new DictWithMaxLength();
 
             EnsureDictionaryMetadata(instance.st_characters);
             EnsureDictionaryMetadata(instance.st_phrases);
@@ -1678,13 +1688,13 @@ namespace OpenccNetLib
         {
             var instance = dictionary ?? FromDicts();
 
-            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(instance);
+            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(
+                instance,
+                DictionaryJsonContext.Default.DictionaryMaxlength);
 
-            using (var compressor = new Compressor(19))
-            {
-                var compressed = compressor.Wrap(jsonBytes);
-                File.WriteAllBytes(path, compressed.ToArray());
-            }
+            using var compressor = new Compressor(19);
+            var compressed = compressor.Wrap(jsonBytes);
+            File.WriteAllBytes(path, compressed.ToArray());
         }
 
         /// <summary>
@@ -1696,12 +1706,12 @@ namespace OpenccNetLib
         {
             var compressed = File.ReadAllBytes(path);
 
-            using (var decompressor = new Decompressor())
-            {
-                var jsonBytes = decompressor.Unwrap(compressed);
-                var instance = JsonSerializer.Deserialize<DictionaryMaxlength>(jsonBytes);
-                return EnsureDerivedMetadata(instance);
-            }
+            using var decompressor = new Decompressor();
+            var jsonBytes = decompressor.Unwrap(compressed);
+            var instance = JsonSerializer.Deserialize(
+                jsonBytes,
+                DictionaryJsonContext.Default.DictionaryMaxlength);
+            return EnsureDerivedMetadata(instance);
         }
     }
 }

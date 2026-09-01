@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -934,9 +933,7 @@ namespace OpenccNetLib
         {
             if (string.IsNullOrWhiteSpace(jsonString)) return;
 
-            var custom = JsonSerializer.Deserialize<DictionaryMaxlength>(jsonString);
-            if (custom is null)
-                throw new InvalidOperationException("Failed to deserialize DictionaryMaxlength from JSON.");
+            var custom = DictionaryLib.DeserializeJson(jsonString);
 
             UseCustomDictionary(custom);
         }
