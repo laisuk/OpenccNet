@@ -268,8 +268,8 @@ internal static class ConvertCommand
                 CliUtils.ParseAndValidateCustomDictSpecs(customDicts);
 
             var opencc = customSpecs.Length == 0
-                ? new Opencc(config, keepIds)
-                : new Opencc(config, customSpecs, keepIds);
+                ? new Opencc(config, isPreserveIds: keepIds)
+                : new Opencc(config, customDictSpecs: customSpecs, isPreserveIds: keepIds);
 
             var inputStr = await ReadInputAsync(inputFile, inputEnc);
             if (normCompatExtended)

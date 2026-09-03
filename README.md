@@ -586,8 +586,16 @@ OpenccNetLib 1.7.0 adds an isolated per-instance alternative to the existing pro
 
 ```csharp
 public Opencc(
-    OpenccConfig configEnum,
-    IEnumerable<CustomDictSpec> customDictSpecs,
+    string config = null,
+    DictionaryMaxlength customBase = null,
+    IEnumerable<CustomDictSpec> customDictSpecs = null,
+    bool isPreserveIds = false,
+    bool isFrozen = false)
+
+public Opencc(
+    OpenccConfig config,
+    DictionaryMaxlength customBase = null,
+    IEnumerable<CustomDictSpec> customDictSpecs = null,
     bool isPreserveIds = false,
     bool isFrozen = false)
 
@@ -595,13 +603,12 @@ public Opencc WithCustomDictionary(
     IEnumerable<CustomDictSpec> customDictSpecs)
 ```
 
-Ordinary `Opencc` instances continue to use the shared process-wide conversion-plan cache. They do not allocate a
-private plan cache or a private dictionary snapshot. In contrast, the custom-spec constructor snapshots the currently
-active global dictionary provider, applies the `CustomDictSpec` entries to that snapshot in enumeration order, and gives
-the new converter its own isolated internal cache. Instance customization never mutates the active global provider, and
-later global-provider changes do not affect an already-created custom instance. When `isFrozen` is `true`, the custom
-instance uses `DictionaryLib.Provider` instead of the active global provider as its base and rejects later changes to
-`Config` and `IsPreserveIds`.
+The effective dictionary is `customBase ?? automaticBase`, followed by `customDictSpecs` when supplied. For a mutable
+instance, the automatic base is the active global provider; for a frozen instance, it is
+`DictionaryLib.Provider`. The ordinary mutable `(null, null)` case uses the shared process-wide conversion-plan cache
+without allocating a private cache. Supplying either customization creates an isolated cache and never mutates the
+active global provider; later global-provider changes do not affect that instance. Frozen instances also reject later
+changes to `Config` and `IsPreserveIds`.
 
 The isolated dictionary snapshot belongs to the instance rather than to one configuration. Calling `SetConfig(...)` or
 assigning `Config` on the custom instance continues to use the same snapshot. Multiple custom instances can therefore
@@ -631,7 +638,7 @@ var specs = new[]
     }
 };
 
-var cc = new Opencc(OpenccConfig.S2T, specs);
+var cc = new Opencc(OpenccConfig.S2T, customDictSpecs: specs);
 Console.WriteLine(cc.Convert("汉")); // 甲
 ```
 
@@ -648,7 +655,7 @@ Console.WriteLine(customized.Convert("汉")); // 甲
 Different instances may use different mappings for the same dictionary key:
 
 ```csharp
-var first = new Opencc(OpenccConfig.S2T, new[]
+var first = new Opencc(OpenccConfig.S2T, customDictSpecs: new[]
 {
     new CustomDictSpec
     {
@@ -657,7 +664,7 @@ var first = new Opencc(OpenccConfig.S2T, new[]
     }
 });
 
-var second = new Opencc(OpenccConfig.S2T, new[]
+var second = new Opencc(OpenccConfig.S2T, customDictSpecs: new[]
 {
     new CustomDictSpec
     {
@@ -693,7 +700,7 @@ var specs = new[]
         Pairs = new Dictionary<string, string> { ["字"] = "例" }
     }
 };
-var cc = new Opencc(OpenccConfig.S2T, specs);
+var cc = new Opencc(OpenccConfig.S2T, customDictSpecs: specs);
 
 Console.WriteLine(cc.Convert("汉字"));                           // 全例
 Console.WriteLine(new Opencc(OpenccConfig.S2T).Convert("汉字")); // 全字
@@ -702,7 +709,7 @@ Console.WriteLine(new Opencc(OpenccConfig.S2T).Convert("汉字")); // 全字
 Config switching on a custom instance reuses its isolated dictionary snapshot:
 
 ```csharp
-var cc = new Opencc(OpenccConfig.S2T, new[]
+var cc = new Opencc(OpenccConfig.S2T, customDictSpecs: new[]
 {
     new CustomDictSpec
     {
@@ -726,15 +733,16 @@ Choose the API according to the required scope:
 | API                                               | Behavior                                                               |
 |---------------------------------------------------|------------------------------------------------------------------------|
 | `Opencc.UseCustomDictionary(DictionaryMaxlength)` | Process-wide/global; ordinary instances use the shared active provider |
-| `new Opencc(config, DictionaryMaxlength)`         | Uses the supplied base through an isolated instance-owned cache        |
-| `new Opencc(config, specs)`                       | Isolated per-instance dictionary snapshot and internal cache           |
+| `new Opencc(config, customBase)`                  | Uses the supplied base through an isolated instance-owned cache        |
+| `new Opencc(config, customDictSpecs: specs)`      | Applies specs to the automatic base in an isolated cache               |
+| `new Opencc(config, customBase, customDictSpecs)` | Applies specs to the supplied base in an isolated cache                |
 | `cc.WithCustomDictionary(specs)`                  | New isolated instance; the source instance is unchanged                |
 
-`new Opencc(config, specs)` accepts either a configuration name or an `OpenccConfig` value:
+`new Opencc(config, customDictSpecs: specs)` accepts either a configuration name or an `OpenccConfig` value:
 
 ```csharp
-var cc1 = new Opencc("s2t", specs);
-var cc2 = new Opencc(OpenccConfig.S2T, specs);
+var cc1 = new Opencc("s2t", customDictSpecs: specs);
+var cc2 = new Opencc(OpenccConfig.S2T, customDictSpecs: specs);
 ```
 
 #### Portable custom-dictionary specifications
@@ -914,8 +922,7 @@ var opencc = new Opencc("s2t");
 ```
 
 Post-load customization should use an independent dictionary returned by `FromZstd(path)`, `FromDicts()`, `FromJson()`,
-or
-`FromCbor()`. Avoid modifying `DictionaryLib.New()`/`Provider` in place because it is the shared built-in singleton.
+or `FromCbor()`. Avoid modifying `DictionaryLib.New()`/`Provider` in place because it is the shared built-in singleton.
 
 Each `CustomDictSpec` targets one slot. `Paths` is optional and can contain multiple custom dictionary files. `Pairs` is
 optional and contains in-memory entries. At least one of `Paths` or `Pairs` must be supplied. When both are supplied,
@@ -1484,14 +1491,18 @@ conversion behavior and a preserved .NET Standard 2.0 compatibility path.
 
 #### 🔧 Constructors
 
-- `Opencc(string config = null, bool isPreserveIds = false, bool isFrozen = false)`
-  Creates a new converter using a configuration name (e.g., `"s2t"`, `"t2s"`).  
-  This overload is compatible with existing code but requires string-based config.
+-
 
-- `Opencc(OpenccConfig configEnum, bool isPreserveIds = false, bool isFrozen = false)`
-  Creates a new converter using the strongly-typed `OpenccConfig` enum  
-  (e.g., `OpenccConfig.S2T`, `OpenccConfig.T2S`).  
-  **Recommended for all new code** because it avoids magic strings.
+`Opencc(string config = null, DictionaryMaxlength customBase = null, IEnumerable<CustomDictSpec> customDictSpecs = null, bool isPreserveIds = false, bool isFrozen = false)`
+Creates a new converter using a configuration name (e.g., `"s2t"`, `"t2s"`).  
+Positional Boolean arguments from v1.6.2 must be changed to named `isPreserveIds:` arguments.
+
+-
+
+`Opencc(OpenccConfig config, DictionaryMaxlength customBase = null, IEnumerable<CustomDictSpec> customDictSpecs = null, bool isPreserveIds = false, bool isFrozen = false)`
+Creates a new converter using the strongly-typed `OpenccConfig` enum  
+(e.g., `OpenccConfig.S2T`, `OpenccConfig.T2S`).  
+**Recommended for all new code** because it avoids magic strings.
 
 #### 🔁 Conversion Methods
 
@@ -1626,19 +1637,8 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
   Lazily returns the shared built-in dictionary from the assembly-embedded Zstandard resource; no external file is
   required.
 
-- `static DictionaryMaxlength GetActiveProvider()`
-  Returns the dictionary instance currently supplied by the active provider delegate.
-
 - `static DictionaryMaxlength New()`
   Returns the embedded built-in dictionary and resets the active provider to that dictionary.
-
-- `static void SetDictionaryProvider(DictionaryMaxlength dictionary)`
-  Sets the active dictionary provider to a fixed `DictionaryMaxlength` instance and atomically refreshes derived
-  conversion state. Conversions already in progress may finish with the previous complete state; subsequent conversions
-  use the replacement state.
-
-- `static void ResetDictionaryProviderToDefault()`
-  Restores the active dictionary provider to the built-in dictionary and atomically refreshes derived conversion state.
 
 ##### `DictionaryLib` loading APIs
 
@@ -1713,8 +1713,9 @@ DictionaryLib.SaveJsonCompressed("./custom-dictionary.zstd", dict);
 
 ## Dictionary Data
 
-- Dictionaries are loaded and cached on first use.
-- Data files are expected in the `dicts/` directory (see `DictionaryLib` for details).
+- The built-in dictionary is embedded in `OpenccNetLib` as a Zstandard resource and loaded lazily on first use.
+- External `dicts/` files are required only for explicit `DictionaryLib.FromDicts()` and
+  dictionary-generation/customization workflows.
 
 ## Add-On CLI Tools (Separated from OpenccNetLib)
 

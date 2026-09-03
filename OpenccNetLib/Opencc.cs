@@ -503,8 +503,8 @@ namespace OpenccNetLib
         private OpenccConfig _configId = DefaultConfigId;
 
         /// <summary>
-        /// Holds the isolated conversion-plan cache for a frozen instance or an instance created with custom
-        /// dictionary specifications.
+        /// Holds the isolated conversion-plan cache for a frozen instance or an instance created with a custom
+        /// base and/or custom dictionary specifications.
         /// </summary>
         /// <remarks>
         /// This field is <see langword="null"/> for ordinary non-frozen instances, which continue
@@ -946,301 +946,75 @@ namespace OpenccNetLib
         #region Opencc Constructor and Public Fields Region
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Opencc"/> class with the specified configuration.
-        /// This constructor ensures the global dictionary and its associated lists are initialized.
+        /// Initializes an <see cref="Opencc"/> instance from a configuration name and optional dictionary customization.
         /// </summary>
-        /// <param name="config">The conversion configuration (e.g., "s2t", "t2s").</param>
-        /// <param name="isPreserveIds">
-        /// Whether to preserve complete Unicode IDS expressions during conversion. Default: <c>false</c>.
-        /// </param>
-        /// <param name="isFrozen">
-        /// Whether to make the instance configuration immutable and use a private conversion-plan cache
-        /// based on <see cref="DictionaryLib.Provider"/>. Default: <see langword="false"/>.
-        /// </param>
+        /// <param name="config">The conversion configuration name (for example, <c>"s2t"</c>).</param>
+        /// <param name="customBase">The base dictionary, or <see langword="null"/> to choose the base automatically.</param>
+        /// <param name="customDictSpecs">Specifications applied in enumeration order after choosing the base, or <see langword="null"/> for none.</param>
+        /// <param name="isPreserveIds">Whether to preserve complete Unicode IDS expressions.</param>
+        /// <param name="isFrozen">Whether the instance configuration and IDS setting are immutable.</param>
+        /// <remarks>
+        /// The effective dictionary is <c>customBase ?? automaticBase</c>, followed by <paramref name="customDictSpecs"/> when supplied.
+        /// Mutable instances choose the active global provider; frozen instances choose <see cref="DictionaryLib.Provider"/>.
+        /// The ordinary mutable <c>(null, null)</c> case shares <see cref="ConversionPlanCache.Current"/> without a private cache.
+        /// </remarks>
         public Opencc(
             string config = null,
+            DictionaryMaxlength customBase = null,
+            IEnumerable<CustomDictSpec> customDictSpecs = null,
             bool isPreserveIds = false,
             bool isFrozen = false)
         {
             IsFrozen = isFrozen;
-            if (isFrozen)
-                _planCache = new ConversionPlanCache(
-                    DictionaryLib.Provider,
-                    Array.Empty<CustomDictSpec>());
-
+            _planCache = CreatePlanCache(customBase, customDictSpecs, isFrozen);
             SetConfigInternal(config, true);
             _isPreserveIds = isPreserveIds;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Opencc"/> class using an <see cref="OpenccConfig"/> enum value.
-        /// This overload is the preferred way to create an Opencc instance.
+        /// Initializes an <see cref="Opencc"/> instance from a typed configuration and optional dictionary customization.
         /// </summary>
-        /// <param name="configEnum">The OpenCC conversion configuration enum value.</param>
-        /// <param name="isPreserveIds">
-        /// Whether to preserve complete Unicode IDS expressions during conversion. Default: <c>false</c>.
-        /// </param>
-        /// <param name="isFrozen">
-        /// Whether to make the instance configuration immutable and use a private conversion-plan cache
-        /// based on <see cref="DictionaryLib.Provider"/>. Default: <see langword="false"/>.
-        /// </param>
+        /// <param name="config">The conversion configuration.</param>
+        /// <param name="customBase">The base dictionary, or <see langword="null"/> to choose the base automatically.</param>
+        /// <param name="customDictSpecs">Specifications applied in enumeration order after choosing the base, or <see langword="null"/> for none.</param>
+        /// <param name="isPreserveIds">Whether to preserve complete Unicode IDS expressions.</param>
+        /// <param name="isFrozen">Whether the instance configuration and IDS setting are immutable.</param>
+        /// <remarks>
+        /// The effective dictionary is <c>customBase ?? automaticBase</c>, followed by <paramref name="customDictSpecs"/> when supplied.
+        /// Mutable instances choose the active global provider; frozen instances choose <see cref="DictionaryLib.Provider"/>.
+        /// The ordinary mutable <c>(null, null)</c> case shares <see cref="ConversionPlanCache.Current"/> without a private cache.
+        /// </remarks>
         public Opencc(
-            OpenccConfig configEnum,
+            OpenccConfig config,
+            DictionaryMaxlength customBase = null,
+            IEnumerable<CustomDictSpec> customDictSpecs = null,
             bool isPreserveIds = false,
             bool isFrozen = false)
         {
             IsFrozen = isFrozen;
-            if (isFrozen)
-                _planCache = new ConversionPlanCache(
-                    DictionaryLib.Provider,
-                    Array.Empty<CustomDictSpec>());
-
-            SetConfigInternal(configEnum, false);
+            _planCache = CreatePlanCache(customBase, customDictSpecs, isFrozen);
+            SetConfigInternal(config, false);
             _isPreserveIds = isPreserveIds;
         }
 
         /// <summary>
-        /// Initializes a new <see cref="Opencc"/> instance with an isolated custom
-        /// dictionary set.
+        /// Selects the constructor base and creates an instance-owned cache only when needed.
         /// </summary>
-        /// <remarks>
-        /// <para>
-        /// The specification sequence is enumerated exactly once and retained as an array
-        /// for this instance's lifetime. The instance owns a private
-        /// <see cref="ConversionPlanCache"/> built from the currently active provider for a
-        /// non-frozen instance, or <see cref="DictionaryLib.Provider"/> for a frozen instance,
-        /// plus those specifications. Construction
-        /// does not replace <see cref="ConversionPlanCache.Current"/> or modify the active
-        /// global provider.
-        /// </para>
-        /// <para>
-        /// This allows instance custom dictionaries to layer on top of the dictionary
-        /// currently selected through the global provider, including one installed through
-        /// <see cref="UseCustomDictionary(DictionaryMaxlength)"/>. Subsequent global provider
-        /// changes do not affect this instance's private dictionary snapshot.
-        /// </para>
-        /// <para>
-        /// Later changes through <see cref="SetConfig(OpenccConfig)"/> or
-        /// <see cref="Config"/> reuse the same custom dictionary snapshot. An empty
-        /// specification sequence still creates an isolated plan cache whose effective
-        /// mappings are those of the active provider captured at construction time.
-        /// </para>
-        /// <para>
-        /// Plan lookup is thread-safe and isolated from other instances. As with existing
-        /// mutable instance properties, callers should synchronize concurrent configuration
-        /// or <see cref="IsPreserveIds"/> changes.
-        /// </para>
-        /// </remarks>
-        /// <param name="configEnum">The OpenCC conversion configuration enum value.</param>
-        /// <param name="customDictSpecs">
-        /// Custom dictionary specifications applied in enumeration order to the active
-        /// dictionary snapshot.
-        /// </param>
-        /// <param name="isPreserveIds">
-        /// Whether to preserve complete Unicode IDS expressions during conversion.
-        /// Default: <see langword="false"/>.
-        /// </param>
-        /// <param name="isFrozen">
-        /// Whether to make the instance configuration immutable and build the instance-owned
-        /// custom dictionary from <see cref="DictionaryLib.Provider"/> instead of the active
-        /// global provider. Default: <see langword="false"/>.
-        /// </param>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="customDictSpecs"/> is <see langword="null"/>.
-        /// </exception>
-        public Opencc(
-            OpenccConfig configEnum,
-            IEnumerable<CustomDictSpec> customDictSpecs,
-            bool isPreserveIds = false,
-            bool isFrozen = false)
-        {
-            if (customDictSpecs == null)
-                throw new ArgumentNullException(nameof(customDictSpecs));
-
-            var specs = new List<CustomDictSpec>(customDictSpecs).ToArray();
-            IsFrozen = isFrozen;
-            _planCache = new ConversionPlanCache(
-                isFrozen ? DictionaryLib.Provider : ConversionPlanCache.Provider,
-                specs);
-            SetConfigInternal(configEnum, false);
-            _isPreserveIds = isPreserveIds;
-        }
-
-        /// <summary>
-        /// Initializes a new <see cref="Opencc"/> instance with an isolated custom
-        /// dictionary set using the specified configuration name.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// The specification sequence is enumerated exactly once and retained for this
-        /// instance's lifetime. The custom dictionary is built from the currently active
-        /// provider for a non-frozen instance, or <see cref="DictionaryLib.Provider"/> for
-        /// a frozen instance, plus the supplied specifications, and uses an isolated
-        /// conversion-plan cache.
-        /// </para>
-        /// <para>
-        /// Construction does not modify the active global provider. Subsequent global
-        /// provider changes do not affect this instance, and configuration changes reuse
-        /// the same isolated custom dictionary snapshot.
-        /// </para>
-        /// </remarks>
-        /// <param name="config">
-        /// The OpenCC conversion configuration name.
-        /// </param>
-        /// <param name="customDictSpecs">
-        /// Custom dictionary specifications applied in enumeration order to the active
-        /// dictionary snapshot.
-        /// </param>
-        /// <param name="isPreserveIds">
-        /// Whether to preserve complete Unicode IDS expressions during conversion.
-        /// Default: <see langword="false"/>.
-        /// </param>
-        /// <param name="isFrozen">
-        /// Whether to make the instance configuration immutable and build the instance-owned
-        /// custom dictionary from <see cref="DictionaryLib.Provider"/> instead of the active
-        /// global provider. Default: <see langword="false"/>.
-        /// </param>
-        /// <exception cref="ArgumentException">
-        /// <paramref name="config"/> is null, empty, or not a supported configuration.
-        /// </exception>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="customDictSpecs"/> is <see langword="null"/>.
-        /// </exception>
-        public Opencc(
-            string config,
-            IEnumerable<CustomDictSpec> customDictSpecs,
-            bool isPreserveIds = false,
-            bool isFrozen = false)
-        {
-            if (customDictSpecs == null)
-                throw new ArgumentNullException(nameof(customDictSpecs));
-
-            var specs = new List<CustomDictSpec>(customDictSpecs).ToArray();
-
-            IsFrozen = isFrozen;
-            _planCache = new ConversionPlanCache(
-                isFrozen ? DictionaryLib.Provider : ConversionPlanCache.Provider,
-                specs);
-
-            SetConfigInternal(config, true);
-            _isPreserveIds = isPreserveIds;
-        }
-
-        /// <summary>
-        /// Initializes a new <see cref="Opencc"/> instance with the specified configuration
-        /// and an explicitly supplied base dictionary.
-        /// </summary>
-        /// <param name="config">
-        /// The conversion configuration name, such as <c>s2t</c>, <c>t2s</c>,
-        /// <c>s2tw</c>, or <c>hk2sp</c>.
-        /// </param>
-        /// <param name="customBase">
-        /// The <see cref="DictionaryMaxlength"/> instance to use as the base dictionary
-        /// for this converter.
-        /// </param>
-        /// <param name="isPreserveIds">
-        /// Whether to preserve complete Unicode IDS expressions during conversion.
-        /// Default: <see langword="false"/>.
-        /// </param>
-        /// <param name="isFrozen">
-        /// Whether to make the instance configuration immutable.
-        /// Default: <see langword="false"/>.
-        /// </param>
-        /// <remarks>
-        /// <para>
-        /// The supplied <paramref name="customBase"/> is used directly as the base of an
-        /// instance-owned <see cref="ConversionPlanCache"/>. The active global dictionary
-        /// provider and <see cref="ConversionPlanCache.Current"/> are not modified.
-        /// </para>
-        /// <para>
-        /// This constructor is useful when a dictionary has been loaded explicitly, for
-        /// example with <see cref="DictionaryLib.FromZstd(string)"/> or
-        /// <see cref="DictionaryLib.FromZstdBytes(byte[])"/>, and should be isolated to a
-        /// specific converter instance.
-        /// </para>
-        /// <para>
-        /// Subsequent configuration changes on this instance reuse the same supplied
-        /// base dictionary.
-        /// </para>
-        /// </remarks>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="customBase"/> is <see langword="null"/>.
-        /// </exception>
-        public Opencc(
-            string config,
+        private static ConversionPlanCache CreatePlanCache(
             DictionaryMaxlength customBase,
-            bool isPreserveIds = false,
-            bool isFrozen = false)
+            IEnumerable<CustomDictSpec> customDictSpecs,
+            bool isFrozen)
         {
-            if (customBase == null)
-                throw new ArgumentNullException(nameof(customBase));
+            if (customBase == null && customDictSpecs == null && !isFrozen)
+                return null;
 
-            IsFrozen = isFrozen;
+            var baseDictionary = customBase ??
+                (isFrozen ? DictionaryLib.Provider : ConversionPlanCache.Provider);
+            var specs = customDictSpecs == null
+                ? Array.Empty<CustomDictSpec>()
+                : new List<CustomDictSpec>(customDictSpecs).ToArray();
 
-            _planCache = new ConversionPlanCache(
-                customBase,
-                Array.Empty<CustomDictSpec>());
-
-            SetConfigInternal(config, true);
-            _isPreserveIds = isPreserveIds;
-        }
-
-        /// <summary>
-        /// Initializes a new <see cref="Opencc"/> instance with the specified
-        /// <see cref="OpenccConfig"/> and an explicitly supplied base dictionary.
-        /// </summary>
-        /// <param name="configEnum">
-        /// The <see cref="OpenccConfig"/> conversion configuration to use.
-        /// </param>
-        /// <param name="customBase">
-        /// The <see cref="DictionaryMaxlength"/> instance to use as the base dictionary
-        /// for this converter.
-        /// </param>
-        /// <param name="isPreserveIds">
-        /// Whether to preserve complete Unicode IDS expressions during conversion.
-        /// Default: <see langword="false"/>.
-        /// </param>
-        /// <param name="isFrozen">
-        /// Whether to make the instance configuration immutable.
-        /// Default: <see langword="false"/>.
-        /// </param>
-        /// <remarks>
-        /// <para>
-        /// The supplied <paramref name="customBase"/> is used directly as the base of an
-        /// instance-owned <see cref="ConversionPlanCache"/>. The active global dictionary
-        /// provider and <see cref="ConversionPlanCache.Current"/> are not modified.
-        /// </para>
-        /// <para>
-        /// This constructor is useful when a dictionary has been loaded explicitly, for
-        /// example with <see cref="DictionaryLib.FromZstd(string)"/> or
-        /// <see cref="DictionaryLib.FromZstdBytes(byte[])"/>, and should be isolated to a
-        /// specific converter instance.
-        /// </para>
-        /// <para>
-        /// Subsequent configuration changes on this instance reuse the same supplied
-        /// base dictionary.
-        /// </para>
-        /// </remarks>
-        /// <exception cref="ArgumentNullException">
-        /// <paramref name="customBase"/> is <see langword="null"/>.
-        /// </exception>
-        public Opencc(
-            OpenccConfig configEnum,
-            DictionaryMaxlength customBase,
-            bool isPreserveIds = false,
-            bool isFrozen = false)
-        {
-            if (customBase == null)
-                throw new ArgumentNullException(nameof(customBase));
-
-            IsFrozen = isFrozen;
-
-            _planCache = new ConversionPlanCache(
-                customBase,
-                Array.Empty<CustomDictSpec>());
-
-            SetConfigInternal(configEnum, false);
-            _isPreserveIds = isPreserveIds;
+            return new ConversionPlanCache(baseDictionary, specs);
         }
 
         /// <summary>
@@ -1264,7 +1038,10 @@ namespace OpenccNetLib
         /// </exception>
         public Opencc WithCustomDictionary(IEnumerable<CustomDictSpec> customDictSpecs)
         {
-            return new Opencc(_configId, customDictSpecs, IsPreserveIds);
+            if (customDictSpecs == null)
+                throw new ArgumentNullException(nameof(customDictSpecs));
+
+            return new Opencc(_configId, customDictSpecs: customDictSpecs, isPreserveIds: IsPreserveIds);
         }
 
         /// <summary>

@@ -21,7 +21,7 @@
         <!-- Generate the XML doc file alongside the DLL -->
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <!-- (Optional) don’t warn about undocumented public members -->
-        <NoWarn>$(NoWarn);1591</NoWarn>
+        <!-- <NoWarn>$(NoWarn);1591</NoWarn>-->
         <Title>OpenccNet Library</Title>
         <PackageReleaseNotes>OpenccNetLib v1.7.0
 

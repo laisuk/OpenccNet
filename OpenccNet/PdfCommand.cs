@@ -400,7 +400,7 @@ internal static class PdfCommand
 
         var converter = customSpecs.Length == 0
             ? new Opencc(config)
-            : new Opencc(config, customSpecs);
+            : new Opencc(config, customDictSpecs: customSpecs);
 
         if (normCompatExtended)
         {

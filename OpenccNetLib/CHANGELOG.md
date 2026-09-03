@@ -23,15 +23,15 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Make `DictionaryLib.FromZstd(string)` public for independent external-file loading and add
   `DictionaryLib.FromZstdBytes(byte[])` for independent caller-provided compressed data without introducing a
   null-literal overload ambiguity.
-- Add `Opencc` constructors accepting an explicit `DictionaryMaxlength` base with an instance-owned conversion-plan
-  cache that remains isolated from the process-wide provider.
+- Add optional per-instance `DictionaryMaxlength` bases and custom dictionary specifications to both `Opencc`
+  constructors, with an isolated conversion-plan cache that is not published process-wide.
 - Add constructor-time frozen `Opencc` instances through the optional trailing `isFrozen` parameter and the read-only
   `IsFrozen` property. Frozen instances reject later configuration and IDS-preservation changes and use a private
   conversion-plan cache based on `DictionaryLib.Provider`; frozen custom-spec instances retain isolated custom
   dictionary state over that same stable base.
-- Add per-instance custom dictionary support with `Opencc(OpenccConfig, IEnumerable<CustomDictSpec>, bool, bool)`.
-  Custom specifications are applied to a snapshot of the currently active dictionary provider and use an isolated
-  per-instance conversion-plan cache without modifying global dictionary state.
+- Add per-instance custom dictionary support. Specifications are applied after an explicitly supplied base or an
+  automatically selected base and use an isolated per-instance conversion-plan cache without modifying global dictionary
+  state.
 - Add `Opencc.WithCustomDictionary()` as a convenient way to create a new isolated converter using custom dictionary
   specifications while preserving the source converter's configuration and IDS-preservation setting.
 - Support configuration switching on custom `Opencc` instances while retaining the same isolated custom dictionary
@@ -41,6 +41,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Collapse the unreleased `Opencc` constructor overloads into exactly two public forms—one accepting `string` and one
+  accepting `OpenccConfig`—with shared parameter order `config, customBase = null, customDictSpecs = null,
+  isPreserveIds = false, isFrozen = false`.
+- Define constructor composition as `customBase ?? automaticBase`, followed by `customDictSpecs` when supplied. The
+  ordinary mutable `(null, null)` case uses the shared process-wide cache without allocating a private cache; frozen
+  instances retain their stable built-in base and private-cache behavior.
+- Calls that passed `isPreserveIds` positionally, such as `new Opencc("s2t", true)`, must use the named form
+  `new Opencc("s2t", isPreserveIds: true)` because the second parameter is now `customBase`.
 - Load `DictionaryLib.Provider` and `DictionaryLib.New()` from the embedded Zstandard resource while preserving lazy,
   thread-safe singleton initialization and the established global provider-reset behavior of `New()`.
 - Load the built-in CJK compatibility, curated Unicode compatibility, and DeTofu tables from assembly resources. Normal
@@ -71,8 +79,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Build per-instance custom dictionaries from a snapshot of the currently active provider, allowing application-level
   dictionary selection through `Opencc.UseCustomDictionary()` to remain the base for additional instance-local
   customizations.
-- Preserve the existing shared-cache fast path for ordinary `Opencc` instances; no private dictionary or
-  `ConversionPlanCache` is allocated unless per-instance custom dictionary specifications are explicitly supplied.
+- Preserve the shared-cache fast path for ordinary mutable `Opencc` instances. A private conversion-plan cache is
+  created only when `customBase`, `customDictSpecs`, or `isFrozen` requires instance-local state.
 - Migrate dictionary JSON and Zstd-JSON serialization to source-generated `System.Text.Json` metadata, improving
   trimming and NativeAOT compatibility while preserving existing dictionary formats and runtime metadata rebuilding.
 - Migrate dictionary CBOR serialization from `PeterO.Cbor` object mapping to an explicit `System.Formats.Cbor`
@@ -111,7 +119,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - `Opencc.UseCustomDictionary()` and `Opencc.UseDefaultDictionary()` retain their process-wide behavior; the new
   per-instance custom dictionary APIs do not modify that global state.
 - Ordinary `Opencc` instances continue to share the process-wide conversion-plan cache and require no migration.
-- Applications using only the documented `Opencc` and `DictionaryLib` APIs require no changes.
+- Existing high-level `Opencc` and `DictionaryLib` APIs remain available, except that positional constructor use of
+  `isPreserveIds` must migrate to the named argument `isPreserveIds:`.
 - Code directly referencing the previously public `ConversionPlanCache`, `DictRefs`, or `StarterUnion` types must
   migrate to the supported high-level APIs.
 

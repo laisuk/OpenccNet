@@ -704,7 +704,7 @@ public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility(
                 Paths = new[] { customPath }
             }
         };
-        var opencc = new Opencc("s2hkp", specs, isFrozen: true);
+        var opencc = new Opencc("s2hkp", customDictSpecs: specs, isFrozen: true);
 
         Assert.AreEqual(
             "妹丁侵犯個人私隱權",
@@ -737,7 +737,7 @@ public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility(
                 Paths = new[] { customPath }
             }
         };
-        var opencc = new Opencc("s2t", specs, isFrozen: true);
+        var opencc = new Opencc("s2t", customDictSpecs: specs, isFrozen: true);
 
         Assert.AreEqual(
             "帕蘭蒂爾是一家公司",
@@ -1038,7 +1038,7 @@ public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility(
                 Pairs = new Dictionary<string, string> { ["惡"] = "悪" }
             }
         };
-        var opencc = new Opencc("t2jp", specs, isFrozen: true);
+        var opencc = new Opencc("t2jp", customDictSpecs: specs, isFrozen: true);
 
         Assert.AreEqual("悪德", opencc.Convert("惡德"));
     }
@@ -1055,7 +1055,7 @@ public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility(
                 Pairs = new Dictionary<string, string> { ["惡"] = "不應使用" }
             }
         };
-        var opencc = new Opencc("jp2t", specs, isFrozen: true);
+        var opencc = new Opencc("jp2t", customDictSpecs: specs, isFrozen: true);
 
         Assert.AreEqual("辨當と惡", opencc.Convert("弁当と悪"));
     }
@@ -1080,7 +1080,7 @@ public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility(
         DictionaryLib.WithCustomDicts(dict, specs);
         Assert.AreEqual("帕蘭蒂爾", dict.st_phrases.Dict["帕兰蒂尔"]);
 
-        var opencc = new Opencc("s2t", specs, isFrozen: true);
+        var opencc = new Opencc("s2t", customDictSpecs: specs, isFrozen: true);
         Assert.AreEqual(
             "帕蘭蒂爾是一家公司",
             opencc.Convert("帕兰蒂尔是一家公司"));

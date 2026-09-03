@@ -103,7 +103,7 @@ public class OpenccFrozenTests
 
         var frozen = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec("字", "例") },
+            customDictSpecs: new[] { CreateSpec("字", "例") },
             isFrozen: true);
 
         Assert.IsTrue(frozen.IsFrozen);

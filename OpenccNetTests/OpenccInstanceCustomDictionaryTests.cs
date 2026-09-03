@@ -20,28 +20,66 @@ public class OpenccInstanceCustomDictionaryTests
     }
 
     [TestMethod]
-    public void CustomConstructor_RejectsNullSpecs()
+    public void PublicConstructors_HaveExactlyTheUnifiedSignatures()
     {
-        Assert.Throws<ArgumentNullException>(() => new Opencc(
-            OpenccConfig.S2T,
-            customDictSpecs: null!));
+        var constructors = typeof(Opencc).GetConstructors();
 
+        Assert.HasCount(2, constructors);
+        CollectionAssert.AreEquivalent(
+            new[] { typeof(string), typeof(OpenccConfig) },
+            constructors.Select(constructor => constructor.GetParameters()[0].ParameterType).ToArray());
+
+        foreach (var constructor in constructors)
+        {
+            var parameters = constructor.GetParameters();
+            CollectionAssert.AreEqual(
+                new[] { "config", "customBase", "customDictSpecs", "isPreserveIds", "isFrozen" },
+                parameters.Select(parameter => parameter.Name).ToArray());
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    parameters[0].ParameterType,
+                    typeof(DictionaryMaxlength),
+                    typeof(IEnumerable<CustomDictSpec>),
+                    typeof(bool),
+                    typeof(bool)
+                },
+                parameters.Select(parameter => parameter.ParameterType).ToArray());
+        }
+    }
+
+    [TestMethod]
+    public void Constructor_ComposesAllFourBaseAndSpecCombinations()
+    {
+        var automaticBase = CreateDictionaryWithMappings(
+            (DictSlot.STCharacters, "汉", "全"));
+        var customBase = CreateDictionaryWithMappings(
+            (DictSlot.STCharacters, "汉", "甲"));
+        var specs = new[] { CreateSpec(DictSlot.STCharacters, "字", "例") };
+        Opencc.UseCustomDictionary(automaticBase);
+
+        var neither = new Opencc(OpenccConfig.S2T, customBase: null, customDictSpecs: null);
+        var baseOnly = new Opencc(OpenccConfig.S2T, customBase);
+        var specsOnly = new Opencc(OpenccConfig.S2T, customDictSpecs: specs);
+        var both = new Opencc(OpenccConfig.S2T, customBase, specs);
+
+        Assert.AreEqual("全字", neither.Convert("汉字"));
+        Assert.AreEqual("甲字", baseOnly.Convert("汉字"));
+        Assert.AreEqual("全例", specsOnly.Convert("汉字"));
+        Assert.AreEqual("甲例", both.Convert("汉字"));
+        Assert.IsNull(GetPrivateField<ConversionPlanCache>(neither, "_planCache"));
+        Assert.IsNotNull(GetPrivateField<ConversionPlanCache>(baseOnly, "_planCache"));
+        Assert.IsNotNull(GetPrivateField<ConversionPlanCache>(specsOnly, "_planCache"));
+        Assert.IsNotNull(GetPrivateField<ConversionPlanCache>(both, "_planCache"));
+    }
+
+    [TestMethod]
+    public void WithCustomDictionary_RejectsNullSpecs()
+    {
         var source = new Opencc(OpenccConfig.S2T);
 
         Assert.Throws<ArgumentNullException>(() => source.WithCustomDictionary(
             null!));
-    }
-
-    [TestMethod]
-    public void CustomBaseConstructors_RejectNullBase()
-    {
-        Assert.Throws<ArgumentNullException>(() => new Opencc(
-            OpenccConfig.S2T,
-            customBase: null!));
-
-        Assert.Throws<ArgumentNullException>(() => new Opencc(
-            "s2t",
-            customBase: null!));
     }
 
     [TestMethod]
@@ -115,7 +153,7 @@ public class OpenccInstanceCustomDictionaryTests
             yield return CreateSpec(DictSlot.STCharacters, "汉", "甲");
         }
 
-        var custom = new Opencc(OpenccConfig.S2T, EnumerateSpecs());
+        var custom = new Opencc(OpenccConfig.S2T, customDictSpecs: EnumerateSpecs());
 
         Assert.AreEqual(1, enumerationCount);
         Assert.AreEqual("甲", custom.Convert("汉"));
@@ -130,7 +168,7 @@ public class OpenccInstanceCustomDictionaryTests
         var globalProvider = ConversionPlanCache.Provider;
         var custom = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STCharacters, "汉", "甲") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STCharacters, "汉", "甲") });
         var ordinary = new Opencc(OpenccConfig.S2T);
 
         Assert.AreEqual("甲", custom.Convert("汉"));
@@ -145,10 +183,10 @@ public class OpenccInstanceCustomDictionaryTests
     {
         var first = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STCharacters, "汉", "甲") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STCharacters, "汉", "甲") });
         var second = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STCharacters, "汉", "乙") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STCharacters, "汉", "乙") });
 
         Assert.AreEqual("甲", first.Convert("汉"));
         Assert.AreEqual("乙", second.Convert("汉"));
@@ -160,7 +198,7 @@ public class OpenccInstanceCustomDictionaryTests
     {
         var custom = new Opencc(
             OpenccConfig.S2T,
-            new[]
+            customDictSpecs: new[]
             {
                 CreateSpec(DictSlot.STCharacters, "汉", "甲"),
                 CreateSpec(DictSlot.TSCharacters, "漢", "乙")
@@ -200,7 +238,7 @@ public class OpenccInstanceCustomDictionaryTests
     {
         var custom = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STPunctuations, "“", "【") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STPunctuations, "“", "【") });
 
         Assert.AreEqual("“漢", custom.Convert("“汉", punctuation: false));
         Assert.AreEqual("【漢", custom.Convert("“汉", punctuation: true));
@@ -213,7 +251,7 @@ public class OpenccInstanceCustomDictionaryTests
         var globalCache = ConversionPlanCache.Current;
         var custom = new Opencc(
             OpenccConfig.S2T,
-            Array.Empty<CustomDictSpec>());
+            customDictSpecs: Array.Empty<CustomDictSpec>());
         var privateCache = GetPrivateField<ConversionPlanCache>(custom, "_planCache");
 
         Assert.IsNotNull(privateCache);
@@ -250,7 +288,7 @@ public class OpenccInstanceCustomDictionaryTests
 
         var isolated = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STCharacters, "字", "例") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STCharacters, "字", "例") });
 
         Assert.AreEqual("全例", isolated.Convert("汉字"));
 
@@ -270,7 +308,7 @@ public class OpenccInstanceCustomDictionaryTests
 
         var isolated = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STCharacters, "字", "例") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STCharacters, "字", "例") });
 
         var secondGlobal = DictionaryLib.FromDicts();
         DictionaryLib.WithCustomDicts(
@@ -289,7 +327,7 @@ public class OpenccInstanceCustomDictionaryTests
         var spec = CreateSpec(DictSlot.STCharacters, "汉", "甲");
         var specs = new[] { spec };
 
-        var custom = new Opencc(OpenccConfig.S2T, specs);
+        var custom = new Opencc(OpenccConfig.S2T, customDictSpecs: specs);
 
         spec.Pairs!["汉"] = "乙";
         spec.Pairs["字"] = "丙";
@@ -302,7 +340,7 @@ public class OpenccInstanceCustomDictionaryTests
     {
         var source = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STCharacters, "汉", "甲") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STCharacters, "汉", "甲") });
 
         var replacement = source.WithCustomDictionary(
             new[] { CreateSpec(DictSlot.STCharacters, "字", "乙") });
@@ -317,7 +355,7 @@ public class OpenccInstanceCustomDictionaryTests
     {
         var isolated = new Opencc(
             OpenccConfig.S2T,
-            new[] { CreateSpec(DictSlot.STCharacters, "汉", "例") });
+            customDictSpecs: new[] { CreateSpec(DictSlot.STCharacters, "汉", "例") });
         var globalDictionary = DictionaryLib.FromDicts();
         DictionaryLib.WithCustomDicts(
             globalDictionary,
