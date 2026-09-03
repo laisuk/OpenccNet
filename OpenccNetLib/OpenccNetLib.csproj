@@ -29,7 +29,11 @@
             - Embedded the built-in CJK compatibility, Unicode compatibility, and DeTofu tables, removing filesystem dependencies from the default normalization and DeTofu paths.
             - Built-in conversion, compatibility normalization, and DeToFu data are now loaded directly from assembly resources, improving deployment compatibility including Blazor WebAssembly.
             - Migrated dictionary JSON and Zstd-JSON serialization to source-generated System.Text.Json metadata, improving trimming and NativeAOT compatibility while preserving existing dictionary formats and derived lookup metadata.
+            - Migrated dictionary CBOR serialization from PeterO.Cbor object mapping to an explicit System.Formats.Cbor reader/writer implementation, removing reflection-based object mapping and improving trimming and NativeAOT compatibility.
+            - Preserved the established CBOR wire format, including precomputed length and starter-mask metadata; existing CBOR dictionaries remain readable and newly generated dictionaries remain compatible with older PeterO.Cbor-based OpenccNetLib versions.
+            - The new CBOR loader accepts both legacy camelCase and corresponding PascalCase metadata field names and rebuilds missing derived metadata when required.
             - Fixed built-in Zstd dictionary loading and conversion in NativeAOT applications where reflection-based System.Text.Json serialization is disabled.
+            - Removed CBOR trimming and NativeAOT analysis warnings previously caused by the reflection-capable PeterO.Cbor object-mapping implementation.
             - Added public independent DictionaryLib.FromZstd(string) and DictionaryLib.FromZstdBytes(byte[]) loading APIs; FromZstd(string) requires an explicit caller-supplied external file.
             - Added Opencc constructors accepting an explicit DictionaryMaxlength through an instance-owned conversion-plan cache.
             - Added constructor-time frozen Opencc instances with immutable configuration and private plan caches based on DictionaryLib.Provider.
@@ -57,7 +61,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="PeterO.Cbor" Version="4.5.5"/>
+        <PackageReference Include="System.Formats.Cbor" Version="8.0.0"/>
         <PackageReference Include="System.Memory" Version="4.6.3"/>
         <PackageReference Include="System.Text.Json" Version="8.0.6"/>
         <PackageReference Include="ZstdSharp.Port" Version="0.8.8"/>

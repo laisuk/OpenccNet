@@ -7,7 +7,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using PeterO.Cbor;
+using System.Formats.Cbor;
 using ZstdSharp;
 
 namespace OpenccNetLib
@@ -1605,73 +1605,633 @@ namespace OpenccNetLib
                 BuildStarterLenMask(d);
         }
 
+        #region CBOR Serialization
+
         /// <summary>
-        /// Loads <see cref="DictionaryMaxlength"/> from a CBOR file and ensures
-        /// all derived dictionary metadata is present before returning the instance.
+        /// Number of dictionary slots written to the top-level CBOR map.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The CBOR schema intentionally mirrors the public snake_case properties on
+        /// <see cref="DictionaryMaxlength"/>. Keeping this count explicit makes the
+        /// writer emit a definite-length map, which is compact and avoids buffering or
+        /// reflection-based object discovery.
+        /// </para>
+        /// <para>
+        /// When a new persistent dictionary slot is added to <see cref="DictionaryMaxlength"/>,
+        /// update this value together with <see cref="WriteDictionaryMaxlengthCbor"/> and
+        /// <see cref="ReadDictionaryMaxlengthCbor"/>.
+        /// </para>
+        /// </remarks>
+        private const int CborDictionarySlotCount = 21;
+
+        /// <summary>
+        /// Number of fields persisted for each <see cref="DictWithMaxLength"/> CBOR object.
+        /// </summary>
+        /// <remarks>
+        /// The six fields deliberately include the precomputed lookup metadata rather
+        /// than serializing only <see cref="DictWithMaxLength.Dict"/>. In particular,
+        /// <see cref="DictWithMaxLength.StarterLenMask"/> can be expensive to rebuild for
+        /// large phrase dictionaries because reconstruction requires scanning every key.
+        /// Persisting the metadata moves that work to dictionary-build time and keeps
+        /// normal application startup on the fast hydration path.
+        /// </remarks>
+        private const int CborSlotFieldCount = 6;
+
+        /// <summary>
+        /// Loads a <see cref="DictionaryMaxlength"/> instance from a CBOR file using
+        /// an explicit, reflection-free CBOR reader.
         /// </summary>
         /// <param name="relativePath">
         /// Relative path under <see cref="AppContext.BaseDirectory"/> or an absolute
-        /// path to the CBOR file.
-        /// Default: <c>dicts/dictionary_maxlength.cbor</c>.
+        /// path to the CBOR file. Defaults to
+        /// <c>dicts/dictionary_maxlength.cbor</c>.
         /// </param>
-        /// <returns>The hydrated <see cref="DictionaryMaxlength"/> instance.</returns>
+        /// <returns>
+        /// A hydrated <see cref="DictionaryMaxlength"/> whose persisted acceleration
+        /// metadata is reused when present and rebuilt only when missing or incomplete.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This implementation intentionally does not use a CLR-object mapper. The CBOR
+        /// structure is decoded field-by-field with <see cref="CborReader"/>, which keeps
+        /// the path deterministic and NativeAOT/trimming friendly.
+        /// </para>
+        /// <para>
+        /// The reader accepts the legacy camelCase field names emitted by
+        /// PeterO.Cbor (<c>dict</c>, <c>maxLength</c>, <c>minLength</c>,
+        /// <c>lengthMask</c>, <c>longLengths</c>, and <c>starterLenMask</c>) as
+        /// well as the corresponding PascalCase forms. Unknown fields are skipped
+        /// so newer dictionary packs can remain forward-compatible with older readers.
+        /// </para>
+        /// <para>
+        /// After decoding, <see cref="EnsureDerivedMetadata"/> remains the compatibility
+        /// safety net for older or externally generated payloads that omit one or more
+        /// derived fields. Normal generated CBOR dictionaries should already contain all
+        /// metadata and therefore avoid rebuilding it at runtime.
+        /// </para>
+        /// </remarks>
         /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="relativePath"/> is null or empty.
+        /// Thrown when <paramref name="relativePath"/> is null, empty, or whitespace.
         /// </exception>
-        /// <exception cref="FileNotFoundException">If the CBOR file cannot be found.</exception>
-        /// <exception cref="IOException">If the CBOR file cannot be read.</exception>
-        public static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")
+        /// <exception cref="FileNotFoundException">
+        /// Thrown when the CBOR dictionary file cannot be found.
+        /// </exception>
+        /// <exception cref="CborContentException">
+        /// Thrown when the file contains malformed CBOR or an unexpected value type for
+        /// a known schema field.
+        /// </exception>
+        /// <exception cref="InvalidDataException">
+        /// Thrown when the root CBOR value is not a map or trailing data remains after
+        /// the dictionary payload.
+        /// </exception>
+        /// <exception cref="IOException">
+        /// Thrown when the file cannot be read.
+        /// </exception>
+        public static DictionaryMaxlength FromCbor(
+            string relativePath = "dicts/dictionary_maxlength.cbor")
         {
-            if (string.IsNullOrEmpty(relativePath))
-                throw new ArgumentException("Path must not be null or empty.", nameof(relativePath));
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                throw new ArgumentException(
+                    "Path must not be null or empty.",
+                    nameof(relativePath));
+            }
 
-            var baseDir = AppContext.BaseDirectory;
-            var fullPath = Path.Combine(baseDir, relativePath);
+            var fullPath = Path.IsPathRooted(relativePath)
+                ? relativePath
+                : Path.Combine(AppContext.BaseDirectory, relativePath);
 
             if (!File.Exists(fullPath))
                 throw new FileNotFoundException("CBOR dictionary file not found.", fullPath);
 
             var bytes = File.ReadAllBytes(fullPath);
-            // Decode and materialize the object graph
-            var cbor = CBORObject.DecodeFromBytes(bytes, CBOREncodeOptions.Default);
-            var instance = cbor.ToObject<DictionaryMaxlength>();
-
-            // Normalize older or externally-generated payloads that may not carry
-            // all derived lookup metadata required by the hot conversion paths.
-            return EnsureDerivedMetadata(instance);
+            return DeserializeCbor(bytes);
         }
 
         /// <summary>
-        /// Serializes the dictionary to CBOR format and saves it to a file.
+        /// Serializes a <see cref="DictionaryMaxlength"/> instance to CBOR and saves
+        /// the encoded bytes to a file.
         /// </summary>
-        /// <param name="path">The output file path.</param>
+        /// <param name="path">Destination CBOR file path.</param>
         /// <param name="dictionary">
-        /// Optional preloaded dictionary instance to serialize.
+        /// Optional preloaded dictionary instance. When <see langword="null"/>, the
+        /// dictionary is built from the default OpenCC text dictionary sources via
+        /// <see cref="FromDicts"/>.
         /// </param>
+        /// <remarks>
+        /// Serialization is performed explicitly with <see cref="CborWriter"/>. The
+        /// persisted schema includes all derived lookup metadata so applications can
+        /// hydrate the hot-path structures directly without rescanning dictionary keys.
+        /// </remarks>
         public static void SaveCbor(
             string path,
             DictionaryMaxlength dictionary = null)
         {
-            var instance = dictionary ?? FromDicts();
-
-            var cbor = CBORObject.FromObject(instance);
-            File.WriteAllBytes(path, cbor.EncodeToBytes());
+            File.WriteAllBytes(path, ToCborBytes(dictionary));
         }
 
         /// <summary>
-        /// Serializes the dictionary to CBOR format and returns the bytes.
+        /// Serializes a <see cref="DictionaryMaxlength"/> instance to CBOR and returns
+        /// the encoded bytes.
         /// </summary>
         /// <param name="dictionary">
-        /// Optional preloaded dictionary instance to serialize.
+        /// Optional preloaded dictionary instance. When <see langword="null"/>, the
+        /// dictionary is built from the default OpenCC text dictionary sources via
+        /// <see cref="FromDicts"/>.
         /// </param>
-        /// <returns>CBOR-encoded byte array.</returns>
+        /// <returns>
+        /// A CBOR payload containing all OpenCC dictionary slots and their precomputed
+        /// length/starter metadata.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The writer uses definite-length maps and arrays whenever their sizes are
+        /// known. No reflection, runtime property enumeration, or generic POCO mapping
+        /// is involved.
+        /// </para>
+        /// <para>
+        /// Field names intentionally match the historical CBOR object schema so that
+        /// existing dictionary packs remain readable by the new implementation and the
+        /// serialized contract stays aligned with the JSON representation.
+        /// </para>
+        /// </remarks>
         public static byte[] ToCborBytes(
             DictionaryMaxlength dictionary = null)
         {
-            return CBORObject
-                .FromObject(dictionary ?? FromDicts())
-                .EncodeToBytes();
+            var instance = dictionary ?? FromDicts();
+            var writer = new CborWriter(CborConformanceMode.Lax);
+
+            WriteDictionaryMaxlengthCbor(writer, instance);
+            return writer.Encode();
         }
+
+        /// <summary>
+        /// Deserializes a CBOR payload into <see cref="DictionaryMaxlength"/> and
+        /// restores any missing derived metadata.
+        /// </summary>
+        /// <param name="data">Complete CBOR dictionary payload.</param>
+        /// <returns>A hydrated and metadata-ready dictionary instance.</returns>
+        /// <remarks>
+        /// <para>
+        /// Lax conformance mode is used deliberately for compatibility with existing
+        /// PeterO.Cbor-generated dictionary files and externally generated CBOR that is
+        /// structurally valid but not necessarily canonical. The explicit schema reader
+        /// still validates the expected major types for known fields.
+        /// </para>
+        /// <para>
+        /// Unknown top-level slots and unknown per-slot fields are skipped. This makes
+        /// the decoder tolerant of additive schema evolution while preserving strict
+        /// handling of known data.
+        /// </para>
+        /// </remarks>
+        private static DictionaryMaxlength DeserializeCbor(byte[] data)
+        {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+
+            var reader = new CborReader(data, CborConformanceMode.Lax);
+
+            if (reader.PeekState() != CborReaderState.StartMap)
+            {
+                throw new InvalidDataException(
+                    "Invalid CBOR dictionary: root value must be a map.");
+            }
+
+            var instance = ReadDictionaryMaxlengthCbor(reader);
+
+            if (reader.BytesRemaining != 0)
+            {
+                throw new InvalidDataException(
+                    "Invalid CBOR dictionary: trailing data after root map.");
+            }
+
+            return EnsureDerivedMetadata(instance);
+        }
+
+        /// <summary>
+        /// Writes the complete <see cref="DictionaryMaxlength"/> object as a CBOR map.
+        /// </summary>
+        /// <param name="writer">Target CBOR writer.</param>
+        /// <param name="dictionary">Dictionary container to encode.</param>
+        /// <remarks>
+        /// The top-level names are a persistent wire contract and intentionally match
+        /// the snake_case property names exposed by <see cref="DictionaryMaxlength"/>.
+        /// They are written explicitly rather than derived from reflection or enum names
+        /// so a future source-code rename cannot silently change the serialized format.
+        /// </remarks>
+        private static void WriteDictionaryMaxlengthCbor(
+            CborWriter writer,
+            DictionaryMaxlength dictionary)
+        {
+            if (writer == null)
+                throw new ArgumentNullException(nameof(writer));
+
+            if (dictionary == null)
+                throw new ArgumentNullException(nameof(dictionary));
+
+            writer.WriteStartMap(CborDictionarySlotCount);
+
+            WriteCborSlot(writer, "st_characters", dictionary.st_characters);
+            WriteCborSlot(writer, "st_phrases", dictionary.st_phrases);
+            WriteCborSlot(writer, "ts_characters", dictionary.ts_characters);
+            WriteCborSlot(writer, "ts_phrases", dictionary.ts_phrases);
+
+            WriteCborSlot(writer, "tw_phrases", dictionary.tw_phrases);
+            WriteCborSlot(writer, "tw_phrases_rev", dictionary.tw_phrases_rev);
+            WriteCborSlot(writer, "tw_variants", dictionary.tw_variants);
+            WriteCborSlot(writer, "tw_variants_phrases", dictionary.tw_variants_phrases);
+            WriteCborSlot(writer, "tw_variants_rev", dictionary.tw_variants_rev);
+            WriteCborSlot(writer, "tw_variants_rev_phrases", dictionary.tw_variants_rev_phrases);
+
+            WriteCborSlot(writer, "hk_phrases", dictionary.hk_phrases);
+            WriteCborSlot(writer, "hk_phrases_rev", dictionary.hk_phrases_rev);
+            WriteCborSlot(writer, "hk_variants", dictionary.hk_variants);
+            WriteCborSlot(writer, "hk_variants_phrases", dictionary.hk_variants_phrases);
+            WriteCborSlot(writer, "hk_variants_rev", dictionary.hk_variants_rev);
+            WriteCborSlot(writer, "hk_variants_rev_phrases", dictionary.hk_variants_rev_phrases);
+
+            WriteCborSlot(writer, "jps_characters", dictionary.jps_characters);
+            WriteCborSlot(writer, "jps_characters_rev", dictionary.jps_characters_rev);
+            WriteCborSlot(writer, "jps_phrases", dictionary.jps_phrases);
+
+            WriteCborSlot(writer, "st_punctuations", dictionary.st_punctuations);
+            WriteCborSlot(writer, "ts_punctuations", dictionary.ts_punctuations);
+
+            writer.WriteEndMap();
+        }
+
+        /// <summary>
+        /// Reads the top-level CBOR dictionary map into a new
+        /// <see cref="DictionaryMaxlength"/> instance.
+        /// </summary>
+        /// <param name="reader">Reader positioned at the start of the root map.</param>
+        /// <returns>The decoded dictionary container.</returns>
+        /// <remarks>
+        /// Unknown slot names are skipped rather than rejected. Known slot names are
+        /// assigned explicitly, preserving the serialized schema independently of CLR
+        /// metadata or property ordering.
+        /// </remarks>
+        private static DictionaryMaxlength ReadDictionaryMaxlengthCbor(CborReader reader)
+        {
+            var instance = new DictionaryMaxlength();
+
+            reader.ReadStartMap();
+
+            while (reader.PeekState() != CborReaderState.EndMap)
+            {
+                var slotName = reader.ReadTextString();
+
+                switch (slotName)
+                {
+                    case "st_characters": instance.st_characters = ReadCborSlot(reader); break;
+                    case "st_phrases": instance.st_phrases = ReadCborSlot(reader); break;
+                    case "ts_characters": instance.ts_characters = ReadCborSlot(reader); break;
+                    case "ts_phrases": instance.ts_phrases = ReadCborSlot(reader); break;
+
+                    case "tw_phrases": instance.tw_phrases = ReadCborSlot(reader); break;
+                    case "tw_phrases_rev": instance.tw_phrases_rev = ReadCborSlot(reader); break;
+                    case "tw_variants": instance.tw_variants = ReadCborSlot(reader); break;
+                    case "tw_variants_phrases": instance.tw_variants_phrases = ReadCborSlot(reader); break;
+                    case "tw_variants_rev": instance.tw_variants_rev = ReadCborSlot(reader); break;
+                    case "tw_variants_rev_phrases": instance.tw_variants_rev_phrases = ReadCborSlot(reader); break;
+
+                    case "hk_phrases": instance.hk_phrases = ReadCborSlot(reader); break;
+                    case "hk_phrases_rev": instance.hk_phrases_rev = ReadCborSlot(reader); break;
+                    case "hk_variants": instance.hk_variants = ReadCborSlot(reader); break;
+                    case "hk_variants_phrases": instance.hk_variants_phrases = ReadCborSlot(reader); break;
+                    case "hk_variants_rev": instance.hk_variants_rev = ReadCborSlot(reader); break;
+                    case "hk_variants_rev_phrases": instance.hk_variants_rev_phrases = ReadCborSlot(reader); break;
+
+                    case "jps_characters": instance.jps_characters = ReadCborSlot(reader); break;
+                    case "jps_characters_rev": instance.jps_characters_rev = ReadCborSlot(reader); break;
+                    case "jps_phrases": instance.jps_phrases = ReadCborSlot(reader); break;
+
+                    case "st_punctuations": instance.st_punctuations = ReadCborSlot(reader); break;
+                    case "ts_punctuations": instance.ts_punctuations = ReadCborSlot(reader); break;
+
+                    default:
+                        reader.SkipValue();
+                        break;
+                }
+            }
+
+            reader.ReadEndMap();
+            return instance;
+        }
+
+        /// <summary>
+        /// Writes one <see cref="DictWithMaxLength"/> slot to the parent CBOR map.
+        /// </summary>
+        /// <param name="writer">Target CBOR writer.</param>
+        /// <param name="slotName">Persistent snake_case slot name.</param>
+        /// <param name="slot">Dictionary slot to encode.</param>
+        /// <remarks>
+        /// Each slot persists both the source mapping and all acceleration metadata
+        /// using the historical PeterO.Cbor camelCase wire names:
+        /// <c>dict</c>, <c>maxLength</c>, <c>minLength</c>, <c>lengthMask</c>,
+        /// <c>longLengths</c>, and <c>starterLenMask</c>. This preserves legacy
+        /// dictionary-pack compatibility while avoiding expensive key scans during
+        /// normal hydration.
+        /// </remarks>
+        private static void WriteCborSlot(
+            CborWriter writer,
+            string slotName,
+            DictWithMaxLength slot)
+        {
+            slot ??= new DictWithMaxLength();
+
+            writer.WriteTextString(slotName);
+            writer.WriteStartMap(CborSlotFieldCount);
+
+            writer.WriteTextString("dict");
+            WriteStringDictionary(writer, slot.Dict);
+
+            writer.WriteTextString("maxLength");
+            writer.WriteInt32(slot.MaxLength);
+
+            writer.WriteTextString("minLength");
+            writer.WriteInt32(slot.MinLength);
+
+            writer.WriteTextString("lengthMask");
+            writer.WriteUInt64(slot.LengthMask);
+
+            writer.WriteTextString("longLengths");
+            WriteLongLengths(writer, slot.LongLengths);
+
+            writer.WriteTextString("starterLenMask");
+            WriteStarterLenMask(writer, slot.StarterLenMask);
+
+            writer.WriteEndMap();
+        }
+
+        /// <summary>
+        /// Reads one <see cref="DictWithMaxLength"/> object from CBOR.
+        /// </summary>
+        /// <param name="reader">Reader positioned at the slot value.</param>
+        /// <returns>A decoded dictionary slot.</returns>
+        /// <remarks>
+        /// Missing fields retain their normal CLR defaults and are repaired later by
+        /// <see cref="EnsureDerivedMetadata"/>. Unknown additive fields are skipped,
+        /// allowing newer dictionary builders to extend the slot schema without making
+        /// older readers unusable.
+        /// </remarks>
+        private static DictWithMaxLength ReadCborSlot(CborReader reader)
+        {
+            if (reader.PeekState() == CborReaderState.Null)
+            {
+                reader.ReadNull();
+                return new DictWithMaxLength();
+            }
+
+            var slot = new DictWithMaxLength();
+
+            reader.ReadStartMap();
+
+            while (reader.PeekState() != CborReaderState.EndMap)
+            {
+                var fieldName = reader.ReadTextString();
+
+                switch (fieldName)
+                {
+                    case "dict":
+                    case "Dict":
+                        slot.Dict = ReadStringDictionary(reader);
+                        break;
+
+                    case "maxLength":
+                    case "MaxLength":
+                        slot.MaxLength = ReadNullableInt32(reader);
+                        break;
+
+                    case "minLength":
+                    case "MinLength":
+                        slot.MinLength = ReadNullableInt32(reader);
+                        break;
+
+                    case "lengthMask":
+                    case "LengthMask":
+                        slot.LengthMask = ReadNullableUInt64(reader);
+                        break;
+
+                    case "longLengths":
+                    case "LongLengths":
+                        slot.LongLengths = ReadLongLengths(reader);
+                        break;
+
+                    case "starterLenMask":
+                    case "StarterLenMask":
+                        slot.StarterLenMask = ReadStarterLenMask(reader);
+                        break;
+
+                    default:
+                        reader.SkipValue();
+                        break;
+                }
+            }
+
+            reader.ReadEndMap();
+            return slot;
+        }
+
+        /// <summary>
+        /// Writes a string-to-string dictionary as a definite-length CBOR map.
+        /// </summary>
+        /// <param name="writer">Target CBOR writer.</param>
+        /// <param name="dictionary">Dictionary to encode; null is encoded as an empty map.</param>
+        private static void WriteStringDictionary(
+            CborWriter writer,
+            Dictionary<string, string> dictionary)
+        {
+            dictionary ??= new Dictionary<string, string>(StringComparer.Ordinal);
+
+            writer.WriteStartMap(dictionary.Count);
+
+            foreach (var pair in dictionary)
+            {
+                writer.WriteTextString(pair.Key);
+                writer.WriteTextString(pair.Value ?? string.Empty);
+            }
+
+            writer.WriteEndMap();
+        }
+
+        /// <summary>
+        /// Reads a CBOR map containing string keys and string values.
+        /// </summary>
+        /// <param name="reader">Reader positioned at the map or a CBOR null.</param>
+        /// <returns>
+        /// A new dictionary using <see cref="StringComparer.Ordinal"/>. Duplicate map
+        /// keys, when accepted by lax CBOR conformance, use last-value-wins semantics.
+        /// </returns>
+        private static Dictionary<string, string> ReadStringDictionary(CborReader reader)
+        {
+            if (reader.PeekState() == CborReaderState.Null)
+            {
+                reader.ReadNull();
+                return new Dictionary<string, string>(StringComparer.Ordinal);
+            }
+
+            var declaredCount = reader.ReadStartMap();
+            var dictionary = declaredCount.HasValue
+                ? new Dictionary<string, string>(declaredCount.Value, StringComparer.Ordinal)
+                : new Dictionary<string, string>(StringComparer.Ordinal);
+
+            while (reader.PeekState() != CborReaderState.EndMap)
+            {
+                var key = reader.ReadTextString();
+                var value = reader.ReadTextString();
+                dictionary[key] = value;
+            }
+
+            reader.ReadEndMap();
+            return dictionary;
+        }
+
+        /// <summary>
+        /// Writes the set of key lengths greater than 64 UTF-16 code units.
+        /// </summary>
+        /// <param name="writer">Target CBOR writer.</param>
+        /// <param name="longLengths">
+        /// Optional long-length set. A null value is encoded as CBOR null to preserve
+        /// the historical object schema and avoid allocating an empty collection.
+        /// </param>
+        private static void WriteLongLengths(CborWriter writer, HashSet<int> longLengths)
+        {
+            if (longLengths == null)
+            {
+                writer.WriteNull();
+                return;
+            }
+
+            writer.WriteStartArray(longLengths.Count);
+
+            foreach (var length in longLengths)
+                writer.WriteInt32(length);
+
+            writer.WriteEndArray();
+        }
+
+        /// <summary>
+        /// Reads the optional set of key lengths greater than 64 UTF-16 code units.
+        /// </summary>
+        /// <param name="reader">Reader positioned at a CBOR array or null.</param>
+        /// <returns>The decoded set, or <see langword="null"/> when encoded as null.</returns>
+        private static HashSet<int> ReadLongLengths(CborReader reader)
+        {
+            if (reader.PeekState() == CborReaderState.Null)
+            {
+                reader.ReadNull();
+                return null;
+            }
+
+            _ = reader.ReadStartArray();
+            var lengths = new HashSet<int>();
+
+            while (reader.PeekState() != CborReaderState.EndArray)
+                lengths.Add(reader.ReadInt32());
+
+            reader.ReadEndArray();
+            return lengths;
+        }
+
+        /// <summary>
+        /// Writes the precomputed starter-to-length-mask index used by the conversion
+        /// hot path.
+        /// </summary>
+        /// <param name="writer">Target CBOR writer.</param>
+        /// <param name="starterLenMask">
+        /// Optional starter index. A null value is encoded as CBOR null so empty slots
+        /// remain allocation-free until metadata is actually required.
+        /// </param>
+        /// <remarks>
+        /// Persisting this map is intentional even though it can be rebuilt from
+        /// <see cref="DictWithMaxLength.Dict"/>. Rebuilding requires a complete scan of
+        /// the slot's keys and starter extraction, which is undesirable on every normal
+        /// application startup for large phrase dictionaries.
+        /// </remarks>
+        private static void WriteStarterLenMask(
+            CborWriter writer,
+            Dictionary<string, ulong> starterLenMask)
+        {
+            if (starterLenMask == null)
+            {
+                writer.WriteNull();
+                return;
+            }
+
+            writer.WriteStartMap(starterLenMask.Count);
+
+            foreach (var pair in starterLenMask)
+            {
+                writer.WriteTextString(pair.Key);
+                writer.WriteUInt64(pair.Value);
+            }
+
+            writer.WriteEndMap();
+        }
+
+        /// <summary>
+        /// Reads the precomputed starter-to-length-mask index from CBOR.
+        /// </summary>
+        /// <param name="reader">Reader positioned at a CBOR map or null.</param>
+        /// <returns>
+        /// A dictionary using <see cref="StringComparer.Ordinal"/>, or
+        /// <see langword="null"/> when the field was encoded as null.
+        /// </returns>
+        private static Dictionary<string, ulong> ReadStarterLenMask(CborReader reader)
+        {
+            if (reader.PeekState() == CborReaderState.Null)
+            {
+                reader.ReadNull();
+                return null;
+            }
+
+            var declaredCount = reader.ReadStartMap();
+            var map = declaredCount.HasValue
+                ? new Dictionary<string, ulong>(declaredCount.Value, StringComparer.Ordinal)
+                : new Dictionary<string, ulong>(StringComparer.Ordinal);
+
+            while (reader.PeekState() != CborReaderState.EndMap)
+            {
+                var starter = reader.ReadTextString();
+                map[starter] = reader.ReadUInt64();
+            }
+
+            reader.ReadEndMap();
+            return map;
+        }
+
+        /// <summary>
+        /// Reads an optional integer field used by historical or externally generated
+        /// CBOR dictionary payloads.
+        /// </summary>
+        /// <param name="reader">Reader positioned at an integer or null.</param>
+        /// <returns>The decoded value, or zero when the CBOR value is null.</returns>
+        private static int ReadNullableInt32(CborReader reader)
+        {
+            if (reader.PeekState() != CborReaderState.Null)
+                return reader.ReadInt32();
+
+            reader.ReadNull();
+            return 0;
+        }
+
+        /// <summary>
+        /// Reads an optional unsigned 64-bit metadata field.
+        /// </summary>
+        /// <param name="reader">Reader positioned at an unsigned integer or null.</param>
+        /// <returns>The decoded value, or zero when the CBOR value is null.</returns>
+        private static ulong ReadNullableUInt64(CborReader reader)
+        {
+            if (reader.PeekState() != CborReaderState.Null)
+                return reader.ReadUInt64();
+
+            reader.ReadNull();
+            return 0UL;
+        }
+
+        #endregion // CBOR Serialization
 
         /// <summary>
         /// Serializes the dictionary to JSON, compresses it with Zstd, and saves to a file.

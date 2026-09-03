@@ -1,6 +1,6 @@
-﻿using System.Text;
+﻿using System.Formats.Cbor;
+using System.Text;
 using System.Text.Json;
-using PeterO.Cbor;
 using OpenccNetLib;
 
 namespace OpenccNetTests;
@@ -298,44 +298,97 @@ public class DictionaryLibTests
 
 
     [TestMethod]
-    [DoNotParallelize]
-    public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility()
+[DoNotParallelize]
+public void TestFromCbor_RebuildsMissingDerivedMetadataForBackwardCompatibility()
+{
+    var legacyPath = Path.Combine(OutputDir, "legacy_dict_missing_metadata.cbor");
+    var currentBytes = DictionaryLib.ToCborBytes();
+
+    var reader = new CborReader(currentBytes, CborConformanceMode.Lax);
+    var writer = new CborWriter(CborConformanceMode.Lax);
+
+    writer.WriteStartMap(reader.ReadStartMap());
+
+    while (reader.PeekState() != CborReaderState.EndMap)
     {
-        var legacyPath = Path.Combine(OutputDir, "legacy_dict_missing_metadata.cbor");
-        var currentBytes = DictionaryLib.ToCborBytes();
-        var root = CBORObject.DecodeFromBytes(currentBytes, CBOREncodeOptions.Default);
+        var slotName = reader.ReadTextString();
+        writer.WriteTextString(slotName);
 
-        foreach (var key in root.Keys)
+        _ = reader.ReadStartMap();
+
+        // We intentionally remove five derived metadata fields and retain only
+        // "dict", so the loader must reconstruct the missing metadata.
+        writer.WriteStartMap(1);
+
+        while (reader.PeekState() != CborReaderState.EndMap)
         {
-            var dictObject = root[key];
-            dictObject.Remove(CBORObject.FromObject("maxLength"));
-            dictObject.Remove(CBORObject.FromObject("minLength"));
-            dictObject.Remove(CBORObject.FromObject("lengthMask"));
-            dictObject.Remove(CBORObject.FromObject("longLengths"));
-            dictObject.Remove(CBORObject.FromObject("starterLenMask"));
+            var fieldName = reader.ReadTextString();
+
+            if (fieldName == "dict" || fieldName == "Dict")
+            {
+                writer.WriteTextString("dict");
+
+                var dictLength = reader.ReadStartMap();
+                writer.WriteStartMap(dictLength);
+
+                while (reader.PeekState() != CborReaderState.EndMap)
+                {
+                    writer.WriteTextString(reader.ReadTextString());
+                    writer.WriteTextString(reader.ReadTextString());
+                }
+
+                reader.ReadEndMap();
+                writer.WriteEndMap();
+            }
+            else
+            {
+                reader.SkipValue();
+            }
         }
 
-        File.WriteAllBytes(legacyPath, root.EncodeToBytes());
-
-        var loaded = DictionaryLib.FromCbor(legacyPath);
-        Assert.IsNotNull(loaded);
-        Assert.IsGreaterThan(0, loaded.st_characters.MaxLength, "MaxLength should be rebuilt for legacy CBOR.");
-        Assert.IsGreaterThan(0, loaded.st_characters.MinLength, "MinLength should be rebuilt for legacy CBOR.");
-        Assert.AreNotEqual((ulong)0, loaded.st_characters.LengthMask, "LengthMask should be rebuilt for legacy CBOR.");
-        Assert.IsTrue(loaded.st_characters.StarterLenMask is { Count: > 0 },
-            "StarterLenMask should be rebuilt for legacy CBOR.");
-
-        Opencc.UseCustomDictionary(loaded);
-        try
-        {
-            var opencc = new Opencc("s2t");
-            Assert.AreEqual("漢字", opencc.Convert("汉字"));
-        }
-        finally
-        {
-            ConversionPlanCache.ResetProvider();
-        }
+        reader.ReadEndMap();
+        writer.WriteEndMap();
     }
+
+    reader.ReadEndMap();
+    writer.WriteEndMap();
+
+    File.WriteAllBytes(legacyPath, writer.Encode());
+
+    var loaded = DictionaryLib.FromCbor(legacyPath);
+
+    Assert.IsNotNull(loaded);
+    Assert.IsGreaterThan(
+        0,
+        loaded.st_characters.MaxLength,
+        "MaxLength should be rebuilt for legacy CBOR.");
+
+    Assert.IsGreaterThan(
+        0,
+        loaded.st_characters.MinLength,
+        "MinLength should be rebuilt for legacy CBOR.");
+
+    Assert.AreNotEqual(
+        (ulong)0,
+        loaded.st_characters.LengthMask,
+        "LengthMask should be rebuilt for legacy CBOR.");
+
+    Assert.IsTrue(
+        loaded.st_characters.StarterLenMask is { Count: > 0 },
+        "StarterLenMask should be rebuilt for legacy CBOR.");
+
+    Opencc.UseCustomDictionary(loaded);
+
+    try
+    {
+        var opencc = new Opencc("s2t");
+        Assert.AreEqual("漢字", opencc.Convert("汉字"));
+    }
+    finally
+    {
+        ConversionPlanCache.ResetProvider();
+    }
+}
 
     [TestMethod]
     public void TestSerialization()
