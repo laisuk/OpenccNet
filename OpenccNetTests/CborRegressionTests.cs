@@ -48,17 +48,35 @@ public class CborRegressionTests
         var source = CreateSmallDictionary();
         var loaded = LoadFromBytes(DictionaryLib.ToCborBytes(source));
 
-        CollectionAssert.AreEquivalent(source.st_characters.Dict, loaded.st_characters.Dict);
+        Assert.AreSequenceEqual(source.st_characters.Dict, loaded.st_characters.Dict, SequenceOrder.InAnyOrder);
         Assert.AreEqual(source.st_characters.MaxLength, loaded.st_characters.MaxLength);
         Assert.AreEqual(source.st_characters.MinLength, loaded.st_characters.MinLength);
         Assert.AreEqual(source.st_characters.LengthMask, loaded.st_characters.LengthMask);
-        CollectionAssert.AreEquivalent(
-            source.st_characters.LongLengths!.ToArray(),
-            loaded.st_characters.LongLengths!.ToArray());
-        CollectionAssert.AreEquivalent(
-            source.st_characters.StarterLenMask,
-            loaded.st_characters.StarterLenMask);
+        Assert.AreSequenceEqual(
+            source.st_characters.LongLengths!.ToArray(), loaded.st_characters.LongLengths!.ToArray(), SequenceOrder.InAnyOrder);
+        Assert.AreSequenceEqual(
+            source.st_characters.StarterLenMask, loaded.st_characters.StarterLenMask, SequenceOrder.InAnyOrder);
         Assert.AreEqual("漢字", new Opencc(OpenccConfig.S2T, loaded).Convert("汉字"));
+    }
+
+    [TestMethod]
+    public void SaveCbor_WritesSamePayloadAsToCborBytes()
+    {
+        var source = CreateSmallDictionary();
+        var expected = DictionaryLib.ToCborBytes(source);
+        var path = Path.Combine(
+            Path.GetTempPath(),
+            $"OpenccNetTests_{Guid.NewGuid():N}.cbor");
+
+        try
+        {
+            DictionaryLib.SaveCbor(path, source);
+            Assert.AreSequenceEqual(expected, File.ReadAllBytes(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [TestMethod]
@@ -87,7 +105,7 @@ public class CborRegressionTests
             }
 
             reader.ReadEndMap();
-            CollectionAssert.AreEqual(CamelCaseSlotFields, actualFields);
+            Assert.AreSequenceEqual(CamelCaseSlotFields, actualFields);
             return;
         }
 
@@ -140,7 +158,7 @@ public class CborRegressionTests
                 FieldNameCasing.CamelCase,
                 includeRequiredSlot: false)));
 
-        StringAssert.Contains(exception.Message, "jps_characters_rev");
+        Assert.Contains("jps_characters_rev", exception.Message);
     }
 
     private static DictionaryMaxlength CreateSmallDictionary()

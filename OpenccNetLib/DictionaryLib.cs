@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -1728,7 +1729,22 @@ namespace OpenccNetLib
             string path,
             DictionaryMaxlength dictionary = null)
         {
-            File.WriteAllBytes(path, ToCborBytes(dictionary));
+            var instance = dictionary ?? FromDicts();
+            var writer = new CborWriter(CborConformanceMode.Lax);
+
+            WriteDictionaryMaxlengthCbor(writer, instance);
+
+            var buffer = ArrayPool<byte>.Shared.Rent(writer.BytesWritten);
+            try
+            {
+                var bytesWritten = writer.Encode(buffer);
+                using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                stream.Write(buffer, 0, bytesWritten);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
         /// <summary>
@@ -1884,31 +1900,31 @@ namespace OpenccNetLib
 
                 switch (slotName)
                 {
-                    case "st_characters": instance.st_characters = ReadCborSlot(reader); break;
-                    case "st_phrases": instance.st_phrases = ReadCborSlot(reader); break;
-                    case "ts_characters": instance.ts_characters = ReadCborSlot(reader); break;
-                    case "ts_phrases": instance.ts_phrases = ReadCborSlot(reader); break;
+                    case "st_characters": ReadCborSlot(reader, instance.st_characters); break;
+                    case "st_phrases": ReadCborSlot(reader, instance.st_phrases); break;
+                    case "ts_characters": ReadCborSlot(reader, instance.ts_characters); break;
+                    case "ts_phrases": ReadCborSlot(reader, instance.ts_phrases); break;
 
-                    case "tw_phrases": instance.tw_phrases = ReadCborSlot(reader); break;
-                    case "tw_phrases_rev": instance.tw_phrases_rev = ReadCborSlot(reader); break;
-                    case "tw_variants": instance.tw_variants = ReadCborSlot(reader); break;
-                    case "tw_variants_phrases": instance.tw_variants_phrases = ReadCborSlot(reader); break;
-                    case "tw_variants_rev": instance.tw_variants_rev = ReadCborSlot(reader); break;
-                    case "tw_variants_rev_phrases": instance.tw_variants_rev_phrases = ReadCborSlot(reader); break;
+                    case "tw_phrases": ReadCborSlot(reader, instance.tw_phrases); break;
+                    case "tw_phrases_rev": ReadCborSlot(reader, instance.tw_phrases_rev); break;
+                    case "tw_variants": ReadCborSlot(reader, instance.tw_variants); break;
+                    case "tw_variants_phrases": ReadCborSlot(reader, instance.tw_variants_phrases); break;
+                    case "tw_variants_rev": ReadCborSlot(reader, instance.tw_variants_rev); break;
+                    case "tw_variants_rev_phrases": ReadCborSlot(reader, instance.tw_variants_rev_phrases); break;
 
-                    case "hk_phrases": instance.hk_phrases = ReadCborSlot(reader); break;
-                    case "hk_phrases_rev": instance.hk_phrases_rev = ReadCborSlot(reader); break;
-                    case "hk_variants": instance.hk_variants = ReadCborSlot(reader); break;
-                    case "hk_variants_phrases": instance.hk_variants_phrases = ReadCborSlot(reader); break;
-                    case "hk_variants_rev": instance.hk_variants_rev = ReadCborSlot(reader); break;
-                    case "hk_variants_rev_phrases": instance.hk_variants_rev_phrases = ReadCborSlot(reader); break;
+                    case "hk_phrases": ReadCborSlot(reader, instance.hk_phrases); break;
+                    case "hk_phrases_rev": ReadCborSlot(reader, instance.hk_phrases_rev); break;
+                    case "hk_variants": ReadCborSlot(reader, instance.hk_variants); break;
+                    case "hk_variants_phrases": ReadCborSlot(reader, instance.hk_variants_phrases); break;
+                    case "hk_variants_rev": ReadCborSlot(reader, instance.hk_variants_rev); break;
+                    case "hk_variants_rev_phrases": ReadCborSlot(reader, instance.hk_variants_rev_phrases); break;
 
-                    case "jps_characters": instance.jps_characters = ReadCborSlot(reader); break;
-                    case "jps_characters_rev": instance.jps_characters_rev = ReadCborSlot(reader); break;
-                    case "jps_phrases": instance.jps_phrases = ReadCborSlot(reader); break;
+                    case "jps_characters": ReadCborSlot(reader, instance.jps_characters); break;
+                    case "jps_characters_rev": ReadCborSlot(reader, instance.jps_characters_rev); break;
+                    case "jps_phrases": ReadCborSlot(reader, instance.jps_phrases); break;
 
-                    case "st_punctuations": instance.st_punctuations = ReadCborSlot(reader); break;
-                    case "ts_punctuations": instance.ts_punctuations = ReadCborSlot(reader); break;
+                    case "st_punctuations": ReadCborSlot(reader, instance.st_punctuations); break;
+                    case "ts_punctuations": ReadCborSlot(reader, instance.ts_punctuations); break;
 
                     default:
                         reader.SkipValue();
@@ -1969,22 +1985,27 @@ namespace OpenccNetLib
         /// Reads one <see cref="DictWithMaxLength"/> object from CBOR.
         /// </summary>
         /// <param name="reader">Reader positioned at the slot value.</param>
-        /// <returns>A decoded dictionary slot.</returns>
+        /// <param name="slot">Existing destination slot to populate.</param>
         /// <remarks>
         /// Missing fields retain their normal CLR defaults and are repaired later by
         /// <see cref="EnsureDerivedMetadata"/>. Unknown additive fields are skipped,
         /// allowing newer dictionary builders to extend the slot schema without making
         /// older readers unusable.
         /// </remarks>
-        private static DictWithMaxLength ReadCborSlot(CborReader reader)
+        private static void ReadCborSlot(CborReader reader, DictWithMaxLength slot)
         {
+            slot.Dict = null;
+            slot.MaxLength = 0;
+            slot.MinLength = 0;
+            slot.LengthMask = 0UL;
+            slot.LongLengths = null;
+            slot.StarterLenMask = null;
+
             if (reader.PeekState() == CborReaderState.Null)
             {
                 reader.ReadNull();
-                return new DictWithMaxLength();
+                return;
             }
-
-            var slot = new DictWithMaxLength();
 
             reader.ReadStartMap();
 
@@ -2031,7 +2052,6 @@ namespace OpenccNetLib
             }
 
             reader.ReadEndMap();
-            return slot;
         }
 
         /// <summary>
@@ -2043,7 +2063,12 @@ namespace OpenccNetLib
             CborWriter writer,
             Dictionary<string, string> dictionary)
         {
-            dictionary ??= new Dictionary<string, string>(StringComparer.Ordinal);
+            if (dictionary == null)
+            {
+                writer.WriteStartMap(0);
+                writer.WriteEndMap();
+                return;
+            }
 
             writer.WriteStartMap(dictionary.Count);
 
@@ -2077,11 +2102,23 @@ namespace OpenccNetLib
                 ? new Dictionary<string, string>(declaredCount.Value, StringComparer.Ordinal)
                 : new Dictionary<string, string>(StringComparer.Ordinal);
 
-            while (reader.PeekState() != CborReaderState.EndMap)
+            if (declaredCount.HasValue)
             {
-                var key = reader.ReadTextString();
-                var value = reader.ReadTextString();
-                dictionary[key] = value;
+                for (var i = 0; i < declaredCount.Value; i++)
+                {
+                    var key = reader.ReadTextString();
+                    var value = reader.ReadTextString();
+                    dictionary[key] = value;
+                }
+            }
+            else
+            {
+                while (reader.PeekState() != CborReaderState.EndMap)
+                {
+                    var key = reader.ReadTextString();
+                    var value = reader.ReadTextString();
+                    dictionary[key] = value;
+                }
             }
 
             reader.ReadEndMap();
@@ -2125,11 +2162,19 @@ namespace OpenccNetLib
                 return null;
             }
 
-            _ = reader.ReadStartArray();
+            var declaredCount = reader.ReadStartArray();
             var lengths = new HashSet<int>();
 
-            while (reader.PeekState() != CborReaderState.EndArray)
-                lengths.Add(reader.ReadInt32());
+            if (declaredCount.HasValue)
+            {
+                for (var i = 0; i < declaredCount.Value; i++)
+                    lengths.Add(reader.ReadInt32());
+            }
+            else
+            {
+                while (reader.PeekState() != CborReaderState.EndArray)
+                    lengths.Add(reader.ReadInt32());
+            }
 
             reader.ReadEndArray();
             return lengths;
@@ -2192,10 +2237,21 @@ namespace OpenccNetLib
                 ? new Dictionary<string, ulong>(declaredCount.Value, StringComparer.Ordinal)
                 : new Dictionary<string, ulong>(StringComparer.Ordinal);
 
-            while (reader.PeekState() != CborReaderState.EndMap)
+            if (declaredCount.HasValue)
             {
-                var starter = reader.ReadTextString();
-                map[starter] = reader.ReadUInt64();
+                for (var i = 0; i < declaredCount.Value; i++)
+                {
+                    var starter = reader.ReadTextString();
+                    map[starter] = reader.ReadUInt64();
+                }
+            }
+            else
+            {
+                while (reader.PeekState() != CborReaderState.EndMap)
+                {
+                    var starter = reader.ReadTextString();
+                    map[starter] = reader.ReadUInt64();
+                }
             }
 
             reader.ReadEndMap();

@@ -34,14 +34,18 @@
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(NativeAot)' == 'true'">
+        <PublishAot>true</PublishAot>
+    </PropertyGroup>
+
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
         <DebugSymbols>true</DebugSymbols>
         <DebugType>none</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="PdfPig" Version="0.1.16" />
-        <PackageReference Include="System.CommandLine" Version="2.0.11" />
+        <PackageReference Include="PdfPig" Version="0.1.16"/>
+        <PackageReference Include="System.CommandLine" Version="2.0.11"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -62,7 +66,7 @@
         </None>
 
         <None Update="Data\my_ts_dict.txt">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
 
