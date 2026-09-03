@@ -34,6 +34,14 @@
               Link="data\dictionary_maxlength.json"
               CopyToOutputDirectory="PreserveNewest"
               Pack="false"/>
+
+        <None Update="data\legacy\dictionary_maxlength.cbor">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+
+        <None Update="data\legacy\dictionary_maxlength_petero_legacy.cbor">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>
