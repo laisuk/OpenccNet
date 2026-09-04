@@ -1643,18 +1643,17 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 ##### `DictionaryLib` loading APIs
 
 - `static DictionaryMaxlength FromZstd(string relativePath)`
-  Loads an independent dictionary from a caller-supplied external filesystem Zstandard file. This does not change the
-  active provider.
+  Loads an independent dictionary from a caller-supplied external Zstandard-compressed JSON file. This does not change
+  the active provider or clear cached conversion plans.
 
-- `static DictionaryMaxlength FromZstdBytes(byte[] data)`
-  Loads an independent dictionary from caller-provided compressed bytes. This does not change the active provider.
+-
 
 `static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<DictSlot, string> overrides = null, IDictionary<DictSlot, string> appends = null)`
 Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
 
 - `static DictionaryMaxlength WithCustomDicts(DictionaryMaxlength dict, IEnumerable<CustomDictSpec> specs)`
-  Applies post-load customization to an already loaded dictionary provider. Each spec targets one `DictSlot`, reads
-  optional `Paths` and/or `Pairs`, and applies them with `CustomDictMode.Append` or `CustomDictMode.Override`.
+  Applies post-load customization to an already loaded dictionary. Each spec targets one `DictSlot`, reads optional
+  `Paths` and/or `Pairs`, and applies them with `CustomDictMode.Append` or `CustomDictMode.Override`.
 
 - `static DictionaryMaxlength FromJson(string relativePath = "dicts/dictionary_maxlength.json")`
   Loads and normalizes a JSON dictionary payload.
@@ -1664,9 +1663,6 @@ Loads OpenCC text dictionary files, optionally replacing slots with `overrides` 
 
 - `static DictionaryMaxlength FromCbor(string relativePath = "dicts/dictionary_maxlength.cbor")`
   Loads and normalizes a CBOR dictionary payload.
-
-- `static DictionaryMaxlength LoadJsonCompressed(string path)`
-  Loads and normalizes a Zstandard-compressed JSON dictionary payload.
 
 ##### `DictionaryLib` serialization APIs
 
@@ -1699,6 +1695,8 @@ DictionaryLib.SerializeToJson("./custom-dictionary.json", dict);
 DictionaryLib.SaveCbor("./custom-dictionary.cbor", dict);
 DictionaryLib.SaveJsonCompressed("./custom-dictionary.zstd", dict);
 ```
+
+The generated Zstandard dictionary can later be loaded with `DictionaryLib.FromZstd(path)`.
 
 ---
 

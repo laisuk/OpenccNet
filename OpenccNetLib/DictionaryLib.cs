@@ -149,7 +149,8 @@ namespace OpenccNetLib
     /// <para>
     /// Most consumers do not need to construct this type manually. Use
     /// <see cref="DictionaryLib.Provider"/> for the built-in dictionary,
-    /// <see cref="DictionaryLib.FromDicts(string,IDictionary{DictSlot,string},IDictionary{DictSlot,string})"/> or
+    /// <see cref="DictionaryLib.FromZstd(string)"/>,
+    /// <see cref="DictionaryLib.FromDicts(string,IDictionary{DictSlot,string},IDictionary{DictSlot,string})"/>, or
     /// <see cref="DictionaryLib.FromJson(string)"/> to load dictionary data, and
     /// <see cref="Opencc.UseCustomDictionary(DictionaryMaxlength)"/> to activate a
     /// custom dictionary set.
@@ -397,7 +398,6 @@ namespace OpenccNetLib
         /// <para>
         /// Unlike <see cref="New"/>, this method does not change the active
         /// global dictionary provider or clear cached conversion plans.
-        /// Use <see cref="FromZstdBytes(byte[])"/> to load compressed data already in memory.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentNullException">
@@ -437,40 +437,25 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads an independent dictionary from caller-provided Zstandard-compressed JSON data.
+        /// Decompresses, deserializes, and normalizes a Zstandard-compressed
+        /// <see cref="DictionaryMaxlength"/> JSON stream.
         /// </summary>
-        /// <param name="data">
-        /// Zstandard-compressed JSON dictionary data.
+        /// <param name="compressedStream">
+        /// Stream containing the Zstandard-compressed dictionary payload.
         /// </param>
         /// <returns>
-        /// A new, independent, deserialized and normalized
+        /// A new, independent, deserialized and metadata-ready
         /// <see cref="DictionaryMaxlength"/> instance.
         /// </returns>
         /// <remarks>
-        /// This in-memory loader is separate from <see cref="Provider"/>, which loads the
-        /// built-in dictionary from an embedded assembly resource.
-        /// <para>
-        /// Unlike <see cref="New"/>, this method does not change the active
-        /// global dictionary provider or clear cached conversion plans.
-        /// Use <see cref="FromZstd(string)"/> to load from a file path.
-        /// </para>
+        /// This is the shared internal deserialization path used by the embedded
+        /// built-in dictionary loader, external Zstd file loading, and tests.
+        /// It does not change the active global dictionary provider or conversion-plan cache.
         /// </remarks>
         /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="data"/> is <see langword="null"/>.
+        /// <paramref name="compressedStream"/> is <see langword="null"/>.
         /// </exception>
-        public static DictionaryMaxlength FromZstdBytes(byte[] data)
-        {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            using var inputStream = new MemoryStream(data, writable: false);
-            return DeserializeZstd(inputStream);
-        }
-
-        /// <summary>
-        /// Decompresses, deserializes, and normalizes a Zstandard dictionary stream.
-        /// </summary>
-        private static DictionaryMaxlength DeserializeZstd(Stream compressedStream)
+        internal static DictionaryMaxlength DeserializeZstd(Stream compressedStream)
         {
             if (compressedStream == null)
                 throw new ArgumentNullException(nameof(compressedStream));
@@ -2309,23 +2294,6 @@ namespace OpenccNetLib
             using var compressor = new Compressor(19);
             var compressed = compressor.Wrap(jsonBytes);
             File.WriteAllBytes(path, compressed.ToArray());
-        }
-
-        /// <summary>
-        /// Loads and normalizes the dictionary from a Zstd-compressed JSON file.
-        /// </summary>
-        /// <param name="path">The path to the compressed file.</param>
-        /// <returns>The deserialized <see cref="DictionaryMaxlength"/> instance.</returns>
-        public static DictionaryMaxlength LoadJsonCompressed(string path)
-        {
-            var compressed = File.ReadAllBytes(path);
-
-            using var decompressor = new Decompressor();
-            var jsonBytes = decompressor.Unwrap(compressed);
-            var instance = JsonSerializer.Deserialize(
-                jsonBytes,
-                DictionaryJsonContext.Default.DictionaryMaxlength);
-            return EnsureDerivedMetadata(instance);
         }
     }
 }

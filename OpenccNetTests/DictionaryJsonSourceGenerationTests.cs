@@ -15,7 +15,7 @@ public class DictionaryJsonSourceGenerationTests
         try
         {
             DictionaryLib.SaveJsonCompressed(path, DictionaryLib.Provider);
-            var loaded = DictionaryLib.LoadJsonCompressed(path);
+            var loaded = DictionaryLib.FromZstd(path);
 
             Assert.HasCount(
                 DictionaryLib.Provider.st_characters.Dict.Count,
