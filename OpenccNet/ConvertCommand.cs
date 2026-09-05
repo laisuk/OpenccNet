@@ -76,6 +76,7 @@ internal static class ConvertCommand
             var value = result.GetValueOrDefault<string>();
 
             if (string.IsNullOrWhiteSpace(value)) return;
+
             try
             {
                 DeTofu.ParseLevel(value);
@@ -127,7 +128,9 @@ internal static class ConvertCommand
 
         CliUtils.AddCustomDictValidator(customDictOption);
 
-        var convertCommand = new Command("convert", $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
+        var convertCommand = new Command(
+            "convert",
+            $"{Blue}Convert text using OpenccNetLib configurations.{Reset}")
         {
             inputFileOption,
             outputFileOption,
@@ -205,7 +208,8 @@ internal static class ConvertCommand
             var normCompatExtended = pr.GetValue(normCompatExtendedOption);
             var inputEnc = pr.GetValue(inputEncodingOption)!;
             var outputEnc = pr.GetValue(outputEncodingOption)!;
-            var customDicts = pr.GetValue(customDictOption) ?? Array.Empty<string>();
+            var customDicts =
+                pr.GetValue(customDictOption) ?? Array.Empty<string>();
 
             return await RunConversionAsync(
                 inputFile,
@@ -222,7 +226,6 @@ internal static class ConvertCommand
                 customDicts
             );
         });
-
 
         return convertCommand;
     }
@@ -264,38 +267,30 @@ internal static class ConvertCommand
                     "DeTofu mapping file");
             }
 
-            var customSpecs =
-                CliUtils.ParseAndValidateCustomDictSpecs(customDicts);
+            var textConverter = CliTextPipeline.Build(
+                config,
+                punct,
+                keepIds,
+                normCompat,
+                normCompatExtended,
+                deTofu,
+                deTofuFile,
+                customDicts);
 
-            var opencc = customSpecs.Length == 0
-                ? new Opencc(config, isPreserveIds: keepIds)
-                : new Opencc(config, customDictSpecs: customSpecs, isPreserveIds: keepIds);
+            var inputStr = await ReadInputAsync(
+                inputFile,
+                inputEnc);
 
-            var inputStr = await ReadInputAsync(inputFile, inputEnc);
-            if (normCompatExtended)
-            {
-                inputStr = opencc.NormalizeCompatExtended(inputStr);
-            }
-            else if (normCompat)
-            {
-                inputStr = opencc.NormalizeCompat(inputStr);
-            }
+            var outputStr = textConverter(inputStr);
 
-            var outputStr = opencc.Convert(inputStr, punct);
-
-            if (!string.IsNullOrWhiteSpace(deTofu))
-            {
-                var level = DeTofu.ParseLevel(deTofu);
-
-                outputStr = string.IsNullOrWhiteSpace(deTofuFile)
-                    ? opencc.DeTofu(outputStr, level)
-                    : opencc.DeTofuWithCustomFile(outputStr, level, deTofuFile);
-            }
-
-            await WriteOutputAsync(outputFile, outputStr, outputEnc);
+            await WriteOutputAsync(
+                outputFile,
+                outputStr,
+                outputEnc);
 
             var inFrom = inputFile ?? "<stdin>";
             var outTo = outputFile ?? "<stdout>";
+
             lock (ConsoleLock)
             {
                 var options = new List<string>();
@@ -325,7 +320,9 @@ internal static class ConvertCommand
         {
             lock (ConsoleLock)
             {
-                return CliUtils.WriteError(ex, "Conversion");
+                return CliUtils.WriteError(
+                    ex,
+                    "Conversion");
             }
         }
     }
@@ -336,7 +333,9 @@ internal static class ConvertCommand
     {
         if (inputFile != null)
         {
-            return await File.ReadAllTextAsync(inputFile, inputEncoding);
+            return await File.ReadAllTextAsync(
+                inputFile,
+                inputEncoding);
         }
 
         if (!Console.IsInputRedirected)
@@ -348,7 +347,10 @@ internal static class ConvertCommand
             }
         }
 
-        using var reader = new StreamReader(Console.OpenStandardInput(), inputEncoding);
+        using var reader = new StreamReader(
+            Console.OpenStandardInput(),
+            inputEncoding);
+
         return await reader.ReadToEndAsync();
     }
 

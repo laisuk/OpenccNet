@@ -89,6 +89,61 @@ internal static class OfficeCommand
                 "Suppress status and progress output; only errors will be shown."
         };
 
+        var deTofuOption = new Option<string?>("--detofu")
+        {
+            Arity = ArgumentArity.ZeroOrOne,
+            Description =
+                "Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i"
+        };
+
+        deTofuOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>();
+
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            try
+            {
+                DeTofu.ParseLevel(value);
+            }
+            catch (ArgumentException ex)
+            {
+                result.AddError(ex.Message);
+            }
+        });
+
+        deTofuOption.DefaultValueFactory = _ => null;
+
+        var deTofuFileOption = new Option<string?>("--detofu-file")
+        {
+            Arity = ArgumentArity.ExactlyOne,
+            Description =
+                "Load additional DeTofu fallback mappings from a UTF-8 text file. " +
+                "Custom mappings override built-in mappings (requires --detofu)"
+        };
+
+        var keepIdsOption = new Option<bool>("--keep-ids", "-I")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Preserve Unicode IDS expressions during conversion."
+        };
+
+        var normCompatOption = new Option<bool>("--norm-compat", "-n")
+        {
+            DefaultValueFactory = _ => false,
+            Description =
+                "Normalize CJK Compatibility Ideographs before conversion."
+        };
+
+        var normCompatExtendedOption =
+            new Option<bool>("--norm-compat-extended", "-E")
+            {
+                DefaultValueFactory = _ => false,
+                Description =
+                    "Apply extended Unicode compatibility normalization before conversion."
+            };
+
         var customDictOption = new Option<string[]>("--custom-dict", "-D")
         {
             Arity = ArgumentArity.ZeroOrMore,
@@ -113,20 +168,92 @@ internal static class OfficeCommand
             formatOption,
             keepFontOption,
             quietOption,
+            deTofuOption,
+            deTofuFileOption,
+            keepIdsOption,
+            normCompatOption,
+            normCompatExtendedOption,
             customDictOption
         };
 
-        officeCommand.SetAction(async (parseResult, cancellationToken) => await RunConversionAsync(
-            input: parseResult.GetValue(inputFileOption),
-            output: parseResult.GetValue(outputFileOption),
-            config: parseResult.GetValue(configOption)!,
-            punctuation: parseResult.GetValue(punctOption),
-            format: parseResult.GetValue(formatOption),
-            keepFont: parseResult.GetValue(keepFontOption),
-            quiet: parseResult.GetValue(quietOption),
-            customDictArgs: parseResult.GetValue(customDictOption) ??
-                            Array.Empty<string>(),
-            cancellationToken: cancellationToken));
+        officeCommand.Validators.Add(result =>
+        {
+            var deTofuResult = result.GetResult(deTofuOption);
+            var deTofuFileResult = result.GetResult(deTofuFileOption);
+
+            if (deTofuFileResult is null)
+                return;
+
+            if (deTofuFileResult.Errors.Any())
+                return;
+
+            // Presence matters because "--detofu" with no value means "all".
+            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+
+            if (!deTofuEnabled)
+            {
+                result.AddError("--detofu-file requires --detofu.");
+                return;
+            }
+
+            var path = deTofuFileResult.GetValueOrDefault<string>();
+
+            try
+            {
+                CliUtils.ValidateInputFile(
+                    path,
+                    "DeTofu mapping file");
+            }
+            catch (ArgumentException ex)
+            {
+                result.AddError(ex.Message);
+            }
+            catch (IOException ex)
+            {
+                result.AddError(ex.Message);
+            }
+        });
+
+        officeCommand.SetAction(async (parseResult, cancellationToken) =>
+        {
+            var deTofuResult =
+                parseResult.GetResult(deTofuOption);
+
+            var deTofuEnabled =
+                deTofuResult?.Tokens.Count > 0;
+
+            var deTofu = deTofuEnabled
+                ? parseResult.GetValue(deTofuOption)
+                : null;
+
+            if (deTofuEnabled &&
+                string.IsNullOrWhiteSpace(deTofu))
+            {
+                deTofu = "all";
+            }
+
+            return await RunConversionAsync(
+                input: parseResult.GetValue(inputFileOption),
+                output: parseResult.GetValue(outputFileOption),
+                config: parseResult.GetValue(configOption)!,
+                punctuation: parseResult.GetValue(punctOption),
+                format: parseResult.GetValue(formatOption),
+                keepFont: parseResult.GetValue(keepFontOption),
+                quiet: parseResult.GetValue(quietOption),
+                deTofu: deTofu,
+                deTofuFile:
+                parseResult.GetValue(deTofuFileOption),
+                keepIds:
+                parseResult.GetValue(keepIdsOption),
+                normCompat:
+                parseResult.GetValue(normCompatOption),
+                normCompatExtended:
+                parseResult.GetValue(normCompatExtendedOption),
+                customDictArgs:
+                parseResult.GetValue(customDictOption) ??
+                Array.Empty<string>(),
+                cancellationToken: cancellationToken);
+        });
 
         return officeCommand;
     }
@@ -139,6 +266,11 @@ internal static class OfficeCommand
         string? format,
         bool keepFont,
         bool quiet,
+        string? deTofu,
+        string? deTofuFile,
+        bool keepIds,
+        bool normCompat,
+        bool normCompatExtended,
         string[] customDictArgs,
         CancellationToken cancellationToken)
     {
@@ -148,7 +280,9 @@ internal static class OfficeCommand
                 input,
                 "Input Office document");
 
-            var resolvedFormat = ResolveFormat(resolvedInput, format);
+            var resolvedFormat =
+                ResolveFormat(resolvedInput, format);
+
             var resolvedOutput = ResolveOutputPath(
                 resolvedInput,
                 output,
@@ -159,21 +293,29 @@ internal static class OfficeCommand
                 resolvedInput,
                 resolvedOutput);
 
-            // Custom provider selection must happen before Opencc construction.
-            var customSpecs =
-                CliUtils.ParseAndValidateCustomDictSpecs(customDictArgs);
+            if (!string.IsNullOrWhiteSpace(deTofuFile))
+            {
+                deTofuFile = CliUtils.ValidateInputFile(
+                    deTofuFile,
+                    "DeTofu mapping file");
+            }
 
-            var converter = customSpecs.Length == 0
-                ? new Opencc(config)
-                : new Opencc(config, customDictSpecs: customSpecs);
+            var textConverter = CliTextPipeline.Build(
+                config,
+                punctuation,
+                keepIds,
+                normCompat,
+                normCompatExtended,
+                deTofu,
+                deTofuFile,
+                customDictArgs);
 
             var (success, message) =
                 await OfficeConverter.ConvertOfficeDocAsync(
                     resolvedInput,
                     resolvedOutput,
                     resolvedFormat,
-                    converter,
-                    punctuation,
+                    textConverter,
                     keepFont,
                     cancellationToken);
 
@@ -181,6 +323,7 @@ internal static class OfficeCommand
             {
                 await Console.Error.WriteLineAsync(
                     $"❌ Office document conversion failed: {message}");
+
                 return CliUtils.ExitFailure;
             }
 
@@ -236,6 +379,7 @@ internal static class OfficeCommand
             string.IsNullOrEmpty(Path.GetExtension(resolvedOutput)))
         {
             resolvedOutput = $"{resolvedOutput}.{format}";
+
             CliUtils.WriteInfo(
                 $"Output file extension adjusted to: {resolvedOutput}",
                 quiet);

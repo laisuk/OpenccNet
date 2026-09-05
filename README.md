@@ -1932,13 +1932,19 @@ Options:
   -f, --format <format>             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   -k, --keep-font                   Preserve font names in Office documents [default: true]. Use --keep-font:false to disable.
   -q, --quiet                       Suppress status and progress output; only errors will be shown.
+  --detofu <detofu>                 Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i
+  --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires 
+                                    --detofu)
+  -I, --keep-ids                    Preserve Unicode IDS expressions during conversion.
+  -n, --norm-compat                 Normalize CJK Compatibility Ideographs before conversion.
+  -E, --norm-compat-extended        Apply extended Unicode compatibility normalization before conversion.
   -D, --custom-dict <custom-dict>   Load custom dictionary: <slot>:<mode>:<path>.
                                     Example: HkPhrasesRev:append:my_hk_dict.txt
                                     Available slots: STCharacters, STPhrases, STPunctuations, TSCharacters, TSPhrases, TSPunctuations, TWPhrases, TWPhrasesRev, 
                                     TWVariants, TWVariantsRev, TWVariantsRevPhrases, HKVariants, HKVariantsRev, HKVariantsRevPhrases, JPSCharacters, 
                                     JPSPhrases, TWVariantsPhrases, HKVariantsPhrases, JPSCharactersRev, HKPhrases, HKPhrasesRev
   -?, -h, --help                    Show help and usage information
-```
+``` 
 
 ### `OpenccNet pdf`
 
@@ -1961,6 +1967,10 @@ Options:
   -C, --compact                    Use compact reflow (fewer blank lines between paragraphs). Only meaningful with --reflow.
   -q, --quiet                      Suppress status and progress output; only errors will be shown.
   -e, --extract                    Extract text from PDF only (no OpenCC conversion).
+  --detofu <detofu>                Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i
+  --detofu-file <detofu-file>      Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires 
+                                   --detofu)
+  -I, --keep-ids                   Preserve Unicode IDS expressions during conversion.
   -n, --norm-compat                Normalize CJK Compatibility Ideographs before conversion.
   -E, --norm-compat-extended       Apply extended Unicode compatibility normalization before conversion.
   -D, --custom-dict <custom-dict>  Load custom dictionary: <slot>:<mode>:<path>.

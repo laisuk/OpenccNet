@@ -88,6 +88,46 @@ internal static class PdfCommand
             Description = "Extract text from PDF only (no OpenCC conversion)."
         };
 
+        var deTofuOption = new Option<string?>("--detofu")
+        {
+            Arity = ArgumentArity.ZeroOrOne,
+            Description =
+                "Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i"
+        };
+
+        deTofuOption.Validators.Add(result =>
+        {
+            var value = result.GetValueOrDefault<string>();
+
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            try
+            {
+                DeTofu.ParseLevel(value);
+            }
+            catch (ArgumentException ex)
+            {
+                result.AddError(ex.Message);
+            }
+        });
+
+        deTofuOption.DefaultValueFactory = _ => null;
+
+        var deTofuFileOption = new Option<string?>("--detofu-file")
+        {
+            Arity = ArgumentArity.ExactlyOne,
+            Description =
+                "Load additional DeTofu fallback mappings from a UTF-8 text file. " +
+                "Custom mappings override built-in mappings (requires --detofu)"
+        };
+
+        var keepIdsOption = new Option<bool>("--keep-ids", "-I")
+        {
+            DefaultValueFactory = _ => false,
+            Description = "Preserve Unicode IDS expressions during conversion."
+        };
+
         var normCompatOption = new Option<bool>("--norm-compat", "-n")
         {
             DefaultValueFactory = _ => false,
@@ -129,6 +169,9 @@ internal static class PdfCommand
             compactOption,
             quietOption,
             extractOption,
+            deTofuOption,
+            deTofuFileOption,
+            keepIdsOption,
             normCompatOption,
             normCompatExtendedOption,
             customDictOption
@@ -144,10 +187,60 @@ internal static class PdfCommand
                 result.AddError(
                     "--config is required unless --extract is used.");
             }
+
+            // Conversion-only options are ignored in extract mode.
+            if (extractOnly)
+                return;
+
+            var deTofuResult = result.GetResult(deTofuOption);
+            var deTofuFileResult = result.GetResult(deTofuFileOption);
+
+            if (deTofuFileResult is null)
+                return;
+
+            // Avoid cascading errors when System.CommandLine already rejected the value.
+            if (deTofuFileResult.Errors.Any())
+                return;
+
+            // Presence matters because "--detofu" with no value means "all".
+            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+
+            if (!deTofuEnabled)
+            {
+                result.AddError("--detofu-file requires --detofu.");
+                return;
+            }
+
+            var path = deTofuFileResult.GetValueOrDefault<string>();
+
+            try
+            {
+                CliUtils.ValidateInputFile(
+                    path,
+                    "DeTofu mapping file");
+            }
+            catch (ArgumentException ex)
+            {
+                result.AddError(ex.Message);
+            }
+            catch (IOException ex)
+            {
+                result.AddError(ex.Message);
+            }
         });
 
         pdfCommand.SetAction(async (parseResult, cancellationToken) =>
-            await RunPdfAsync(
+        {
+            var deTofuResult = parseResult.GetResult(deTofuOption);
+            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+            var deTofu = deTofuEnabled
+                ? parseResult.GetValue(deTofuOption)
+                : null;
+
+            if (deTofuEnabled && string.IsNullOrWhiteSpace(deTofu))
+                deTofu = "all";
+
+            return await RunPdfAsync(
                 input: parseResult.GetValue(inputFileOption),
                 output: parseResult.GetValue(outputFileOption),
                 config: parseResult.GetValue(configOption),
@@ -157,12 +250,16 @@ internal static class PdfCommand
                 compact: parseResult.GetValue(compactOption),
                 quiet: parseResult.GetValue(quietOption),
                 extractOnly: parseResult.GetValue(extractOption),
+                deTofu: deTofu,
+                deTofuFile: parseResult.GetValue(deTofuFileOption),
+                keepIds: parseResult.GetValue(keepIdsOption),
                 normCompat: parseResult.GetValue(normCompatOption),
                 normCompatExtended: parseResult.GetValue(normCompatExtendedOption),
                 customDictArgs:
                 parseResult.GetValue(customDictOption) ??
                 Array.Empty<string>(),
-                cancellationToken));
+                cancellationToken);
+        });
 
         return pdfCommand;
     }
@@ -177,6 +274,9 @@ internal static class PdfCommand
         bool compact,
         bool quiet,
         bool extractOnly,
+        string? deTofu,
+        string? deTofuFile,
+        bool keepIds,
         bool normCompat,
         bool normCompatExtended,
         string[] customDictArgs,
@@ -201,10 +301,21 @@ internal static class PdfCommand
                 extractOnly,
                 config,
                 punctuation,
+                deTofu,
+                deTofuFile,
+                keepIds,
                 normCompat,
                 normCompatExtended,
                 customDictArgs,
                 quiet);
+
+            if (!extractOnly &&
+                !string.IsNullOrWhiteSpace(deTofuFile))
+            {
+                deTofuFile = CliUtils.ValidateInputFile(
+                    deTofuFile,
+                    "DeTofu mapping file");
+            }
 
             if (compact && !reflow)
             {
@@ -247,13 +358,17 @@ internal static class PdfCommand
                     $"Converting ({config})...",
                     quiet);
 
-                finalText = ConvertText(
-                    finalText,
+                var textConverter = CliTextPipeline.Build(
                     config!,
                     punctuation,
+                    keepIds,
                     normCompat,
                     normCompatExtended,
+                    deTofu,
+                    deTofuFile,
                     customDictArgs);
+
+                finalText = textConverter(finalText);
             }
 
             CliUtils.WriteInfo(
@@ -327,6 +442,9 @@ internal static class PdfCommand
         bool extractOnly,
         string? config,
         bool punctuation,
+        string? deTofu,
+        string? deTofuFile,
+        bool keepIds,
         bool normCompat,
         bool normCompatExtended,
         string[] customDictArgs,
@@ -346,6 +464,27 @@ internal static class PdfCommand
         {
             CliUtils.WriteInfo(
                 "--punct has no effect in --extract mode.",
+                quiet);
+        }
+
+        if (!string.IsNullOrWhiteSpace(deTofu))
+        {
+            CliUtils.WriteInfo(
+                "--detofu has no effect in --extract mode.",
+                quiet);
+        }
+
+        if (!string.IsNullOrWhiteSpace(deTofuFile))
+        {
+            CliUtils.WriteInfo(
+                "--detofu-file has no effect in --extract mode.",
+                quiet);
+        }
+
+        if (keepIds)
+        {
+            CliUtils.WriteInfo(
+                "--keep-ids has no effect in --extract mode.",
                 quiet);
         }
 
@@ -384,36 +523,6 @@ internal static class PdfCommand
                 ? null
                 : status => Console.Error.Write("\r" + status),
             cancellationToken: cancellationToken);
-    }
-
-    private static string ConvertText(
-        string text,
-        string config,
-        bool punctuation,
-        bool normCompat,
-        bool normCompatExtended,
-        string[] customDictArgs)
-    {
-        // Custom provider selection must happen before Opencc construction.
-        var customSpecs =
-            CliUtils.ParseAndValidateCustomDictSpecs(customDictArgs);
-
-        var converter = customSpecs.Length == 0
-            ? new Opencc(config)
-            : new Opencc(config, customDictSpecs: customSpecs);
-
-        if (normCompatExtended)
-        {
-            text = converter.NormalizeCompatExtended(text);
-        }
-        else if (normCompat)
-        {
-            text = converter.NormalizeCompat(text);
-        }
-
-        return converter.Convert(
-            text,
-            punctuation: punctuation);
     }
 
     private static Task WriteOutputAsync(

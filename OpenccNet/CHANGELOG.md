@@ -11,17 +11,23 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Added
 
-- Add `-E` / `--norm-compat-extended` to the `convert` and `pdf` commands to apply combined CJK compatibility-
-  ideograph and curated Unicode compatibility normalization before OpenCC conversion. When both normalization flags
-  are supplied, extended normalization takes precedence.
+- Add `-E` / `--norm-compat-extended` to the `convert` and `pdf` commands to apply combined CJK compatibility- ideograph
+  and curated Unicode compatibility normalization before OpenCC conversion. When both normalization flags are supplied,
+  extended normalization takes precedence.
 
 ### Changed
 
-- Keep `--norm-compat` behavior compatibility-ideograph-only through `Opencc.NormalizeCompat(...)`; the PDF
-  extraction pipeline continues applying Unicode-only normalization before reflow and optional basic compatibility
-  normalization before conversion.
+- Keep `--norm-compat` behavior compatibility-ideograph-only through `Opencc.NormalizeCompat(...)`; the PDF extraction
+  pipeline continues applying Unicode-only normalization before reflow and optional basic compatibility normalization
+  before conversion.
 - Update DeTofu data table.
 - Adapted custom dict token to newly added instance custom dictionary.
+- Centralized the CLI text conversion pipeline across `convert`, `office`, and `pdf`, consistently applying
+  compatibility normalization, OpenCC conversion, and optional DeTofu processing.
+- Extended `office` and `pdf` with `--keep-ids`, `--norm-compat`, `--norm-compat-extended`, `--detofu`, and
+  `--detofu-file` support.
+- Preserved PDF-specific Unicode compatibility normalization and extraction/reflow behavior while routing OpenCC
+  conversion through the shared text pipeline.
 
 ### Notes
 
