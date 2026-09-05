@@ -219,7 +219,10 @@ namespace OpenccNetTests
             var inputBytes = File.ReadAllBytes(_testDocxPath!);
 
             Assert.ThrowsExactly<ArgumentNullException>(() =>
-                OfficeDocConverter.ConvertOfficeBytes(inputBytes, "docx", null!));
+                OfficeDocConverter.ConvertOfficeBytes(
+                    inputBytes,
+                    "docx",
+                    (Opencc)null!));
         }
 
         [TestMethod]
@@ -307,7 +310,8 @@ namespace OpenccNetTests
             binaryStream.CopyTo(binaryMs);
 
             Assert.AreSequenceEqual(
-                new byte[] { 0, 1, 2, 3, 0xFE, 0xFF }, binaryMs.ToArray(), "Non-target ZIP entries should be copied byte-for-byte.");
+                new byte[] { 0, 1, 2, 3, 0xFE, 0xFF }, binaryMs.ToArray(),
+                "Non-target ZIP entries should be copied byte-for-byte.");
         }
 
         [TestMethod]
@@ -456,6 +460,101 @@ namespace OpenccNetTests
             var entry = archive.CreateEntry(path, CompressionLevel.Optimal);
             using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false));
             writer.Write(content);
+        }
+
+        // New: OfficeTextConverter Delegate Tests
+
+
+        [TestMethod]
+        public void ConvertOfficeBytes_NullTextConverter_ThrowsArgumentNullException()
+        {
+            var inputBytes = File.ReadAllBytes(_testDocxPath!);
+
+            Assert.ThrowsExactly<ArgumentNullException>(() =>
+                OfficeDocConverter.ConvertOfficeBytes(
+                    inputBytes,
+                    "docx",
+                    (OfficeTextConverter)null!));
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_Delegate_TransformsDocumentText()
+        {
+            var inputBytes = CreateMinimalDocx(
+                @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?><w:document xmlns:w=""http://schemas.openxmlformats.org/wordprocessingml/2006/main""><w:body><w:p><w:r><w:t>汉字</w:t></w:r></w:p></w:body></w:document>");
+
+            string TextConverter(string text) => text.Replace("汉字", "自訂");
+
+            var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+                inputBytes,
+                OfficeFormat.Docx,
+                (OfficeTextConverter)TextConverter);
+
+            using var ms = new MemoryStream(outputBytes);
+            using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
+            using var reader = new StreamReader(
+                archive.GetEntry("word/document.xml")!.Open(),
+                Encoding.UTF8,
+                true);
+
+            Assert.Contains("自訂", reader.ReadToEnd());
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_OpenccAndDelegate_ProduceEquivalentOutput()
+        {
+            var inputBytes = CreateMinimalDocx(
+                @"<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?><w:document xmlns:w=""http://schemas.openxmlformats.org/wordprocessingml/2006/main""><w:body><w:p><w:r><w:t>汉字</w:t></w:r></w:p></w:body></w:document>");
+
+            var opencc = new Opencc(OpenccConfig.S2T);
+
+            var fromOpencc = OfficeDocConverter.ConvertOfficeBytes(
+                inputBytes,
+                OfficeFormat.Docx,
+                opencc,
+                punctuation: false);
+
+            var fromDelegate = OfficeDocConverter.ConvertOfficeBytes(
+                inputBytes,
+                OfficeFormat.Docx,
+                text => opencc.Convert(text));
+
+            using var openccStream = new MemoryStream(fromOpencc);
+            using var delegateStream = new MemoryStream(fromDelegate);
+            using var openccArchive =
+                new ZipArchive(openccStream, ZipArchiveMode.Read);
+            using var delegateArchive =
+                new ZipArchive(delegateStream, ZipArchiveMode.Read);
+
+            using var openccReader = new StreamReader(
+                openccArchive.GetEntry("word/document.xml")!.Open(),
+                Encoding.UTF8,
+                true);
+            using var delegateReader = new StreamReader(
+                delegateArchive.GetEntry("word/document.xml")!.Open(),
+                Encoding.UTF8,
+                true);
+
+            Assert.AreEqual(
+                openccReader.ReadToEnd(),
+                delegateReader.ReadToEnd());
+        }
+
+        [TestMethod]
+        public void ConvertOfficeBytes_DelegateReturnsNull_ThrowsInvalidOperationException()
+        {
+            var inputBytes = CreateMinimalDocx(
+                @"<?xml version=""1.0"" encoding=""UTF-8""?><w:document xmlns:w=""http://schemas.openxmlformats.org/wordprocessingml/2006/main""><w:body><w:p><w:r><w:t>汉字</w:t></w:r></w:p></w:body></w:document>");
+
+            OfficeTextConverter converter = _ => null!;
+
+            var exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
+                OfficeDocConverter.ConvertOfficeBytes(
+                    inputBytes,
+                    OfficeFormat.Docx,
+                    converter));
+
+            Assert.Contains("null", exception.Message);
         }
     }
 }

@@ -22,9 +22,9 @@ namespace OpenccNetLib
     /// are not semantically modified, and their payload content is preserved.
     /// </para>
     /// <para>
-    /// Use this enumeration when calling any of the strongly typed overloads:
-    /// <see cref="OfficeDocConverter.ConvertOfficeBytes(byte[], OfficeFormat, Opencc, bool, bool)"/> or  
-    /// <see cref="OfficeDocConverter.ConvertOfficeFile(string, string, OfficeFormat, Opencc, bool, bool)"/>.
+    /// Use this enumeration with either the <see cref="Opencc"/> convenience overloads
+    /// or the <see cref="OfficeTextConverter"/> delegate overloads for strongly typed
+    /// format selection.
     /// </para>
     /// </remarks>
     public enum OfficeFormat
@@ -124,9 +124,37 @@ namespace OpenccNetLib
     }
 
     /// <summary>
-    /// Provides high-level APIs for converting Office / EPUB documents using an <see cref="Opencc"/> instance.
+    /// Represents a caller-supplied transformation for text-bearing content inside
+    /// an Office or EPUB package.
+    /// </summary>
+    /// <param name="text">The decoded text fragment selected for conversion.</param>
+    /// <returns>
+    /// The transformed text. Implementations must return a non-null string.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// <see cref="OfficeDocConverter"/> owns package parsing, ZIP reconstruction,
+    /// entry selection, XLSX inline-string handling, EPUB packaging rules, and optional
+    /// font protection. The delegate owns only the text transformation itself.
+    /// </para>
+    /// <para>
+    /// This allows callers to compose OpenCC conversion with preprocessing or
+    /// postprocessing steps such as compatibility normalization or DeToFu without
+    /// coupling the Office/EPUB package layer to those policies.
+    /// </para>
+    /// </remarks>
+    public delegate string OfficeTextConverter(string text);
+
+    /// <summary>
+    /// Provides high-level APIs for converting text-bearing content inside Office and
+    /// EPUB packages.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Callers may supply either an <see cref="Opencc"/> instance through the convenience
+    /// overloads or an <see cref="OfficeTextConverter"/> delegate through the extensible
+    /// overloads. All overloads share the same ZIP/XML/XHTML conversion core.
+    /// </para>
     /// <para>
     /// Supported formats:
     /// <c>.docx</c>, <c>.xlsx</c>, <c>.pptx</c>, <c>.odt</c>, <c>.ods</c>, <c>.odp</c>, <c>.epub</c>.
@@ -197,100 +225,55 @@ namespace OpenccNetLib
             return !string.IsNullOrWhiteSpace(format) && SupportedFormatSet.Contains(format.Trim());
         }
 
+        // =====================================================================
+        // Public delegate-based APIs
+        // =====================================================================
+
         /// <summary>
-        /// Converts an Office or EPUB document represented as a byte array and
-        /// returns a fully reconstructed container with all textual content converted
-        /// according to the specified <see cref="Opencc"/> configuration.
+        /// Converts an Office or EPUB package in memory by applying a caller-supplied
+        /// text transformation to its convertible content.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This method is the in-memory counterpart to
-        /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
-        /// It does not create a temporary working directory or temporary package file.
+        /// This is the primary extensible in-memory API. The delegate receives only the
+        /// text fragments selected by the package layer; it does not need to understand
+        /// ZIP structure, document formats, or font protection.
         /// </para>
         /// <para>
-        /// The caller supplies the complete ZIP-based container
-        /// (DOCX/XLSX/PPTX/ODT/ODS/ODP/EPUB) as a <c>byte[]</c>. Conversion remains
-        /// entirely in memory and the rebuilt package is returned as a new
-        /// <c>byte[]</c>. Text-bearing XML/XHTML entries are converted one at a time,
-        /// so the fully decompressed package is never materialized at once.
-        /// </para>
-        /// <para>
-        /// Because both the source package and rebuilt package are memory-resident,
-        /// callers processing very large documents or packages with large embedded
-        /// resources should prefer the file-based API when filesystem access is available.
-        /// </para>
-        /// <para>
-        /// If <paramref name="keepFont"/> is enabled, the converter temporarily
-        /// annotates spans with protected font markers before text conversion
-        /// and restores the original font-family declarations afterward.
+        /// The complete source and rebuilt package are memory-resident. For large files
+        /// backed by the filesystem, prefer <see cref="ConvertOfficeFile(string,string,OfficeFormat,OfficeTextConverter,bool)"/>.
         /// </para>
         /// </remarks>
-        /// <param name="inputBytes">Raw bytes of the Office/EPUB container.</param>
-        /// <param name="format">
-        /// Specifies the document type using the strongly typed
-        /// <see cref="OfficeFormat"/> enumeration.  
-        /// This value determines which XML/XHTML parts are inspected and how font
-        /// preservation and conversion rules are applied.
-        ///
-        /// Supported values are:
-        /// <list type="bullet">
-        ///   <item><description><see cref="OfficeFormat.Docx"/> – WordprocessingML</description></item>
-        ///   <item><description><see cref="OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-        ///   <item><description><see cref="OfficeFormat.Pptx"/> – PresentationML</description></item>
-        ///   <item><description><see cref="OfficeFormat.Odt"/> – OpenDocument Text</description></item>
-        ///   <item><description><see cref="OfficeFormat.Ods"/> – OpenDocument Spreadsheet</description></item>
-        ///   <item><description><see cref="OfficeFormat.Odp"/> – OpenDocument Presentation</description></item>
-        ///   <item><description><see cref="OfficeFormat.Epub"/> – EPUB 2/3 container (XHTML/HTML/OPF/NCX)</description></item>
-        /// </list>
-        /// </param>
-        /// <param name="converter">
-        /// An initialized <see cref="Opencc"/> instance controlling the desired
-        /// Simplified/Traditional variant transformation.
-        /// </param>
-        /// <param name="punctuation">
-        /// Whether punctuation normalization is applied (e.g., 「」 → “”).  
-        /// Default is <c>false</c>.
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="textConverter">
+        /// The text transformation applied to convertible document content.
         /// </param>
         /// <param name="keepFont">
-        /// If <c>true</c>, attempts to preserve or re-inject font declarations in
-        /// supported document types.
+        /// Whether supported font declarations should be protected and restored while
+        /// text transformation is performed.
         /// </param>
-        /// <returns>
-        /// A fully converted Office/EPUB container as a byte array.  
-        /// The returned buffer is safe to write directly to disk or serve to clients.
-        /// </returns>
+        /// <returns>A newly allocated byte array containing the rebuilt package.</returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
+        /// Thrown when <paramref name="inputBytes"/> or <paramref name="textConverter"/> is null.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="inputBytes"/> is empty.
         /// </exception>
         /// <exception cref="InvalidOperationException">
-        /// Thrown when the container structure is invalid, the ZIP cannot be read,
-        /// or the conversion pipeline fails.
+        /// Thrown when the package is invalid, no convertible content is found, or the
+        /// supplied text converter fails.
         /// </exception>
-        /// <example>
-        /// Convert an EPUB in memory:
-        /// <code>
-        /// var epubBytes = File.ReadAllBytes("novel.epub");
-        /// var cc = new Opencc("t2s");
-        /// var converted = ConvertOfficeBytes(
-        ///     epubBytes,
-        ///     OfficeFormat.Epub,
-        ///     cc,
-        ///     punctuation: true);
-        /// File.WriteAllBytes("novel_simplified.epub", converted);
-        /// </code>
-        /// </example>
         public static byte[] ConvertOfficeBytes(
             byte[] inputBytes,
             OfficeFormat format,
-            Opencc converter,
-            bool punctuation = false,
+            OfficeTextConverter textConverter,
             bool keepFont = false)
         {
             ValidateInputBytes(inputBytes);
-            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            if (textConverter == null) throw new ArgumentNullException(nameof(textConverter));
 
-            var result = ConvertOfficeBytesCore(inputBytes, format, converter, punctuation, keepFont);
+            var result = ConvertOfficeBytesCore(inputBytes, format, textConverter, keepFont);
 
             if (!result.Success || result.OutputBytes == null)
                 throw new InvalidOperationException(result.Message, result.Error);
@@ -299,346 +282,135 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Converts an Office or EPUB document represented as a byte array and
-        /// returns a fully reconstructed container with all textual content converted
-        /// according to the specified <see cref="Opencc"/> configuration.
+        /// Converts an Office or EPUB package in memory using a caller-supplied text
+        /// transformation and a case-insensitive format name.
         /// </summary>
         /// <remarks>
-        /// <para>
-        /// This is the legacy string-based overload. It validates the format string
-        /// and then delegates to the strongly typed overload
-        /// <see cref="ConvertOfficeBytes(byte[],OfficeFormat,Opencc,bool,bool)"/>.
-        /// For new code, prefer the <see cref="OfficeFormat"/> enum overload for
-        /// stronger type safety.
-        /// </para>
-        /// <para>
-        /// This method is the in-memory counterpart to
-        /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>
-        /// and its enum-based overload
-        /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
-        /// It does not create a temporary working directory or temporary package file.
-        /// </para>
-        /// <para>
-        /// The caller supplies the complete ZIP-based container as a <c>byte[]</c>.
-        /// Conversion remains entirely in memory and the rebuilt package is returned as
-        /// a new <c>byte[]</c>. Text-bearing XML/XHTML entries are converted one at a time.
-        /// For large filesystem-backed documents, prefer the file-based API to avoid
-        /// retaining complete input and output packages in managed memory.
-        /// </para>
-        /// <para>
-        /// If <paramref name="keepFont"/> is enabled, the converter temporarily
-        /// annotates spans with protected font markers before text conversion
-        /// and restores the original font-family declarations afterward.
-        /// </para>
+        /// This string-based overload is retained for callers that resolve formats at
+        /// runtime. New code with a known format should prefer the <see cref="OfficeFormat"/>
+        /// overload for stronger type safety.
         /// </remarks>
-        /// <param name="inputBytes">Raw bytes of the Office/EPUB container.</param>
-        /// <param name="format">
-        /// Normalized format identifier (e.g. <c>"docx"</c>, <c>"xlsx"</c>,
-        /// <c>"pptx"</c>, <c>"odt"</c>, <c>"ods"</c>, <c>"odp"</c>, <c>"epub"</c>).
-        /// Case-insensitive. Must be one of the supported format strings.
-        /// </param>
-        /// <param name="converter">
-        /// An initialized <see cref="Opencc"/> instance controlling the desired
-        /// Simplified/Traditional variant transformation.
-        /// </param>
-        /// <param name="punctuation">
-        /// Whether punctuation normalization is applied (e.g., 「」 → “”).  
-        /// Default is <c>false</c>.
-        /// </param>
-        /// <param name="keepFont">
-        /// If <c>true</c>, attempts to preserve or re-inject font declarations in
-        /// supported document types.
-        /// </param>
-        /// <returns>
-        /// A fully converted Office/EPUB container as a byte array.  
-        /// The returned buffer is safe to write directly to disk or serve to clients.
-        /// </returns>
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+        /// <param name="textConverter">The text transformation applied to convertible content.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <returns>A newly allocated byte array containing the rebuilt package.</returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
+        /// Thrown when <paramref name="inputBytes"/>, <paramref name="format"/>, or
+        /// <paramref name="textConverter"/> is null.
         /// </exception>
         /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="format"/> is not one of the supported formats.
+        /// Thrown when the input is empty or <paramref name="format"/> is unsupported.
         /// </exception>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown when the container structure is invalid, the ZIP cannot be read,
-        /// or the conversion pipeline fails.
-        /// </exception>
-        /// <example>
-        /// Convert an EPUB in memory:
-        /// <code>
-        /// var epubBytes = File.ReadAllBytes("novel.epub");
-        /// var cc = new Opencc("t2s");
-        /// var converted = ConvertOfficeBytes(
-        ///     epubBytes,
-        ///     "epub",
-        ///     cc,
-        ///     punctuation: true);
-        /// File.WriteAllBytes("novel_simplified.epub", converted);
-        /// </code>
-        /// </example>
+        /// <exception cref="InvalidOperationException">Thrown when package conversion fails.</exception>
         public static byte[] ConvertOfficeBytes(
             byte[] inputBytes,
             string format,
-            Opencc converter,
-            bool punctuation = false,
+            OfficeTextConverter textConverter,
             bool keepFont = false)
         {
             ValidateInputBytes(inputBytes);
-            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            if (textConverter == null) throw new ArgumentNullException(nameof(textConverter));
             format = ValidateFormat(format);
 
-            var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
-            var result = ConvertOfficeBytesCore(inputBytes, parsed, converter, punctuation, keepFont);
-
-            if (!result.Success || result.OutputBytes == null)
-                throw new InvalidOperationException(result.Message, result.Error);
-
-            return result.OutputBytes;
+            return ConvertOfficeBytes(
+                inputBytes,
+                OfficeFormatUtils.ParseOfficeFormat(format),
+                textConverter,
+                keepFont);
         }
 
         /// <summary>
-        /// Asynchronously converts an Office or EPUB document represented as a byte array
-        /// and returns the converted container as a byte array.
+        /// Asynchronously converts an in-memory Office or EPUB package using a
+        /// caller-supplied text transformation.
         /// </summary>
         /// <remarks>
-        /// <para>
-        /// This method mirrors <see cref="ConvertOfficeBytes(byte[],OfficeFormat,Opencc,bool,bool)"/>
-        /// but performs the work asynchronously.  
-        /// </para>
-        /// <para>
-        /// The underlying package conversion is synchronous and memory-based.
-        /// This wrapper offloads that CPU-bound work to a background thread with
-        /// <c>Task.Run</c> so callers can await it without blocking
-        /// a UI or request-handling thread.
-        /// </para>
-        /// <para>
-        /// The returned byte array is a full ZIP container ready to be written to disk,
-        /// streamed to a browser, or re-opened by Office/EPUB readers.
-        /// </para>
+        /// The underlying package conversion is synchronous and CPU-bound. This method
+        /// uses <see cref="Task.Run(Action)"/> semantics so UI or request-handling code
+        /// can await it without occupying the calling thread. Cancellation is honored
+        /// before the conversion task begins; once conversion is running, it completes normally.
         /// </remarks>
-        /// <param name="inputBytes">Raw contents of the document to convert.</param>
-        /// <param name="format">
-        /// Document container type expressed as an <see cref="OfficeFormat"/> value
-        /// (e.g. <see cref="OfficeFormat.Docx"/>, <see cref="OfficeFormat.Epub"/>).
-        /// </param>
-        /// <param name="converter">The active <see cref="Opencc"/> converter.</param>
-        /// <param name="punctuation">Whether punctuation conversion is applied.</param>
-        /// <param name="keepFont">Whether to preserve font declarations where possible.</param>
-        /// <param name="cancellationToken">
-        /// Optional cancellation token. Cancellation is honored before the background
-        /// conversion task starts; once the synchronous conversion is running, it
-        /// continues to completion.
-        /// </param>
-        /// <returns>
-        /// A task that resolves to the converted Office/EPUB container bytes.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
-        /// </exception>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown if the conversion process fails or the input container is invalid.
-        /// </exception>
-        /// <example>
-        /// <code>
-        /// byte[] result = await ConvertOfficeBytesAsync(
-        ///     inputBytes,
-        ///     OfficeFormat.Docx,
-        ///     new Opencc("s2tw"),
-        ///     punctuation: true,
-        ///     keepFont: false,
-        ///     cancellationToken);
-        /// </code>
-        /// </example>
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="textConverter">The text transformation applied to convertible content.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task that resolves to the rebuilt package bytes.</returns>
         public static Task<byte[]> ConvertOfficeBytesAsync(
             byte[] inputBytes,
             OfficeFormat format,
-            Opencc converter,
-            bool punctuation = false,
+            OfficeTextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.Run(
-                () => ConvertOfficeBytes(inputBytes, format, converter, punctuation, keepFont),
+                () => ConvertOfficeBytes(inputBytes, format, textConverter, keepFont),
                 cancellationToken);
         }
 
         /// <summary>
-        /// Asynchronously converts an Office or EPUB document represented as a byte array
-        /// and returns the converted container as a byte array.
+        /// Asynchronously converts an in-memory Office or EPUB package using a
+        /// caller-supplied text transformation and a format name.
         /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This method mirrors <see cref="ConvertOfficeBytes(byte[],string,Opencc,bool,bool)"/>
-        /// but performs the work asynchronously.  
-        /// </para>
-        /// <para>
-        /// The underlying package conversion is synchronous and memory-based.
-        /// This wrapper delegates that work to a background thread using
-        /// <c>Task.Run</c> so callers can await it without blocking
-        /// the calling thread.
-        /// </para>
-        /// <para>
-        /// The returned byte array is a full ZIP container ready to be written to disk,
-        /// streamed to a browser, or re-opened by Office/EPUB readers.
-        /// </para>
-        /// </remarks>
-        /// <param name="inputBytes">Raw contents of the document to convert.</param>
-        /// <param name="format">Document format (e.g. <c>"docx"</c>, <c>"epub"</c>).</param>
-        /// <param name="converter">The active <see cref="Opencc"/> converter.</param>
-        /// <param name="punctuation">Whether punctuation conversion is applied.</param>
-        /// <param name="keepFont">Whether to preserve font declarations where possible.</param>
-        /// <param name="cancellationToken">
-        /// Optional cancellation token. Cancellation is honored before the background
-        /// conversion task starts; once the synchronous conversion is running, it
-        /// continues to completion.
-        /// </param>
-        /// <returns>
-        /// A task that resolves to the converted Office/EPUB container bytes.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="inputBytes"/> or <paramref name="converter"/> is null.
-        /// </exception>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="format"/> is not recognized.
-        /// </exception>
-        /// <exception cref="InvalidOperationException">
-        /// Thrown if the conversion process fails or the input container is invalid.
-        /// </exception>
-        /// <example>
-        /// <code>
-        /// byte[] result = await ConvertOfficeBytesAsync(
-        ///     inputBytes,
-        ///     "docx",
-        ///     new Opencc("s2tw"),
-        ///     punctuation: true,
-        ///     keepFont: false,
-        ///     cancellationToken);
-        /// </code>
-        /// For new code, prefer the OfficeFormat overload for stronger type safety.
-        /// </example>
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+        /// <param name="textConverter">The text transformation applied to convertible content.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task that resolves to the rebuilt package bytes.</returns>
         public static Task<byte[]> ConvertOfficeBytesAsync(
             byte[] inputBytes,
             string format,
-            Opencc converter,
-            bool punctuation = false,
+            OfficeTextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             format = ValidateFormat(format);
-            var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
-            // netstandard2.0-friendly async wrapper around synchronous core
-            return Task.Run(
-                () => ConvertOfficeBytes(inputBytes, parsed, converter, punctuation, keepFont),
+            return ConvertOfficeBytesAsync(
+                inputBytes,
+                OfficeFormatUtils.ParseOfficeFormat(format),
+                textConverter,
+                keepFont,
                 cancellationToken);
         }
 
         /// <summary>
-        /// Converts an Office or EPUB document on disk and writes the converted
-        /// result to the specified output file.
+        /// Converts a filesystem-backed Office or EPUB package using a caller-supplied
+        /// text transformation and writes the rebuilt package to disk.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// This method is the primary high-level API for desktop, CLI tooling,
-        /// and automation scripts. It opens the source package directly from disk,
-        /// processes ZIP entries sequentially, materializes only selected text-bearing
-        /// XML/XHTML parts for OpenCC conversion, and writes the rebuilt package to a
-        /// sibling temporary file.
+        /// This is the primary extensible file API. The source archive is streamed from
+        /// disk and the rebuilt archive is written to a sibling temporary file. Only
+        /// selected text-bearing entries are materialized as strings.
         /// </para>
         /// <para>
-        /// After conversion completes, the temporary package is reopened and validated
-        /// as a ZIP container before it replaces the requested output path. The complete
-        /// source or destination package is never loaded into a managed <c>byte[]</c>.
-        /// This makes the file API preferable for large Office/EPUB documents or packages
-        /// containing large embedded fonts, images, media, or other binary resources.
-        /// </para>
-        /// <para>
-        /// The method preserves the content of non-target assets (images, embedded
-        /// fonts, media, stylesheets, relationships, metadata, etc.) while rebuilding
-        /// the ZIP package. Only selected text-bearing XML/XHTML parts are modified.
-        /// </para>
-        /// <para>
-        /// Supported formats:
-        /// <list type="bullet">
-        ///   <item><description><c>docx</c> – WordprocessingML</description></item>
-        ///   <item><description><c>xlsx</c> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-        ///   <item><description><c>pptx</c> – PresentationML slides/notes/layouts/masters</description></item>
-        ///   <item><description><c>odt</c>/<c>ods</c>/<c>odp</c> – OpenDocument Text/Spreadsheet/Presentation</description></item>
-        ///   <item><description><c>epub</c> – XHTML/HTML/OPF/NCX documents</description></item>
-        /// </list>
-        /// </para>
-        /// <para>
-        /// If <paramref name="keepFont"/> is enabled, the converter injects font
-        /// attributes into target text spans, allowing regional substitutions
-        /// (e.g., Traditional → Simplified fonts) to be preserved in the output.
+        /// After conversion, the temporary package is validated and atomically published
+        /// to <paramref name="outputPath"/>. Non-target package content is preserved.
         /// </para>
         /// </remarks>
-        /// <param name="inputPath">Full path to the source Office/EPUB file.</param>
-        /// <param name="outputPath">
-        /// Path where the converted file will be written.  
-        /// The parent directory is created automatically if it does not already exist.
-        /// </param>
-        /// <param name="format">
-        /// Specifies the document type using the strongly typed
-        /// <see cref="OfficeFormat"/> enumeration.  
-        /// This value determines which XML/XHTML parts are inspected and how font
-        /// preservation and conversion rules are applied.
-        ///
-        /// Supported values are:
-        /// <list type="bullet">
-        ///   <item><description><see cref="OfficeFormat.Docx"/> – WordprocessingML</description></item>
-        ///   <item><description><see cref="OfficeFormat.Xlsx"/> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-        ///   <item><description><see cref="OfficeFormat.Pptx"/> – PresentationML</description></item>
-        ///   <item><description><see cref="OfficeFormat.Odt"/> – OpenDocument Text</description></item>
-        ///   <item><description><see cref="OfficeFormat.Ods"/> – OpenDocument Spreadsheet</description></item>
-        ///   <item><description><see cref="OfficeFormat.Odp"/> – OpenDocument Presentation</description></item>
-        ///   <item><description><see cref="OfficeFormat.Epub"/> – EPUB 2/3 container (XHTML/HTML/OPF/NCX)</description></item>
-        /// </list>
-        /// </param>
-        /// <param name="converter">
-        /// An initialized <see cref="Opencc"/> instance containing the desired conversion configuration.
-        /// </param>
-        /// <param name="punctuation">
-        /// Whether punctuation should also be converted using OpenCC rules (e.g.,「」 → “”).  
-        /// Default is <c>false</c>.
-        /// </param>
-        /// <param name="keepFont">
-        /// Preserves or injects font attributes in converted output when supported.  
-        /// Default is <c>false</c>.
-        /// </param>
+        /// <param name="inputPath">Path to the source Office or EPUB package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="textConverter">The text transformation applied to convertible content.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="inputPath"/>, <paramref name="outputPath"/>, or <paramref name="converter"/> is null.
+        /// Thrown when a required path or <paramref name="textConverter"/> is null.
         /// </exception>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when the input file does not exist.
-        /// </exception>
-        /// <exception cref="InvalidDataException">
-        /// Thrown if the document is not a valid ZIP-based Office/EPUB container.
-        /// </exception>
-        /// <example>
-        /// Convert Traditional Chinese DOCX → Simplified (retain punctuation):
-        /// <code>
-        /// Opencc cc = new Opencc("t2s");
-        /// ConvertOfficeFile(
-        ///     "input.docx",
-        ///     "out.docx",
-        ///     OfficeFormat.Docx,
-        ///     cc,
-        ///     punctuation: true);
-        /// </code>
-        /// </example>
+        /// <exception cref="FileNotFoundException">Thrown when the input file does not exist.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when package conversion fails.</exception>
         public static void ConvertOfficeFile(
             string inputPath,
             string outputPath,
             OfficeFormat format,
-            Opencc converter,
-            bool punctuation = false,
+            OfficeTextConverter textConverter,
             bool keepFont = false)
         {
             ValidatePath(inputPath, nameof(inputPath));
             ValidatePath(outputPath, nameof(outputPath));
-            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            if (textConverter == null) throw new ArgumentNullException(nameof(textConverter));
             if (!File.Exists(inputPath))
                 throw new FileNotFoundException("Input file not found.", inputPath);
 
@@ -646,89 +418,257 @@ namespace OpenccNetLib
                 inputPath,
                 outputPath,
                 format,
-                converter,
-                punctuation,
+                textConverter,
                 keepFont);
         }
 
         /// <summary>
-        /// Converts an Office or EPUB document on disk and writes the converted
-        /// result to the specified output file.
+        /// Converts a filesystem-backed Office or EPUB package using a caller-supplied
+        /// text transformation and a case-insensitive format name.
+        /// </summary>
+        /// <param name="inputPath">Path to the source Office or EPUB package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+        /// <param name="textConverter">The text transformation applied to convertible content.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        public static void ConvertOfficeFile(
+            string inputPath,
+            string outputPath,
+            string format,
+            OfficeTextConverter textConverter,
+            bool keepFont = false)
+        {
+            ValidatePath(inputPath, nameof(inputPath));
+            ValidatePath(outputPath, nameof(outputPath));
+            if (textConverter == null) throw new ArgumentNullException(nameof(textConverter));
+            format = ValidateFormat(format);
+
+            ConvertOfficeFile(
+                inputPath,
+                outputPath,
+                OfficeFormatUtils.ParseOfficeFormat(format),
+                textConverter,
+                keepFont);
+        }
+
+        /// <summary>
+        /// Asynchronously converts a filesystem-backed Office or EPUB package using a
+        /// caller-supplied text transformation.
         /// </summary>
         /// <remarks>
-        /// <para>
-        /// This method is the primary high-level API for desktop, CLI tooling,
-        /// and automation scripts. It opens the source package directly from disk,
-        /// processes ZIP entries sequentially, materializes only selected text-bearing
-        /// XML/XHTML parts for OpenCC conversion, and writes the rebuilt package to a
-        /// sibling temporary file.
-        /// </para>
-        /// <para>
-        /// After conversion completes, the temporary package is reopened and validated
-        /// as a ZIP container before it replaces the requested output path. The complete
-        /// source or destination package is never loaded into a managed <c>byte[]</c>.
-        /// This makes the file API preferable for large Office/EPUB documents or packages
-        /// containing large embedded fonts, images, media, or other binary resources.
-        /// </para>
-        /// <para>
-        /// The method preserves the content of non-target assets (images, embedded
-        /// fonts, media, stylesheets, relationships, metadata, etc.) while rebuilding
-        /// the ZIP package. Only selected text-bearing XML/XHTML parts are modified.
-        /// </para>
-        /// <para>
-        /// Supported formats:
-        /// <list type="bullet">
-        ///   <item><description><c>docx</c> – WordprocessingML</description></item>
-        ///   <item><description><c>xlsx</c> – SpreadsheetML (shared strings and inline-string worksheet cells)</description></item>
-        ///   <item><description><c>pptx</c> – PresentationML slides/notes/layouts/masters</description></item>
-        ///   <item><description><c>odt</c>/<c>ods</c>/<c>odp</c> – OpenDocument Text/Spreadsheet/Presentation</description></item>
-        ///   <item><description><c>epub</c> – XHTML/HTML/OPF/NCX documents</description></item>
-        /// </list>
-        /// </para>
-        /// <para>
-        /// If <paramref name="keepFont"/> is enabled, the converter injects font
-        /// attributes into target text spans, allowing regional substitutions
-        /// (e.g., Traditional → Simplified fonts) to be preserved in the output.
-        /// </para>
+        /// The synchronous streaming file conversion is executed on a background thread.
+        /// Cancellation is honored before that work begins.
         /// </remarks>
-        /// <param name="inputPath">Full path to the source Office/EPUB file.</param>
-        /// <param name="outputPath">
-        /// Path where the converted file will be written.  
-        /// The parent directory is created automatically if it does not already exist.
-        /// </param>
-        /// <param name="format">
-        /// Normalized format identifier (e.g. <c>"docx"</c>, <c>"xlsx"</c>, <c>"epub"</c>).  
-        /// Must match the container type of <paramref name="inputPath"/>.
-        /// This overload accepts a raw string and is preserved for backward compatibility.
-        /// For new code, prefer the OfficeFormat enum overload.
-        /// </param>
-        /// <param name="converter">
-        /// An initialized <see cref="Opencc"/> instance containing the desired conversion configuration.
-        /// </param>
-        /// <param name="punctuation">
-        /// Whether punctuation should also be converted using OpenCC rules (e.g.,「」 → “”).  
-        /// Default is <c>false</c>.
-        /// </param>
-        /// <param name="keepFont">
-        /// Preserves or injects font attributes in converted output when supported.  
-        /// Default is <c>false</c>.
-        /// </param>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown when <paramref name="inputPath"/>, <paramref name="outputPath"/>, or <paramref name="converter"/> is null.
-        /// </exception>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when the input file does not exist.
-        /// </exception>
-        /// <exception cref="InvalidDataException">
-        /// Thrown if the document is not a valid ZIP-based Office/EPUB container.
-        /// </exception>
-        /// <example>
-        /// Convert Traditional Chinese DOCX → Simplified (retain punctuation):
-        /// <code>
-        /// Opencc cc = new Opencc("t2s");
-        /// ConvertOfficeFile("input.docx", "out.docx", "docx", cc, punctuation: true);
-        /// </code>
-        /// </example>
+        /// <param name="inputPath">Path to the source package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="textConverter">The text transformation applied to convertible content.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task representing the conversion operation.</returns>
+        public static Task ConvertOfficeFileAsync(
+            string inputPath,
+            string outputPath,
+            OfficeFormat format,
+            OfficeTextConverter textConverter,
+            bool keepFont = false,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.Run(
+                () => ConvertOfficeFile(inputPath, outputPath, format, textConverter, keepFont),
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously converts a filesystem-backed Office or EPUB package using a
+        /// caller-supplied text transformation and a format name.
+        /// </summary>
+        /// <param name="inputPath">Path to the source package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">Format name such as <c>docx</c>, <c>xlsx</c>, or <c>epub</c>.</param>
+        /// <param name="textConverter">The text transformation applied to convertible content.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task representing the conversion operation.</returns>
+        public static Task ConvertOfficeFileAsync(
+            string inputPath,
+            string outputPath,
+            string format,
+            OfficeTextConverter textConverter,
+            bool keepFont = false,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            format = ValidateFormat(format);
+            return ConvertOfficeFileAsync(
+                inputPath,
+                outputPath,
+                OfficeFormatUtils.ParseOfficeFormat(format),
+                textConverter,
+                keepFont,
+                cancellationToken);
+        }
+
+        // =====================================================================
+        // Opencc convenience and compatibility overloads
+        // =====================================================================
+
+        /// <summary>
+        /// Converts an Office or EPUB package in memory using an initialized
+        /// <see cref="Opencc"/> instance.
+        /// </summary>
+        /// <remarks>
+        /// This convenience overload preserves the established OpenccNetLib API and
+        /// adapts <paramref name="converter"/> to the delegate-based conversion core.
+        /// </remarks>
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <returns>A newly allocated byte array containing the rebuilt package.</returns>
+        public static byte[] ConvertOfficeBytes(
+            byte[] inputBytes,
+            OfficeFormat format,
+            Opencc converter,
+            bool punctuation = false,
+            bool keepFont = false)
+        {
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            return ConvertOfficeBytes(
+                inputBytes,
+                format,
+                text => converter.Convert(text, punctuation),
+                keepFont);
+        }
+
+        /// <summary>
+        /// Converts an Office or EPUB package in memory using an initialized
+        /// <see cref="Opencc"/> instance and a format name.
+        /// </summary>
+        /// <remarks>
+        /// This is the legacy string-format convenience overload. New code with a known
+        /// format should prefer the <see cref="OfficeFormat"/> overload.
+        /// </remarks>
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">Case-insensitive format name.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <returns>A newly allocated byte array containing the rebuilt package.</returns>
+        public static byte[] ConvertOfficeBytes(
+            byte[] inputBytes,
+            string format,
+            Opencc converter,
+            bool punctuation = false,
+            bool keepFont = false)
+        {
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            return ConvertOfficeBytes(
+                inputBytes,
+                format,
+                text => converter.Convert(text, punctuation),
+                keepFont);
+        }
+
+        /// <summary>
+        /// Asynchronously converts an in-memory Office or EPUB package using an
+        /// initialized <see cref="Opencc"/> instance.
+        /// </summary>
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task that resolves to the rebuilt package bytes.</returns>
+        public static Task<byte[]> ConvertOfficeBytesAsync(
+            byte[] inputBytes,
+            OfficeFormat format,
+            Opencc converter,
+            bool punctuation = false,
+            bool keepFont = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            return ConvertOfficeBytesAsync(
+                inputBytes,
+                format,
+                text => converter.Convert(text, punctuation),
+                keepFont,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously converts an in-memory Office or EPUB package using an
+        /// initialized <see cref="Opencc"/> instance and a format name.
+        /// </summary>
+        /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
+        /// <param name="format">Case-insensitive format name.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task that resolves to the rebuilt package bytes.</returns>
+        public static Task<byte[]> ConvertOfficeBytesAsync(
+            byte[] inputBytes,
+            string format,
+            Opencc converter,
+            bool punctuation = false,
+            bool keepFont = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            return ConvertOfficeBytesAsync(
+                inputBytes,
+                format,
+                text => converter.Convert(text, punctuation),
+                keepFont,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Converts a filesystem-backed Office or EPUB package using an initialized
+        /// <see cref="Opencc"/> instance.
+        /// </summary>
+        /// <remarks>
+        /// This convenience overload preserves the established OpenccNetLib API and
+        /// forwards OpenCC conversion through the delegate-based streaming core.
+        /// </remarks>
+        /// <param name="inputPath">Path to the source Office or EPUB package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        public static void ConvertOfficeFile(
+            string inputPath,
+            string outputPath,
+            OfficeFormat format,
+            Opencc converter,
+            bool punctuation = false,
+            bool keepFont = false)
+        {
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            ConvertOfficeFile(
+                inputPath,
+                outputPath,
+                format,
+                text => converter.Convert(text, punctuation),
+                keepFont);
+        }
+
+        /// <summary>
+        /// Converts a filesystem-backed Office or EPUB package using an initialized
+        /// <see cref="Opencc"/> instance and a format name.
+        /// </summary>
+        /// <param name="inputPath">Path to the source Office or EPUB package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">Case-insensitive format name.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         public static void ConvertOfficeFile(
             string inputPath,
             string outputPath,
@@ -737,79 +677,27 @@ namespace OpenccNetLib
             bool punctuation = false,
             bool keepFont = false)
         {
-            ValidatePath(inputPath, nameof(inputPath));
-            ValidatePath(outputPath, nameof(outputPath));
             if (converter == null) throw new ArgumentNullException(nameof(converter));
-            format = ValidateFormat(format);
-
-            if (!File.Exists(inputPath))
-                throw new FileNotFoundException("Input file not found.", inputPath);
-
-            ConvertOfficeFileCore(
+            ConvertOfficeFile(
                 inputPath,
                 outputPath,
-                OfficeFormatUtils.ParseOfficeFormat(format),
-                converter,
-                punctuation,
+                format,
+                text => converter.Convert(text, punctuation),
                 keepFont);
         }
 
         /// <summary>
-        /// Asynchronously converts an Office or EPUB document and writes the
-        /// converted result to the specified output file.
+        /// Asynchronously converts a filesystem-backed Office or EPUB package using an
+        /// initialized <see cref="Opencc"/> instance.
         /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This method is an asynchronous wrapper around the synchronous file
-        /// conversion pipeline and delegates the work to a background thread using
-        /// <c>Task.Run</c>.
-        /// </para>
-        /// <para>
-        /// The behavior and conversion rules are identical to
-        /// <see cref="ConvertOfficeFile(string,string,OfficeFormat,Opencc,bool,bool)"/>.
-        /// and its string-based overload
-        /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>.
-        /// </para>
-        /// <para>
-        /// This wrapper is useful when synchronous package conversion should not
-        /// occupy the calling thread.
-        /// </para>
-        /// </remarks>
-        /// <param name="inputPath">Full path to the source Office/EPUB file.</param>
-        /// <param name="outputPath">Destination path for the converted file.</param>
-        /// <param name="format">
-        /// Document container type expressed as an <see cref="OfficeFormat"/> value
-        /// (e.g. <see cref="OfficeFormat.Docx"/>, <see cref="OfficeFormat.Epub"/>).
-        /// </param>
-        /// <param name="converter">The active OpenCC converter instance.</param>
-        /// <param name="punctuation">Whether punctuation should also be converted.</param>
-        /// <param name="keepFont">Whether font attributes should be preserved.</param>
-        /// <param name="cancellationToken">
-        /// Optional cancellation token.  
-        /// Cancellation is honored before the background conversion task starts;
-        /// once the synchronous conversion is running, it continues to completion.
-        /// </param>
-        /// <returns>
-        /// A task that represents the asynchronous conversion operation.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown when required arguments are null.
-        /// </exception>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when the input file does not exist.
-        /// </exception>
-        /// <example>
-        /// <code>
-        /// await ConvertOfficeFileAsync(
-        ///     "book.epub",
-        ///     "book_converted.epub",
-        ///     OfficeFormat.Epub,
-        ///     new Opencc("s2twp"),
-        ///     punctuation: true,
-        ///     keepFont: true,
-        ///     cancellationToken);
-        /// </code>
-        /// </example>
+        /// <param name="inputPath">Path to the source package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">The strongly typed Office or EPUB container format.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task representing the conversion operation.</returns>
         public static Task ConvertOfficeFileAsync(
             string inputPath,
             string outputPath,
@@ -819,63 +707,28 @@ namespace OpenccNetLib
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.Run(
-                () => ConvertOfficeFile(inputPath, outputPath, format, converter, punctuation, keepFont),
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            return ConvertOfficeFileAsync(
+                inputPath,
+                outputPath,
+                format,
+                text => converter.Convert(text, punctuation),
+                keepFont,
                 cancellationToken);
         }
 
         /// <summary>
-        /// Asynchronously converts an Office or EPUB document and writes the
-        /// converted result to the specified output file.
+        /// Asynchronously converts a filesystem-backed Office or EPUB package using an
+        /// initialized <see cref="Opencc"/> instance and a format name.
         /// </summary>
-        /// <remarks>
-        /// <para>
-        /// This method is an asynchronous wrapper around the synchronous file
-        /// conversion pipeline and delegates the work to a background thread using
-        /// <c>Task.Run</c>.
-        /// </para>
-        /// <para>
-        /// The behavior and conversion rules are identical to
-        /// <see cref="ConvertOfficeFile(string,string,string,Opencc,bool,bool)"/>.
-        /// </para>
-        /// <para>
-        /// This wrapper is useful when synchronous package conversion should not
-        /// occupy the calling thread.
-        /// </para>
-        /// </remarks>
-        /// <param name="inputPath">Full path to the source Office/EPUB file.</param>
-        /// <param name="outputPath">Destination path for the converted file.</param>
-        /// <param name="format">Document format (e.g. <c>"docx"</c>, <c>"epub"</c>).</param>
-        /// <param name="converter">The active OpenCC converter instance.</param>
-        /// <param name="punctuation">Whether punctuation should also be converted.</param>
-        /// <param name="keepFont">Whether font attributes should be preserved.</param>
-        /// <param name="cancellationToken">
-        /// Optional cancellation token.  
-        /// Cancellation is honored before the background conversion task starts;
-        /// once the synchronous conversion is running, it continues to completion.
-        /// </param>
-        /// <returns>
-        /// A task that represents the asynchronous conversion operation.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown when required arguments are null.
-        /// </exception>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when the input file does not exist.
-        /// </exception>
-        /// <example>
-        /// <code>
-        /// await ConvertOfficeFileAsync(
-        ///     "book.epub",
-        ///     "book_converted.epub",
-        ///     "epub",
-        ///     new Opencc("s2twp"),
-        ///     punctuation: true,
-        ///     keepFont: true,
-        ///     cancellationToken);
-        /// </code>
-        /// </example>
+        /// <param name="inputPath">Path to the source package.</param>
+        /// <param name="outputPath">Path where the rebuilt package will be written.</param>
+        /// <param name="format">Case-insensitive format name.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
+        /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
+        /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
+        /// <returns>A task representing the conversion operation.</returns>
         public static Task ConvertOfficeFileAsync(
             string inputPath,
             string outputPath,
@@ -885,11 +738,13 @@ namespace OpenccNetLib
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            format = ValidateFormat(format);
-            var parsed = OfficeFormatUtils.ParseOfficeFormat(format);
-            return Task.Run(
-                () => { ConvertOfficeFile(inputPath, outputPath, parsed, converter, punctuation, keepFont); },
+            if (converter == null) throw new ArgumentNullException(nameof(converter));
+            return ConvertOfficeFileAsync(
+                inputPath,
+                outputPath,
+                format,
+                text => converter.Convert(text, punctuation),
+                keepFont,
                 cancellationToken);
         }
 
@@ -906,7 +761,7 @@ namespace OpenccNetLib
         /// <para>
         /// Only text-bearing XML/XHTML entries selected for the specified
         /// <see cref="OfficeFormat"/> are materialized as strings. Those entries are
-        /// converted with <see cref="Opencc"/>, while all other entries are copied
+        /// converted with the supplied <see cref="OfficeTextConverter"/>, while all other entries are copied
         /// unchanged at the payload level and repackaged into the new container.
         /// </para>
         /// <para>
@@ -921,8 +776,7 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="inputBytes">Raw ZIP container bytes from the input document.</param>
         /// <param name="format">The strongly typed Office/EPUB document format.</param>
-        /// <param name="converter">The active <see cref="Opencc"/> converter.</param>
-        /// <param name="punctuation">Whether punctuation conversion should be applied.</param>
+        /// <param name="textConverter">The caller-supplied text transformation.</param>
         /// <param name="keepFont">
         /// Whether supported font declarations should be protected with temporary
         /// markers while text conversion is performed.
@@ -934,8 +788,7 @@ namespace OpenccNetLib
         private static CoreResult ConvertOfficeBytesCore(
             byte[] inputBytes,
             OfficeFormat format,
-            Opencc converter,
-            bool punctuation,
+            OfficeTextConverter textConverter,
             bool keepFont)
         {
             var formatId = OfficeFormatUtils.OfficeFormatToString(format);
@@ -961,8 +814,7 @@ namespace OpenccNetLib
                         inputArchive,
                         outputArchive,
                         format,
-                        converter,
-                        punctuation,
+                        textConverter,
                         keepFont);
                 }
 
@@ -1003,7 +855,7 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// <para>
-        /// Unlike <see cref="ConvertOfficeBytes(byte[],OfficeFormat,Opencc,bool,bool)"/>,
+        /// Unlike the in-memory <c>ConvertOfficeBytes</c> APIs,
         /// this path never calls <see cref="File.ReadAllBytes(string)"/> and never builds
         /// the complete output package in a <see cref="MemoryStream"/>. Only selected
         /// XML/XHTML entries are materialized as strings.
@@ -1025,8 +877,7 @@ namespace OpenccNetLib
             string inputPath,
             string outputPath,
             OfficeFormat format,
-            Opencc converter,
-            bool punctuation,
+            OfficeTextConverter textConverter,
             bool keepFont)
         {
             var formatId = OfficeFormatUtils.OfficeFormatToString(format);
@@ -1076,8 +927,7 @@ namespace OpenccNetLib
                                 inputArchive,
                                 outputArchive,
                                 format,
-                                converter,
-                                punctuation,
+                                textConverter,
                                 keepFont);
                         }
 
@@ -1122,8 +972,7 @@ namespace OpenccNetLib
             ZipArchive inputArchive,
             ZipArchive outputArchive,
             OfficeFormat format,
-            Opencc converter,
-            bool punctuation,
+            OfficeTextConverter textConverter,
             bool keepFont)
         {
             var convertedCount = 0;
@@ -1151,8 +1000,7 @@ namespace OpenccNetLib
                         entry,
                         outputArchive,
                         format,
-                        converter,
-                        punctuation,
+                        textConverter,
                         keepFont,
                         ref convertedCount);
                 }
@@ -1165,8 +1013,7 @@ namespace OpenccNetLib
                         entry,
                         outputArchive,
                         format,
-                        converter,
-                        punctuation,
+                        textConverter,
                         keepFont,
                         ref convertedCount);
                 }
@@ -1186,8 +1033,7 @@ namespace OpenccNetLib
             ZipArchiveEntry inputEntry,
             ZipArchive outputArchive,
             OfficeFormat format,
-            Opencc converter,
-            bool punctuation,
+            OfficeTextConverter textConverter,
             bool keepFont,
             ref int convertedCount)
         {
@@ -1203,8 +1049,7 @@ namespace OpenccNetLib
                 xmlContent,
                 format,
                 inputEntry.FullName,
-                converter,
-                punctuation,
+                textConverter,
                 keepFont);
 
             WriteTextEntry(
@@ -1288,8 +1133,7 @@ namespace OpenccNetLib
             string xmlContent,
             OfficeFormat format,
             string entryName,
-            Opencc converter,
-            bool punctuation,
+            OfficeTextConverter textConverter,
             bool keepFont)
         {
             Dictionary<string, string> fontMap = null;
@@ -1320,11 +1164,8 @@ namespace OpenccNetLib
             }
 
             var convertedXml = format == OfficeFormat.Xlsx
-                ? ConvertXlsxXmlPart(xmlContent, entryName, converter, punctuation)
-                : converter.Convert(xmlContent, punctuation);
-
-            if (convertedXml == null)
-                throw new InvalidOperationException("OpenCC conversion returned null.");
+                ? ConvertXlsxXmlPart(xmlContent, entryName, textConverter)
+                : ApplyTextConverter(textConverter, xmlContent);
 
             if (fontMap == null) return convertedXml;
             foreach (var pair in fontMap)
@@ -1484,6 +1325,10 @@ namespace OpenccNetLib
                 : normalizedPath;
         }
 
+        /// <summary>
+        /// Returns whether font declarations should be protected for the specified
+        /// converted package entry.
+        /// </summary>
         private static bool ShouldMaskFonts(OfficeFormat format, string relativePath)
         {
             if (format != OfficeFormat.Xlsx)
@@ -1493,16 +1338,37 @@ namespace OpenccNetLib
             return string.Equals(normalizedPath, "xl/sharedStrings.xml", StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Applies the caller-supplied text transformation and enforces the non-null
+        /// return contract of <see cref="OfficeTextConverter"/>.
+        /// </summary>
+        private static string ApplyTextConverter(
+            OfficeTextConverter textConverter,
+            string text)
+        {
+            var converted = textConverter(text);
+            if (converted == null)
+                throw new InvalidOperationException("Office text converter returned null.");
+            return converted;
+        }
+
+        /// <summary>
+        /// Applies text conversion to an XLSX text-bearing XML part while leaving
+        /// formulas, numeric cells, and non-inline worksheet metadata untouched.
+        /// </summary>
+        /// <remarks>
+        /// Shared strings are converted as a whole XML part. Worksheet XML is handled
+        /// narrowly: only text nodes inside <c>inlineStr</c> cells are transformed.
+        /// </remarks>
         private static string ConvertXlsxXmlPart(
             string xmlContent,
             string relativePath,
-            Opencc converter,
-            bool punctuation)
+            OfficeTextConverter textConverter)
         {
             var normalizedPath = relativePath.Replace('\\', '/');
 
             if (string.Equals(normalizedPath, "xl/sharedStrings.xml", StringComparison.OrdinalIgnoreCase))
-                return converter.Convert(xmlContent, punctuation);
+                return ApplyTextConverter(textConverter, xmlContent);
 
             if (normalizedPath.StartsWith("xl/worksheets/", StringComparison.OrdinalIgnoreCase) &&
                 normalizedPath.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
@@ -1520,7 +1386,7 @@ namespace OpenccNetLib
                         if (string.IsNullOrEmpty(innerText))
                             return textMatch.Value;
 
-                        var convertedText = converter.Convert(innerText, punctuation);
+                        var convertedText = ApplyTextConverter(textConverter, innerText);
                         return openTag + convertedText + closeTag;
                     });
                 });
@@ -1564,7 +1430,9 @@ namespace OpenccNetLib
             if (normalized.Length == 0)
                 throw new ArgumentException("Format must not be empty or whitespace.", nameof(format));
             return !IsSupportedFormat(normalized)
-                ? throw new ArgumentException("Unsupported Office/EPUB format: '" + normalized + "'.", nameof(format))
+                ? throw new ArgumentException(
+                    $"Unsupported Office/EPUB format: '{normalized}'.",
+                    nameof(format))
                 : normalized;
         }
 

@@ -21,6 +21,7 @@ projects with a focus on performance and minimal memory usage.
     - [Supported formats](#-supported-formats)
     - [I/O Model Comparison](#io-model-comparison)
     - [Example: Pure In-Memory Conversion from Bytes](#-example-pure-in-memory-conversion-from-bytes)
+    - [Custom Text Conversion Pipeline](#custom-text-conversion-pipeline)
     - [Backward-Compatible String Overload](#-backward-compatible-string-overload)
     - [Async API](#-async-api)
     - [File-Based Streaming Conversion](#-file-based-streaming-conversion)
@@ -29,6 +30,7 @@ projects with a focus on performance and minimal memory usage.
     - [EPUB Packaging](#-epub-packaging)
     - [Validation and Error Handling](#-validation-and-error-handling)
     - [Unit Tested](#-unit-tested-mstest)
+    - [Design Notes](#design-notes)
     - [Why This Matters](#-why-this-matters)
 - [Performance](#performance)
 - [API Reference](#api-reference)
@@ -1094,7 +1096,12 @@ extensible customization points.
 
 ## 🆕 Office Document & EPUB Conversion
 
-`OfficeDocConverter` supports two intentionally different I/O models for ZIP-based Office and EPUB containers.
+`OfficeDocConverter` supports two independent choices for ZIP-based Office and EPUB containers:
+
+- **I/O model** — pure in-memory `byte[] → byte[]` or streaming file → file.
+- **Text conversion model** — convenient `Opencc` overloads or extensible `OfficeTextConverter` delegate overloads.
+
+For ordinary OpenCC document conversion, the existing `Opencc` overloads remain the simplest recommended API.
 
 `ConvertOfficeBytes(...)` accepts the complete package as `byte[]`. It opens and rebuilds the package in memory, then
 returns a new `byte[]`. This is the pure in-memory API.
@@ -1115,7 +1122,8 @@ requested output path.
 | `odp`  | OpenDocument Presentation              | `content.xml`                                 |
 | `epub` | EPUB 2/3 e-book                        | XHTML, HTML, OPF, and NCX content             |
 
-Optional punctuation conversion and font-name preservation are supported through the same APIs.
+Font-name preservation is available with either text conversion model. The `punctuation` option belongs to the
+`Opencc` convenience overloads because it controls OpenCC conversion policy.
 
 ### I/O Model Comparison
 
@@ -1160,6 +1168,63 @@ other byte-stream workflows without creating intermediate document files.
 
 ---
 
+### Custom Text Conversion Pipeline
+
+The preceding `Opencc` example remains the normal convenience API; no delegate is required. Use `OfficeTextConverter`
+when document text needs processing beyond a plain `Opencc.Convert(...)` call:
+
+```csharp
+public delegate string OfficeTextConverter(string text);
+```
+
+The delegate receives each selected decoded text fragment and returns its transformed text:
+
+```csharp
+OfficeTextConverter converter = text =>
+{
+    // Apply application-specific text transformations here.
+    return text;
+};
+
+byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
+    inputBytes,
+    OfficeFormat.Docx,
+    converter,
+    keepFont: true);
+```
+
+The delegate must return a non-null string. It controls only text transformation; `OfficeDocConverter` still handles
+package parsing, entry selection, ZIP rebuilding, XLSX handling, EPUB rules, font preservation, and package validation.
+There is no separate `punctuation` parameter on delegate overloads: capture that option in the delegate when needed.
+
+A practical pipeline applies to **Normalize → OpenCC Convert → DeTofu** in that order:
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc(OpenccConfig.T2S);
+var detofuMap = DeTofuMap.Builtin(DeTofuLevel.ExtB);
+
+OfficeTextConverter converter = text =>
+{
+    var normalized = cc.NormalizeCompatExtended(text);
+    var converted = cc.Convert(normalized, punctuation: true);
+    return detofuMap.Convert(converted);
+};
+
+OfficeDocConverter.ConvertOfficeFile(
+    "input.epub",
+    "output.epub",
+    OfficeFormat.Epub,
+    converter,
+    keepFont: true);
+```
+
+Applications and CLI implementations can define one shared text pipeline this way without teaching
+`OfficeDocConverter` about normalization or DeTofu.
+
+---
+
 ## 🔁 Backward-Compatible String Overload
 
 The original string-based format overload remains available:
@@ -1180,13 +1245,16 @@ byte[] outputBytes = OfficeDocConverter.ConvertOfficeBytes(
     opencc);
 ```
 
-No public Office conversion API was removed when the byte-array pipeline became pure in-memory.
+Both `OfficeFormat` and legacy string-format overloads are available for `Opencc` and `OfficeTextConverter` across
+`ConvertOfficeBytes(...)`, `ConvertOfficeBytesAsync(...)`, `ConvertOfficeFile(...)`, and `ConvertOfficeFileAsync(...)`.
+Existing `Opencc` callers remain supported without changes.
 
 ---
 
 ## ⚡ Async API
 
-Async wrappers are available when synchronous conversion should not occupy the calling thread:
+Async wrappers are available for both `Opencc` and `OfficeTextConverter` when synchronous conversion should not occupy
+the calling thread:
 
 ```csharp
 var outputBytes = await OfficeDocConverter.ConvertOfficeBytesAsync(
@@ -1234,7 +1302,7 @@ The file APIs are not wrappers around `ConvertOfficeBytes(...)`. They:
 
 1. Open the input package directly with `FileStream`.
 2. Process ZIP entries sequentially.
-3. Materialize only selected text-bearing XML/XHTML entries as strings for OpenCC conversion.
+3. Materialize only selected text-bearing XML/XHTML entries as strings for text conversion.
 4. Stream non-target assets from each input ZIP entry to its output ZIP entry.
 5. Write the rebuilt package to a sibling temporary file.
 6. Validate the completed temporary package.
@@ -1253,6 +1321,13 @@ benefit is that it does not intentionally materialize the complete input or outp
 Both I/O models use the same entry-selection and text-conversion rules. Packages are processed entry by entry. Only a
 selected XML/XHTML entry is materialized as a string for conversion.
 
+Package processing is conversion-engine neutral. The `Opencc` convenience overloads adapt the supplied converter to the
+same delegate-based core using the equivalent of:
+
+```csharp
+text => opencc.Convert(text, punctuation)
+```
+
 The pure in-memory `ConvertOfficeBytes(...)` pipeline is:
 
 ```text
@@ -1263,7 +1338,7 @@ MemoryStream
 ZipArchive (Read)
     ↓
 process entries sequentially
-    ├─ target XML/XHTML → read → OpenCC convert → write
+    ├─ target XML/XHTML → read → OfficeTextConverter → write
     └─ other entries    → stream directly to output
     ↓
 ZipArchive (Create)
@@ -1284,7 +1359,7 @@ The streaming `ConvertOfficeFile(...)` pipeline is:
 input file → FileStream → ZipArchive (Read)
     ↓
 process entries sequentially
-    ├─ target XML/XHTML → read as string → OpenCC convert → write
+    ├─ target XML/XHTML → read as string → OfficeTextConverter → write
     └─ other entries    → stream into rebuilt package
     ↓
 sibling temporary ZIP → validate → move/replace output file
@@ -1297,13 +1372,17 @@ embedded fonts, media, relationships, stylesheets, and metadata.
 
 - **DOCX** — converts the main WordprocessingML document content.
 - **XLSX** — converts shared strings and text inside worksheet `inlineStr` cells. Formulas and other worksheet
-  structural data are left untouched.
+  structural data are left untouched. Both use the same caller-supplied `OfficeTextConverter`; inline-string worksheets
+  pass selected text nodes to the delegate, not the complete worksheet XML.
 - **PPTX** — converts text-bearing slide, notes, layout, master, and comment XML parts.
 - **ODT / ODS / ODP** — converts the OpenDocument `content.xml` payload.
 - **EPUB** — converts XHTML/HTML content together with OPF/NCX textual metadata.
 
 When `keepFont` is enabled, relevant font declarations are temporarily protected with internal markers during text
 conversion and restored before the XML/XHTML entry is written to the new package.
+
+For other selected entries, including XLSX shared strings, the delegate receives XML/XHTML content rather than only
+plain text nodes. Custom transformations should preserve markup and any protected font markers.
 
 ---
 
@@ -1340,6 +1419,10 @@ The Office/EPUB conversion suite covers both real documents and synthetic packag
 - Strongly typed and legacy string format overloads
 - XLSX shared-string conversion
 - XLSX worksheet inline-string conversion
+- XLSX shared and inline strings through the delegate core (via the `Opencc` convenience overload)
+- Delegate-based DOCX text transformation
+- Equivalence of the `Opencc` convenience overload and its equivalent delegate pipeline
+- Rejection of null delegates and delegates returning null
 - Preservation of non-target binary ZIP entry payloads
 - Pure `byte[] → byte[]` DOCX conversion
 - EPUB XHTML conversion
@@ -1349,6 +1432,25 @@ The Office/EPUB conversion suite covers both real documents and synthetic packag
 - Corrupted ZIP error propagation
 - Failed conversion without overwriting an existing output file
 - Atomic file-output cleanup
+
+---
+
+### Design Notes
+
+```text
+OfficeDocConverter
+    ZIP / XML / XHTML / XLSX / EPUB / fonts / package validation
+        ↓ selected text fragment
+OfficeTextConverter
+    application-defined text transformation
+        ↓ converted text
+OfficeDocConverter
+    rebuilt package
+```
+
+The normal `Opencc` overload supplies `text => opencc.Convert(text, punctuation)`. An advanced application can instead
+supply `Normalize → Opencc.Convert → DeTofu`, or another transformation. Compatibility normalization, display fallback,
+and custom post-processing are application policies; the document container layer does not need to know which are used.
 
 ---
 
@@ -1362,6 +1464,11 @@ The Office/EPUB conversion suite covers both real documents and synthetic packag
 - **Server and byte-stream friendly** — documents can enter and leave the converter entirely as `byte[]`.
 - **EPUB compliant** — required `mimetype` ordering and storage rules are preserved.
 - **Safe file publication** — file conversion validates a sibling temporary package before moving or replacing output.
+- **Composable text pipelines** — combine normalization, OpenCC, DeTofu, or application-specific transformations in one
+  delegate, independently of document container handling.
+- **One package-processing core** — convenient `Opencc` and custom delegate overloads share the same Office/EPUB logic.
+- **Backward compatible and reusable** — existing `Opencc` callers need no changes; applications can customize text
+  processing without duplicating package logic or depending on the CLI.
 - **Cross-platform** — built on .NET `System.IO.Compression` rather than Office automation or native Office
   applications.
 

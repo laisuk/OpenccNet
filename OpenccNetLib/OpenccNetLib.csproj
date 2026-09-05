@@ -34,7 +34,8 @@
             - The new CBOR loader accepts both legacy camelCase and corresponding PascalCase metadata field names and rebuilds missing derived metadata when required.
             - Fixed built-in Zstd dictionary loading and conversion in NativeAOT applications where reflection-based System.Text.Json serialization is disabled.
             - Removed CBOR trimming and NativeAOT analysis warnings previously caused by the reflection-capable PeterO.Cbor object-mapping implementation.
-            - Added public independent DictionaryLib.FromZstd(string) and DictionaryLib.FromZstdBytes(byte[]) loading APIs; FromZstd(string) requires an explicit caller-supplied external file.
+            - Added public DictionaryLib.FromZstd(string) for loading an independent dictionary from an explicitly supplied external Zstandard file without changing the active global dictionary provider or conversion-plan cache.
+            - Retired DictionaryLib.LoadJsonCompressed(string); use the streaming DictionaryLib.FromZstd(string) loader for external Zstandard-compressed dictionaries.
             - Added Opencc constructors accepting an explicit DictionaryMaxlength through an instance-owned conversion-plan cache.
             - Added constructor-time frozen Opencc instances with immutable configuration and private plan caches based on DictionaryLib.Provider.
             - Added per-instance custom dictionaries with the new Opencc(OpenccConfig, IEnumerable&lt;CustomDictSpec&gt;, bool, bool) constructor.
