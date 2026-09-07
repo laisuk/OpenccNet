@@ -402,10 +402,11 @@ OpenCC conversion followed by DeTofu:
 using OpenccNetLib;
 
 var cc = new Opencc(OpenccConfig.T2S);
-string converted = cc.Convert("驂𬴂");
+string converted = cc.Convert("驂騑"); // 骖𬴂
 string displaySafe = cc.DeTofu(converted, DeTofuLevel.ExtB);
 
 Console.WriteLine(displaySafe);
+// Output: 骖騑
 ```
 
 Direct utility usage:
@@ -413,8 +414,8 @@ Direct utility usage:
 ```csharp
 using OpenccNetLib;
 
-string displaySafe = DeTofu.Convert("驂𬴂", DeTofuLevel.ExtB);
-Console.WriteLine(displaySafe);
+string displaySafe = DeTofu.Convert("骖𬴂", DeTofuLevel.ExtB);
+Console.WriteLine(displaySafe); // 骖騑
 ```
 
 DeTofu APIs:
@@ -444,7 +445,7 @@ var map = DeTofuMap
     });
 
 string displaySafe = map.Convert("𣭲");
-Console.WriteLine(displaySafe);
+Console.WriteLine(displaySafe); // 氄
 ```
 
 Custom in-memory pairs usage:
@@ -481,7 +482,7 @@ Custom fallback file usage:
 using OpenccNetLib;
 
 var cc = new Opencc(OpenccConfig.T2S);
-string converted = cc.Convert("驂𬴂");
+string converted = cc.Convert("驂騑");
 string displaySafe = cc.DeTofuWithCustomFile(
     converted,
     DeTofuLevel.ExtB,
@@ -552,14 +553,15 @@ By default, OpenccNetLib lazily uses the Zstandard-compressed lexicon embedded i
 hosts such as Blazor WebAssembly where no physical dictionary file is available. Advanced workflows can load or
 customize a `DictionaryMaxlength` and choose either instance or process-wide ownership.
 
-Normal Blazor WebAssembly usage needs no dictionary download. When an application intentionally supplies a different
-compressed dictionary, it can keep that dictionary instance-scoped:
+Normal Blazor WebAssembly usage needs no dictionary download. Applications running in environments with filesystem
+access can intentionally load a different Zstandard-compressed dictionary and keep it instance-scoped:
 
 ```csharp
-var bytes = await Http.GetByteArrayAsync("custom-dictionary.zstd");
-var dm = DictionaryLib.FromZstdBytes(bytes);
+var dm = DictionaryLib.FromZstd("custom-dictionary.zstd");
 var cc = new Opencc("s2t", dm);
 ```
+
+A dictionary can also be built directly from OpenCC-style dictionary source files:
 
 ```csharp
 DictionaryMaxlength DictionaryLib.FromDicts(
@@ -1634,8 +1636,8 @@ Creates a new converter using the strongly-typed `OpenccConfig` enum
 - `string Tw2Tp(string inputText, bool punctuation = false)`
 - `string T2Hk(string inputText, bool punctuation = false)`
 - `string Hk2T(string inputText, bool punctuation = false)`
-- `string T2Jp(string inputText)`
-- `string Jp2T(string inputText)`
+- `string T2Jp(string inputText, bool punctuation = false)`
+- `string Jp2T(string inputText, bool punctuation = false)`
 
 #### ⚙️ Configuration
 
