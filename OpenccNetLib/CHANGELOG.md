@@ -101,6 +101,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   variants, while continuing to ignore unknown additive fields for forward-compatible dictionary loading.
 - Continue rebuilding missing CBOR-derived metadata when loading older, incomplete, or externally generated dictionary
   payloads, while reusing persisted `StarterLenMask` and length metadata when available.
+- Update conversion dictionary data.
 
 ### Fixed
 
