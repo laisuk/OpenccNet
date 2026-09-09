@@ -28,6 +28,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
   `--detofu-file` support.
 - Preserved PDF-specific Unicode compatibility normalization and extraction/reflow behavior while routing OpenCC
   conversion through the shared text pipeline.
+- Added `--convert-filename` for subcommand `office`.
 
 ### Notes
 

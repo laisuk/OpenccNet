@@ -82,6 +82,13 @@ internal static class OfficeCommand
                 "Use --keep-font:false to disable."
         };
 
+        var convertFilenameOption = new Option<bool>("--convert-filename", "-F")
+        {
+            DefaultValueFactory = _ => false,
+            Description =
+                "Convert the output filename using the selected OpenCC configuration."
+        };
+
         var quietOption = new Option<bool>("--quiet", "-q")
         {
             DefaultValueFactory = _ => false,
@@ -167,6 +174,7 @@ internal static class OfficeCommand
             punctOption,
             formatOption,
             keepFontOption,
+            convertFilenameOption,
             quietOption,
             deTofuOption,
             deTofuFileOption,
@@ -239,6 +247,7 @@ internal static class OfficeCommand
                 punctuation: parseResult.GetValue(punctOption),
                 format: parseResult.GetValue(formatOption),
                 keepFont: parseResult.GetValue(keepFontOption),
+                convertFilename: parseResult.GetValue(convertFilenameOption),
                 quiet: parseResult.GetValue(quietOption),
                 deTofu: deTofu,
                 deTofuFile:
@@ -265,6 +274,7 @@ internal static class OfficeCommand
         bool punctuation,
         string? format,
         bool keepFont,
+        bool convertFilename,
         bool quiet,
         string? deTofu,
         string? deTofuFile,
@@ -283,23 +293,6 @@ internal static class OfficeCommand
             var resolvedFormat =
                 ResolveFormat(resolvedInput, format);
 
-            var resolvedOutput = ResolveOutputPath(
-                resolvedInput,
-                output,
-                resolvedFormat,
-                quiet);
-
-            CliUtils.EnsureDifferentPaths(
-                resolvedInput,
-                resolvedOutput);
-
-            if (!string.IsNullOrWhiteSpace(deTofuFile))
-            {
-                deTofuFile = CliUtils.ValidateInputFile(
-                    deTofuFile,
-                    "DeTofu mapping file");
-            }
-
             var textConverter = CliTextPipeline.Build(
                 config,
                 punctuation,
@@ -309,6 +302,18 @@ internal static class OfficeCommand
                 deTofu,
                 deTofuFile,
                 customDictArgs);
+
+            var resolvedOutput = ResolveOutputPath(
+                resolvedInput,
+                output,
+                resolvedFormat,
+                convertFilename,
+                textConverter,
+                quiet);
+
+            CliUtils.EnsureDifferentPaths(
+                resolvedInput,
+                resolvedOutput);
 
             var (success, message) =
                 await OfficeConverter.ConvertOfficeDocAsync(
@@ -367,22 +372,37 @@ internal static class OfficeCommand
         string input,
         string? output,
         string format,
+        bool convertFilename,
+        OfficeTextConverter textConverter,
         bool quiet)
     {
-        var resolvedOutput = string.IsNullOrWhiteSpace(output)
-            ? Path.Combine(
-                Path.GetDirectoryName(input) ?? string.Empty,
-                $"{Path.GetFileNameWithoutExtension(input)}_converted.{format}")
-            : output.Trim();
+        string resolvedOutput;
 
-        if (!string.IsNullOrWhiteSpace(output) &&
-            string.IsNullOrEmpty(Path.GetExtension(resolvedOutput)))
+        if (string.IsNullOrWhiteSpace(output))
         {
-            resolvedOutput = $"{resolvedOutput}.{format}";
+            var fileStem = Path.GetFileNameWithoutExtension(input);
 
-            CliUtils.WriteInfo(
-                $"Output file extension adjusted to: {resolvedOutput}",
-                quiet);
+            if (convertFilename)
+            {
+                fileStem = textConverter(fileStem);
+            }
+
+            resolvedOutput = Path.Combine(
+                Path.GetDirectoryName(input) ?? string.Empty,
+                $"{fileStem}_converted.{format}");
+        }
+        else
+        {
+            resolvedOutput = output.Trim();
+
+            if (string.IsNullOrEmpty(Path.GetExtension(resolvedOutput)))
+            {
+                resolvedOutput = $"{resolvedOutput}.{format}";
+
+                CliUtils.WriteInfo(
+                    $"Output file extension adjusted to: {resolvedOutput}",
+                    quiet);
+            }
         }
 
         return CliUtils.ResolveOutputFile(resolvedOutput);

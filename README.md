@@ -1933,6 +1933,7 @@ Options:
   -p, --punct                       Enable punctuation conversion.
   -f, --format <format>             Force Office document format: docx | xlsx | pptx | odt | ods | odp | epub
   -k, --keep-font                   Preserve font names in Office documents [default: true]. Use --keep-font:false to disable.
+  -F, --convert-filename            Convert the output filename using the selected OpenCC configuration.
   -q, --quiet                       Suppress status and progress output; only errors will be shown.
   --detofu <detofu>                 Apply tofu-safe fallback after conversion: all, ext-b, ext-c, ext-d, ext-e, ext-f, ext-g, ext-h, ext-i
   --detofu-file <detofu-file>       Load additional DeTofu fallback mappings from a UTF-8 text file. Custom mappings override built-in mappings (requires 
