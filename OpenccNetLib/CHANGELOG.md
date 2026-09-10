@@ -49,6 +49,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   Package entry selection, XLSX handling, font preservation, EPUB rules, validation, and the distinct in-memory byte and
   streaming file paths remain owned by `OfficeDocConverter`. Async overloads continue to wrap synchronous work in
   `Task.Run(...)`.
+- Optimize and harden `OfficeDocConverter` package processing with precise, case-insensitive PPTX part selection for
+  slides, notes, slide masters, slide layouts, comments, and comment authors; narrow XLSX worksheet conversion to
+  `inlineStr` text nodes while leaving formulas and unrelated XML untouched; validate ZIP entry names before rebuilding
+  archive entries; preserve EPUB `mimetype` ordering and storage requirements; and validate completed packages before
+  publishing filesystem output.
 - Collapse the unreleased `Opencc` constructor overloads into exactly two public forms—one accepting `string` and one
   accepting `OpenccConfig`—with shared parameter order `config, customBase = null, customDictSpecs = null,
   isPreserveIds = false, isFrozen = false`.

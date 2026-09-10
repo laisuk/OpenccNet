@@ -1093,18 +1093,18 @@ namespace OpenccNetLib
                                 StringComparison.OrdinalIgnoreCase));
 
                 case OfficeFormat.Pptx:
-                    if (!normalizedPath.StartsWith("ppt/", StringComparison.OrdinalIgnoreCase) ||
-                        !normalizedPath.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-                    {
+                    if (!normalizedPath.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
                         return false;
-                    }
 
-                    var fileName = GetZipEntryFileName(normalizedPath);
-                    return fileName.StartsWith("slide", StringComparison.OrdinalIgnoreCase) ||
-                           normalizedPath.IndexOf("notesSlide", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                           normalizedPath.IndexOf("slideMaster", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                           normalizedPath.IndexOf("slideLayout", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                           normalizedPath.IndexOf("comment", StringComparison.OrdinalIgnoreCase) >= 0;
+                    return normalizedPath.StartsWith("ppt/slides/", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.StartsWith("ppt/notesSlides/", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.StartsWith("ppt/slideMasters/", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.StartsWith("ppt/slideLayouts/", StringComparison.OrdinalIgnoreCase) ||
+                           normalizedPath.StartsWith("ppt/comments/", StringComparison.OrdinalIgnoreCase) ||
+                           string.Equals(
+                               normalizedPath,
+                               "ppt/commentAuthors.xml",
+                               StringComparison.OrdinalIgnoreCase);
 
                 case OfficeFormat.Odt:
                 case OfficeFormat.Ods:
@@ -1268,13 +1268,26 @@ namespace OpenccNetLib
         /// Creates the output entry corresponding to an input entry and preserves its
         /// ZIP timestamp where possible.
         /// </summary>
+        /// <remarks>
+        /// ZIP entry names are validated before they are reproduced in the rebuilt
+        /// archive. Although this converter never extracts entries to the filesystem,
+        /// rejecting rooted and parent-traversal names keeps malformed or hostile
+        /// archive paths out of generated Office/EPUB packages.
+        /// </remarks>
         private static ZipArchiveEntry CreateOutputEntry(
             ZipArchive outputArchive,
             ZipArchiveEntry sourceEntry,
             CompressionLevel compressionLevel)
         {
+            var entryName = sourceEntry.FullName;
+            if (IsUnsafeZipEntryName(entryName))
+            {
+                throw new InvalidDataException(
+                    "Unsafe ZIP entry path: '" + entryName + "'.");
+            }
+
             var outputEntry = outputArchive.CreateEntry(
-                sourceEntry.FullName,
+                entryName,
                 compressionLevel);
 
             try
@@ -1315,14 +1328,35 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Returns the final path component of a normalized ZIP entry name.
+        /// Returns whether a ZIP entry name is rooted or contains parent-directory
+        /// traversal. ZIP entry names are archive paths, so validation is performed on
+        /// the raw name rather than through platform-specific filesystem path parsing.
         /// </summary>
-        private static string GetZipEntryFileName(string normalizedPath)
+        private static bool IsUnsafeZipEntryName(string entryName)
         {
-            var slash = normalizedPath.LastIndexOf('/');
-            return slash >= 0
-                ? normalizedPath.Substring(slash + 1)
-                : normalizedPath;
+            if (string.IsNullOrEmpty(entryName))
+                return true;
+
+            if (entryName[0] == '/' || entryName[0] == '\\')
+                return true;
+
+            if (entryName.Length >= 3 &&
+                entryName[1] == ':' &&
+                (entryName[2] == '/' || entryName[2] == '\\'))
+            {
+                return true;
+            }
+
+            var normalizedPath = entryName.Replace('\\', '/');
+            var segments = normalizedPath.Split('/');
+
+            foreach (var segment in segments)
+            {
+                if (string.Equals(segment, "..", StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
         }
 
         /// <summary>
