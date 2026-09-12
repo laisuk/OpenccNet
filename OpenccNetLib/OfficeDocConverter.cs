@@ -23,7 +23,7 @@ namespace OpenccNetLib
     /// </para>
     /// <para>
     /// Use this enumeration with either the <see cref="Opencc"/> convenience overloads
-    /// or the <see cref="OfficeTextConverter"/> delegate overloads for strongly typed
+    /// or the <see cref="TextConverter"/> delegate overloads for strongly typed
     /// format selection.
     /// </para>
     /// </remarks>
@@ -124,35 +124,13 @@ namespace OpenccNetLib
     }
 
     /// <summary>
-    /// Represents a caller-supplied transformation for text-bearing content inside
-    /// an Office or EPUB package.
-    /// </summary>
-    /// <param name="text">The decoded text fragment selected for conversion.</param>
-    /// <returns>
-    /// The transformed text. Implementations must return a non-null string.
-    /// </returns>
-    /// <remarks>
-    /// <para>
-    /// <see cref="OfficeDocConverter"/> owns package parsing, ZIP reconstruction,
-    /// entry selection, XLSX inline-string handling, EPUB packaging rules, and optional
-    /// font protection. The delegate owns only the text transformation itself.
-    /// </para>
-    /// <para>
-    /// This allows callers to compose OpenCC conversion with preprocessing or
-    /// postprocessing steps such as compatibility normalization or DeToFu without
-    /// coupling the Office/EPUB package layer to those policies.
-    /// </para>
-    /// </remarks>
-    public delegate string OfficeTextConverter(string text);
-
-    /// <summary>
     /// Provides high-level APIs for converting text-bearing content inside Office and
     /// EPUB packages.
     /// </summary>
     /// <remarks>
     /// <para>
     /// Callers may supply either an <see cref="Opencc"/> instance through the convenience
-    /// overloads or an <see cref="OfficeTextConverter"/> delegate through the extensible
+    /// overloads or an <see cref="TextConverter"/> delegate through the extensible
     /// overloads. All overloads share the same ZIP/XML/XHTML conversion core.
     /// </para>
     /// <para>
@@ -241,7 +219,7 @@ namespace OpenccNetLib
         /// </para>
         /// <para>
         /// The complete source and rebuilt package are memory-resident. For large files
-        /// backed by the filesystem, prefer <see cref="ConvertOfficeFile(string,string,OfficeFormat,OfficeTextConverter,bool)"/>.
+        /// backed by the filesystem, prefer <see cref="ConvertOfficeFile(string,string,OfficeFormat,TextConverter,bool)"/>.
         /// </para>
         /// </remarks>
         /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
@@ -267,7 +245,7 @@ namespace OpenccNetLib
         public static byte[] ConvertOfficeBytes(
             byte[] inputBytes,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false)
         {
             ValidateInputBytes(inputBytes);
@@ -306,7 +284,7 @@ namespace OpenccNetLib
         public static byte[] ConvertOfficeBytes(
             byte[] inputBytes,
             string format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false)
         {
             ValidateInputBytes(inputBytes);
@@ -339,7 +317,7 @@ namespace OpenccNetLib
         public static Task<byte[]> ConvertOfficeBytesAsync(
             byte[] inputBytes,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
@@ -362,7 +340,7 @@ namespace OpenccNetLib
         public static Task<byte[]> ConvertOfficeBytesAsync(
             byte[] inputBytes,
             string format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
@@ -405,7 +383,7 @@ namespace OpenccNetLib
             string inputPath,
             string outputPath,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false)
         {
             ValidatePath(inputPath, nameof(inputPath));
@@ -435,7 +413,7 @@ namespace OpenccNetLib
             string inputPath,
             string outputPath,
             string format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false)
         {
             ValidatePath(inputPath, nameof(inputPath));
@@ -470,7 +448,7 @@ namespace OpenccNetLib
             string inputPath,
             string outputPath,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
@@ -495,7 +473,7 @@ namespace OpenccNetLib
             string inputPath,
             string outputPath,
             string format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
         {
@@ -761,7 +739,7 @@ namespace OpenccNetLib
         /// <para>
         /// Only text-bearing XML/XHTML entries selected for the specified
         /// <see cref="OfficeFormat"/> are materialized as strings. Those entries are
-        /// converted with the supplied <see cref="OfficeTextConverter"/>, while all other entries are copied
+        /// converted with the supplied <see cref="TextConverter"/>, while all other entries are copied
         /// unchanged at the payload level and repackaged into the new container.
         /// </para>
         /// <para>
@@ -788,7 +766,7 @@ namespace OpenccNetLib
         private static CoreResult ConvertOfficeBytesCore(
             byte[] inputBytes,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont)
         {
             var formatId = OfficeFormatUtils.OfficeFormatToString(format);
@@ -877,7 +855,7 @@ namespace OpenccNetLib
             string inputPath,
             string outputPath,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont)
         {
             var formatId = OfficeFormatUtils.OfficeFormatToString(format);
@@ -972,7 +950,7 @@ namespace OpenccNetLib
             ZipArchive inputArchive,
             ZipArchive outputArchive,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont)
         {
             var convertedCount = 0;
@@ -1033,7 +1011,7 @@ namespace OpenccNetLib
             ZipArchiveEntry inputEntry,
             ZipArchive outputArchive,
             OfficeFormat format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont,
             ref int convertedCount)
         {
@@ -1133,7 +1111,7 @@ namespace OpenccNetLib
             string xmlContent,
             OfficeFormat format,
             string entryName,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont)
         {
             Dictionary<string, string> fontMap = null;
@@ -1374,10 +1352,10 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Applies the caller-supplied text transformation and enforces the non-null
-        /// return contract of <see cref="OfficeTextConverter"/>.
+        /// return contract of <see cref="TextConverter"/>.
         /// </summary>
         private static string ApplyTextConverter(
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             string text)
         {
             var converted = textConverter(text);
@@ -1397,7 +1375,7 @@ namespace OpenccNetLib
         private static string ConvertXlsxXmlPart(
             string xmlContent,
             string relativePath,
-            OfficeTextConverter textConverter)
+            TextConverter textConverter)
         {
             var normalizedPath = relativePath.Replace('\\', '/');
 

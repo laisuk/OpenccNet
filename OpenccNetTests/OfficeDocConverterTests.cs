@@ -462,7 +462,7 @@ namespace OpenccNetTests
             writer.Write(content);
         }
 
-        // New: OfficeTextConverter Delegate Tests
+        // New: TextConverter Delegate Tests
 
 
         [TestMethod]
@@ -474,7 +474,7 @@ namespace OpenccNetTests
                 OfficeDocConverter.ConvertOfficeBytes(
                     inputBytes,
                     "docx",
-                    (OfficeTextConverter)null!));
+                    (TextConverter)null!));
         }
 
         [TestMethod]
@@ -488,7 +488,7 @@ namespace OpenccNetTests
             var outputBytes = OfficeDocConverter.ConvertOfficeBytes(
                 inputBytes,
                 OfficeFormat.Docx,
-                (OfficeTextConverter)TextConverter);
+                (TextConverter)TextConverter);
 
             using var ms = new MemoryStream(outputBytes);
             using var archive = new ZipArchive(ms, ZipArchiveMode.Read);
@@ -546,7 +546,7 @@ namespace OpenccNetTests
             var inputBytes = CreateMinimalDocx(
                 @"<?xml version=""1.0"" encoding=""UTF-8""?><w:document xmlns:w=""http://schemas.openxmlformats.org/wordprocessingml/2006/main""><w:body><w:p><w:r><w:t>汉字</w:t></w:r></w:p></w:body></w:document>");
 
-            OfficeTextConverter converter = _ => null!;
+            TextConverter converter = _ => null!;
 
             var exception = Assert.ThrowsExactly<InvalidOperationException>(() =>
                 OfficeDocConverter.ConvertOfficeBytes(

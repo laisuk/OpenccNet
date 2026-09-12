@@ -173,6 +173,31 @@ namespace OpenccNetLib
     #endregion // OpenccConfig and OpenccConfigExtensions Region
 
     /// <summary>
+    /// Represents a caller-supplied text-to-text transformation.
+    /// </summary>
+    /// <param name="text">The input text to transform.</param>
+    /// <returns>
+    /// The transformed text. Implementations must return a non-null string.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// The delegate defines only the text transformation itself. Callers are responsible
+    /// for deciding which text is passed to it and for any surrounding parsing, extraction,
+    /// packaging, or output handling.
+    /// </para>
+    /// <para>
+    /// Implementations may perform operations such as OpenCC conversion, compatibility
+    /// normalization, punctuation conversion, DeToFu processing, or any composition of
+    /// preprocessing and postprocessing steps.
+    /// </para>
+    /// <para>
+    /// Components such as <see cref="OfficeDocConverter"/> can consume this delegate while
+    /// remaining independent of the specific text-conversion policy supplied by the caller.
+    /// </para>
+    /// </remarks>
+    public delegate string TextConverter(string text);
+
+    /// <summary>
     /// Main class for OpenCC text conversion. Provides methods for various conversion directions
     /// (Simplified-Traditional, Traditional-Simplified, etc.) and supports multi-stage, high-performance conversion.
     /// </summary>
@@ -1009,7 +1034,7 @@ namespace OpenccNetLib
                 return null;
 
             var baseDictionary = customBase ??
-                (isFrozen ? DictionaryLib.Provider : ConversionPlanCache.Provider);
+                                 (isFrozen ? DictionaryLib.Provider : ConversionPlanCache.Provider);
             var specs = customDictSpecs == null
                 ? Array.Empty<CustomDictSpec>()
                 : new List<CustomDictSpec>(customDictSpecs).ToArray();

@@ -17,7 +17,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Add the public `OfficeTextConverter(string text)` delegate and delegate-based overloads for `ConvertOfficeBytes`,
+- Add the public `TextConverter(string text)` delegate and delegate-based overloads for `ConvertOfficeBytes`,
   `ConvertOfficeBytesAsync`, `ConvertOfficeFile`, and `ConvertOfficeFileAsync`, with both `OfficeFormat` and legacy
   string formats. Callers can compose normalization, OpenCC conversion, DeTofu, and custom text transformations;
   delegates must return a non-null string.
@@ -44,7 +44,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Refactor Office/EPUB package processing around a conversion-policy-independent `OfficeTextConverter` core. Existing
+- Refactor Office/EPUB package processing around a conversion-policy-independent `TextConverter` core. Existing
   `Opencc` overloads remain supported as convenience adapters for `text => converter.Convert(text, punctuation)`.
   Package entry selection, XLSX handling, font preservation, EPUB rules, validation, and the distinct in-memory byte and
   streaming file paths remain owned by `OfficeDocConverter`. Async overloads continue to wrap synchronous work in
