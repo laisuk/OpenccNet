@@ -1964,16 +1964,41 @@ namespace OpenccNetLib
         }
 
         /// <summary>
+        /// Converts text using the cached conversion plan for the specified configuration
+        /// and punctuation setting.
+        /// </summary>
+        /// <remarks>
+        /// Centralizes execution of the selected conversion plan and applies this instance's
+        /// IDS-preservation policy. Dictionary-plan selection remains independent of
+        /// <see cref="IsPreserveIds"/>.
+        /// </remarks>
+        /// <param name="inputText">The text to convert.</param>
+        /// <param name="config">The OpenCC configuration whose conversion plan is used.</param>
+        /// <param name="punctuation">
+        /// <see langword="true"/> to include punctuation conversion; otherwise, <see langword="false"/>.
+        /// </param>
+        /// <returns>The converted text.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private string ConvertWithPlan(
+            string inputText,
+            OpenccConfig config,
+            bool punctuation)
+        {
+            return GetDictRefs(config, punctuation)
+                .ApplySegmentReplace(
+                    inputText,
+                    SegmentReplace,
+                    _isPreserveIds);
+        }
+
+        /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese.
         /// </summary>
         /// <param name="inputText">The input text.</param>
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string S2T(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.S2T, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.S2T, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese to Simplified Chinese.
@@ -1982,10 +2007,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string T2S(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.T2S, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.T2S, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese (Taiwan standard).
@@ -1994,11 +2016,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string S2Tw(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.S2Tw, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.S2Tw, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese (Taiwan standard) to Simplified Chinese.
@@ -2007,11 +2025,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string Tw2S(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Tw2S, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Tw2S, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Traditional Chinese using two rounds:
@@ -2021,11 +2035,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string S2Twp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.S2Twp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.S2Twp, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Hong Kong Traditional Chinese using two rounds:
@@ -2035,11 +2045,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string S2Hkp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.S2Hkp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.S2Hkp, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese (Taiwan) to Simplified Chinese with Taiwan phrase and variant normalization.
@@ -2048,11 +2054,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string Tw2Sp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Tw2Sp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Tw2Sp, punctuation);
 
         /// <summary>
         /// Converts Hong Kong Traditional Chinese to Simplified Chinese with Hong Kong phrase and variant normalization.
@@ -2061,11 +2063,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string Hk2Sp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Hk2Sp, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Hk2Sp, punctuation);
 
         /// <summary>
         /// Converts Simplified Chinese to Hong Kong Traditional Chinese.
@@ -2074,11 +2072,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string S2Hk(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.S2Hk, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.S2Hk, punctuation);
 
         /// <summary>
         /// Converts Hong Kong Traditional Chinese to Simplified Chinese.
@@ -2087,11 +2081,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to convert punctuation as well.</param>
         /// <returns>The converted text.</returns>
         public string Hk2S(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Hk2S, punctuation);
-            var output = refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-            return output;
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Hk2S, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese to Taiwan Traditional Chinese.
@@ -2100,10 +2090,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string T2Tw(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.T2Tw, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.T2Tw, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese to Taiwan Traditional Chinese,
@@ -2113,10 +2100,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string T2Twp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.T2Twp, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.T2Twp, punctuation);
 
         /// <summary>
         /// Converts Taiwan Traditional Chinese to Traditional Chinese.
@@ -2125,10 +2109,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string Tw2T(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Tw2T, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Tw2T, punctuation);
 
         /// <summary>
         /// Converts Taiwan Traditional Chinese to standard Traditional Chinese,
@@ -2138,10 +2119,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string Tw2Tp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Tw2Tp, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Tw2Tp, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese to Hong Kong Traditional Chinese,
@@ -2151,10 +2129,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string T2Hkp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.T2Hkp, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.T2Hkp, punctuation);
 
         /// <summary>
         /// Converts Hong Kong Traditional Chinese with phrase normalization to standard Traditional Chinese,
@@ -2164,10 +2139,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string Hk2Tp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Hk2Tp, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Hk2Tp, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese to Hong Kong Traditional Chinese.
@@ -2176,10 +2148,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string T2Hk(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.T2Hk, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.T2Hk, punctuation);
 
         /// <summary>
         /// Converts Hong Kong Traditional Chinese to Traditional Chinese.
@@ -2188,10 +2157,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string Hk2T(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Hk2T, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Hk2T, punctuation);
 
         /// <summary>
         /// Converts Traditional Chinese to Japanese Kanji variants.
@@ -2200,10 +2166,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string T2Jp(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.T2Jp, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.T2Jp, punctuation);
 
         /// <summary>
         /// Converts Japanese Kanji variants to Traditional Chinese.
@@ -2212,10 +2175,7 @@ namespace OpenccNetLib
         /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
         /// <returns>The converted text.</returns>
         public string Jp2T(string inputText, bool punctuation = false)
-        {
-            var refs = GetDictRefs(OpenccConfig.Jp2T, punctuation);
-            return refs.ApplySegmentReplace(inputText, SegmentReplace, IsPreserveIds);
-        }
+            => ConvertWithPlan(inputText, OpenccConfig.Jp2T, punctuation);
 
         /// <summary>
         /// Converts text according to the current <see cref="Config"/> setting.
