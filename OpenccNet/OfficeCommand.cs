@@ -186,7 +186,6 @@ internal static class OfficeCommand
 
         officeCommand.Validators.Add(result =>
         {
-            var deTofuResult = result.GetResult(deTofuOption);
             var deTofuFileResult = result.GetResult(deTofuFileOption);
 
             if (deTofuFileResult is null)
@@ -196,7 +195,8 @@ internal static class OfficeCommand
                 return;
 
             // Presence matters because "--detofu" with no value means "all".
-            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+            var deTofuEnabled =
+                result.Tokens.Any(token => token.Value is "--detofu");
 
             if (!deTofuEnabled)
             {
@@ -224,11 +224,8 @@ internal static class OfficeCommand
 
         officeCommand.SetAction(async (parseResult, cancellationToken) =>
         {
-            var deTofuResult =
-                parseResult.GetResult(deTofuOption);
-
             var deTofuEnabled =
-                deTofuResult?.Tokens.Count > 0;
+                parseResult.Tokens.Any(token => token.Value is "--detofu");
 
             var deTofu = deTofuEnabled
                 ? parseResult.GetValue(deTofuOption)
@@ -340,6 +337,10 @@ internal static class OfficeCommand
 
             return CliUtils.ExitSuccess;
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             return CliUtils.WriteError(
@@ -373,7 +374,7 @@ internal static class OfficeCommand
         string? output,
         string format,
         bool convertFilename,
-        OfficeTextConverter textConverter,
+        TextConverter textConverter,
         bool quiet)
     {
         string resolvedOutput;

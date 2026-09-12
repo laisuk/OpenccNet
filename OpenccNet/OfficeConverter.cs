@@ -87,7 +87,7 @@ public static class OfficeConverter
         ConvertOfficeBytesAsync(
             byte[] inputBytes,
             string format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
     {
@@ -185,7 +185,7 @@ public static class OfficeConverter
             string inputPath,
             string outputPath,
             string format,
-            OfficeTextConverter textConverter,
+            TextConverter textConverter,
             bool keepFont = false,
             CancellationToken cancellationToken = default)
     {

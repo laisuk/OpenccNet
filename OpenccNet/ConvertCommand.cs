@@ -148,7 +148,7 @@ internal static class ConvertCommand
 
         convertCommand.Validators.Add(result =>
         {
-            var deTofuResult = result.GetResult(deTofuOption);
+            // var deTofuResult = result.GetResult(deTofuOption);
             var deTofuFileResult = result.GetResult(deTofuFileOption);
 
             // --detofu-file was not supplied.
@@ -160,7 +160,7 @@ internal static class ConvertCommand
                 return;
 
             // Presence matters here, because "--detofu" with no value means level "all".
-            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+            var deTofuEnabled = result.Tokens.Any(token => token.Value is "--detofu");
 
             if (!deTofuEnabled)
             {
@@ -186,45 +186,39 @@ internal static class ConvertCommand
             }
         });
 
-        convertCommand.SetAction(async (pr, _) =>
+        convertCommand.SetAction(async (parseResult, cancellationToken) =>
         {
-            var inputFile = pr.GetValue(inputFileOption);
-            var outputFile = pr.GetValue(outputFileOption);
-            var config = pr.GetValue(configOption)!;
-            var punct = pr.GetValue(punctOption);
+            // var deTofuResult = parseResult.GetResult(deTofuOption);
 
-            var deTofuResult = pr.GetResult(deTofuOption);
-            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+            var deTofuEnabled = parseResult.Tokens.Any(token => token.Value is "--detofu");
+
             var deTofu = deTofuEnabled
-                ? pr.GetValue(deTofuOption)
+                ? parseResult.GetValue(deTofuOption)
                 : null;
 
-            if (deTofuEnabled && string.IsNullOrWhiteSpace(deTofu))
+            if (deTofuEnabled &&
+                string.IsNullOrWhiteSpace(deTofu))
+            {
                 deTofu = "all";
-
-            var deTofuFile = pr.GetValue(deTofuFileOption);
-            var keepIds = pr.GetValue(keepIdsOption);
-            var normCompat = pr.GetValue(normCompatOption);
-            var normCompatExtended = pr.GetValue(normCompatExtendedOption);
-            var inputEnc = pr.GetValue(inputEncodingOption)!;
-            var outputEnc = pr.GetValue(outputEncodingOption)!;
-            var customDicts =
-                pr.GetValue(customDictOption) ?? Array.Empty<string>();
+            }
 
             return await RunConversionAsync(
-                inputFile,
-                outputFile,
-                config,
-                punct,
-                inputEnc,
-                outputEnc,
-                deTofu,
-                deTofuFile,
-                keepIds,
-                normCompat,
-                normCompatExtended,
-                customDicts
-            );
+                inputFile: parseResult.GetValue(inputFileOption),
+                outputFile: parseResult.GetValue(outputFileOption),
+                config: parseResult.GetValue(configOption)!,
+                punctuation: parseResult.GetValue(punctOption),
+                inputEncoding: parseResult.GetValue(inputEncodingOption)!,
+                outputEncoding: parseResult.GetValue(outputEncodingOption)!,
+                deTofu: deTofu,
+                deTofuFile: parseResult.GetValue(deTofuFileOption),
+                keepIds: parseResult.GetValue(keepIdsOption),
+                normCompat: parseResult.GetValue(normCompatOption),
+                normCompatExtended:
+                parseResult.GetValue(normCompatExtendedOption),
+                customDictArgs:
+                parseResult.GetValue(customDictOption) ??
+                Array.Empty<string>(),
+                cancellationToken: cancellationToken);
         });
 
         return convertCommand;
@@ -234,7 +228,7 @@ internal static class ConvertCommand
         string? inputFile,
         string? outputFile,
         string config,
-        bool punct,
+        bool punctuation,
         string inputEncoding,
         string outputEncoding,
         string? deTofu,
@@ -242,7 +236,8 @@ internal static class ConvertCommand
         bool keepIds,
         bool normCompat,
         bool normCompatExtended,
-        string[] customDicts)
+        string[] customDictArgs,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -269,24 +264,28 @@ internal static class ConvertCommand
 
             var textConverter = CliTextPipeline.Build(
                 config,
-                punct,
+                punctuation,
                 keepIds,
                 normCompat,
                 normCompatExtended,
                 deTofu,
                 deTofuFile,
-                customDicts);
+                customDictArgs);
 
-            var inputStr = await ReadInputAsync(
+            var inputText = await ReadInputAsync(
                 inputFile,
-                inputEnc);
+                inputEnc,
+                cancellationToken);
 
-            var outputStr = textConverter(inputStr);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var outputText = textConverter(inputText);
 
             await WriteOutputAsync(
                 outputFile,
-                outputStr,
-                outputEnc);
+                outputText,
+                outputEnc,
+                cancellationToken);
 
             var inFrom = inputFile ?? "<stdin>";
             var outTo = outputFile ?? "<stdout>";
@@ -316,6 +315,10 @@ internal static class ConvertCommand
 
             return CliUtils.ExitSuccess;
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             lock (ConsoleLock)
@@ -329,13 +332,15 @@ internal static class ConvertCommand
 
     private static async Task<string> ReadInputAsync(
         string? inputFile,
-        Encoding inputEncoding)
+        Encoding inputEncoding,
+        CancellationToken cancellationToken)
     {
         if (inputFile != null)
         {
             return await File.ReadAllTextAsync(
                 inputFile,
-                inputEncoding);
+                inputEncoding,
+                cancellationToken);
         }
 
         if (!Console.IsInputRedirected)
@@ -351,23 +356,27 @@ internal static class ConvertCommand
             Console.OpenStandardInput(),
             inputEncoding);
 
-        return await reader.ReadToEndAsync();
+        return await reader.ReadToEndAsync(cancellationToken);
     }
 
     private static async Task WriteOutputAsync(
         string? outputFile,
         string content,
-        Encoding outputEncoding)
+        Encoding outputEncoding,
+        CancellationToken cancellationToken)
     {
         if (!string.IsNullOrEmpty(outputFile))
         {
             await File.WriteAllTextAsync(
                 outputFile,
                 content,
-                outputEncoding);
+                outputEncoding,
+                cancellationToken);
         }
         else
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             Console.Write(content);
 
             if (!Console.IsOutputRedirected &&

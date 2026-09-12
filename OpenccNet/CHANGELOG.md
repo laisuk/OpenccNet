@@ -11,29 +11,32 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Added
 
-- Add `-E` / `--norm-compat-extended` to the `convert` and `pdf` commands to apply combined CJK compatibility- ideograph
-  and curated Unicode compatibility normalization before OpenCC conversion. When both normalization flags are supplied,
-  extended normalization takes precedence.
+- Added `-E` / `--norm-compat-extended` to the `convert`, `office`, and `pdf` commands to apply combined CJK
+  compatibility-ideograph and curated Unicode compatibility normalization before OpenCC conversion. When both
+  normalization flags are supplied, extended normalization takes precedence.
+- Added `--keep-ids`, `--norm-compat`, `--norm-compat-extended`, `--detofu`, and `--detofu-file` support to the
+  `office` and `pdf` commands.
+- Added `-F` / `--convert-filename` to the `office` command to convert automatically generated output filenames using
+  the same configured text-conversion pipeline as the document contents.
 
 ### Changed
 
-- Keep `--norm-compat` behavior compatibility-ideograph-only through `Opencc.NormalizeCompat(...)`; the PDF extraction
-  pipeline continues applying Unicode-only normalization before reflow and optional basic compatibility normalization
-  before conversion.
-- Update DeTofu data table.
-- Adapted custom dict token to newly added instance custom dictionary.
-- Centralized the CLI text conversion pipeline across `convert`, `office`, and `pdf`, consistently applying
-  compatibility normalization, OpenCC conversion, and optional DeTofu processing.
-- Extended `office` and `pdf` with `--keep-ids`, `--norm-compat`, `--norm-compat-extended`, `--detofu`, and
-  `--detofu-file` support.
-- Preserved PDF-specific Unicode compatibility normalization and extraction/reflow behavior while routing OpenCC
-  conversion through the shared text pipeline.
-- Added `--convert-filename` for subcommand `office`.
+- Centralized text conversion across the `convert`, `office`, and `pdf` commands through a shared pipeline, consistently
+  applying compatibility normalization, OpenCC conversion, punctuation conversion, IDS preservation, custom
+  dictionaries, and optional DeToFu processing.
+- Updated DeToFu option handling so bare `--detofu` selects the `all` level consistently across `convert`, `office`, and
+  `pdf`; `--detofu-file` requires `--detofu`.
+- Kept `--norm-compat` compatibility-ideograph-only through `Opencc.NormalizeCompat(...)`.
+- Preserved PDF-specific Unicode compatibility normalization and extraction/reflow behavior while routing subsequent
+  OpenCC conversion through the shared text pipeline.
+- Adapted custom dictionary handling to use the newly added instance custom dictionary support.
+- Updated the DeToFu data table.
 
 ### Notes
 
-- Normalization flags have no effect with `pdf --extract`, which returns extracted and reflowed text without OpenCC
-  conversion.
+- `pdf --extract` does not run the shared OpenCC conversion pipeline. PDF-specific Unicode compatibility normalization
+  and optional reflow are still applied to extracted text, while conversion options such as `--norm-compat`,
+  `--norm-compat-extended`, `--keep-ids`, and `--detofu` have no effect.
 
 ---
 

@@ -69,7 +69,7 @@ internal static class CliTextPipeline
     /// <c>&lt;slot&gt;:&lt;mode&gt;:&lt;path&gt;</c> form.
     /// </param>
     /// <returns>
-    /// A reusable <see cref="OfficeTextConverter"/> that applies the configured
+    /// A reusable <see cref="TextConverter"/> that applies the configured
     /// normalization, OpenCC conversion, and optional DeTofu pipeline.
     /// </returns>
     /// <exception cref="ArgumentException">
@@ -79,7 +79,7 @@ internal static class CliTextPipeline
     /// Thrown when a required custom dictionary or DeTofu mapping file cannot be
     /// read.
     /// </exception>
-    internal static OfficeTextConverter Build(
+    internal static TextConverter Build(
         string config,
         bool punctuation,
         bool keepIds,

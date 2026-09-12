@@ -192,7 +192,6 @@ internal static class PdfCommand
             if (extractOnly)
                 return;
 
-            var deTofuResult = result.GetResult(deTofuOption);
             var deTofuFileResult = result.GetResult(deTofuFileOption);
 
             if (deTofuFileResult is null)
@@ -203,7 +202,8 @@ internal static class PdfCommand
                 return;
 
             // Presence matters because "--detofu" with no value means "all".
-            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+            var deTofuEnabled =
+                result.Tokens.Any(token => token.Value is "--detofu");
 
             if (!deTofuEnabled)
             {
@@ -231,14 +231,18 @@ internal static class PdfCommand
 
         pdfCommand.SetAction(async (parseResult, cancellationToken) =>
         {
-            var deTofuResult = parseResult.GetResult(deTofuOption);
-            var deTofuEnabled = deTofuResult?.Tokens.Count > 0;
+            var deTofuEnabled =
+                parseResult.Tokens.Any(token => token.Value is "--detofu");
+
             var deTofu = deTofuEnabled
                 ? parseResult.GetValue(deTofuOption)
                 : null;
 
-            if (deTofuEnabled && string.IsNullOrWhiteSpace(deTofu))
+            if (deTofuEnabled &&
+                string.IsNullOrWhiteSpace(deTofu))
+            {
                 deTofu = "all";
+            }
 
             return await RunPdfAsync(
                 input: parseResult.GetValue(inputFileOption),
@@ -368,6 +372,8 @@ internal static class PdfCommand
                     deTofuFile,
                     customDictArgs);
 
+                cancellationToken.ThrowIfCancellationRequested();
+
                 finalText = textConverter(finalText);
             }
 
@@ -389,6 +395,12 @@ internal static class PdfCommand
                 quiet);
 
             return CliUtils.ExitSuccess;
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            FinishProgressLine(ref progressLineActive);
+            throw;
         }
         catch (Exception ex)
         {
