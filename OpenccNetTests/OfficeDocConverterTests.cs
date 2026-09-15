@@ -14,12 +14,12 @@ namespace OpenccNetTests
         {
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
 
-            _testDocxPath = Path.Combine(baseDir, "滕王阁序.docx");
+            _testDocxPath = Path.Combine(baseDir, "data/滕王阁序.docx");
 
             Assert.IsTrue(
                 File.Exists(_testDocxPath),
                 $"Test file not found: {_testDocxPath}. " +
-                "Ensure '滕王阁序.docx' is marked as Content and CopyToOutputDirectory=PreserveNewest.");
+                "Ensure 'data/滕王阁序.docx' is marked as Content and CopyToOutputDirectory=PreserveNewest.");
         }
 
         [TestMethod]

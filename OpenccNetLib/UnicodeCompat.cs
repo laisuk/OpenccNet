@@ -3,6 +3,11 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+#if DEBUG
+using System.Collections.Generic;
+using System.Linq;
+#endif
+
 namespace OpenccNetLib
 {
     /// <summary>
@@ -500,5 +505,65 @@ namespace OpenccNetLib
                 ? $"line {lineNo}: "
                 : string.Empty;
         }
+
+#if DEBUG
+        /// <summary>
+        /// Collects the unique Unicode scalar mappings that would be applied while
+        /// normalizing the specified text.
+        /// </summary>
+        /// <param name="input">The text to inspect for applicable mappings.</param>
+        /// <param name="includeCompat">
+        /// <see langword="true"/> to additionally apply the built-in CJK Compatibility
+        /// Ideograph mappings after the curated extended mappings; otherwise,
+        /// only the mappings from <c>Unicode_Compatibility.txt</c> are inspected.
+        /// </param>
+        /// <returns>
+        /// An array of unique <c>(Source, Target)</c> Unicode scalar pairs representing
+        /// mappings that would change at least one code point in the input. Returns an
+        /// empty array when the input is <see langword="null"/>, empty, or contains no
+        /// applicable mappings.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This diagnostic helper uses the same mapping lookup as normal text
+        /// normalization but does not modify the input. Supplementary-plane characters
+        /// are decoded as complete Unicode scalar values rather than individual UTF-16
+        /// surrogate code units.
+        /// </para>
+        /// <para>
+        /// Each source-to-target pair is reported only once, regardless of how many
+        /// times the source occurs in the input. The method is available only in
+        /// <c>DEBUG</c> builds and is intended for tests and diagnostics, such as
+        /// identifying compatibility characters introduced by text extractors.
+        /// </para>
+        /// </remarks>
+        internal (int Source, int Target)[] CollectNormalizedMappings(
+            string input,
+            bool includeCompat = false)
+        {
+            if (string.IsNullOrEmpty(input))
+                return Array.Empty<(int, int)>();
+
+            var mappings = new HashSet<(int Source, int Target)>();
+
+            for (var i = 0; i < input.Length; i++)
+            {
+                var ch = input[i];
+                var codePoint = (int)ch;
+
+                if (char.IsHighSurrogate(ch) &&
+                    i + 1 < input.Length &&
+                    char.IsLowSurrogate(input[i + 1]))
+                {
+                    codePoint = char.ConvertToUtf32(ch, input[++i]);
+                }
+
+                if (TryGetMapping(codePoint, includeCompat, out var replacement))
+                    mappings.Add((codePoint, replacement));
+            }
+
+            return mappings.ToArray();
+        }
+#endif
     }
 }
