@@ -366,7 +366,7 @@ Opencc.NormalizeCompatExtended(...)
 > # source<TAB>target
 > ‧	·
 > ︰	：
-> ⸺	—
+> 聼	聽
 > ```
 >
 > Both `source` and `target` must contain exactly one valid Unicode scalar. Sources must be non-ASCII. Malformed or
