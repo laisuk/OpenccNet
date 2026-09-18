@@ -12,29 +12,36 @@ jobs:
   build:
     name: Build ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
         include:
           - os: windows-latest
             rid: win-x64
             ext: zip
+
           - os: windows-latest
             rid: win-x86
             ext: zip
+
           - os: windows-latest
             rid: win-arm64
             ext: zip
-          - os: ubuntu-24.04-arm
-            rid: linux-arm64
-            ext: tar.gz
+
           - os: ubuntu-latest
             rid: linux-x64
             ext: tar.gz
-          - os: macos-latest
-            rid: osx-arm64
+
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
             ext: tar.gz
+
           - os: macos-15-intel
             rid: osx-x64
+            ext: tar.gz
+
+          - os: macos-latest
+            rid: osx-arm64
             ext: tar.gz
 
     steps:
@@ -48,16 +55,14 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Publish (Framework-dependent, Single File, R2R)
+      - name: Publish (NativeAOT)
         shell: bash
         run: |
           dotnet publish OpenccNet/OpenccNet.csproj \
             --configuration Release \
             --runtime ${{ matrix.rid }} \
             --output publish/ \
-            --no-self-contained \
-            -p:PublishSingleFile=true \
-            -p:PublishReadyToRun=true
+            -p:NativeAOT=true
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -65,8 +70,12 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $folder = "OpenccNet-$tag-${{ matrix.rid }}"
+
           Rename-Item -Path publish -NewName $folder
-          Compress-Archive -Path "$folder\*" -DestinationPath "$folder.${{ matrix.ext }}"
+
+          Compress-Archive `
+            -Path "$folder\*" `
+            -DestinationPath "$folder.${{ matrix.ext }}"
 
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
@@ -74,6 +83,7 @@ jobs:
         run: |
           tag="${{ github.ref_name }}"
           folder="OpenccNet-$tag-${{ matrix.rid }}"
+
           mv publish "$folder"
           tar -czf "$folder.${{ matrix.ext }}" "$folder"
 
@@ -88,6 +98,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: build
+
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v8
@@ -96,7 +107,7 @@ jobs:
           merge-multiple: true
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: OpenccNet-${{ github.ref_name }}-*
