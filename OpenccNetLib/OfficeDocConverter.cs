@@ -304,9 +304,9 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// The underlying package conversion is synchronous and CPU-bound. This method
-        /// uses <see cref="Task.Run(Action)"/> semantics so UI or request-handling code
-        /// can await it without occupying the calling thread. Cancellation is honored
-        /// before the conversion task begins; once conversion is running, it completes normally.
+        /// schedules that work on the thread pool so UI or request-handling code can
+        /// await it without occupying the calling thread. Cancellation is honored
+        /// before the conversion begins; once conversion is running, it completes normally.
         /// </remarks>
         /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
         /// <param name="format">The strongly typed Office or EPUB container format.</param>
