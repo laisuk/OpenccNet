@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.RegularExpressions;
 using System.Formats.Cbor;
 using ZstdSharp;
@@ -58,9 +59,19 @@ namespace OpenccNetLib
         /// Key is UTF-16 starter:
         ///  - 1-char for BMP
         ///  - 2-char for surrogate-pair (high+low)
+        /// Library persistence may omit this derived map for LengthMask 1..3 with no
+        /// long lengths. Loaders restore it once before runtime use. Longer phrase
+        /// tables retain it in storage; UTF-16 scalar keys occupy one or two units.
         /// </summary>
         [JsonInclude]
         public Dictionary<string, ulong> StarterLenMask { get; set; }
+
+        // Storage policy only: no key scan and no change to the runtime map.
+        // UTF-16 length metadata cannot distinguish a surrogate pair from two BMP
+        // characters. The general restoration helper correctly handles either case.
+        internal bool CanOmitStoredStarterLenMask =>
+            LengthMask > 0UL && LengthMask <= 3UL &&
+            (LongLengths == null || LongLengths.Count == 0);
 
         /// <summary>
         /// Attempts to get the value associated with the specified key.
@@ -281,20 +292,36 @@ namespace OpenccNetLib
         private const string BuiltInDictionaryResourceName =
             "OpenccNetLib.Resources.dictionary_maxlength.zstd";
 
-        private static readonly DictionaryJsonContext IndentedJsonContext =
-            new(
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
+        private static readonly JsonTypeInfo<DictionaryMaxlength> CompactJsonTypeInfo =
+            CreateStorageJsonTypeInfo(false, false);
 
-        private static readonly DictionaryJsonContext IndentedUnescapedJsonContext =
-            new(
-                new JsonSerializerOptions
+        private static readonly JsonTypeInfo<DictionaryMaxlength> IndentedJsonTypeInfo =
+            CreateStorageJsonTypeInfo(true, false);
+
+        private static readonly JsonTypeInfo<DictionaryMaxlength> IndentedUnescapedJsonTypeInfo =
+            CreateStorageJsonTypeInfo(true, true);
+
+        // Modify only the write contract; generated metadata remains the sole resolver,
+        // including when reflection-based JSON serialization is disabled (AOT/WASM).
+        private static JsonTypeInfo<DictionaryMaxlength> CreateStorageJsonTypeInfo(
+            bool indented, bool unescaped)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = indented,
+                Encoder = unescaped ? JavaScriptEncoder.UnsafeRelaxedJsonEscaping : null,
+                TypeInfoResolver = DictionaryJsonContext.Default.WithAddedModifier(typeInfo =>
                 {
-                    WriteIndented = true,
-                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                });
+                    if (typeInfo.Type != typeof(DictWithMaxLength)) return;
+                    foreach (var property in typeInfo.Properties)
+                        if (property.Name == nameof(DictWithMaxLength.StarterLenMask))
+                            property.ShouldSerialize = (value, _) =>
+                                !((DictWithMaxLength)value).CanOmitStoredStarterLenMask;
+                })
+            };
+            options.MakeReadOnly();
+            return (JsonTypeInfo<DictionaryMaxlength>)options.GetTypeInfo(typeof(DictionaryMaxlength));
+        }
 
         // --------------------------------------------------------------------------------
         // Lazy loader for the default dictionary
@@ -555,7 +582,7 @@ namespace OpenccNetLib
                 path,
                 JsonSerializer.Serialize(
                     instance,
-                    IndentedJsonContext.DictionaryMaxlength));
+                    IndentedJsonTypeInfo));
         }
 
         /// <summary>
@@ -634,7 +661,7 @@ namespace OpenccNetLib
 
             var json = JsonSerializer.Serialize(
                 instance,
-                IndentedUnescapedJsonContext.DictionaryMaxlength);
+                IndentedUnescapedJsonTypeInfo);
 
             // Convert remaining UTF-16 surrogate escape pairs into readable Unicode
             json = DecodeJsonSurrogatePairs(json);
@@ -1587,6 +1614,8 @@ namespace OpenccNetLib
                 d.SetLengthMetadata(lengthMask, longLengths);
             }
 
+            // Preserve the existing null/empty repair semantics for legacy artifacts,
+            // and restore deliberately omitted slim maps at this same load boundary.
             if (d.StarterLenMask == null || d.StarterLenMask.Count == 0)
                 BuildStarterLenMask(d);
         }
@@ -1612,7 +1641,7 @@ namespace OpenccNetLib
         private const int CborDictionarySlotCount = 21;
 
         /// <summary>
-        /// Number of fields persisted for each <see cref="DictWithMaxLength"/> CBOR object.
+        /// Maximum number of fields persisted for each <see cref="DictWithMaxLength"/> CBOR object.
         /// </summary>
         /// <remarks>
         /// The six fields deliberately include the precomputed lookup metadata rather
@@ -1648,13 +1677,13 @@ namespace OpenccNetLib
         /// PeterO.Cbor (<c>dict</c>, <c>maxLength</c>, <c>minLength</c>,
         /// <c>lengthMask</c>, <c>longLengths</c>, and <c>starterLenMask</c>) as
         /// well as the corresponding PascalCase forms. Unknown fields are skipped
-        /// so newer dictionary packs can remain forward-compatible with older readers.
+        /// to allow additive extensions without changing this reader.
         /// </para>
         /// <para>
         /// After decoding, <see cref="EnsureDerivedMetadata"/> remains the compatibility
         /// safety net for older or externally generated payloads that omit one or more
-        /// derived fields. Normal generated CBOR dictionaries should already contain all
-        /// metadata and therefore avoid rebuilding it at runtime.
+        /// derived fields. Slim slots intentionally omit starter masks, rebuilt once
+        /// here; longer phrase slots retain their precomputed starter metadata.
         /// </para>
         /// </remarks>
         /// <exception cref="ArgumentException">
@@ -1707,8 +1736,8 @@ namespace OpenccNetLib
         /// </param>
         /// <remarks>
         /// Serialization is performed explicitly with <see cref="CborWriter"/>. The
-        /// persisted schema includes all derived lookup metadata so applications can
-        /// hydrate the hot-path structures directly without rescanning dictionary keys.
+        /// persisted schema retains longer phrase metadata; eligible short-key slots
+        /// omit starter maps, which loaders reconstruct once before runtime use.
         /// </remarks>
         public static void SaveCbor(
             string path,
@@ -1928,12 +1957,12 @@ namespace OpenccNetLib
         /// <param name="slotName">Persistent snake_case slot name.</param>
         /// <param name="slot">Dictionary slot to encode.</param>
         /// <remarks>
-        /// Each slot persists both the source mapping and all acceleration metadata
+        /// Each slot persists the source mapping and selected acceleration metadata
         /// using the historical PeterO.Cbor camelCase wire names:
         /// <c>dict</c>, <c>maxLength</c>, <c>minLength</c>, <c>lengthMask</c>,
         /// <c>longLengths</c>, and <c>starterLenMask</c>. This preserves legacy
-        /// dictionary-pack compatibility while avoiding expensive key scans during
-        /// normal hydration.
+        /// field names. Storage policy omits redundant starter masks and reduces the
+        /// definite map count by one; the loader restores omitted masks.
         /// </remarks>
         private static void WriteCborSlot(
             CborWriter writer,
@@ -1943,7 +1972,8 @@ namespace OpenccNetLib
             slot ??= new DictWithMaxLength();
 
             writer.WriteTextString(slotName);
-            writer.WriteStartMap(CborSlotFieldCount);
+            var omitStarter = slot.CanOmitStoredStarterLenMask;
+            writer.WriteStartMap(CborSlotFieldCount - (omitStarter ? 1 : 0));
 
             writer.WriteTextString("dict");
             WriteStringDictionary(writer, slot.Dict);
@@ -1960,8 +1990,11 @@ namespace OpenccNetLib
             writer.WriteTextString("longLengths");
             WriteLongLengths(writer, slot.LongLengths);
 
-            writer.WriteTextString("starterLenMask");
-            WriteStarterLenMask(writer, slot.StarterLenMask);
+            if (!omitStarter)
+            {
+                writer.WriteTextString("starterLenMask");
+                WriteStarterLenMask(writer, slot.StarterLenMask);
+            }
 
             writer.WriteEndMap();
         }
@@ -2289,7 +2322,7 @@ namespace OpenccNetLib
 
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(
                 instance,
-                DictionaryJsonContext.Default.DictionaryMaxlength);
+                CompactJsonTypeInfo);
 
             using var compressor = new Compressor(19);
             var compressed = compressor.Wrap(jsonBytes);

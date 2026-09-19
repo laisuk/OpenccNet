@@ -1775,6 +1775,25 @@ Loads OpenCC text dictionary files, optionally replacing slots with `overrides` 
 
 ##### `DictionaryLib` serialization APIs
 
+`StarterLenMask` remains populated runtime metadata for nonempty dictionaries. The library's JSON (including readable
+exports and Zstd JSON) and CBOR writers omit it when `LengthMask` is `1..3` and
+`LongLengths` is null or empty. This `O(1)` policy uses precomputed UTF-16 code-unit lengths: a Unicode scalar
+occupies one UTF-16 code unit when represented in the BMP, or two UTF-16 code units as a surrogate pair when
+supplementary. Serialization does not scan keys or mutate the runtime dictionary. Longer phrase/mixed-length tables
+retain their starter maps.
+
+UTF-16 length metadata alone cannot distinguish a supplementary scalar from two BMP characters;
+therefore custom tables containing only one- or two-unit keys also qualify. Loading uses the general
+starter builder, so two-BMP phrases still restore a mask under their first character, and supplementary
+keys restore `2UL` under their surrogate pair. No conversion algorithm or public API changes.
+
+The library loaders reconstruct omitted maps once at the metadata-normalization boundary. Existing
+semantics are preserved: absent and explicit-null maps both deserialize to null, empty maps remain
+empty until normalization, and all three are repaired; supplied nonempty maps are reused. New readers
+continue accepting old artifacts, including legacy CBOR casing and unknown fields. Compatibility of
+new slim artifacts with older library versions is not guaranteed. Direct application-owned JSON
+serialization is outside these library persistence helpers.
+
 The serialization helpers accept an optional `DictionaryMaxlength dictionary = null` parameter. When omitted, they load
 from the default OpenCC text dictionary sources with `FromDicts()`.
 

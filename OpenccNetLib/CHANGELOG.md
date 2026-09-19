@@ -6,6 +6,19 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.7.1] - Unreleased
+
+### Dictionary storage
+
+- Omit derived starter maps from JSON, Zstd JSON, and CBOR for eligible slots with `LengthMask` 1..3 and no
+  `LongLengths`; restore them once during loading without changing the runtime API or conversion paths.
+- Preserve longer phrase metadata and existing legacy null/empty repair semantics. New readers accept
+  old artifacts; older readers are not guaranteed to accept slim artifacts.
+- Regenerate the built-in dictionary artifacts; see [persistence validation](PERSISTENCE_VALIDATION.md)
+  for sizes, UTF-16 policy caveats, and validation results.
+
+---
+
 ## [1.7.0] - 2026-09-18
 
 ### Removed
@@ -101,7 +114,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   NativeAOT-friendly.
 - Preserve the established CBOR wire format when writing dictionaries, including the legacy `dict`, `maxLength`,
   `minLength`, `lengthMask`, `longLengths`, and `starterLenMask` field names. Precomputed lookup metadata remains
-  serialized so normal CBOR loading does not need to rescan dictionary keys to rebuild hot-path acceleration data.
+  serialized for longer phrase tables; eligible short-key slots omit starter maps and reconstruct them during loading.
 - Make the new CBOR reader tolerant of both the established camelCase metadata field names and corresponding PascalCase
   variants, while continuing to ignore unknown additive fields for forward-compatible dictionary loading.
 - Continue rebuilding missing CBOR-derived metadata when loading older, incomplete, or externally generated dictionary
