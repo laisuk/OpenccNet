@@ -8,13 +8,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [1.7.1] - Unreleased
 
+### Changed
+
+- added Unicode Compatibility mapping table entries.
+- Updated conversion dictionary data.
+
 ### Dictionary storage
 
 - Omit derived starter maps from JSON, Zstd JSON, and CBOR for eligible slots with `LengthMask` 1..3 and no
   `LongLengths`; restore them once during loading without changing the runtime API or conversion paths.
 - Preserve longer phrase metadata and existing legacy null/empty repair semantics. New readers accept
   old artifacts; older readers are not guaranteed to accept slim artifacts.
-- Regenerate the built-in dictionary artifacts; see [persistence validation](PERSISTENCE_VALIDATION.md)
+- Regenerate the built-in dictionary artifacts; see [persistence validation](data/PERSISTENCE_VALIDATION.md)
   for sizes, UTF-16 policy caveats, and validation results.
 
 ---
