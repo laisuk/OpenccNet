@@ -80,7 +80,31 @@ namespace OpenccNetLib
         /// Hong Kong-to-Traditional phrase mappings.
         /// Added after existing values to preserve enum numeric stability.
         /// </summary>
-        HKPhrasesRev = 22
+        HKPhrasesRev = 22,
+
+        /// <summary>
+        /// Seal-script-to-Simplified Chinese character mappings.
+        /// Added after existing values to preserve enum numeric stability.
+        /// </summary>
+        SealCharacters = 23,
+
+        /// <summary>
+        /// Simplified Chinese-to-Seal-script character mappings.
+        /// Added after existing values to preserve enum numeric stability.
+        /// </summary>
+        SealCharactersRev = 24,
+
+        /// <summary>
+        /// Seal-script variant normalization mappings.
+        /// Added after existing values to preserve enum numeric stability.
+        /// </summary>
+        SealVariants = 25,
+
+        /// <summary>
+        /// Reverse Seal-script variant mappings.
+        /// Added after existing values to preserve enum numeric stability.
+        /// </summary>
+        SealVariantsRev = 26,
     }
 
     // ReSharper restore InconsistentNaming

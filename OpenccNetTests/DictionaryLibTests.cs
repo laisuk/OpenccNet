@@ -54,7 +54,7 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
-    public void TestFromDicts_LoadsForwardVariantPhraseSlots()
+    public void TestFromDicts_LoadsExtendedDictionarySlots()
     {
         var dict = DictionaryLib.FromDicts();
 
@@ -69,6 +69,16 @@ public class DictionaryLibTests
         AssertMetadataValid(dict.hk_phrases);
         AssertMetadataValid(dict.hk_phrases_rev);
         AssertMetadataValid(dict.jps_characters_rev);
+
+        Assert.IsTrue(Enum.IsDefined(DictSlot.SealCharacters));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.SealCharactersRev));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.SealVariants));
+        Assert.IsTrue(Enum.IsDefined(DictSlot.SealVariantsRev));
+
+        AssertMetadataValid(dict.seal_characters);
+        AssertMetadataValid(dict.seal_characters_rev);
+        AssertMetadataValid(dict.seal_variants);
+        AssertMetadataValid(dict.seal_variants_rev);
     }
 
     [TestMethod]
@@ -96,7 +106,11 @@ public class DictionaryLibTests
             [DictSlot.HKVariantsPhrases] = 19,
             [DictSlot.JPSCharactersRev] = 20,
             [DictSlot.HKPhrases] = 21,
-            [DictSlot.HKPhrasesRev] = 22
+            [DictSlot.HKPhrasesRev] = 22,
+            [DictSlot.SealCharacters] = 23,
+            [DictSlot.SealCharactersRev] = 24,
+            [DictSlot.SealVariants] = 25,
+            [DictSlot.SealVariantsRev] = 26
         };
 
         foreach (var pair in publishedValues)
@@ -120,6 +134,10 @@ public class DictionaryLibTests
         AssertMetadataValid(dict.hk_phrases);
         AssertMetadataValid(dict.hk_phrases_rev);
         AssertMetadataValid(dict.jps_characters_rev);
+        AssertMetadataValid(dict.seal_characters);
+        AssertMetadataValid(dict.seal_characters_rev);
+        AssertMetadataValid(dict.seal_variants);
+        AssertMetadataValid(dict.seal_variants_rev);
         Assert.AreEqual("漢字", new Opencc(OpenccConfig.S2T).Convert("汉字"));
     }
 
@@ -153,14 +171,21 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
-    public void TestFromDicts_RequiresForwardVariantPhraseSlots()
+    public void TestFromDicts_RequiresAllDictionarySlots()
     {
         var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
 
         foreach (var missingFile in new[]
                  {
-                     "TWVariantsPhrases.txt", "HKVariantsPhrases.txt", "HKPhrases.txt", "HKPhrasesRev.txt",
-                     "JPShinjitaiCharactersRev.txt"
+                     "TWVariantsPhrases.txt",
+                     "HKVariantsPhrases.txt",
+                     "HKPhrases.txt",
+                     "HKPhrasesRev.txt",
+                     "JPShinjitaiCharactersRev.txt",
+                     "SealCharacters.txt",
+                     "SealCharactersRev.txt",
+                     "SealVariants.txt",
+                     "SealVariantsRev.txt"
                  })
         {
             var tempDir = Path.Combine(OutputDir, "dicts_missing_" + Path.GetFileNameWithoutExtension(missingFile));
@@ -263,6 +288,10 @@ public class DictionaryLibTests
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
         AssertMetadataValid(dict.jps_characters_rev);
+        AssertMetadataValid(dict.seal_characters);
+        AssertMetadataValid(dict.seal_characters_rev);
+        AssertMetadataValid(dict.seal_variants);
+        AssertMetadataValid(dict.seal_variants_rev);
     }
 
     [TestMethod]
@@ -272,6 +301,10 @@ public class DictionaryLibTests
         Assert.IsNotNull(dict);
         Assert.IsTrue(dict.st_characters.Dict.Count > 0 || dict.ts_characters.Dict.Count > 0);
         AssertMetadataValid(dict.jps_characters_rev);
+        AssertMetadataValid(dict.seal_characters);
+        AssertMetadataValid(dict.seal_characters_rev);
+        AssertMetadataValid(dict.seal_variants);
+        AssertMetadataValid(dict.seal_variants_rev);
     }
 
 
@@ -381,6 +414,10 @@ public class DictionaryLibTests
         Assert.IsNotNull(loaded);
         Assert.HasCount(dict.ts_characters.Dict.Count, loaded.ts_characters.Dict);
         Assert.HasCount(dict.jps_characters_rev.Dict.Count, loaded.jps_characters_rev.Dict);
+        Assert.HasCount(dict.seal_characters.Dict.Count, loaded.seal_characters.Dict);
+        Assert.HasCount(dict.seal_characters_rev.Dict.Count, loaded.seal_characters_rev.Dict);
+        Assert.HasCount(dict.seal_variants.Dict.Count, loaded.seal_variants.Dict);
+        Assert.HasCount(dict.seal_variants_rev.Dict.Count, loaded.seal_variants_rev.Dict);
     }
 
     [TestMethod]
@@ -442,6 +479,7 @@ public class DictionaryLibTests
 
         var content = File.ReadAllText(jsonPath);
         var json = JsonDocument.Parse(content);
+
         Assert.IsTrue(json.RootElement.TryGetProperty("ts_phrases", out _));
         Assert.IsTrue(json.RootElement.TryGetProperty("tw_variants_phrases", out _));
         Assert.IsTrue(json.RootElement.TryGetProperty("hk_phrases", out _));
@@ -449,7 +487,13 @@ public class DictionaryLibTests
         Assert.IsTrue(json.RootElement.TryGetProperty("hk_variants_phrases", out _));
         Assert.IsTrue(json.RootElement.TryGetProperty("jps_characters_rev", out _));
 
+        Assert.IsTrue(json.RootElement.TryGetProperty("seal_characters", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("seal_characters_rev", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("seal_variants", out _));
+        Assert.IsTrue(json.RootElement.TryGetProperty("seal_variants_rev", out _));
+
         var loaded = DictionaryLib.DeserializedFromJson(jsonPath);
+
         Assert.AreEqual(
             CreateIndependentBuiltInDictionary().hk_phrases.Count,
             loaded.hk_phrases.Count);
@@ -459,6 +503,18 @@ public class DictionaryLibTests
         Assert.AreEqual(
             CreateIndependentBuiltInDictionary().jps_characters_rev.Count,
             loaded.jps_characters_rev.Count);
+
+        var expected = CreateIndependentBuiltInDictionary();
+
+        AssertMetadataValid(loaded.seal_characters);
+        AssertMetadataValid(loaded.seal_characters_rev);
+        AssertMetadataValid(loaded.seal_variants);
+        AssertMetadataValid(loaded.seal_variants_rev);
+
+        Assert.AreEqual(expected.seal_characters.Count, loaded.seal_characters.Count);
+        Assert.AreEqual(expected.seal_characters_rev.Count, loaded.seal_characters_rev.Count);
+        Assert.AreEqual(expected.seal_variants.Count, loaded.seal_variants.Count);
+        Assert.AreEqual(expected.seal_variants_rev.Count, loaded.seal_variants_rev.Count);
     }
 
     // Notes: run with 'dotnet test --filter "TestDictLengthMaskAndLongLengths" --logger "console;verbosity=detailed"' to see the log
@@ -1104,5 +1160,70 @@ public class DictionaryLibTests
                 }));
 
         Assert.Contains("Unknown dictionary slot", ex.Message);
+    }
+
+    [TestMethod]
+    public void TestWithCustomDicts_AppendsCustomSealVariantFromPairs()
+    {
+        var dict = CreateIndependentBuiltInDictionary();
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = DictSlot.SealVariants,
+                    Mode = CustomDictMode.Append,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        ["𽀠"] = "祺"
+                    }
+                }
+            });
+
+        Assert.AreEqual("祺", dict.seal_variants.Dict["𽀠"]);
+        Assert.IsFalse(dict.hk_variants.Dict.ContainsKey("𽀠"));
+        AssertMetadataValid(dict.seal_variants);
+    }
+
+    [TestMethod]
+    [DataRow(DictSlot.SealCharacters)]
+    [DataRow(DictSlot.SealCharactersRev)]
+    [DataRow(DictSlot.SealVariants)]
+    [DataRow(DictSlot.SealVariantsRev)]
+    public void TestWithCustomDicts_SealSlotsRouteToCorrectDictionary(DictSlot slot)
+    {
+        var dict = CreateIndependentBuiltInDictionary();
+
+        const string key = "測試Seal專用鍵";
+        const string value = "測試Seal專用值";
+
+        DictionaryLib.WithCustomDicts(
+            dict,
+            new[]
+            {
+                new CustomDictSpec
+                {
+                    Slot = slot,
+                    Mode = CustomDictMode.Append,
+                    Pairs = new Dictionary<string, string>
+                    {
+                        [key] = value
+                    }
+                }
+            });
+
+        var target = slot switch
+        {
+            DictSlot.SealCharacters => dict.seal_characters,
+            DictSlot.SealCharactersRev => dict.seal_characters_rev,
+            DictSlot.SealVariants => dict.seal_variants,
+            DictSlot.SealVariantsRev => dict.seal_variants_rev,
+            _ => throw new AssertFailedException()
+        };
+
+        Assert.AreEqual(value, target.Dict[key]);
+        AssertMetadataValid(target);
     }
 }

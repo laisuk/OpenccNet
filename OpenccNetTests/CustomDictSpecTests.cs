@@ -105,7 +105,11 @@ public class CustomDictSpecTests
             DictSlot.HKVariantsPhrases,
             DictSlot.JPSCharactersRev,
             DictSlot.HKPhrases,
-            DictSlot.HKPhrasesRev
+            DictSlot.HKPhrasesRev,
+            DictSlot.SealCharacters,
+            DictSlot.SealCharactersRev,
+            DictSlot.SealVariants,
+            DictSlot.SealVariantsRev
         };
 
         CollectionAssert.AreEqual(expected, DictSlotExtensions.ActiveSlots.ToArray());

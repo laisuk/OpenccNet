@@ -39,7 +39,11 @@ namespace OpenccNetLib
             DictSlot.HKVariantsPhrases,
             DictSlot.JPSCharactersRev,
             DictSlot.HKPhrases,
-            DictSlot.HKPhrasesRev
+            DictSlot.HKPhrasesRev,
+            DictSlot.SealCharacters,
+            DictSlot.SealCharactersRev,
+            DictSlot.SealVariants,
+            DictSlot.SealVariantsRev
         };
 
         private static readonly Dictionary<string, DictSlot> SlotsByName = CreateSlotsByName();

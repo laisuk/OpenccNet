@@ -264,6 +264,26 @@ namespace OpenccNetLib
         /// Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.
         /// </summary>
         public DictWithMaxLength jps_phrases { get; set; } = new();
+        
+        /// <summary>
+        /// Seal-script-to-Simplified character mappings.
+        /// </summary>
+        public DictWithMaxLength seal_characters { get; set; } = new();
+
+        /// <summary>
+        /// Simplified-to-Seal-script character mappings.
+        /// </summary>
+        public DictWithMaxLength seal_characters_rev { get; set; } = new();
+
+        /// <summary>
+        /// Seal-script variant mappings.
+        /// </summary>
+        public DictWithMaxLength seal_variants { get; set; } = new();
+
+        /// <summary>
+        /// Reverse Seal-script variant mappings.
+        /// </summary>
+        public DictWithMaxLength seal_variants_rev { get; set; } = new();
 
         /// <summary>
         /// Simplified-to-Traditional punctuation mappings.
@@ -746,7 +766,12 @@ namespace OpenccNetLib
 
                 [DictSlot.JPSCharacters] = "JPShinjitaiCharacters.txt",
                 [DictSlot.JPSCharactersRev] = "JPShinjitaiCharactersRev.txt",
-                [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt"
+                [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt",
+                
+                [DictSlot.SealCharacters] = "SealCharacters.txt",
+                [DictSlot.SealCharactersRev] = "SealCharactersRev.txt",
+                [DictSlot.SealVariants] = "SealVariants.txt",
+                [DictSlot.SealVariantsRev] = "SealVariantsRev.txt"
             };
 
         /// <summary>
@@ -857,6 +882,11 @@ namespace OpenccNetLib
                 case DictSlot.JPSCharacters: return d.jps_characters;
                 case DictSlot.JPSCharactersRev: return d.jps_characters_rev;
                 case DictSlot.JPSPhrases: return d.jps_phrases;
+                
+                case DictSlot.SealCharacters: return d.seal_characters;
+                case DictSlot.SealCharactersRev: return d.seal_characters_rev;
+                case DictSlot.SealVariants: return d.seal_variants;
+                case DictSlot.SealVariantsRev: return d.seal_variants_rev;
 
                 default:
                     throw new ArgumentException(
@@ -929,6 +959,11 @@ namespace OpenccNetLib
                 case DictSlot.JPSCharacters: d.jps_characters = value; break;
                 case DictSlot.JPSCharactersRev: d.jps_characters_rev = value; break;
                 case DictSlot.JPSPhrases: d.jps_phrases = value; break;
+                
+                case DictSlot.SealCharacters: d.seal_characters = value; break;
+                case DictSlot.SealCharactersRev: d.seal_characters_rev = value; break;
+                case DictSlot.SealVariants: d.seal_variants = value; break;
+                case DictSlot.SealVariantsRev: d.seal_variants_rev = value; break;
 
                 default:
                     throw new ArgumentException(
@@ -1507,14 +1542,15 @@ namespace OpenccNetLib
                 throw new InvalidOperationException("Deserialized dictionary instance was null.");
 
             instance.tw_variants_phrases ??= new DictWithMaxLength();
-
             instance.hk_variants_phrases ??= new DictWithMaxLength();
-
             instance.hk_phrases ??= new DictWithMaxLength();
-
             instance.hk_phrases_rev ??= new DictWithMaxLength();
-
             instance.jps_characters_rev ??= new DictWithMaxLength();
+            
+            instance.seal_characters ??= new DictWithMaxLength();
+            instance.seal_characters_rev ??= new DictWithMaxLength();
+            instance.seal_variants ??= new DictWithMaxLength();
+            instance.seal_variants_rev ??= new DictWithMaxLength();
 
             EnsureDictionaryMetadata(instance.st_characters);
             EnsureDictionaryMetadata(instance.st_phrases);
@@ -1541,6 +1577,11 @@ namespace OpenccNetLib
             EnsureDictionaryMetadata(instance.jps_characters);
             EnsureDictionaryMetadata(instance.jps_characters_rev);
             EnsureDictionaryMetadata(instance.jps_phrases);
+            
+            EnsureDictionaryMetadata(instance.seal_characters);
+            EnsureDictionaryMetadata(instance.seal_characters_rev);
+            EnsureDictionaryMetadata(instance.seal_variants);
+            EnsureDictionaryMetadata(instance.seal_variants_rev);
 
             EnsureRequiredDictionarySlots(instance);
 
@@ -1638,7 +1679,7 @@ namespace OpenccNetLib
         /// <see cref="ReadDictionaryMaxlengthCbor"/>.
         /// </para>
         /// </remarks>
-        private const int CborDictionarySlotCount = 21;
+        private const int CborDictionarySlotCount = 25;
 
         /// <summary>
         /// Maximum number of fields persisted for each <see cref="DictWithMaxLength"/> CBOR object.
@@ -1884,6 +1925,11 @@ namespace OpenccNetLib
             WriteCborSlot(writer, "jps_characters", dictionary.jps_characters);
             WriteCborSlot(writer, "jps_characters_rev", dictionary.jps_characters_rev);
             WriteCborSlot(writer, "jps_phrases", dictionary.jps_phrases);
+            
+            WriteCborSlot(writer, "seal_characters", dictionary.seal_characters);
+            WriteCborSlot(writer, "seal_characters_rev", dictionary.seal_characters_rev);
+            WriteCborSlot(writer, "seal_variants", dictionary.seal_variants);
+            WriteCborSlot(writer, "seal_variants_rev", dictionary.seal_variants_rev);
 
             WriteCborSlot(writer, "st_punctuations", dictionary.st_punctuations);
             WriteCborSlot(writer, "ts_punctuations", dictionary.ts_punctuations);
@@ -1936,6 +1982,11 @@ namespace OpenccNetLib
                     case "jps_characters": ReadCborSlot(reader, instance.jps_characters); break;
                     case "jps_characters_rev": ReadCborSlot(reader, instance.jps_characters_rev); break;
                     case "jps_phrases": ReadCborSlot(reader, instance.jps_phrases); break;
+                    
+                    case "seal_characters": ReadCborSlot(reader, instance.seal_characters); break;
+                    case "seal_characters_rev": ReadCborSlot(reader, instance.seal_characters_rev); break;
+                    case "seal_variants": ReadCborSlot(reader, instance.seal_variants); break;
+                    case "seal_variants_rev": ReadCborSlot(reader, instance.seal_variants_rev); break;
 
                     case "st_punctuations": ReadCborSlot(reader, instance.st_punctuations); break;
                     case "ts_punctuations": ReadCborSlot(reader, instance.ts_punctuations); break;
