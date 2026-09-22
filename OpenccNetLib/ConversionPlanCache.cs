@@ -152,6 +152,28 @@ namespace OpenccNetLib
             /// </summary>
             JpsPair,
 
+            // --- Seal-script-specific ---
+
+            /// <summary>
+            /// Seal-script character mappings only.
+            /// </summary>
+            SealCharactersOnly,
+
+            /// <summary>
+            /// Reverse Seal-script character mappings only.
+            /// </summary>
+            SealCharactersRevOnly,
+
+            /// <summary>
+            /// Seal-script variant mappings only.
+            /// </summary>
+            SealVariantsOnly,
+
+            /// <summary>
+            /// Reverse Seal-script variant mappings only.
+            /// </summary>
+            SealVariantsRevOnly,
+
             /// <summary>
             /// Simplified-style punctuation → Traditional-style punctuation only,
             /// used as an optional punctuation round for direct Traditional-region conversions.
@@ -348,6 +370,10 @@ namespace OpenccNetLib
                 jps_characters = CloneSlot(source.jps_characters),
                 jps_characters_rev = CloneSlot(source.jps_characters_rev),
                 jps_phrases = CloneSlot(source.jps_phrases),
+                seal_characters = CloneSlot(source.seal_characters),
+                seal_characters_rev = CloneSlot(source.seal_characters_rev),
+                seal_variants = CloneSlot(source.seal_variants),
+                seal_variants_rev = CloneSlot(source.seal_variants_rev),
                 st_punctuations = CloneSlot(source.st_punctuations),
                 ts_punctuations = CloneSlot(source.ts_punctuations)
             };
@@ -667,6 +693,78 @@ namespace OpenccNetLib
                     return refs.WithRound2(r2, u2);
                 }
 
+                case OpenccConfig.S2Seal:
+                {
+                    var u1 = GetOrAddUnionFor(
+                        d, punctuation ? UnionKey.S2TPunct : UnionKey.S2T, out var r1);
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.SealVariantsOnly, out var r2);
+
+                    var u3 = GetOrAddUnionFor(
+                        d, UnionKey.SealCharactersRevOnly, out var r3);
+
+                    return new DictRefs(r1, u1)
+                        .WithRound2(r2, u2)
+                        .WithRound3(r3, u3);
+                }
+
+                case OpenccConfig.T2Seal:
+                {
+                    var u1 = GetOrAddUnionFor(
+                        d, UnionKey.SealVariantsOnly, out var r1);
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.SealCharactersRevOnly, out var r2);
+
+                    var refs = new DictRefs(r1, u1)
+                        .WithRound2(r2, u2);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u3 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r3);
+
+                    return refs.WithRound3(r3, u3);
+                }
+
+                case OpenccConfig.Seal2S:
+                {
+                    var u1 = GetOrAddUnionFor(
+                        d, UnionKey.SealCharactersOnly, out var r1);
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.SealVariantsRevOnly, out var r2);
+
+                    var u3 = GetOrAddUnionFor(
+                        d, punctuation ? UnionKey.T2SPunct : UnionKey.T2S, out var r3);
+
+                    return new DictRefs(r1, u1)
+                        .WithRound2(r2, u2)
+                        .WithRound3(r3, u3);
+                }
+
+                case OpenccConfig.Seal2T:
+                {
+                    var u1 = GetOrAddUnionFor(
+                        d, UnionKey.SealCharactersOnly, out var r1);
+
+                    var u2 = GetOrAddUnionFor(
+                        d, UnionKey.SealVariantsRevOnly, out var r2);
+
+                    var refs = new DictRefs(r1, u1)
+                        .WithRound2(r2, u2);
+
+                    if (!punctuation)
+                        return refs;
+
+                    var u3 = GetOrAddUnionFor(
+                        d, UnionKey.StPunctOnly, out var r3);
+
+                    return refs.WithRound3(r3, u3);
+                }
+
                 default:
                     throw new ArgumentOutOfRangeException(nameof(config), config, null);
             }
@@ -875,9 +973,37 @@ namespace OpenccNetLib
                         d.jps_characters
                     };
 
+                // -- Seal ---
+                case UnionKey.SealCharactersOnly:
+                    return new[]
+                    {
+                        d.seal_characters
+                    };
+
+                case UnionKey.SealCharactersRevOnly:
+                    return new[]
+                    {
+                        d.seal_characters_rev
+                    };
+
+                case UnionKey.SealVariantsOnly:
+                    return new[]
+                    {
+                        d.seal_variants
+                    };
+
+                case UnionKey.SealVariantsRevOnly:
+                    return new[]
+                    {
+                        d.seal_variants_rev
+                    };
+
                 // --- T -> T Region Punctuation
                 case UnionKey.StPunctOnly:
-                    return new[] { d.st_punctuations };
+                    return new[]
+                    {
+                        d.st_punctuations
+                    };
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(key), key, null);

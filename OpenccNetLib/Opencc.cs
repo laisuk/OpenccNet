@@ -17,8 +17,8 @@ namespace OpenccNetLib
     /// </summary>
     /// <remarks>
     /// Each configuration defines a directional transformation between
-    /// Chinese variants (Simplified, Traditional, Taiwan, Hong Kong) 
-    /// or Japanese Shinjitai/Kyūjitai forms.
+    /// Chinese variants (Simplified, Traditional, Taiwan, Hong Kong),
+    /// Seal script, or Japanese Shinjitai/Kyūjitai forms.
     /// </remarks>
     public enum OpenccConfig
     {
@@ -120,7 +120,27 @@ namespace OpenccNetLib
         /// <summary>
         /// Traditional Chinese (Hong Kong Standard, with phrases) → Traditional Chinese (General Standard).
         /// </summary>
-        Hk2Tp = 19
+        Hk2Tp = 19,
+
+        /// <summary>
+        /// Simplified Chinese → Seal script.
+        /// </summary>
+        S2Seal = 20,
+
+        /// <summary>
+        /// Traditional Chinese → Seal script.
+        /// </summary>
+        T2Seal = 21,
+
+        /// <summary>
+        /// Seal script → Simplified Chinese.
+        /// </summary>
+        Seal2S = 22,
+
+        /// <summary>
+        /// Seal script → Traditional Chinese.
+        /// </summary>
+        Seal2T = 23
     }
 
     /// <summary>
@@ -132,7 +152,7 @@ namespace OpenccNetLib
     {
         /// <summary>
         /// Converts an <see cref="OpenccConfig"/> value to its canonical OpenCC configuration name
-        /// (for example, <c>"s2t"</c> or <c>"s2twp"</c>).
+        /// (for example, <c>"s2t"</c>, <c>"s2twp"</c>, or <c>"s2seal"</c>).
         /// </summary>
         /// <param name="config">The OpenCC configuration to convert.</param>
         /// <returns>The canonical lowercase configuration name.</returns>
@@ -164,8 +184,15 @@ namespace OpenccNetLib
                 case OpenccConfig.Hk2T: return "hk2t";
                 case OpenccConfig.T2Jp: return "t2jp";
                 case OpenccConfig.Jp2T: return "jp2t";
+                case OpenccConfig.S2Seal: return "s2seal";
+                case OpenccConfig.T2Seal: return "t2seal";
+                case OpenccConfig.Seal2S: return "seal2s";
+                case OpenccConfig.Seal2T: return "seal2t";
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(config), config, "Invalid OpenCC config");
+                    throw new ArgumentOutOfRangeException(
+                        nameof(config),
+                        config,
+                        "Invalid OpenCC config");
             }
         }
     }
@@ -326,6 +353,10 @@ namespace OpenccNetLib
             new(OpenccConfig.Jp2T, "jp2t"),
             new(OpenccConfig.T2Hkp, "t2hkp"),
             new(OpenccConfig.Hk2Tp, "hk2tp"),
+            new(OpenccConfig.S2Seal, "s2seal"),
+            new(OpenccConfig.T2Seal, "t2seal"),
+            new(OpenccConfig.Seal2S, "seal2s"),
+            new(OpenccConfig.Seal2T, "seal2t"),
         };
 
         /// <summary>
@@ -2178,6 +2209,42 @@ namespace OpenccNetLib
             => ConvertWithPlan(inputText, OpenccConfig.Jp2T, punctuation);
 
         /// <summary>
+        /// Converts Simplified Chinese to Small Seal Script.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
+        /// <returns>The converted text.</returns>
+        public string S2Seal(string inputText, bool punctuation = false)
+            => ConvertWithPlan(inputText, OpenccConfig.S2Seal, punctuation);
+
+        /// <summary>
+        /// Converts Traditional Chinese to Small Seal Script.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
+        /// <returns>The converted text.</returns>
+        public string T2Seal(string inputText, bool punctuation = false)
+            => ConvertWithPlan(inputText, OpenccConfig.T2Seal, punctuation);
+
+        /// <summary>
+        /// Converts Small Seal Script to Simplified Chinese.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Simplified-style punctuation conversion.</param>
+        /// <returns>The converted text.</returns>
+        public string Seal2S(string inputText, bool punctuation = false)
+            => ConvertWithPlan(inputText, OpenccConfig.Seal2S, punctuation);
+
+        /// <summary>
+        /// Converts Small Seal Script to Traditional Chinese.
+        /// </summary>
+        /// <param name="inputText">The input text.</param>
+        /// <param name="punctuation">Whether to apply Traditional-style punctuation conversion.</param>
+        /// <returns>The converted text.</returns>
+        public string Seal2T(string inputText, bool punctuation = false)
+            => ConvertWithPlan(inputText, OpenccConfig.Seal2T, punctuation);
+
+        /// <summary>
         /// Converts text according to the current <see cref="Config"/> setting.
         /// </summary>
         /// <param name="inputText">The input text.</param>
@@ -2235,6 +2302,14 @@ namespace OpenccNetLib
                         return Jp2T(inputText, punctuation);
                     case OpenccConfig.T2Jp:
                         return T2Jp(inputText, punctuation);
+                    case OpenccConfig.S2Seal:
+                        return S2Seal(inputText, punctuation);
+                    case OpenccConfig.T2Seal:
+                        return T2Seal(inputText, punctuation);
+                    case OpenccConfig.Seal2S:
+                        return Seal2S(inputText, punctuation);
+                    case OpenccConfig.Seal2T:
+                        return Seal2T(inputText, punctuation);
                     default:
                         return inputText;
                 }

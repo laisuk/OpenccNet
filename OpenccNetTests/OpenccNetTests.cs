@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using OpenccNetLib;
 
 namespace OpenccNetTests;
@@ -359,6 +359,23 @@ public class OpenccNetTests
         Assert.AreEqual("hk2t", OpenccConfig.Hk2T.ToCanonicalName());
         Assert.AreEqual("t2jp", OpenccConfig.T2Jp.ToCanonicalName());
         Assert.AreEqual("jp2t", OpenccConfig.Jp2T.ToCanonicalName());
+
+        Assert.AreEqual("s2seal", OpenccConfig.S2Seal.ToCanonicalName());
+        Assert.AreEqual("t2seal", OpenccConfig.T2Seal.ToCanonicalName());
+        Assert.AreEqual("seal2s", OpenccConfig.Seal2S.ToCanonicalName());
+        Assert.AreEqual("seal2t", OpenccConfig.Seal2T.ToCanonicalName());
+
+        Assert.IsTrue(Opencc.TryParseConfig("s2seal", out var s2Seal));
+        Assert.AreEqual(OpenccConfig.S2Seal, s2Seal);
+
+        Assert.IsTrue(Opencc.TryParseConfig("t2seal", out var t2Seal));
+        Assert.AreEqual(OpenccConfig.T2Seal, t2Seal);
+
+        Assert.IsTrue(Opencc.TryParseConfig("seal2s", out var seal2S));
+        Assert.AreEqual(OpenccConfig.Seal2S, seal2S);
+
+        Assert.IsTrue(Opencc.TryParseConfig("seal2t", out var seal2T));
+        Assert.AreEqual(OpenccConfig.Seal2T, seal2T);
     }
 
     [TestMethod]
@@ -640,5 +657,51 @@ public class OpenccNetTests
         Assert.AreEqual(
             "汉字结构：⿰言吾（语）",
             cc.Convert("漢字結構：⿰言吾（語）"));
+    }
+
+    [TestMethod]
+    public void SealConfig_Roundtrip()
+    {
+        const string traditional = "你好，小篆國際編碼18";
+        const string simplified = "你好，小篆国际编码18";
+        const string seal = "你𿒛，𽌠𽴖𾇓𿭖𿛛碼18";
+
+        var t2Seal = new Opencc(OpenccConfig.T2Seal);
+        var s2Seal = new Opencc(OpenccConfig.S2Seal);
+        var seal2T = new Opencc(OpenccConfig.Seal2T);
+        var seal2S = new Opencc(OpenccConfig.Seal2S);
+
+        // Direct APIs
+        Assert.AreEqual(seal, t2Seal.T2Seal(traditional));
+        Assert.AreEqual(seal, s2Seal.S2Seal(simplified));
+        Assert.AreEqual(traditional, seal2T.Seal2T(seal));
+        Assert.AreEqual(simplified, seal2S.Seal2S(seal));
+
+        // Convert() dispatch
+        Assert.AreEqual(seal, t2Seal.Convert(traditional));
+        Assert.AreEqual(seal, s2Seal.Convert(simplified));
+        Assert.AreEqual(traditional, seal2T.Convert(seal));
+        Assert.AreEqual(simplified, seal2S.Convert(seal));
+    }
+
+    [TestMethod]
+    public void T2Seal_WithPunctuation()
+    {
+        var opencc = new Opencc(OpenccConfig.T2Seal);
+
+        const string traditional = "你好，小篆“國際編碼18”";
+        const string expected = "你𿒛，𽌠𽴖「𾇓𿭖𿛛碼18」";
+
+        Assert.AreEqual(expected, opencc.T2Seal(traditional, true));
+        Assert.AreEqual(expected, opencc.Convert(traditional, true));
+    }
+
+    [TestMethod]
+    public void Seal_DictionaryPipeline_HasExpectedIntermediateMapping()
+    {
+        var d = DictionaryLib.Provider;
+
+        Assert.AreEqual("𡭔", d.seal_variants.Dict["小"]);
+        Assert.AreEqual("𽌠", d.seal_characters_rev.Dict["𡭔"]);
     }
 }
