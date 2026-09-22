@@ -24,7 +24,11 @@ internal static class CliConfigNames
             "t2hk",
             "hk2t",
             "t2jp",
-            "jp2t"
+            "jp2t",
+            "s2seal",
+            "t2seal",
+            "seal2s",
+            "seal2t"
         };
 
     internal static bool IsValid(string value)

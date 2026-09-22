@@ -6,11 +6,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.7.1] - Unreleased
+## [1.8.0] - Unreleased
+
+### Added
+
+- Added Small Seal Script conversion support with four new configurations:
+
+  - `s2seal` — Simplified Chinese → Small Seal Script.
+  - `t2seal` — Traditional Chinese → Small Seal Script.
+  - `seal2s` — Small Seal Script → Simplified Chinese.
+  - `seal2t` — Small Seal Script → Traditional Chinese.
+- Added `SealCharacters`, `SealCharactersRev`, `SealVariants`, and `SealVariantsRev` dictionary slots, including support for custom dictionary append/override workflows.
+- Added direct `S2Seal()`, `T2Seal()`, `Seal2S()`, and `Seal2T()` conversion APIs.
 
 ### Changed
 
-- added Unicode Compatibility mapping table entries.
+- Added Unicode Compatibility mapping table entries.
 - Updated conversion dictionary data.
 
 ### Dictionary storage
@@ -19,10 +30,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   `LongLengths`; restore them once during loading without changing the runtime API or conversion paths.
 - Preserve longer phrase metadata and existing legacy null/empty repair semantics. New readers accept
   old artifacts; older readers are not guaranteed to accept slim artifacts.
-- Regenerate the built-in dictionary artifacts; see [persistence validation](data/PERSISTENCE_VALIDATION.md)
+- Regenerated the built-in dictionary artifacts; see [persistence validation](data/PERSISTENCE_VALIDATION.md)
   for sizes, UTF-16 policy caveats, and validation results.
 
 ---
+
 
 ## [1.7.0] - 2026-09-18
 

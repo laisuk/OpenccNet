@@ -49,6 +49,7 @@ projects with a focus on performance and minimal memory usage.
     - Taiwan Traditional (T) ↔ Simplified / Traditional
     - Hong Kong Traditional (HK) ↔ Simplified / Traditional
     - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
+    - Chinese Simplified / Traditional ↔ Small Seal Script (OpenccNetLib 1.8.0+)
 - Accurate handling of **Supplementary Plane CJK (U+20000+)** characters  
   (correct surrogate-pair detection and matching)
 - Optional punctuation conversion
@@ -151,6 +152,10 @@ Console.WriteLine(traditional);
 | hk2t   | Traditional (Hong Kong) → Traditional           |
 | t2jp   | Traditional Kyujitai → Japanese Kanji Shinjitai |
 | jp2t   | Japanese Kanji Shinjitai → Traditional Kyujitai |
+| s2seal | Simplified Chinese → Small Seal Script          |
+| t2seal | Traditional Chinese → Small Seal Script         |
+| seal2s | Small Seal Script → Simplified Chinese          |
+| seal2t | Small Seal Script → Traditional Chinese         |
 
 ### Example: Convert with Punctuation
 
@@ -167,6 +172,27 @@ Console.WriteLine(result);
 var cc = new Opencc(OpenccConfig.S2Hkp);
 Console.WriteLine(cc.Convert("别随便录影侵犯个人隐私权"));
 // 別隨便錄影侵犯個人私隱權
+```
+
+### Example: Small Seal Script Conversion (OpenccNetLib 1.8.0+)
+
+OpenccNetLib 1.8.0 adds direct Simplified/Traditional Chinese ↔ Small Seal Script configurations.
+
+```csharp
+var cc = new Opencc(OpenccConfig.T2Seal);
+
+Console.WriteLine(cc.Convert("你好，小篆“國際編碼18”", punctuation: true));
+// 你𿒛，𽌠𽴖「𾇓𿭖𿛛碼18」
+```
+
+The reverse configurations convert Small Seal Script back to modern Chinese:
+
+```csharp
+var cc = new Opencc(OpenccConfig.Seal2T);
+string traditional = cc.Convert(sealText);
+
+cc.SetConfig(OpenccConfig.Seal2S);
+string simplified = cc.Convert(sealText);
 ```
 
 ### Example: Switching Config Dynamically
@@ -238,7 +264,11 @@ var opencc = new Opencc();
 opencc.S2T("汉字");  // Simplified to Traditional    
 opencc.T2S("漢字");  // Traditional to Simplified     
 opencc.S2Tw("汉字"); // Simplified to Taiwan Traditional    
-opencc.T2Jp("漢字"); // Traditional to Japanese Kanji   
+opencc.T2Jp("漢字"); // Traditional to Japanese Kanji
+opencc.S2Seal("你好"); // Simplified Chinese to Small Seal Script (1.8.0+)
+opencc.T2Seal("你好"); // Traditional Chinese to Small Seal Script (1.8.0+)
+opencc.Seal2S(sealText); // Small Seal Script to Simplified Chinese (1.8.0+)
+opencc.Seal2T(sealText); // Small Seal Script to Traditional Chinese (1.8.0+)
 // ...and more
 ```
 
@@ -583,6 +613,11 @@ and override custom dictionary APIs.
 Direct Hong Kong phrase slots are customizable too. `DictSlot.HKPhrases` is used by `s2hkp` after
 Simplified-to-Traditional conversion, and `DictSlot.HKPhrasesRev` is used by `hk2sp` before Traditional-to-Simplified
 conversion.
+
+OpenccNetLib 1.8.0 also exposes the Small Seal Script slots for the same append/override workflows:
+`DictSlot.SealCharacters`, `DictSlot.SealCharactersRev`, `DictSlot.SealVariants`, and
+`DictSlot.SealVariantsRev`. This allows applications to customize preferred mappings, including reverse Seal candidates,
+without replacing the rest of the built-in dictionary.
 
 #### Per-instance custom dictionaries (OpenccNetLib 1.7.0)
 
@@ -1638,6 +1673,10 @@ Creates a new converter using the strongly-typed `OpenccConfig` enum
 - `string Hk2T(string inputText, bool punctuation = false)`
 - `string T2Jp(string inputText, bool punctuation = false)`
 - `string Jp2T(string inputText, bool punctuation = false)`
+- `string S2Seal(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
+- `string T2Seal(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
+- `string Seal2S(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
+- `string Seal2T(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
 
 #### ⚙️ Configuration
 

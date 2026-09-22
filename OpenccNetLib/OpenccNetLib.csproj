@@ -4,7 +4,7 @@
 
         <!-- Package Information for NuGet -->
         <PackageId>OpenccNetLib</PackageId>
-        <Version>1.7.0</Version>
+        <Version>1.8.0</Version>
         <Authors>laisuk</Authors>
         <Description>
             OpenCC .NET library for Chinese text conversion between Traditional and Simplified Chinese.
@@ -23,37 +23,20 @@
         <!-- (Optional) don’t warn about undocumented public members -->
         <!-- <NoWarn>$(NoWarn);1591</NoWarn>-->
         <Title>OpenccNet Library</Title>
-        <PackageReleaseNotes>OpenccNetLib v1.7.0
-
-            - Embedded the canonical built-in Zstandard dictionary for lazy, filesystem-independent default dictionary loading.
-            - Embedded the built-in CJK compatibility, Unicode compatibility, and DeTofu tables, removing filesystem dependencies from the default normalization and DeTofu paths.
-            - Built-in conversion, compatibility normalization, and DeToFu data are now loaded directly from assembly resources, improving deployment compatibility including Blazor WebAssembly.
-            - Migrated dictionary JSON and Zstd-JSON serialization to source-generated System.Text.Json metadata, improving trimming and NativeAOT compatibility while preserving existing dictionary formats and derived lookup metadata.
-            - Migrated dictionary CBOR serialization from PeterO.Cbor object mapping to an explicit System.Formats.Cbor reader/writer implementation, removing reflection-based object mapping and improving trimming and NativeAOT compatibility.
-            - Preserved CBOR field names and legacy-reader input compatibility; slim slots omit derived starter metadata, which new loaders restore. Older readers are not guaranteed to accept slim artifacts.
-            - The new CBOR loader accepts both legacy camelCase and corresponding PascalCase metadata field names and rebuilds missing derived metadata when required.
-            - Fixed built-in Zstd dictionary loading and conversion in NativeAOT applications where reflection-based System.Text.Json serialization is disabled.
-            - Removed CBOR trimming and NativeAOT analysis warnings previously caused by the reflection-capable PeterO.Cbor object-mapping implementation.
-            - Added public DictionaryLib.FromZstd(string) for loading an independent dictionary from an explicitly supplied external Zstandard file without changing the active global dictionary provider or conversion-plan cache.
-            - Retired DictionaryLib.LoadJsonCompressed(string); use the streaming DictionaryLib.FromZstd(string) loader for external Zstandard-compressed dictionaries.
-            - Added Opencc constructors accepting an explicit DictionaryMaxlength through an instance-owned conversion-plan cache.
-            - Added constructor-time frozen Opencc instances with immutable configuration and private plan caches based on DictionaryLib.Provider.
-            - Added per-instance custom dictionaries with the new Opencc(OpenccConfig, IEnumerable&lt;CustomDictSpec&gt;, bool, bool) constructor.
-            - Added Opencc.WithCustomDictionary() for creating a new isolated custom converter while preserving the source configuration and IDS setting.
-            - Per-instance custom dictionaries are layered on a snapshot of the currently active global dictionary provider without modifying global state.
-            - Custom converter instances remain isolated from later global provider changes and retain their custom dictionary when switching configurations.
-            - Ordinary Opencc instances continue using the shared global conversion-plan cache with no private dictionary or plan-cache allocation.
-            - Internalized ConversionPlanCache, DictRefs, and StarterUnion as implementation details and simplified conversion-plan/provider ownership.
-            - DictionaryLib.Provider remains the public built-in/default dictionary provider.
-            - Existing Opencc.UseCustomDictionary() and Opencc.UseDefaultDictionary() retain their process-wide behavior.
-            - Internalized compatibility normalization implementation types; use Opencc.NormalizeCompat, Opencc.NormalizeUnicodeCompat, and Opencc.NormalizeCompatExtended.
-            - Removed the unreleased NormalizeCompat(string, bool) overload; direct CompatIdeographs and two-argument overload consumers must migrate to the three named facade methods.
-            - Avoided parallel chunking overhead for segmented conversion when only one processor is available while preserving multicore thresholds and output behavior.
-            - Updated DeTofu table data and compacted the built-in CharactersTofu table to its three-column format.
-            - Removed redundant packaged copies of built-in resource data while retaining raw OpenCC dictionary files for DictionaryLib.FromDicts().
+        <PackageReleaseNotes>OpenccNetLib v1.8.0
+            - Added Small Seal Script conversion support with four new configurations: s2seal, t2seal, seal2s, and seal2t.
+            - Added direct Opencc.S2Seal(), Opencc.T2Seal(), Opencc.Seal2S(), and Opencc.Seal2T() conversion APIs.
+            - Added SealCharacters, SealCharactersRev, SealVariants, and SealVariantsRev dictionary slots, including support for the existing custom-dictionary append/override workflows.
+            - Integrated Small Seal Script conversions with the existing cached multi-round conversion-plan architecture and optional punctuation conversion.
+            - Updated built-in OpenCC conversion dictionary data and Unicode Compatibility mappings.
+            - Slimmed JSON, Zstd-JSON, and CBOR dictionary artifacts by omitting derived starter metadata from eligible slots with LengthMask 1..3 and no LongLengths.
+            - Rebuilds omitted starter metadata once during dictionary loading while preserving the existing runtime conversion paths and UTF-16 code-unit length semantics.
+            - Preserved longer-phrase metadata and existing legacy null/empty metadata repair behavior.
+            - New dictionary readers remain compatible with existing artifacts; older readers are not guaranteed to accept newly generated slim artifacts.
+            - Regenerated the built-in JSON, CBOR, and Zstandard dictionary artifacts with the updated conversion data and Small Seal Script dictionaries.
         </PackageReleaseNotes>
-        <AssemblyVersion>1.7.0.0</AssemblyVersion>
-        <FileVersion>1.7.0.0</FileVersion>
+        <AssemblyVersion>1.8.0.0</AssemblyVersion>
+        <FileVersion>1.8.0.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
     </PropertyGroup>
 
