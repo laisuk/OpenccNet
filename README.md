@@ -195,6 +195,18 @@ cc.SetConfig(OpenccConfig.Seal2S);
 string simplified = cc.Convert(sealText);
 ```
 
+> [!NOTE]
+> **Small Seal Script** characters require a font with **Unicode 18.0 Small Seal Script** support.
+> If the converted text appears as tofu (`□`) or missing-glyph boxes, the conversion may still be correct; install
+> and select a font that contains the required **Small Seal Script glyphs**.
+>
+> OpenccNetLib's `DeTofu` feature is not intended to replace or recover Small Seal Script characters. DeTofu provides
+> fallback mappings for supported CJK characters when appropriate; it cannot reconstruct a Small Seal Script code
+> point after an application or font has rendered it as a missing-glyph box.
+>
+> Copying the converted text into an application using a **Unicode 18.0-compatible font** is a useful way to distinguish
+> a font-rendering problem from a conversion problem.
+
 ### Example: Switching Config Dynamically
 
 ```csharp
