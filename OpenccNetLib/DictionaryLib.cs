@@ -264,7 +264,7 @@ namespace OpenccNetLib
         /// Japanese Shinjitai-to-Traditional Kyujitai phrase mappings.
         /// </summary>
         public DictWithMaxLength jps_phrases { get; set; } = new();
-        
+
         /// <summary>
         /// Seal-script-to-Simplified character mappings.
         /// </summary>
@@ -312,8 +312,11 @@ namespace OpenccNetLib
         private const string BuiltInDictionaryResourceName =
             "OpenccNetLib.Resources.dictionary_maxlength.zstd";
 
-        private static readonly JsonTypeInfo<DictionaryMaxlength> CompactJsonTypeInfo =
-            CreateStorageJsonTypeInfo(false, false);
+        // private static readonly JsonTypeInfo<DictionaryMaxlength> CompactJsonTypeInfo =
+        //     CreateStorageJsonTypeInfo(false, false);
+
+        private static readonly JsonTypeInfo<DictionaryMaxlength> CompactUnescapedJsonTypeInfo =
+            CreateStorageJsonTypeInfo(false, true);
 
         private static readonly JsonTypeInfo<DictionaryMaxlength> IndentedJsonTypeInfo =
             CreateStorageJsonTypeInfo(true, false);
@@ -767,7 +770,7 @@ namespace OpenccNetLib
                 [DictSlot.JPSCharacters] = "JPShinjitaiCharacters.txt",
                 [DictSlot.JPSCharactersRev] = "JPShinjitaiCharactersRev.txt",
                 [DictSlot.JPSPhrases] = "JPShinjitaiPhrases.txt",
-                
+
                 [DictSlot.SealCharacters] = "SealCharacters.txt",
                 [DictSlot.SealCharactersRev] = "SealCharactersRev.txt",
                 [DictSlot.SealVariants] = "SealVariants.txt",
@@ -882,7 +885,7 @@ namespace OpenccNetLib
                 case DictSlot.JPSCharacters: return d.jps_characters;
                 case DictSlot.JPSCharactersRev: return d.jps_characters_rev;
                 case DictSlot.JPSPhrases: return d.jps_phrases;
-                
+
                 case DictSlot.SealCharacters: return d.seal_characters;
                 case DictSlot.SealCharactersRev: return d.seal_characters_rev;
                 case DictSlot.SealVariants: return d.seal_variants;
@@ -959,7 +962,7 @@ namespace OpenccNetLib
                 case DictSlot.JPSCharacters: d.jps_characters = value; break;
                 case DictSlot.JPSCharactersRev: d.jps_characters_rev = value; break;
                 case DictSlot.JPSPhrases: d.jps_phrases = value; break;
-                
+
                 case DictSlot.SealCharacters: d.seal_characters = value; break;
                 case DictSlot.SealCharactersRev: d.seal_characters_rev = value; break;
                 case DictSlot.SealVariants: d.seal_variants = value; break;
@@ -1546,7 +1549,7 @@ namespace OpenccNetLib
             instance.hk_phrases ??= new DictWithMaxLength();
             instance.hk_phrases_rev ??= new DictWithMaxLength();
             instance.jps_characters_rev ??= new DictWithMaxLength();
-            
+
             instance.seal_characters ??= new DictWithMaxLength();
             instance.seal_characters_rev ??= new DictWithMaxLength();
             instance.seal_variants ??= new DictWithMaxLength();
@@ -1577,7 +1580,7 @@ namespace OpenccNetLib
             EnsureDictionaryMetadata(instance.jps_characters);
             EnsureDictionaryMetadata(instance.jps_characters_rev);
             EnsureDictionaryMetadata(instance.jps_phrases);
-            
+
             EnsureDictionaryMetadata(instance.seal_characters);
             EnsureDictionaryMetadata(instance.seal_characters_rev);
             EnsureDictionaryMetadata(instance.seal_variants);
@@ -1925,7 +1928,7 @@ namespace OpenccNetLib
             WriteCborSlot(writer, "jps_characters", dictionary.jps_characters);
             WriteCborSlot(writer, "jps_characters_rev", dictionary.jps_characters_rev);
             WriteCborSlot(writer, "jps_phrases", dictionary.jps_phrases);
-            
+
             WriteCborSlot(writer, "seal_characters", dictionary.seal_characters);
             WriteCborSlot(writer, "seal_characters_rev", dictionary.seal_characters_rev);
             WriteCborSlot(writer, "seal_variants", dictionary.seal_variants);
@@ -1982,7 +1985,7 @@ namespace OpenccNetLib
                     case "jps_characters": ReadCborSlot(reader, instance.jps_characters); break;
                     case "jps_characters_rev": ReadCborSlot(reader, instance.jps_characters_rev); break;
                     case "jps_phrases": ReadCborSlot(reader, instance.jps_phrases); break;
-                    
+
                     case "seal_characters": ReadCborSlot(reader, instance.seal_characters); break;
                     case "seal_characters_rev": ReadCborSlot(reader, instance.seal_characters_rev); break;
                     case "seal_variants": ReadCborSlot(reader, instance.seal_variants); break;
@@ -2359,7 +2362,8 @@ namespace OpenccNetLib
         #endregion // CBOR Serialization
 
         /// <summary>
-        /// Serializes the dictionary to JSON, compresses it with Zstd, and saves to a file.
+        /// Serializes the dictionary to compact unescaped UTF-8 JSON,
+        /// compresses it with Zstd, and saves it to a file.
         /// </summary>
         /// <param name="path">The output file path.</param>
         /// <param name="dictionary">
@@ -2373,7 +2377,7 @@ namespace OpenccNetLib
 
             var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(
                 instance,
-                CompactJsonTypeInfo);
+                CompactUnescapedJsonTypeInfo);
 
             using var compressor = new Compressor(19);
             var compressed = compressor.Wrap(jsonBytes);
