@@ -70,7 +70,7 @@ namespace OpenccNetLib
         // UTF-16 length metadata cannot distinguish a surrogate pair from two BMP
         // characters. The general restoration helper correctly handles either case.
         internal bool CanOmitStoredStarterLenMask =>
-            LengthMask > 0UL && LengthMask <= 3UL &&
+            LengthMask is > 0UL and <= 3UL &&
             (LongLengths == null || LongLengths.Count == 0);
 
         /// <summary>

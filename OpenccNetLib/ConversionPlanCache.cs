@@ -867,150 +867,38 @@ namespace OpenccNetLib
         /// </exception>
         private static DictWithMaxLength[] BuildDicts(DictionaryMaxlength d, UnionKey key)
         {
-            switch (key)
+            return key switch
             {
                 // --- S2T / T2S ---
-                case UnionKey.S2T:
-                    return new[]
-                    {
-                        d.st_phrases,
-                        d.st_characters
-                    };
-
-                case UnionKey.S2TPunct:
-                    return new[]
-                    {
-                        d.st_phrases,
-                        d.st_characters,
-                        d.st_punctuations
-                    };
-
-                case UnionKey.T2S:
-                    return new[]
-                    {
-                        d.ts_phrases,
-                        d.ts_characters
-                    };
-
-                case UnionKey.T2SPunct:
-                    return new[]
-                    {
-                        d.ts_phrases,
-                        d.ts_characters,
-                        d.ts_punctuations
-                    };
-
+                UnionKey.S2T => new[] { d.st_phrases, d.st_characters },
+                UnionKey.S2TPunct => new[] { d.st_phrases, d.st_characters, d.st_punctuations },
+                UnionKey.T2S => new[] { d.ts_phrases, d.ts_characters },
+                UnionKey.T2SPunct => new[] { d.ts_phrases, d.ts_characters, d.ts_punctuations },
                 // --- TW ---
-                case UnionKey.TwVariantsPair:
-                    return new[]
-                    {
-                        d.tw_variants_phrases,
-                        d.tw_variants
-                    };
-
-                case UnionKey.TwRevPair:
-                    return new[]
-                    {
-                        d.tw_variants_rev_phrases,
-                        d.tw_variants_rev
-                    };
-
-                case UnionKey.TwRevTriple:
-                    return new[]
-                    {
-                        d.tw_phrases_rev,
-                        d.tw_variants_rev_phrases,
-                        d.tw_variants_rev
-                    };
-
-                case UnionKey.TwTriple:
-                    return new[]
-                    {
-                        d.tw_phrases,
-                        d.tw_variants_phrases,
-                        d.tw_variants
-                    };
-
+                UnionKey.TwVariantsPair => new[] { d.tw_variants_phrases, d.tw_variants },
+                UnionKey.TwRevPair => new[] { d.tw_variants_rev_phrases, d.tw_variants_rev },
+                UnionKey.TwTriple => new[] { d.tw_phrases, d.tw_variants_phrases, d.tw_variants },
+                UnionKey.TwRevTriple => new[] { d.tw_phrases_rev, d.tw_variants_rev_phrases, d.tw_variants_rev },
                 // --- HK ---
-                case UnionKey.HkVariantsPair:
-                    return new[]
-                    {
-                        d.hk_variants_phrases,
-                        d.hk_variants
-                    };
-
-                case UnionKey.HkRevPair:
-                    return new[]
-                    {
-                        d.hk_variants_rev_phrases,
-                        d.hk_variants_rev
-                    };
-
-                case UnionKey.HkTriple:
-                    return new[]
-                    {
-                        d.hk_phrases,
-                        d.hk_variants_phrases,
-                        d.hk_variants
-                    };
-
-                case UnionKey.HkRevTriple:
-                    return new[]
-                    {
-                        d.hk_phrases_rev,
-                        d.hk_variants_rev_phrases,
-                        d.hk_variants_rev
-                    };
-
+                UnionKey.HkVariantsPair => new[] { d.hk_variants_phrases, d.hk_variants },
+                UnionKey.HkRevPair => new[] { d.hk_variants_rev_phrases, d.hk_variants_rev },
+                UnionKey.HkTriple => new[] { d.hk_phrases, d.hk_variants_phrases, d.hk_variants },
+                UnionKey.HkRevTriple => new[] { d.hk_phrases_rev, d.hk_variants_rev_phrases, d.hk_variants_rev },
                 // --- JP ---
-                case UnionKey.JpsCharactersRev:
-                    return new[] { d.jps_characters_rev };
-
-                case UnionKey.JpsPair:
-                    return new[]
-                    {
-                        d.jps_phrases,
-                        d.jps_characters
-                    };
-
+                UnionKey.JpsCharactersRev => new[] { d.jps_characters_rev },
+                UnionKey.JpsPair => new[] { d.jps_phrases, d.jps_characters },
                 // -- Seal ---
-                case UnionKey.SealCharactersOnly:
-                    return new[]
-                    {
-                        d.seal_characters
-                    };
-
-                case UnionKey.SealCharactersRevOnly:
-                    return new[]
-                    {
-                        d.seal_characters_rev
-                    };
-
-                case UnionKey.SealVariantsOnly:
-                    return new[]
-                    {
-                        d.seal_variants
-                    };
-
-                case UnionKey.SealVariantsRevOnly:
-                    return new[]
-                    {
-                        d.seal_variants_rev
-                    };
-
+                UnionKey.SealCharactersOnly => new[] { d.seal_characters },
+                UnionKey.SealCharactersRevOnly => new[] { d.seal_characters_rev },
+                UnionKey.SealVariantsOnly => new[] { d.seal_variants },
+                UnionKey.SealVariantsRevOnly => new[] { d.seal_variants_rev },
                 // --- T -> T Region Punctuation
-                case UnionKey.StPunctOnly:
-                    return new[]
-                    {
-                        d.st_punctuations
-                    };
-
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(key), key, null);
-            }
+                UnionKey.StPunctOnly => new[] { d.st_punctuations },
+                _ => throw new ArgumentOutOfRangeException(nameof(key), key, null)
+            };
         }
 
-        // ---- Keys / IDs ---------------------------------------------------------------------------
+        // ---- Keys / IDs ---------------------------------------------
 
         /// <summary>
         /// Immutable key type for identifying cached conversion plans
@@ -1059,12 +947,5 @@ namespace OpenccNetLib
             public override int GetHashCode() => ((int)_config * 397) ^ (_punctuation ? 1 : 0);
             public override string ToString() => _config + (_punctuation ? "_punct" : "");
         }
-
-        // ---- Notes --------------------------------------------------------------------------------
-        // - This file assumes existing types in your project:
-        //   - OpenccConfig (enum), DictRefs (rounds with optional StarterUnion args), DictWithMaxLength,
-        //     StarterUnion (with static Build(IReadOnlyList<DictWithMaxLength>)), and DictionaryMaxlength.
-        // - Thread-safe: both caches use ConcurrentDictionary, and StarterUnion is immutable after Build().
-        // - Secondary cache keyed by UnionKey instead of RoundKey.
     }
 }
