@@ -12,11 +12,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Added Small Seal Script conversion support with four new configurations:
 
-  - `s2seal` — Simplified Chinese → Small Seal Script.
-  - `t2seal` — Traditional Chinese → Small Seal Script.
-  - `seal2s` — Small Seal Script → Simplified Chinese.
-  - `seal2t` — Small Seal Script → Traditional Chinese.
-- Added `SealCharacters`, `SealCharactersRev`, `SealVariants`, and `SealVariantsRev` dictionary slots, including support for custom dictionary append/override workflows.
+    - `s2seal` — Simplified Chinese → Small Seal Script.
+    - `t2seal` — Traditional Chinese → Small Seal Script.
+    - `seal2s` — Small Seal Script → Simplified Chinese.
+    - `seal2t` — Small Seal Script → Traditional Chinese.
+- Added `SealCharacters`, `SealCharactersRev`, `SealVariants`, and `SealVariantsRev` dictionary slots, including support
+  for custom dictionary append/override workflows.
 - Added direct `S2Seal()`, `T2Seal()`, `Seal2S()`, and `Seal2T()` conversion APIs.
 
 ### Changed
@@ -33,8 +34,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Regenerated the built-in dictionary artifacts; see [persistence validation](data/PERSISTENCE_VALIDATION.md)
   for sizes, UTF-16 policy caveats, and validation results.
 
----
+### Performance
 
+- Optimized font placeholder restoration during Office and EPUB document conversion.
+- Replaced repeated whole-document string replacements with a single-pass restoration algorithm, avoiding quadratic
+  performance degradation when processing documents containing numerous font declarations.
+- Reduced unnecessary string allocations and repeated scans of XML/XHTML content.
+- Preserved existing font declarations, placeholder formats, conversion behavior, and public APIs.
+- Improved performance for font-heavy documents, particularly large EPUB files with thousands of font declarations.
+
+### Tests
+
+- Added regression coverage for font placeholder restoration, including known and unknown placeholders and non-recursive
+  replacement behavior.
+
+---
 
 ## [1.7.0] - 2026-09-18
 

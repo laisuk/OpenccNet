@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -1145,11 +1145,37 @@ namespace OpenccNetLib
                 ? ConvertXlsxXmlPart(xmlContent, entryName, textConverter)
                 : ApplyTextConverter(textConverter, xmlContent);
 
-            if (fontMap == null) return convertedXml;
-            foreach (var pair in fontMap)
-                convertedXml = convertedXml.Replace(pair.Key, pair.Value);
+            return fontMap == null ? convertedXml : RestoreFonts(convertedXml, fontMap);
+        }
 
-            return convertedXml;
+        /// <summary>Restores font markers without rescanning inserted font names.</summary>
+        private static string RestoreFonts(string converted, Dictionary<string, string> fontMap)
+        {
+            if (fontMap.Count == 0) return converted;
+
+            const string prefix = "__F_O_N_T_";
+            var restored = new StringBuilder(converted.Length);
+            var cursor = 0;
+            int start;
+            while ((start = converted.IndexOf(prefix, cursor, StringComparison.Ordinal)) >= 0)
+            {
+                restored.Append(converted, cursor, start - cursor);
+                var prefixEnd = start + prefix.Length;
+                var end = converted.IndexOf("__", prefixEnd, StringComparison.Ordinal);
+                if (end >= 0 && fontMap.TryGetValue(converted.Substring(start, end + 2 - start), out var font))
+                {
+                    restored.Append(font);
+                    cursor = end + 2;
+                }
+                else
+                {
+                    // Preserve unknown/incomplete markers while allowing later known markers.
+                    restored.Append(prefix);
+                    cursor = prefixEnd;
+                }
+            }
+            restored.Append(converted, cursor, converted.Length - cursor);
+            return restored.ToString();
         }
 
         /// <summary>
