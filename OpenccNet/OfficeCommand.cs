@@ -78,7 +78,7 @@ internal static class OfficeCommand
         {
             DefaultValueFactory = _ => true,
             Description =
-                "Preserve font names in Office documents [default: true]. " +
+                "Preserve font names in Office documents. " +
                 "Use --keep-font:false to disable."
         };
 
