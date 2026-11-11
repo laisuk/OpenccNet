@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.8.0] - Unreleased
+## \[1.8.0] - Unreleased
 
 ### Added
 
@@ -24,6 +24,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Added Unicode Compatibility mapping table entries.
 - Updated conversion dictionary data.
+
+### **Security**
+
+- Updated `System.Formats.Cbor` from `8.0.0` to `8.0.2` to address the moderate-severity security
+  vulnerability [GHSA-vmv3-wvjp-wqpj](https://github.com/advisories/GHSA-vmv3-wvjp-wqpj) (`NU1902`).
+- Applied the patched dependency across both `netstandard2.0` and `net9.0` targets without changing the CBOR
+  serialization format or public APIs.
+- Verified that NuGet Audit reports no known vulnerable packages across the supported target frameworks.
 
 ### Dictionary storage
 
@@ -50,7 +58,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.7.0] - 2026-09-18
+## \[1.7.0] - 2026-09-18
 
 ### Removed
 
@@ -185,7 +193,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.6.2] - 2026-08-15
+## \[1.6.2] - 2026-08-15
 
 ### Added
 
@@ -254,7 +262,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.6.1] - 2026-07-15
+## \[1.6.1] - 2026-07-15
 
 ### Added
 
@@ -286,7 +294,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.6.0] - 2026-06-18
+## \[1.6.0] - 2026-06-18
 
 ### Added
 
@@ -384,7 +392,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.5.1] - 2026-05-25
+## \[1.5.1] - 2026-05-25
 
 ### Added
 
@@ -448,7 +456,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.5.0] - 2026-05-07
+## \[1.5.0] - 2026-05-07
 
 ### Changed
 
@@ -482,7 +490,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.2] - 2026-04-08
+## \[1.4.2] - 2026-04-08
 
 ### Changed
 
@@ -511,7 +519,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.4.1] - 2026-01-25
+## \[1.4.1] - 2026-01-25
 
 ### Changed
 
@@ -520,7 +528,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Improved and aligned XML documentation with the current dictionary provider and plan cache architecture
 - Update OpenCC dictionary to version v1.2.0
 
-## [1.4.0] - 2025-12-16
+## \[1.4.0] - 2025-12-16
 
 ### 🆕 What's New in v1.4.0
 
@@ -621,7 +629,7 @@ existing constructor usage.
 
 ---
 
-## [1.3.1] - 2025-10-28
+## \[1.3.1] - 2025-10-28
 
 ### Summary
 
@@ -647,7 +655,7 @@ Maintenance release identical to **v1.3.0**, focused on improving developer expe
 
 ---
 
-## [1.3.0] – 2025-10-20
+## \[1.3.0] – 2025-10-20
 
 ### Added
 
@@ -752,7 +760,7 @@ Maintenance release identical to **v1.3.0**, focused on improving developer expe
 ### Deprecated
 
 - `StarterUnion.Get(char, out cap, out mask)` and  
-  `Get(char, out cap, out mask, out minLen)` are marked **[Obsolete]**.  
+  `Get(char, out cap, out mask, out minLen)` are marked **\[Obsolete\]**.  
   They remain thin shims for compatibility; conversion loops now use `GetAt()`.
 - Per-instance `_planCache` fields inside `Opencc` are now obsolete.  
   Use the global `DictionaryLib.PlanCache` for all conversions.
@@ -786,7 +794,7 @@ dictionary providers, and warmup behavior are unified, thread-safe, and runtime-
 
 ---
 
-## [1.2.0] - 2025-09-30
+## \[1.2.0] - 2025-09-30
 
 ### Added
 
@@ -819,7 +827,7 @@ dictionary providers, and warmup behavior are unified, thread-safe, and runtime-
 
 ---
 
-## [1.1.0] — 2025-08-18
+## \[1.1.0] — 2025-08-18
 
 ### 🚀 Performance
 
@@ -895,7 +903,7 @@ This release’s performance leap comes from **multi-layered optimizations**, no
 
 ---
 
-## [1.0.3] - 2025-07-29
+## \[1.0.3] - 2025-07-29
 
 ### Changed
 
@@ -929,7 +937,7 @@ A major performance-focused and developer-experience update for the OpenCC-based
 
 ---
 
-## [1.0.2] - 2025-07-08
+## \[1.0.2] - 2025-07-08
 
 ### OpenccNetLib v1.0.2
 
@@ -949,7 +957,7 @@ replacement and optimized for both CLI and GUI use.
 
 ---
 
-## [1.0.1] - 2025-06-18
+## \[1.0.1] - 2025-06-18
 
 ### Changed
 
@@ -957,7 +965,7 @@ replacement and optimized for both CLI and GUI use.
 
 ---
 
-## [1.0.0] - 2025-05-25
+## \[1.0.0] - 2025-05-25
 
 ### Added
 
