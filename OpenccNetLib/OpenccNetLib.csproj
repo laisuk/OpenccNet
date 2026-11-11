@@ -23,6 +23,7 @@
         <!-- (Optional) don’t warn about undocumented public members -->
         <!-- <NoWarn>$(NoWarn);1591</NoWarn>-->
         <Title>OpenccNet Library</Title>
+
         <PackageReleaseNotes>OpenccNetLib v1.8.0
             - Added Small Seal Script conversion support with four new configurations: s2seal, t2seal, seal2s, and seal2t.
             - Added direct Opencc.S2Seal(), Opencc.T2Seal(), Opencc.Seal2S(), and Opencc.Seal2T() conversion APIs.
@@ -34,7 +35,14 @@
             - Preserved longer-phrase metadata and existing legacy null/empty metadata repair behavior.
             - New dictionary readers remain compatible with existing artifacts; older readers are not guaranteed to accept newly generated slim artifacts.
             - Regenerated the built-in JSON, CBOR, and Zstandard dictionary artifacts with the updated conversion data and Small Seal Script dictionaries.
+            - Optimized font placeholder restoration in Office and EPUB conversions using a single-pass algorithm to avoid quadratic performance degradation.
+            - Reduced unnecessary string allocations and repeated XML/XHTML scans while preserving existing conversion behavior and public APIs.
+            - Added regression tests for known and unknown font placeholders and non-recursive replacement behavior.
+            - Updated System.Formats.Cbor from 8.0.0 to 8.0.2 to address the moderate-severity vulnerability GHSA-vmv3-wvjp-wqpj (NU1902).
+            - Preserved CBOR serialization compatibility and existing public APIs across netstandard2.0 and net9.0 targets.
+            - Verified that NuGet Audit reports no known vulnerable packages across the supported target frameworks.
         </PackageReleaseNotes>
+
         <AssemblyVersion>1.8.0.0</AssemblyVersion>
         <FileVersion>1.8.0.0</FileVersion>
         <PackageIcon>icon.png</PackageIcon>
@@ -45,7 +53,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.Formats.Cbor" Version="8.0.2" />
+        <PackageReference Include="System.Formats.Cbor" Version="8.0.2"/>
         <PackageReference Include="System.Memory" Version="4.6.3"
                           Condition="'$(TargetFramework)' == 'netstandard2.0'"/>
         <PackageReference Include="System.Text.Json" Version="8.0.6"
