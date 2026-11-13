@@ -18,20 +18,20 @@ projects with a focus on performance and minimal memory usage.
 - [Installation](#installation)
 - [Usage](#usage)
 - [Office Document & EPUB Conversion](#-office-document--epub-conversion)
-  - [Supported formats](#-supported-formats)
-  - [I/O Model Comparison](#io-model-comparison)
-  - [Example: Pure In-Memory Conversion from Bytes](#-example-pure-in-memory-conversion-from-bytes)
-  - [Custom Text Conversion Pipeline](#custom-text-conversion-pipeline)
-  - [Backward-Compatible String Overload](#-backward-compatible-string-overload)
-  - [Async API](#-async-api)
-  - [File-Based Streaming Conversion](#-file-based-streaming-conversion)
-  - [Package Processing and Memory Model](#-package-processing-and-memory-model)
-    - [Format-specific behavior](#format-specific-behavior)
-  - [EPUB Packaging](#-epub-packaging)
-  - [Validation and Error Handling](#-validation-and-error-handling)
-  - [Unit Tested](#-unit-tested-mstest)
-  - [Design Notes](#design-notes)
-  - [Why This Matters](#-why-this-matters)
+    - [Supported formats](#-supported-formats)
+    - [I/O Model Comparison](#io-model-comparison)
+    - [Example: Pure In-Memory Conversion from Bytes](#-example-pure-in-memory-conversion-from-bytes)
+    - [Custom Text Conversion Pipeline](#custom-text-conversion-pipeline)
+    - [Backward-Compatible String Overload](#-backward-compatible-string-overload)
+    - [Async API](#-async-api)
+    - [File-Based Streaming Conversion](#-file-based-streaming-conversion)
+    - [Package Processing and Memory Model](#-package-processing-and-memory-model)
+        - [Format-specific behavior](#format-specific-behavior)
+    - [EPUB Packaging](#-epub-packaging)
+    - [Validation and Error Handling](#-validation-and-error-handling)
+    - [Unit Tested](#-unit-tested-mstest)
+    - [Design Notes](#design-notes)
+    - [Why This Matters](#-why-this-matters)
 - [Performance](#performance)
 - [API Reference](#api-reference)
 - [Dictionary Data](#dictionary-data)
@@ -45,10 +45,10 @@ projects with a focus on performance and minimal memory usage.
 - Fast, multi-stage Chinese text conversion using prebuilt dictionary unions  
   (optimized with static caching and zero-allocation hot paths)
 - Supports:
-  - Simplified ↔ Traditional Chinese
-  - Taiwan Traditional (T) ↔ Simplified / Traditional
-  - Hong Kong Traditional (HK) ↔ Simplified / Traditional
-  - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
+    - Simplified ↔ Traditional Chinese
+    - Taiwan Traditional (T) ↔ Simplified / Traditional
+    - Hong Kong Traditional (HK) ↔ Simplified / Traditional
+    - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
 - Accurate handling of **Supplementary Plane CJK (U+20000+)** characters  
   (correct surrogate-pair detection and matching)
 - Optional punctuation conversion
@@ -58,13 +58,13 @@ projects with a focus on performance and minimal memory usage.
 
 - **Office document & EPUB conversion**:
 
-  - `.docx` (Word), `.xlsx` (Excel), `.pptx` (PowerPoint), `.odt`, `.ods`, `.odp`, `.epub`
-  - Pure in-memory `byte[] → byte[]` APIs for web, server, IPC, and memory-oriented workflows
-  - Separate streaming file APIs for desktop, CLI, and large-document workflows
-  - Converts only targeted XML/XHTML content while streaming non-target assets entry by entry
-  - EPUB-compliant rebuild with `mimetype` first and uncompressed
-  - Optional punctuation conversion and font preservation
-  - Async wrappers plus validated, safe file-output publication
+    - `.docx` (Word), `.xlsx` (Excel), `.pptx` (PowerPoint), `.odt`, `.ods`, `.odp`, `.epub`
+    - Pure in-memory `byte[] → byte[]` APIs for web, server, IPC, and memory-oriented workflows
+    - Separate streaming file APIs for desktop, CLI, and large-document workflows
+    - Converts only targeted XML/XHTML content while streaming non-target assets entry by entry
+    - EPUB-compliant rebuild with `mimetype` first and uncompressed
+    - Optional punctuation conversion and font preservation
+    - Async wrappers plus validated, safe file-output publication
 
 - **.NET Standard 2.0 compatible** (.NET Core 2.0+, .NET 5/6/7/8/9/10 and later), with an optimized .NET 9.0+
   implementation path  
@@ -72,14 +72,14 @@ projects with a focus on performance and minimal memory usage.
 
 ---
 
-## Live Demo: CJK Conversion Tool
+## **Live Demo: CJK Conversion Tool**
 
 Try **OpenccNetLib** directly in your browser:
 
 **[Launch the Live Demo](https://laisuk.github.io/OpenccNetLibWasmDemo/)**
 
 Supports CJK text conversion, punctuation conversion, Unicode compatibility normalization, text-file encodings, and
-**DOCX / XLSX / PPTX / EPUB** conversion.
+**DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB** conversion.
 
 Runs entirely locally in your browser via **WebAssembly** — no text or files are uploaded.
 
@@ -1703,9 +1703,9 @@ The following static helpers are provided for validation, parsing, and discovery
 
 - `static int ZhoCheck(string inputText)`  
   Detects whether the input text is likely:
-  - `2` → Simplified Chinese
-  - `1` → Traditional Chinese
-  - `0` → Neither / unknown
+    - `2` → Simplified Chinese
+    - `1` → Traditional Chinese
+    - `0` → Neither / unknown
 
 - `string NormalizeCompat(string text)`
   Applies only the built-in CJK Compatibility Ideograph table.
@@ -2012,9 +2012,9 @@ Reflow attempts to:
 
 - Reflow is **heuristic-based**
 - It is **not suitable** for:
-  - Poetry
-  - Comics / scripts
-  - Highly informal or experimental layouts
+    - Poetry
+    - Comics / scripts
+    - Highly informal or experimental layouts
 - Web novels often use inconsistent formatting and may require tuning
 
 ---
