@@ -80,7 +80,7 @@ Try **OpenccNetLib** directly in your browser:
 **[Launch the Live Demo](https://laisuk.github.io/OpenccNetLibWasmDemo/)**
 
 Supports CJK text conversion, punctuation conversion, Unicode compatibility normalization, text-file encodings, and
-**DOCX / XLSX / PPTX / EPUB** conversion.
+**DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB** conversion.
 
 Runs entirely locally in your browser via **WebAssembly** — no text or files are uploaded.
 
