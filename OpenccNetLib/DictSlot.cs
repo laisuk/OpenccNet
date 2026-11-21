@@ -3,7 +3,7 @@ namespace OpenccNetLib
     // ReSharper disable InconsistentNaming
 
     /// <summary>
-    /// Identifies a built-in OpenCC dictionary slot used by file-level custom
+    /// Identifies a built-in `OpenCC` dictionary slot used by file-level custom
     /// dictionary loading and post-load custom dictionary customization.
     /// </summary>
     /// <remarks>

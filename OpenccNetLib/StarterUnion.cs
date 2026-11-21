@@ -236,7 +236,7 @@ namespace OpenccNetLib
         /// <item>
         /// <description>
         /// Astral (non-BMP) starters share their high-surrogate bucket (<c>c0</c>),
-        /// which is sufficient because current OpenCC data only includes
+        /// which is sufficient because current `OpenCC` data only includes
         /// single-scalar astral characters (length 2) in
         /// <c>st_characters</c> and <c>ts_characters</c>.  If future datasets include
         /// astral phrases, the existing layout remains safe—it will simply probe a few
@@ -247,7 +247,7 @@ namespace OpenccNetLib
         /// </para>
         /// <para>
         /// Using pre-deserialized masks avoids rescanning every dictionary key and
-        /// typically saves 5–15 ms of startup time for large OpenCC dictionaries.
+        /// typically saves 5–15 ms of startup time for large `OpenCC` dictionaries.
         /// </para>
         /// </remarks>
         /// <param name="dictionaries">

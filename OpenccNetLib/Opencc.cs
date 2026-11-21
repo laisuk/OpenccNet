@@ -24,7 +24,7 @@ namespace OpenccNetLib
     /// packaging, or output handling.
     /// </para>
     /// <para>
-    /// Implementations may perform operations such as OpenCC conversion, compatibility
+    /// Implementations may perform operations such as `OpenCC` conversion, compatibility
     /// normalization, punctuation conversion, DeToFu processing, or any composition of
     /// preprocessing and postprocessing steps.
     /// </para>
@@ -36,7 +36,7 @@ namespace OpenccNetLib
     public delegate string TextConverter(string text);
 
     /// <summary>
-    /// Main class for OpenCC text conversion. Provides methods for various conversion directions
+    /// Main class for `OpenCC` text conversion. Provides methods for various conversion directions
     /// (Simplified-Traditional, Traditional-Simplified, etc.) and supports multi-stage, high-performance conversion.
     /// </summary>
     public class Opencc
@@ -98,7 +98,7 @@ namespace OpenccNetLib
         #region Config Enum Helpers Region
 
         /// <summary>
-        /// Represents a single OpenCC configuration mapping entry.
+        /// Represents a single `OpenCC` configuration mapping entry.
         /// </summary>
         /// <remarks>
         /// This struct defines the canonical relationship between an
@@ -108,7 +108,7 @@ namespace OpenccNetLib
         private struct ConfigEntry
         {
             /// <summary>
-            /// The OpenCC configuration identifier.
+            /// The `OpenCC` configuration identifier.
             /// </summary>
             public readonly OpenccConfig Id;
 
@@ -133,7 +133,7 @@ namespace OpenccNetLib
         private const string DefaultConfigName = "s2t";
 
         /// <summary>
-        /// Canonical OpenCC configuration mapping table.
+        /// Canonical `OpenCC` configuration mapping table.
         /// </summary>
         /// <remarks>
         /// This array is the single authoritative source for all configuration mappings
@@ -297,7 +297,7 @@ namespace OpenccNetLib
         /// if parsing succeeded; otherwise, the default value.
         /// </param>
         /// <returns>
-        /// <c>true</c> if <paramref name="config"/> represents a supported OpenCC configuration;
+        /// <c>true</c> if <paramref name="config"/> represents a supported `OpenCC` configuration;
         /// <c>false</c> if <paramref name="config"/> is <c>null</c>, empty, whitespace-only,
         /// or not a recognized configuration name.
         /// </returns>
@@ -318,7 +318,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Determines whether the specified configuration name is a supported OpenCC configuration.
+        /// Determines whether the specified configuration name is a supported `OpenCC` configuration.
         /// </summary>
         /// <param name="config">
         /// The configuration name to validate (for example, <c>"s2t"</c>, <c>"t2hk"</c>).
@@ -337,7 +337,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Gets a read-only collection of all supported OpenCC configuration names.
+        /// Gets a read-only collection of all supported `OpenCC` configuration names.
         /// </summary>
         /// <returns>
         /// A stable, read-only collection of canonical configuration names
@@ -360,7 +360,7 @@ namespace OpenccNetLib
         // ================= Instance state =================
 
         /// <summary>
-        /// Holds the current OpenCC configuration identifier.
+        /// Holds the current `OpenCC` configuration identifier.
         /// </summary>
         /// <remarks>
         /// This field is the single source of truth for the active configuration.
@@ -445,7 +445,7 @@ namespace OpenccNetLib
         private string _lastError;
 
         /// <summary>
-        /// Gets or sets the current OpenCC conversion configuration using the legacy string-based API.
+        /// Gets or sets the current `OpenCC` conversion configuration using the legacy string-based API.
         /// </summary>
         /// <value>
         /// A canonical configuration name such as <c>"s2t"</c> or <c>"tw2sp"</c>.
@@ -492,7 +492,7 @@ namespace OpenccNetLib
         /// Sets the conversion configuration using an <see cref="OpenccConfig"/> enum value.
         /// </summary>
         /// <param name="configEnum">
-        /// The OpenCC configuration identifier to apply.
+        /// The `OpenCC` configuration identifier to apply.
         /// </param>
         /// <remarks>
         /// This overload is the preferred way to set the configuration when using strongly typed APIs.
@@ -693,7 +693,7 @@ namespace OpenccNetLib
         #region Lazy Static Dictionary Region
 
         // Keep the character-only static helpers lazy without triggering the default
-        // dictionary when the Opencc type is first accessed.
+        // dictionary when the `Opencc` type is first accessed.
         private static readonly Lazy<DictionaryMaxlength> LazyDictionary =
             new(
                 () => DictionaryLib.Provider,
@@ -708,7 +708,7 @@ namespace OpenccNetLib
         // === Public Static Methods for Custom Dictionary Loading (Optional for Users) ===
 
         /// <summary>
-        /// Overrides the default OpenCC planning source with a custom  
+        /// Overrides the default `OpenCC` planning source with a custom  
         /// <see cref="DictionaryMaxlength"/> instance by updating the global  
         /// <see cref="ConversionPlanCache"/> provider and clearing all cached plans.
         /// </summary>
@@ -1020,7 +1020,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Centralized thresholds and tuning parameters controlling how  
-        /// OpenCC conversion routines choose between linear and parallel paths.  
+        /// `OpenCC` conversion routines choose between linear and parallel paths.  
         /// </summary>
         /// <remarks>
         /// These constants define when the converter switches from single-threaded  
@@ -1584,7 +1584,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Represents a half-open character range [Start, End) within an input span.
-        /// Used internally by OpenCC to track non-delimiter and delimiter segments.
+        /// Used internally by `OpenCC` to track non-delimiter and delimiter segments.
         /// </summary>
         internal readonly struct Range
         {
@@ -1788,7 +1788,7 @@ namespace OpenccNetLib
         /// consistency, and reduces GC pressure during high-throughput conversions.
         /// </remarks>
         /// <param name="configEnum">
-        /// The OpenCC conversion configuration (e.g., <c>S2T</c>, <c>T2HK</c>, <c>TW2S</c>).
+        /// The `OpenCC` conversion configuration (e.g., <c>S2T</c>, <c>T2HK</c>, <c>TW2S</c>).
         /// </param>
         /// <param name="punctuation">
         /// When <see langword="true"/>, includes punctuation conversion;  
@@ -1815,7 +1815,7 @@ namespace OpenccNetLib
         /// <see cref="IsPreserveIds"/>.
         /// </remarks>
         /// <param name="inputText">The text to convert.</param>
-        /// <param name="config">The OpenCC configuration whose conversion plan is used.</param>
+        /// <param name="config">The `OpenCC` configuration whose conversion plan is used.</param>
         /// <param name="punctuation">
         /// <see langword="true"/> to include punctuation conversion; otherwise, <see langword="false"/>.
         /// </param>
@@ -2260,12 +2260,12 @@ namespace OpenccNetLib
         /// <para>
         /// This optional preprocessing operation maps only CJK Compatibility Ideographs to their
         /// canonical ideograph targets. It does not apply the curated Unicode compatibility table,
-        /// perform OpenCC linguistic conversion, or implement general-purpose NFC, NFD, NFKC, or NFKD.
+        /// perform `OpenCC` linguistic conversion, or implement general-purpose NFC, NFD, NFKC, or NFKD.
         /// </para>
         /// <para>
         /// Mappings are one Unicode scalar to one Unicode scalar. Unmapped text and malformed UTF-16
         /// surrogate code units are preserved. The original string instance is returned when no mapping
-        /// applies. The recommended pipeline is compatibility normalization, OpenCC conversion, then
+        /// applies. The recommended pipeline is compatibility normalization, `OpenCC` conversion, then
         /// optional <see cref="DeTofu(string, DeTofuLevel)"/> display fallback.
         /// </para>
         /// </remarks>
@@ -2295,10 +2295,10 @@ namespace OpenccNetLib
         /// Compatibility Ideograph table.
         /// </para>
         /// <para>
-        /// This is not OpenCC linguistic conversion and is not general-purpose NFC, NFD, NFKC, or NFKD.
+        /// This is not `OpenCC` linguistic conversion and is not general-purpose NFC, NFD, NFKC, or NFKD.
         /// Every mapping is one non-ASCII Unicode scalar to one Unicode scalar; ASCII sources are rejected
         /// when the table is loaded. Unmapped text and malformed surrogates are preserved, and the original
-        /// string instance is returned when no mapping applies. Apply normalization before OpenCC conversion
+        /// string instance is returned when no mapping applies. Apply normalization before `OpenCC` conversion
         /// and optional DeTofu processing.
         /// </para>
         /// </remarks>
@@ -2328,10 +2328,10 @@ namespace OpenccNetLib
         /// CJK Compatibility Ideograph mapping to the resulting scalar.
         /// </para>
         /// <para>
-        /// This is not OpenCC linguistic conversion and is not general-purpose NFC, NFD, NFKC, or NFKD.
+        /// This is not `OpenCC` linguistic conversion and is not general-purpose NFC, NFD, NFKC, or NFKD.
         /// Mappings remain one Unicode scalar to one Unicode scalar; curated-table sources cannot be ASCII.
         /// Unmapped text and malformed surrogates are preserved, and the original string instance is returned
-        /// when no mapping applies. The recommended pipeline is extended compatibility normalization, OpenCC
+        /// when no mapping applies. The recommended pipeline is extended compatibility normalization, `OpenCC`
         /// conversion, then optional <see cref="DeTofu(string, DeTofuLevel)"/> display fallback.
         /// </para>
         /// </remarks>
@@ -2361,7 +2361,7 @@ namespace OpenccNetLib
         /// non-BMP CJK extension characters may render as tofu boxes (□) or missing-glyph placeholders.
         /// </para>
         /// <para>
-        /// DeTofu is a display compatibility pass. It does not modify OpenCC conversion dictionaries,
+        /// DeTofu is a display compatibility pass. It does not modify `OpenCC` conversion dictionaries,
         /// phrase matching, regional variant selection, script detection, or punctuation conversion.
         /// </para>
         /// <para>

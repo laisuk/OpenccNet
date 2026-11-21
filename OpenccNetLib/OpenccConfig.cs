@@ -6,7 +6,7 @@ namespace OpenccNetLib
     #region OpenccConfig and OpenccConfigExtensions Region
 
     /// <summary>
-    /// Represents all supported OpenCC conversion configurations.
+    /// Represents all supported `OpenCC` conversion configurations.
     /// </summary>
     /// <remarks>
     /// Each configuration defines a directional transformation between
@@ -138,16 +138,16 @@ namespace OpenccNetLib
 
     /// <summary>
     /// Provides helpers for converting <see cref="OpenccConfig"/> values to their
-    /// canonical lowercase OpenCC configuration names.
+    /// canonical lowercase `OpenCC` configuration names.
     /// </summary>
     // @Since v1.4.1
     public static class OpenccConfigExtensions
     {
         /// <summary>
-        /// Converts an <see cref="OpenccConfig"/> value to its canonical OpenCC configuration name
+        /// Converts an <see cref="OpenccConfig"/> value to its canonical `OpenCC` configuration name
         /// (for example, <c>"s2t"</c>, <c>"s2twp"</c>, or <c>"s2seal"</c>).
         /// </summary>
-        /// <param name="config">The OpenCC configuration to convert.</param>
+        /// <param name="config">The `OpenCC` configuration to convert.</param>
         /// <returns>The canonical lowercase configuration name.</returns>
         /// <exception cref="ArgumentOutOfRangeException">
         /// <paramref name="config"/> is not a defined <see cref="OpenccConfig"/> value.

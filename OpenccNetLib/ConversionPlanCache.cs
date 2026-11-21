@@ -58,7 +58,7 @@ namespace OpenccNetLib
         /// <para>
         /// Each <see cref="UnionKey"/> represents a fixed and well-defined
         /// dictionary combination (a “conversion slot”) corresponding to one
-        /// logical stage of the OpenCC conversion pipeline.
+        /// logical stage of the `OpenCC` conversion pipeline.
         /// </para>
         /// <para>
         /// These keys are shared across all conversion plans so that
@@ -408,7 +408,7 @@ namespace OpenccNetLib
         /// Retrieves a cached plan for the specified <paramref name="config"/>  
         /// and punctuation setting, or builds and caches a new plan if not found.
         /// </summary>
-        /// <param name="config">The OpenCC conversion configuration.</param>
+        /// <param name="config">The `OpenCC` conversion configuration.</param>
         /// <param name="punctuation">
         /// Whether the plan should include punctuation conversion dictionaries.
         /// </param>
@@ -799,7 +799,7 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="d">
         /// The <see cref="DictionaryMaxlength"/> instance containing all available
-        /// OpenCC dictionaries for the current configuration.
+        /// `OpenCC` dictionaries for the current configuration.
         /// </param>
         /// <param name="key">
         /// The <see cref="UnionKey"/> identifying the dictionary group (conversion slot)
@@ -853,7 +853,7 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="d">
         /// The <see cref="DictionaryMaxlength"/> instance containing all available
-        /// OpenCC dictionaries for the current configuration.
+        /// `OpenCC` dictionaries for the current configuration.
         /// </param>
         /// <param name="key">
         /// The <see cref="UnionKey"/> specifying which dictionary group to construct.

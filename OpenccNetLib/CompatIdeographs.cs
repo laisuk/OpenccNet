@@ -62,7 +62,7 @@ namespace OpenccNetLib
     /// <para>
     /// This normalizer maps Unicode CJK Compatibility Ideographs to their
     /// UnicodeData decomposition targets. It is an optional Unicode compatibility
-    /// normalization pre-pass, not an OpenCC dictionary conversion.
+    /// normalization pre-pass, not an `OpenCC` dictionary conversion.
     /// </para>
     /// <para>
     /// Compatibility ideograph normalization is intentionally separate from

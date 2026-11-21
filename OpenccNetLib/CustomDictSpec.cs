@@ -20,7 +20,7 @@ namespace OpenccNetLib
     }
 
     /// <summary>
-    /// Describes custom dictionary data to apply to one OpenCC dictionary slot.
+    /// Describes custom dictionary data to apply to one `OpenCC` dictionary slot.
     /// </summary>
     /// <remarks>
     /// Use <see cref="Parse(string)"/> for portable
@@ -35,7 +35,7 @@ namespace OpenccNetLib
         private const string ExpectedFormat = "<slot>:<append|override>:<path>";
 
         /// <summary>
-        /// Target OpenCC dictionary slot.
+        /// Target `OpenCC` dictionary slot.
         /// </summary>
         public DictSlot Slot { get; set; }
 

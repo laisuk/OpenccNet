@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 namespace OpenccNetLib
 {
     /// <summary>
-    /// Represents a fully resolved OpenCC conversion plan consisting of
+    /// Represents a fully resolved `OpenCC` conversion plan consisting of
     /// one to three sequential replacement rounds.
     /// </summary>
     /// <remarks>
