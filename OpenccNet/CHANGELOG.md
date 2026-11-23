@@ -7,12 +7,12 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.7.0] - 2026-09-18
+## \[1.7.0] - 2026-09-18
 
 ### Added
 
 - Added `-E` / `--norm-compat-extended` to the `convert`, `office`, and `pdf` commands to apply combined CJK
-  compatibility-ideograph and curated Unicode compatibility normalization before OpenCC conversion. When both
+  compatibility-ideograph and curated Unicode compatibility normalization before `OpenCC` conversion. When both
   normalization flags are supplied, extended normalization takes precedence.
 - Added `--keep-ids`, `--norm-compat`, `--norm-compat-extended`, `--detofu`, and `--detofu-file` support to the
   `office` and `pdf` commands.
@@ -22,25 +22,25 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 ### Changed
 
 - Centralized text conversion across the `convert`, `office`, and `pdf` commands through a shared pipeline, consistently
-  applying compatibility normalization, OpenCC conversion, punctuation conversion, IDS preservation, custom
+  applying compatibility normalization, `OpenCC` conversion, punctuation conversion, IDS preservation, custom
   dictionaries, and optional DeToFu processing.
 - Updated DeToFu option handling so bare `--detofu` selects the `all` level consistently across `convert`, `office`, and
   `pdf`; `--detofu-file` requires `--detofu`.
 - Kept `--norm-compat` compatibility-ideograph-only through `Opencc.NormalizeCompat(...)`.
 - Preserved PDF-specific Unicode compatibility normalization and extraction/reflow behavior while routing subsequent
-  OpenCC conversion through the shared text pipeline.
+  `OpenCC` conversion through the shared text pipeline.
 - Adapted custom dictionary handling to use the newly added instance custom dictionary support.
 - Updated the DeToFu data table.
 
 ### Notes
 
-- `pdf --extract` does not run the shared OpenCC conversion pipeline. PDF-specific Unicode compatibility normalization
+- `pdf --extract` does not run the shared `OpenCC` conversion pipeline. PDF-specific Unicode compatibility normalization
   and optional reflow are still applied to extracted text, while conversion options such as `--norm-compat`,
   `--norm-compat-extended`, `--keep-ids`, and `--detofu` have no effect.
 
 ---
 
-## [1.6.2] - 2026-08-15
+## \[1.6.2] - 2026-08-15
 
 ### Changed
 
@@ -61,12 +61,12 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
   `OfficeConverter` directly, reducing command orchestration complexity while preserving existing behavior.
 - CLI: Refactored the `pdf` command into a clearer processing pipeline with dedicated helpers for validation,
   extraction, Kangxi Radical normalization, reflow, conversion, and output, while keeping the extraction →
-  normalization → reflow → conversion workflow easy to follow. Extraction-only mode now skips OpenCC initialization
+  normalization → reflow → conversion workflow easy to follow. Extraction-only mode now skips `OpenCC` initialization
   entirely.
 
 ---
 
-## [1.6.1] - 2026-07-15
+## \[1.6.1] - 2026-07-15
 
 ### Add
 
@@ -84,7 +84,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.6.0] - 2026-06-18
+## \[1.6.0] - 2026-06-18
 
 ### Added
 
@@ -98,7 +98,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 ### Changed
 
 - Update OpenccNetLib to v1.6.0.
-- Aligned Japanese Shinjitai dictionary bundles with upstream OpenCC commit `93ee7f7`.
+- Aligned Japanese Shinjitai dictionary bundles with upstream `OpenCC` commit `93ee7f7`.
 
 ### Breaking Changes
 
@@ -106,7 +106,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ### Notes
 
-- DeTofu is a display-compatibility pass and does not modify OpenCC conversion dictionaries, phrase matching, regional
+- DeTofu is a display-compatibility pass and does not modify `OpenCC` conversion dictionaries, phrase matching, regional
   variant selection, script detection, or punctuation conversion.
 - Custom fallback files and custom fallback pairs override built-in mappings when the same tofu-risk character is
   provided.
@@ -115,7 +115,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.5.1] - 2026-05-25
+## \[1.5.1] - 2026-05-25
 
 ### Changed
 
@@ -131,7 +131,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-[1.5.0] - 2026-05-07
+## \[1.5.0] - 2026-05-07
 
 ### Changed
 
@@ -139,7 +139,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.4.2] - 2026-04-08
+## \[1.4.2] - 2026-04-08
 
 ### Changed
 
@@ -154,7 +154,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.4.1] - 2026-01-25
+## \[1.4.1] - 2026-01-25
 
 ### Changed
 
@@ -163,7 +163,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.4.0] - 2025-12-16
+## \[1.4.0] - 2025-12-16
 
 ### Added
 
@@ -201,7 +201,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.3.1] - 2025-11-01
+## \[1.3.1] - 2025-11-01
 
 ### Changed
 
@@ -209,7 +209,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.3.0] - 2025-10-20
+## \[1.3.0] - 2025-10-20
 
 ### Changed
 
@@ -217,7 +217,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.2.0] - 2025-10-01
+## \[1.2.0] - 2025-10-01
 
 ### Changed
 
@@ -225,7 +225,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.1.0] - 2025-08-18
+## \[1.1.0] - 2025-08-18
 
 ### Changed
 
@@ -233,7 +233,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.0.3] - 2025-07-29
+## \[1.0.3] - 2025-07-29
 
 ### Added
 
@@ -243,11 +243,11 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.0.2] – 2025-07-10
+## \[1.0.2] – 2025-07-10
 
 ### Added
 
-- Added support for getting, setting, and validating OpenCC conversion configurations.
+- Added support for getting, setting, and validating `OpenCC` conversion configurations.
 - Added structured document conversion for Office-style formats (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`,
   `.epub`).
 - Added `--format`, `--keep-font`, and `--auto-ext` options to `convert` command.
@@ -261,7 +261,7 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
-## [1.0.1] – 2025-06-16
+## \[1.0.1] – 2025-06-16
 
 ### Added
 

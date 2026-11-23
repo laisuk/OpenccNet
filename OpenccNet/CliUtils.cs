@@ -94,7 +94,7 @@ internal static class CliUtils
 
         DictionaryLib.WithCustomDicts(dictionary, specs);
 
-        // Global provider selection must happen before Opencc construction.
+        // Global provider selection must happen before `Opencc` construction.
         Opencc.UseCustomDictionary(dictionary);
     }
 
@@ -330,7 +330,7 @@ internal static class CliUtils
     }
 
     /// <summary>
-    /// Gets a comma-separated list of all supported OpenCC conversion
+    /// Gets a comma-separated list of all supported `OpenCC` conversion
     /// configuration names for CLI help text.
     /// </summary>
     internal static string ConfigHelpAll =>

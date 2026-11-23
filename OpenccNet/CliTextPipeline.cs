@@ -17,13 +17,13 @@ namespace OpenccNet;
 /// </para>
 /// <code>
 /// Compatibility normalization (optional)
-///     → OpenCC conversion
+///     → `OpenCC` conversion
 ///     → DeTofu display fallback (optional)
 /// </code>
 /// <para>
 /// Extended compatibility normalization takes precedence over basic
 /// compatibility-ideograph normalization when both options are enabled.
-/// Custom OpenCC dictionary specifications and IDS preservation are applied when
+/// Custom `OpenCC` dictionary specifications and IDS preservation are applied when
 /// the <see cref="Opencc"/> instance is constructed.
 /// </para>
 /// <para>
@@ -38,23 +38,23 @@ internal static class CliTextPipeline
     /// options.
     /// </summary>
     /// <param name="config">
-    /// The OpenCC conversion configuration, such as <c>s2t</c>, <c>t2s</c>,
+    /// The `OpenCC` conversion configuration, such as <c>s2t</c>, <c>t2s</c>,
     /// <c>s2twp</c>, or <c>hk2sp</c>.
     /// </param>
     /// <param name="punctuation">
-    /// Whether OpenCC punctuation conversion should be applied.
+    /// Whether `OpenCC` punctuation conversion should be applied.
     /// </param>
     /// <param name="keepIds">
     /// Whether Unicode Ideographic Description Sequence (IDS) expressions should
-    /// be preserved during OpenCC conversion.
+    /// be preserved during `OpenCC` conversion.
     /// </param>
     /// <param name="normCompat">
-    /// Whether CJK Compatibility Ideographs should be normalized before OpenCC
+    /// Whether CJK Compatibility Ideographs should be normalized before `OpenCC`
     /// conversion.
     /// </param>
     /// <param name="normCompatExtended">
     /// Whether extended Unicode compatibility normalization should be applied
-    /// before OpenCC conversion. This takes precedence over
+    /// before `OpenCC` conversion. This takes precedence over
     /// <paramref name="normCompat"/>.
     /// </param>
     /// <param name="deTofu">
@@ -70,7 +70,7 @@ internal static class CliTextPipeline
     /// </param>
     /// <returns>
     /// A reusable <see cref="TextConverter"/> that applies the configured
-    /// normalization, OpenCC conversion, and optional DeTofu pipeline.
+    /// normalization, `OpenCC` conversion, and optional DeTofu pipeline.
     /// </returns>
     /// <exception cref="ArgumentException">
     /// Thrown when a DeTofu level or custom dictionary specification is invalid.

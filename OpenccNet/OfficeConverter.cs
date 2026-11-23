@@ -139,7 +139,7 @@ public static class OfficeConverter
     /// <para>
     /// Text content selected by the package layer is transformed through
     /// <paramref name="textConverter"/>. The CLI can therefore compose
-    /// normalization, OpenCC conversion, DeTofu, or other text policies without
+    /// normalization, `OpenCC` conversion, DeTofu, or other text policies without
     /// coupling them to Office or EPUB package mechanics.
     /// </para>
     /// <para>

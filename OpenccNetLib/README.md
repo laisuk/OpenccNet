@@ -283,9 +283,9 @@ OpenccNetLib supports three optional preprocessing operations through the `Openc
 - `Opencc.NormalizeCompatExtended(...)` combines both tables in one pass. The compatibility-ideograph table has
   precedence, and emitted replacements are not normalized again, so mappings do not chain accidentally.
 
-These operations are text preprocessing, not OpenCC linguistic conversion, and they are not general-purpose Unicode NFC,
+These operations are text preprocessing, not `OpenCC` linguistic conversion, and they are not general-purpose Unicode NFC,
 NFD, NFKC, or NFKD normalization. They do not change dictionaries, phrase matching, regional selection, script
-detection, or OpenCC punctuation conversion. Unmapped text and malformed UTF-16 surrogates are preserved; when no
+detection, or `OpenCC` punctuation conversion. Unmapped text and malformed UTF-16 surrogates are preserved; when no
 mapping applies, the original string instance is returned.
 
 Both tables enforce a strict **one Unicode scalar → one Unicode scalar** contract, so normalization never expands or
@@ -296,7 +296,7 @@ syntax such as `<`, `>`, `&`, `"`, `'`, `/`, or `=`. Targets may be ASCII when a
 The recommended processing order is:
 
 1. Apply the appropriate compatibility normalization method.
-2. Run OpenCC conversion with `Convert(...)`.
+2. Run `OpenCC` conversion with `Convert(...)`.
 3. Optionally apply DeTofu for display fallback.
 
 #### Compatibility-ideograph-only normalization
@@ -310,7 +310,7 @@ Console.WriteLine(cc.NormalizeCompat("天龍八部書裡的喬峰是契丹人")
 // Output: 天龍八部書裡的喬峰是契丹人
 ```
 
-This conservative pass is useful before OpenCC conversion because compatibility ideographs can otherwise prevent
+This conservative pass is useful before `OpenCC` conversion because compatibility ideographs can otherwise prevent
 ordinary unified-ideograph dictionary keys from matching. It does not apply curated punctuation or extraction repairs.
 
 #### Curated Unicode-compatibility-only normalization
@@ -346,7 +346,7 @@ overload was removed before the 1.7.0 release; use the named basic or extended m
 `--norm-compat` remains compatibility-ideograph-only, while `-E` / `--norm-compat-extended` selects combined extended
 normalization and takes precedence if both flags are supplied. In the `pdf` pipeline, curated Unicode-only normalization
 is applied automatically immediately after extraction and before paragraph reflow; the selected optional normalization
-pass is then applied before OpenCC conversion. Neither optional flag affects `pdf --extract` output.
+pass is then applied before `OpenCC` conversion. Neither optional flag affects `pdf --extract` output.
 
 #### Compatibility normalization APIs
 
@@ -378,14 +378,14 @@ DeTofu is an optional display-compatibility pass for rare non-BMP CJK extension 
 document viewers, e-book readers, and mobile platforms do not have complete font coverage for these characters, so they
 may render as tofu boxes or missing glyphs.
 
-DeTofu is **not** OpenCC linguistic conversion. It does not modify OpenCC dictionaries, phrase matching, regional
+DeTofu is **not** `OpenCC` linguistic conversion. It does not modify `OpenCC` dictionaries, phrase matching, regional
 variant selection, script detection, or punctuation conversion. For converted text, the recommended order is:
 
 1. Optionally normalize CJK Compatibility Ideographs before conversion.
-2. Run normal OpenCC conversion with `Convert(...)`.
+2. Run normal `OpenCC` conversion with `Convert(...)`.
 3. Run DeTofu on the converted result.
 
-Normal OpenCC conversion:
+Normal `OpenCC` conversion:
 
 ```csharp
 using OpenccNetLib;
@@ -396,7 +396,7 @@ Console.WriteLine(converted);
 // Output: 漢字轉換測試
 ```
 
-OpenCC conversion followed by DeTofu:
+`OpenCC` conversion followed by DeTofu:
 
 ```csharp
 using OpenccNetLib;
@@ -570,9 +570,9 @@ DictionaryMaxlength DictionaryLib.FromDicts(
     IDictionary<DictSlot, string> appends = null)
 ```
 
-OpenccNetLib follows the OpenCC lexicon structure. Custom dictionaries must attach to existing OpenCC dictionary slots
+OpenccNetLib follows the `OpenCC` lexicon structure. Custom dictionaries must attach to existing `OpenCC` dictionary slots
 such as `DictSlot.STPhrases` or `DictSlot.TSPhrases`; dynamic generic slots such as `user_dict` are intentionally
-rejected. Preserving the OpenCC dictionary topology keeps dictionary metadata, lookup acceleration structures, and
+rejected. Preserving the `OpenCC` dictionary topology keeps dictionary metadata, lookup acceleration structures, and
 runtime plans deterministic and compatible.
 
 Regional variant phrase slots are also customizable. `DictSlot.TWVariantsPhrases` is applied before
@@ -789,7 +789,7 @@ var typedDict = DictionaryLib.WithCustomDicts(
 
 `Parse(...)` and `FromFile(...)` construct specifications; they do not load files or change the active dictionary. Apply
 the resulting specifications with `DictionaryLib.WithCustomDicts(...)`. For custom files applied while loading a
-complete OpenCC text dictionary directory, use `DictionaryLib.FromDicts(...)` with its strongly typed `appends` or
+complete `OpenCC` text dictionary directory, use `DictionaryLib.FromDicts(...)` with its strongly typed `appends` or
 `overrides` dictionaries.
 
 Canonical names and supported slots are discoverable without maintaining a separate list:
@@ -804,7 +804,7 @@ var slotParsed = DictSlotExtensions.Parse("hkphrasesrev");
 bool recognized = DictSlotExtensions.TryParse("HKPhrasesRev", out var slotTried);
 ```
 
-The token representation is intentionally unified across the C#, Java, Rust, and Python OpenCC ecosystem. This release
+The token representation is intentionally unified across the C#, Java, Rust, and Python `OpenCC` ecosystem. This release
 provides the public C# `CustomDictSpec.Parse(...)` API and uses it for the C# CLI. A matching public library parser is
 not claimed here for Java, Rust, or Python; those public API ports are separate work and should be treated as planned or
 not yet ported unless the documentation for that language explicitly says otherwise. A CLI in another language may
@@ -812,7 +812,7 @@ already accept the shared token without exposing a public library parser.
 
 #### File-level customization
 
-Use `DictionaryLib.FromDicts()` when custom files should be applied while loading the OpenCC text dictionaries.
+Use `DictionaryLib.FromDicts()` when custom files should be applied while loading the `OpenCC` text dictionaries.
 
 Use `appends` to load custom entries after the built-in dictionary in the selected slot. Appended entries use
 "late-comer wins" behavior, so duplicate keys override earlier built-in mappings.
@@ -880,7 +880,7 @@ Console.WriteLine(cc.Convert("小女孩喜欢看动画片"));
 
 #### Override an entire slot
 
-Use `overrides` only when replacing the full content of an OpenCC dictionary slot with a complete custom dictionary.
+Use `overrides` only when replacing the full content of an `OpenCC` dictionary slot with a complete custom dictionary.
 
 ```csharp
 using OpenccNetLib;
@@ -940,7 +940,7 @@ customization.
 #### Exact in-memory fallback pairs
 
 Use `CustomDictSpec.Pairs` for small, exact in-memory fallback pairs when an application needs project-local conversion
-patches without restructuring the built-in OpenCC dictionary files.
+patches without restructuring the built-in `OpenCC` dictionary files.
 
 This is especially useful for tofu-risk or CJK Extension Unicode cases where some target platforms may not render newer
 characters correctly. Applications can provide temporary alternate mappings while keeping the built-in dictionary
@@ -1066,7 +1066,7 @@ var opencc = new Opencc("s2t");
 | `DictSlot.JPSCharactersRev`     | `jps_characters_rev`      | `JPShinjitaiCharactersRev.txt` |
 | `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`       |
 
-Japanese Shinjitai dictionary layout follows upstream OpenCC commit `93ee7f7`: `JPShinjitaiCharacters.txt`
+Japanese Shinjitai dictionary layout follows upstream `OpenCC` commit `93ee7f7`: `JPShinjitaiCharacters.txt`
 is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse dictionary
 used by `t2jp`. Custom dictionary bundles, JSON, CBOR, or Zstd packs must include the non-empty
 `JPShinjitaiCharactersRev.txt` / `jps_characters_rev` slot.
@@ -1074,7 +1074,7 @@ used by `t2jp`. Custom dictionary bundles, JSON, CBOR, or Zstd packs must includ
 #### Recommended usage
 
 Use `appends` for company terms, product names, domain vocabulary, and temporary conversion fixes. Use `overrides` only
-when maintaining a full proprietary replacement dictionary. Prefer following the upstream OpenCC lexicon structure
+when maintaining a full proprietary replacement dictionary. Prefer following the upstream `OpenCC` lexicon structure
 whenever possible.
 
 Prefer activating a custom dictionary once during application startup, before conversions begin. The active provider is
@@ -1090,8 +1090,8 @@ provider.
 
 #### Why no `user_dict` slot?
 
-OpenccNetLib intentionally preserves the OpenCC dictionary topology. Generic dynamic slots complicate conversion
-ordering, derived dictionary metadata, and cached lookup state. Existing OpenCC slots already provide deterministic and
+OpenccNetLib intentionally preserves the `OpenCC` dictionary topology. Generic dynamic slots complicate conversion
+ordering, derived dictionary metadata, and cached lookup state. Existing `OpenCC` slots already provide deterministic and
 extensible customization points.
 
 ---
@@ -1103,7 +1103,7 @@ extensible customization points.
 - **I/O model** — pure in-memory `byte[] → byte[]` or streaming file → file.
 - **Text conversion model** — convenient `Opencc` overloads or extensible `TextConverter` delegate overloads.
 
-For ordinary OpenCC document conversion, the existing `Opencc` overloads remain the simplest recommended API.
+For ordinary `OpenCC` document conversion, the existing `Opencc` overloads remain the simplest recommended API.
 
 `ConvertOfficeBytes(...)` accepts the complete package as `byte[]`. It opens and rebuilds the package in memory, then
 returns a new `byte[]`. This is the pure in-memory API.
@@ -1125,7 +1125,7 @@ requested output path.
 | `epub` | EPUB 2/3 e-book                        | XHTML, HTML, OPF, and NCX content             |
 
 Font-name preservation is available with either text conversion model. The `punctuation` option belongs to the
-`Opencc` convenience overloads because it controls OpenCC conversion policy.
+`Opencc` convenience overloads because it controls `OpenCC` conversion policy.
 
 ### I/O Model Comparison
 
@@ -1199,7 +1199,7 @@ The delegate must return a non-null string. It controls only text transformation
 package parsing, entry selection, ZIP rebuilding, XLSX handling, EPUB rules, font preservation, and package validation.
 There is no separate `punctuation` parameter on delegate overloads: capture that option in the delegate when needed.
 
-A practical pipeline composes **Normalize → OpenCC Convert → DeTofu** in that order:
+A practical pipeline composes **Normalize → `OpenCC` Convert → DeTofu** in that order:
 
 ```csharp
 using OpenccNetLib;
@@ -1466,7 +1466,7 @@ and custom post-processing are application policies; the document container laye
 - **Server and byte-stream friendly** — documents can enter and leave the converter entirely as `byte[]`.
 - **EPUB compliant** — required `mimetype` ordering and storage rules are preserved.
 - **Safe file publication** — file conversion validates a sibling temporary package before moving or replacing output.
-- **Composable text pipelines** — combine normalization, OpenCC, DeTofu, or application-specific transformations in one
+- **Composable text pipelines** — combine normalization, `OpenCC`, DeTofu, or application-specific transformations in one
   delegate, independently of document container handling.
 - **One package-processing core** — convenient `Opencc` and custom delegate overloads share the same Office/EPUB logic.
 - **Backward compatible and reusable** — existing `Opencc` callers need no changes; applications can customize text
@@ -1641,7 +1641,7 @@ Creates a new converter using the strongly-typed `OpenccConfig` enum
 
 #### ⚙️ Configuration
 
-Opencc supports both **string-based** and **enum-based** configuration APIs.  
+`Opencc` supports both **string-based** and **enum-based** configuration APIs.  
 Internally, all configurations are stored as a strongly typed `OpenccConfig` identifier;  
 string APIs are provided for backward compatibility and convenience.
 
@@ -1694,7 +1694,7 @@ The following static helpers are provided for validation, parsing, and discovery
   Returns `false` if the input is `null`, empty, or not a recognized configuration.
 
 - `static bool IsValidConfig(string config)`  
-  Determines whether the specified string represents a supported OpenCC configuration.
+  Determines whether the specified string represents a supported `OpenCC` configuration.
 
 - `static IReadOnlyCollection<string> GetSupportedConfigs()`  
   Returns a read-only collection of all supported configuration names  
@@ -1735,7 +1735,7 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
   Restores the active provider to the built-in dictionary and atomically refreshes internal conversion state.
 
 - `static void UseDictionaryFromPath(string dictionaryRelativePath)`
-  Loads OpenCC text dictionary files with `DictionaryLib.FromDicts(dictionaryRelativePath)` and activates the result.
+  Loads `OpenCC` text dictionary files with `DictionaryLib.FromDicts(dictionaryRelativePath)` and activates the result.
 
 - `static void UseDictionaryFromJsonString(string jsonString)`
   Deserializes a `DictionaryMaxlength` JSON payload and activates it as the custom dictionary provider.
@@ -1758,7 +1758,7 @@ artifacts, test fixtures, and tooling. Most applications can use the built-in di
 -
 
 `static DictionaryMaxlength FromDicts(string relativeBaseDir = "dicts", IDictionary<DictSlot, string> overrides = null, IDictionary<DictSlot, string> appends = null)`
-Loads OpenCC text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
+Loads `OpenCC` text dictionary files, optionally replacing slots with `overrides` or extending slots with `appends`.
 
 - `static DictionaryMaxlength WithCustomDicts(DictionaryMaxlength dict, IEnumerable<CustomDictSpec> specs)`
   Applies post-load customization to an already loaded dictionary. Each spec targets one `DictSlot`, reads optional
@@ -1776,7 +1776,7 @@ Loads OpenCC text dictionary files, optionally replacing slots with `overrides` 
 ##### `DictionaryLib` serialization APIs
 
 The serialization helpers accept an optional `DictionaryMaxlength dictionary = null` parameter. When omitted, they load
-from the default OpenCC text dictionary sources with `FromDicts()`.
+from the default `OpenCC` text dictionary sources with `FromDicts()`.
 
 - `static void SerializeToJson(string path, DictionaryMaxlength dictionary = null)`
   Writes a dictionary to indented JSON.
@@ -2103,7 +2103,7 @@ OpenccNet pdf -i file.pdf -o out.txt -c t2s -r -q
 -
 
 See [THIRD_PARTY_NOTICES.md](https://raw.githubusercontent.com/laisuk/OpenccNet/master/OpenccNetLib/THIRD_PARTY_NOTICES.md)
-for bundled OpenCC lexicons (_Apache License 2.0_).
+for bundled `OpenCC` lexicons (_Apache License 2.0_).
 
 ---
 

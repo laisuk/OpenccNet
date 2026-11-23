@@ -71,7 +71,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Add the public `TextConverter(string text)` delegate and delegate-based overloads for `ConvertOfficeBytes`,
   `ConvertOfficeBytesAsync`, `ConvertOfficeFile`, and `ConvertOfficeFileAsync`, with both `OfficeFormat` and legacy
-  string formats. Callers can compose normalization, OpenCC conversion, DeTofu, and custom text transformations;
+  string formats. Callers can compose normalization, `OpenCC` conversion, DeTofu, and custom text transformations;
   delegates must return a non-null string.
 - Embed `dictionary_maxlength.zstd` in the OpenccNetLib assembly as the canonical lazy built-in dictionary, removing the
   default provider's dependency on `AppContext.BaseDirectory` and enabling ordinary conversion in filesystem-free hosts
@@ -119,7 +119,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Load the built-in CJK compatibility, curated Unicode compatibility, and DeTofu tables from assembly resources. Normal
   conversion, normalization, and display fallback no longer depend on deployed `dicts` files, including in
   filesystem-free hosts such as Blazor WebAssembly.
-- Stop copying the four embedded built-in resources as package content while continuing to package the raw OpenCC text
+- Stop copying the four embedded built-in resources as package content while continuing to package the raw `OpenCC` text
   dictionaries required by explicit `DictionaryLib.FromDicts()` and dictionary-generation workflows.
 - Share Zstandard stream decompression, JSON deserialization, and derived-metadata normalization across embedded,
   filesystem, and byte-array loading paths.
@@ -272,7 +272,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Added CJK Compatibility Ideograph normalization support.
     - New `CompatIdeographs` helper for built-in and custom compatibility ideograph normalization.
-    - New `Opencc.NormalizeCompat(...)` convenience API for normalizing compatibility ideographs before OpenCC
+    - New `Opencc.NormalizeCompat(...)` convenience API for normalizing compatibility ideographs before `OpenCC`
       conversion.
     - New built-in mapping data loaded from `dicts/CJK_Compatibility_Ideographs.txt`.
     - Compatibility ideograph normalization is an optional pre-processing pass; DeTofu remains the optional
@@ -338,13 +338,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   before character-level variant dictionaries:
     - `tw_variants_phrases` before `tw_variants`
     - `hk_variants_phrases` before `hk_variants`
-- Refactored the `s2twp` conversion plan to match upstream OpenCC's two-round chain:
+- Refactored the `s2twp` conversion plan to match upstream `OpenCC`'s two-round chain:
     - round 1: Simplified Chinese to Traditional Chinese, including punctuation when enabled
     - round 2: Taiwan phrase and variant normalization using `tw_phrases`, `tw_variants_phrases`, and `tw_variants`
 - Added direct Hong Kong phrase conversion plans:
     - `s2hkp`: round 1 Simplified-to-Traditional, round 2 `hk_phrases`, `hk_variants_phrases`, `hk_variants`
     - `hk2sp`: round 1 `hk_phrases_rev`, `hk_variants_rev_phrases`, `hk_variants_rev`, round 2 Traditional-to-Simplified
-- Aligned the Japanese Shinjitai dictionary topology with upstream OpenCC commit `93ee7f7`.
+- Aligned the Japanese Shinjitai dictionary topology with upstream `OpenCC` commit `93ee7f7`.
 - `JPShinjitaiCharacters.txt` is now the authoritative Japanese Shinjitai character mapping source, and
   `JPShinjitaiCharactersRev.txt` is the generated reverse dictionary used by `t2jp`.
 - Updated Japanese conversion plans:
@@ -398,8 +398,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Added flexible custom dictionary loading support for `DictionaryLib.FromDicts()` and related APIs.
 - Added public `DictSlot` enum for strongly typed custom dictionary slot selection.
-- Added append mode (`appends`) for loading custom user/company dictionaries on top of existing OpenCC dictionary slots.
-- Added override mode (`overrides`) for fully replacing individual OpenCC dictionary slots with custom dictionary files.
+- Added append mode (`appends`) for loading custom user/company dictionaries on top of existing `OpenCC` dictionary slots.
+- Added override mode (`overrides`) for fully replacing individual `OpenCC` dictionary slots with custom dictionary files.
 - Added post-load custom dictionary customization through `DictionaryLib.WithCustomDicts()`.
 - Added public `CustomDictSpec` and `CustomDictMode` APIs for strongly typed post-load dictionary customization.
 - Added support for applying custom dictionary files (`Paths`) and in-memory dictionary pairs (`Pairs`) to existing
@@ -414,7 +414,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
     - CBOR dictionaries
     - JSON dictionaries
     - pure file-based dictionaries created through `FromDicts()`
-- Added strict dictionary slot validation to preserve the OpenCC lexicon contract and prevent unsupported custom slots.
+- Added strict dictionary slot validation to preserve the `OpenCC` lexicon contract and prevent unsupported custom slots.
 - Added custom dictionary tests covering:
     - append mode
     - override mode
@@ -447,7 +447,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   making custom dictionary validation and debugging clearer for advanced users.
 - Improved XML documentation across `DictionaryLib`, including dictionary metadata, custom dictionary loading, post-load
   customization, serialization overloads, path handling, exception contracts, and normalization behavior.
-- Custom dictionary loading now fully complies with the existing OpenCC dictionary slot structure instead of introducing
+- Custom dictionary loading now fully complies with the existing `OpenCC` dictionary slot structure instead of introducing
   generic dynamic dictionary slots, keeping `DictionaryMaxlength`, `DictRefs`, and future acceleration structures
   stable.
 - Reused the existing centralized dictionary normalization and metadata rebuilding pipeline to keep appended and
@@ -526,7 +526,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - `OpenccConfig` is now the single source of truth for internal `Opencc` configuration
 - Added `ToCanonicalName()` for the `OpenccConfig` enum
 - Improved and aligned XML documentation with the current dictionary provider and plan cache architecture
-- Update OpenCC dictionary to version v1.2.0
+- Update `OpenCC` dictionary to version v1.2.0
 
 ## \[1.4.0] - 2025-12-16
 
@@ -697,7 +697,7 @@ Maintenance release identical to **v1.3.0**, focused on improving developer expe
     - Added `BuildFromStarterMasks()` to construct `StarterUnion` directly from each dictionary’s `StarterLenMask`
       instead of rescanning all keys, cutting dictionary-build time by **~10 ms** for large lexicons.
     - Each starter bucket uses the first UTF-16 unit (`c0`) as index; surrogate pairs share their high-surrogate bucket
-      (safe for current OpenCC data where astral keys are single scalars).
+      (safe for current `OpenCC` data where astral keys are single scalars).
 - Hot loop tightened:
     - Switched from `Get(char, …)` to `GetAt(…)` and clamped the search lower bound to  
       `max(minLen, starterUnits)` so astral starters never probe `len == 1`.

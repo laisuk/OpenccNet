@@ -118,7 +118,7 @@ namespace OpenccNetLib.Benchmarks
 
                 if (codePoint == 0xF900)
                     output.Append("金");
-                else if (codePoint >= 0xD800 && codePoint <= 0xDFFF)
+                else if (codePoint is >= 0xD800 and <= 0xDFFF)
                     output.Append((char)codePoint);
                 else
                     output.Append(char.ConvertFromUtf32(codePoint));
@@ -215,11 +215,11 @@ namespace OpenccNetLib.Benchmarks
         public void Setup()
         {
             // Pin the BenchmarkDotNet benchmark process to logical processor 0.
-            // This constrains the process, including Opencc conversion and runtime
+            // This constrains the process, including `Opencc` conversion and runtime
             // helper threads, to a single logical CPU.
             if (OperatingSystem.IsWindows())
             {
-                Process.GetCurrentProcess().ProcessorAffinity = (nint)1;
+                Process.GetCurrentProcess().ProcessorAffinity = 1;
             }
 
             _opencc = new Opencc("s2t");

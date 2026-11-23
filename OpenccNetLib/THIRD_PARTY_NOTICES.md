@@ -6,8 +6,8 @@ This project is licensed under **MIT**. It bundles or depends on third-party com
 
 ## 1) Open Chinese Convert (OpenCC) — Dictionaries & Configs
 
-**Component:** OpenCC lexicon files (dictionaries/configs)  
-**Upstream:** Open Chinese Convert (OpenCC)  
+**Component:** `OpenCC` lexicon files (dictionaries/configs)  
+**Upstream:** Open Chinese Convert (`OpenCC`)  
 **License:** **Apache License 2.0**  
 **Files in this distribution:** `dicts/` (and any derived packs generated from these dictionaries)  
 **License files included:**  
@@ -15,7 +15,7 @@ This project is licensed under **MIT**. It bundles or depends on third-party com
 - `dicts/NOTICE` (if provided by upstream; included here)  
 
 **Attribution:**  
-Copyright © OpenCC contributors
+Copyright © `OpenCC` contributors
 
 **Modifications (if any):**  
 - We may repackage, filter, merge, or precompile dictionary content (e.g., CBOR/Zstd/“dict packs”) for performance.  
@@ -23,16 +23,16 @@ Copyright © OpenCC contributors
 - A summary of our changes (if applicable) is recorded in `dicts/CHANGES.md`.
 
 **Notes on usage:**  
-- The OpenCC lexicon is treated as the canonical linguistic source.  
-- Any artifacts derived directly from the OpenCC lexicon (e.g., compiled packs) are considered derivative and are distributed together with the Apache-2.0 license and notices.
+- The `OpenCC` lexicon is treated as the canonical linguistic source.  
+- Any artifacts derived directly from the `OpenCC` lexicon (e.g., compiled packs) are considered derivative and are distributed together with the Apache-2.0 license and notices.
 
 ---
 
 ## 2) Project License Clarification
 
 - **Our source code:** MIT License (see `LICENSE` in the repository root).  
-- **Bundled OpenCC lexicon (and derivatives):** Apache License 2.0 (see `dicts/LICENSE`, and `dicts/NOTICE` if present).  
-- Licenses are **additive**: using this software means you agree to the terms of both MIT (for our code) and Apache-2.0 (for the OpenCC lexicon files included or fetched at runtime, as applicable).
+- **Bundled `OpenCC` lexicon (and derivatives):** Apache License 2.0 (see `dicts/LICENSE`, and `dicts/NOTICE` if present).  
+- Licenses are **additive**: using this software means you agree to the terms of both MIT (for our code) and Apache-2.0 (for the `OpenCC` lexicon files included or fetched at runtime, as applicable).
 
 ---
 

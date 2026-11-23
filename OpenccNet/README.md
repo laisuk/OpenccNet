@@ -4,7 +4,7 @@
 
 ## 🚀 Features
 
-- ✅ OpenCC config-based conversion (`s2t`, `t2s`, etc.)
+- ✅ `OpenCC` config-based conversion (`s2t`, `t2s`, etc.)
 - 📁 Batch convert `text-based` files, `.docx`, `.xlsx`, `.pptx`, `.odt`, `.ods`, `.odp`, `.epub` and `.pdf`
 - 🧠 Font name preservation (optional)
 - 🧼 Converts only target content (not binary or irrelevant metadata)
