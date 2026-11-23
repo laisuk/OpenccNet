@@ -171,7 +171,7 @@ public class DictionaryLibTests
     }
 
     [TestMethod]
-    public void TestFromDicts_RequiresAllDictionarySlots()
+    public void TestFromDicts_RejectsIncompleteDictionaryDirectories()
     {
         var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
 
@@ -207,6 +207,28 @@ public class DictionaryLibTests
             var ex = Assert.Throws<FileNotFoundException>(() => DictionaryLib.FromDicts(tempDir));
             StringAssert.Contains(ex.Message, missingFile);
         }
+    }
+
+    [TestMethod]
+    public void TestFromDicts_AcceptsLegacyDirectoryWithoutSealFiles()
+    {
+        var sourceDir = Path.Combine(AppContext.BaseDirectory, "dicts");
+        var legacyDir = Path.Combine(OutputDir, "dicts_legacy_without_seal");
+        Directory.CreateDirectory(legacyDir);
+
+        foreach (var sourceFile in Directory.GetFiles(sourceDir, "*.txt"))
+        {
+            var fileName = Path.GetFileName(sourceFile);
+            if (!fileName.StartsWith("Seal", StringComparison.Ordinal))
+                File.Copy(sourceFile, Path.Combine(legacyDir, fileName), overwrite: true);
+        }
+
+        var dictionary = DictionaryLib.FromDicts(legacyDir);
+        Assert.AreEqual("漢字", new Opencc(OpenccConfig.S2T, dictionary).Convert("汉字"));
+        Assert.AreEqual(0, dictionary.seal_characters.Count);
+        Assert.AreEqual(0, dictionary.seal_characters_rev.Count);
+        Assert.AreEqual(0, dictionary.seal_variants.Count);
+        Assert.AreEqual(0, dictionary.seal_variants_rev.Count);
     }
 
     [TestMethod]

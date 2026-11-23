@@ -6,12 +6,13 @@ namespace OpenccNetLib
     #region OpenccConfig and OpenccConfigExtensions Region
 
     /// <summary>
-    /// Represents all supported `OpenCC` conversion configurations.
+    /// Represents all supported OpenCC conversion configurations.
     /// </summary>
     /// <remarks>
     /// Each configuration defines a directional transformation between
     /// Chinese variants (Simplified, Traditional, Taiwan, Hong Kong),
-    /// Seal script, or Japanese Shinjitai/Kyūjitai forms.
+    /// Small Seal Script, or Japanese Shinjitai and Kyūjitai forms.
+    /// Use <see cref="OpenccConfigExtensions.ToCanonicalName"/> for the canonical string identifier.
     /// </remarks>
     public enum OpenccConfig
     {
@@ -116,38 +117,38 @@ namespace OpenccNetLib
         Hk2Tp = 19,
 
         /// <summary>
-        /// Simplified Chinese → Seal script.
+        /// Simplified Chinese → Small Seal Script.
         /// </summary>
         S2Seal = 20,
 
         /// <summary>
-        /// Traditional Chinese → Seal script.
+        /// Traditional Chinese → Small Seal Script.
         /// </summary>
         T2Seal = 21,
 
         /// <summary>
-        /// Seal script → Simplified Chinese.
+        /// Small Seal Script → Simplified Chinese.
         /// </summary>
         Seal2S = 22,
 
         /// <summary>
-        /// Seal script → Traditional Chinese.
+        /// Small Seal Script → Traditional Chinese.
         /// </summary>
         Seal2T = 23
     }
 
     /// <summary>
     /// Provides helpers for converting <see cref="OpenccConfig"/> values to their
-    /// canonical lowercase `OpenCC` configuration names.
+    /// canonical lowercase OpenCC configuration names.
     /// </summary>
     // @Since v1.4.1
     public static class OpenccConfigExtensions
     {
         /// <summary>
-        /// Converts an <see cref="OpenccConfig"/> value to its canonical `OpenCC` configuration name
+        /// Converts an <see cref="OpenccConfig"/> value to its canonical OpenCC configuration name
         /// (for example, <c>"s2t"</c>, <c>"s2twp"</c>, or <c>"s2seal"</c>).
         /// </summary>
-        /// <param name="config">The `OpenCC` configuration to convert.</param>
+        /// <param name="config">The OpenCC configuration to convert.</param>
         /// <returns>The canonical lowercase configuration name.</returns>
         /// <exception cref="ArgumentOutOfRangeException">
         /// <paramref name="config"/> is not a defined <see cref="OpenccConfig"/> value.

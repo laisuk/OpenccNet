@@ -72,9 +72,9 @@ namespace OpenccNetLib
     /// some CJK extension characters may render as tofu boxes or missing-glyph placeholders.
     /// </para>
     /// <para>
-    /// This is not `OpenCC` linguistic conversion. It does not modify conversion dictionaries,
+    /// This is not OpenCC linguistic conversion. It does not modify conversion dictionaries,
     /// phrase matching, regional variant selection, script detection, or punctuation conversion.
-    /// Apply DeTofu after normal `OpenCC` conversion when both operations are needed.
+    /// Apply DeTofu after normal OpenCC conversion when both operations are needed.
     /// </para>
     /// <para>
     /// Unknown or unmapped characters are preserved unchanged. DeTofu never replaces unknown

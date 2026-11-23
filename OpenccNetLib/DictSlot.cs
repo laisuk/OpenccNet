@@ -3,7 +3,7 @@ namespace OpenccNetLib
     // ReSharper disable InconsistentNaming
 
     /// <summary>
-    /// Identifies a built-in `OpenCC` dictionary slot used by file-level custom
+    /// Identifies a built-in OpenCC dictionary slot used by file-level custom
     /// dictionary loading and post-load custom dictionary customization.
     /// </summary>
     /// <remarks>
@@ -83,26 +83,22 @@ namespace OpenccNetLib
         HKPhrasesRev = 22,
 
         /// <summary>
-        /// Seal-script-to-Simplified Chinese character mappings.
-        /// Added after existing values to preserve enum numeric stability.
+        /// Small Seal Script to regular-script transcription mappings.
         /// </summary>
         SealCharacters = 23,
 
         /// <summary>
-        /// Simplified Chinese-to-Seal-script character mappings.
-        /// Added after existing values to preserve enum numeric stability.
+        /// Regular-script transcription to Small Seal Script mappings.
         /// </summary>
         SealCharactersRev = 24,
 
         /// <summary>
-        /// Seal-script variant normalization mappings.
-        /// Added after existing values to preserve enum numeric stability.
+        /// Modern Chinese to regular-script transcription mappings for Small Seal Script conversion.
         /// </summary>
         SealVariants = 25,
 
         /// <summary>
-        /// Reverse Seal-script variant mappings.
-        /// Added after existing values to preserve enum numeric stability.
+        /// Regular-script transcription to modern Chinese variant mappings.
         /// </summary>
         SealVariantsRev = 26,
     }

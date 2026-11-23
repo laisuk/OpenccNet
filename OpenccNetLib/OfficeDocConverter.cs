@@ -502,8 +502,8 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
         /// <param name="format">The strongly typed Office or EPUB container format.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         /// <returns>A newly allocated byte array containing the rebuilt package.</returns>
         public static byte[] ConvertOfficeBytes(
@@ -531,8 +531,8 @@ namespace OpenccNetLib
         /// </remarks>
         /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
         /// <param name="format">Case-insensitive format name.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         /// <returns>A newly allocated byte array containing the rebuilt package.</returns>
         public static byte[] ConvertOfficeBytes(
@@ -556,8 +556,8 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
         /// <param name="format">The strongly typed Office or EPUB container format.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
         /// <returns>A task that resolves to the rebuilt package bytes.</returns>
@@ -584,8 +584,8 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="inputBytes">Raw bytes of the Office or EPUB package.</param>
         /// <param name="format">Case-insensitive format name.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
         /// <returns>A task that resolves to the rebuilt package bytes.</returns>
@@ -612,13 +612,13 @@ namespace OpenccNetLib
         /// </summary>
         /// <remarks>
         /// This convenience overload preserves the established OpenccNetLib API and
-        /// forwards `OpenCC` conversion through the delegate-based streaming core.
+        /// forwards OpenCC conversion through the delegate-based streaming core.
         /// </remarks>
         /// <param name="inputPath">Path to the source Office or EPUB package.</param>
         /// <param name="outputPath">Path where the rebuilt package will be written.</param>
         /// <param name="format">The strongly typed Office or EPUB container format.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         public static void ConvertOfficeFile(
             string inputPath,
@@ -644,8 +644,8 @@ namespace OpenccNetLib
         /// <param name="inputPath">Path to the source Office or EPUB package.</param>
         /// <param name="outputPath">Path where the rebuilt package will be written.</param>
         /// <param name="format">Case-insensitive format name.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         public static void ConvertOfficeFile(
             string inputPath,
@@ -671,8 +671,8 @@ namespace OpenccNetLib
         /// <param name="inputPath">Path to the source package.</param>
         /// <param name="outputPath">Path where the rebuilt package will be written.</param>
         /// <param name="format">The strongly typed Office or EPUB container format.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
         /// <returns>A task representing the conversion operation.</returns>
@@ -702,8 +702,8 @@ namespace OpenccNetLib
         /// <param name="inputPath">Path to the source package.</param>
         /// <param name="outputPath">Path where the rebuilt package will be written.</param>
         /// <param name="format">Case-insensitive format name.</param>
-        /// <param name="converter">The initialized `OpenCC` converter.</param>
-        /// <param name="punctuation">Whether `OpenCC` punctuation conversion is enabled.</param>
+        /// <param name="converter">The initialized OpenCC converter.</param>
+        /// <param name="punctuation">Whether OpenCC punctuation conversion is enabled.</param>
         /// <param name="keepFont">Whether supported font declarations should be preserved.</param>
         /// <param name="cancellationToken">Token used to cancel before conversion starts.</param>
         /// <returns>A task representing the conversion operation.</returns>

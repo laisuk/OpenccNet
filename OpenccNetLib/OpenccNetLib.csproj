@@ -25,22 +25,12 @@
         <Title>OpenccNet Library</Title>
 
         <PackageReleaseNotes>OpenccNetLib v1.8.0
-            - Added Small Seal Script conversion support with four new configurations: s2seal, t2seal, seal2s, and seal2t.
-            - Added direct Opencc.S2Seal(), Opencc.T2Seal(), Opencc.Seal2S(), and Opencc.Seal2T() conversion APIs.
-            - Added SealCharacters, SealCharactersRev, SealVariants, and SealVariantsRev dictionary slots, including support for the existing custom-dictionary append/override workflows.
-            - Integrated Small Seal Script conversions with the existing cached multi-round conversion-plan architecture and optional punctuation conversion.
-            - Updated built-in OpenCC conversion dictionary data and Unicode Compatibility mappings.
-            - Slimmed JSON, Zstd-JSON, and CBOR dictionary artifacts by omitting derived starter metadata from eligible slots with LengthMask 1..3 and no LongLengths.
-            - Rebuilds omitted starter metadata once during dictionary loading while preserving the existing runtime conversion paths and UTF-16 code-unit length semantics.
-            - Preserved longer-phrase metadata and existing legacy null/empty metadata repair behavior.
-            - New dictionary readers remain compatible with existing artifacts; older readers are not guaranteed to accept newly generated slim artifacts.
-            - Regenerated the built-in JSON, CBOR, and Zstandard dictionary artifacts with the updated conversion data and Small Seal Script dictionaries.
-            - Optimized font placeholder restoration in Office and EPUB conversions using a single-pass algorithm to avoid quadratic performance degradation.
-            - Reduced unnecessary string allocations and repeated XML/XHTML scans while preserving existing conversion behavior and public APIs.
-            - Added regression tests for known and unknown font placeholders and non-recursive replacement behavior.
-            - Updated System.Formats.Cbor from 8.0.0 to 8.0.2 to address the moderate-severity vulnerability GHSA-vmv3-wvjp-wqpj (NU1902).
-            - Preserved CBOR serialization compatibility and existing public APIs across netstandard2.0 and net9.0 targets.
-            - Verified that NuGet Audit reports no known vulnerable packages across the supported target frameworks.
+            - Added Small Seal Script conversion via s2seal, t2seal, seal2s, and seal2t, with direct Opencc methods and optional punctuation conversion.
+            - Added four customizable Small Seal Script dictionary slots. Pre-1.8 text directories can omit all four new files.
+            - Updated bundled conversion dictionaries and Unicode compatibility mappings.
+            - Reduced JSON, Zstandard JSON, and CBOR dictionary sizes by omitting eligible starter maps and rebuilding them on load. Existing artifacts remain readable. Use 1.8.0 or later to read newly generated slim artifacts.
+            - Made font placeholder restoration single-pass for Office and EPUB conversions.
+            - Updated System.Formats.Cbor to 8.0.2 to address GHSA-vmv3-wvjp-wqpj.
         </PackageReleaseNotes>
 
         <AssemblyVersion>1.8.0.0</AssemblyVersion>

@@ -16,7 +16,7 @@ namespace OpenccNetLib
 {
     /// <summary>
     /// Represents a dictionary with string keys and values plus derived key-length metadata.
-    /// Used for efficient word/phrase lookup in `OpenCC` conversion.
+    /// Used for efficient word/phrase lookup in OpenCC conversion.
     /// </summary>
     public class DictWithMaxLength
     {
@@ -55,14 +55,15 @@ namespace OpenccNetLib
         public HashSet<int> LongLengths { get; set; }
 
         /// <summary>
-        /// Per-starter mask of key lengths (1 to 64) present for that starter.
-        /// Key is UTF-16 starter:
-        ///  - 1-char for BMP
-        ///  - 2-char for surrogate-pair (high+low)
-        /// Library persistence may omit this derived map for LengthMask 1..3 with no
-        /// long lengths. Loaders restore it once before runtime use. Longer phrase
-        /// tables retain it in storage; UTF-16 scalar keys occupy one or two units.
+        /// Maps each starter to a bitmask of key lengths from 1 to 64 UTF-16 code units.
         /// </summary>
+        /// <remarks>
+        /// A starter is the first UTF-16 code unit or the first surrogate pair of a key.
+        /// Bit zero represents length one. The library's JSON, Zstandard JSON, and CBOR
+        /// writers omit this derived map when <see cref="LengthMask"/> is 1, 2, or 3 and
+        /// <see cref="LongLengths"/> is null or empty. The loaders rebuild omitted or empty
+        /// maps from dictionary keys.
+        /// </remarks>
         [JsonInclude]
         public Dictionary<string, ulong> StarterLenMask { get; set; }
 
@@ -150,7 +151,7 @@ namespace OpenccNetLib
     }
 
     /// <summary>
-    /// Holds all dictionary tables used by the `OpenCC` conversion engine.
+    /// Holds all dictionary tables used by the OpenCC conversion engine.
     /// </summary>
     /// <remarks>
     /// This type is a mutable data-transfer container for built-in dictionaries,
@@ -266,22 +267,22 @@ namespace OpenccNetLib
         public DictWithMaxLength jps_phrases { get; set; } = new();
 
         /// <summary>
-        /// Seal-script-to-Simplified character mappings.
+        /// Small Seal Script to regular-script transcription mappings.
         /// </summary>
         public DictWithMaxLength seal_characters { get; set; } = new();
 
         /// <summary>
-        /// Simplified-to-Seal-script character mappings.
+        /// Regular-script transcription to Small Seal Script mappings.
         /// </summary>
         public DictWithMaxLength seal_characters_rev { get; set; } = new();
 
         /// <summary>
-        /// Seal-script variant mappings.
+        /// Modern Chinese to regular-script transcription mappings for Small Seal Script conversion.
         /// </summary>
         public DictWithMaxLength seal_variants { get; set; } = new();
 
         /// <summary>
-        /// Reverse Seal-script variant mappings.
+        /// Regular-script transcription to modern Chinese variant mappings.
         /// </summary>
         public DictWithMaxLength seal_variants_rev { get; set; } = new();
 
@@ -587,7 +588,7 @@ namespace OpenccNetLib
         ///
         /// <para>
         /// If no dictionary instance is provided, the dictionary is loaded from the
-        /// default `OpenCC` text dictionary sources via <see cref="FromDicts"/>.
+        /// default OpenCC text dictionary sources via <see cref="FromDicts"/>.
         /// </para>
         /// </summary>
         /// <param name="path">
@@ -728,7 +729,7 @@ namespace OpenccNetLib
         #region FromDicts
 
         /// <summary>
-        /// Maps internal `OpenCC` dictionary slot names to their default
+        /// Maps internal OpenCC dictionary slot names to their default
         /// dictionary text file names.
         ///
         /// <para>
@@ -827,7 +828,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Retrieves a dictionary slot from a <see cref="DictionaryMaxlength"/>
-        /// instance using its stable `OpenCC` slot name.
+        /// instance using its stable OpenCC slot name.
         ///
         /// <para>
         /// This helper centralizes slot resolution for append, override,
@@ -835,7 +836,7 @@ namespace OpenccNetLib
         /// </para>
         ///
         /// <para>
-        /// Slot names form part of the internal `OpenCC` dictionary contract used by
+        /// Slot names form part of the internal OpenCC dictionary contract used by
         /// <c>DictRefs</c>, starter indexes, and the starter-union caches owned by
         /// <see cref="ConversionPlanCache"/>.
         /// </para>
@@ -850,13 +851,13 @@ namespace OpenccNetLib
         /// Target <see cref="DictionaryMaxlength"/> instance.
         /// </param>
         /// <param name="slot">
-        /// `OpenCC` dictionary slot name.
+        /// OpenCC dictionary slot name.
         /// </param>
         /// <returns>
         /// The resolved <see cref="DictWithMaxLength"/> dictionary slot.
         /// </returns>
         /// <exception cref="ArgumentException">
-        /// The specified slot name is not a supported `OpenCC` dictionary slot.
+        /// The specified slot name is not a supported OpenCC dictionary slot.
         /// </exception>
         private static DictWithMaxLength GetSlot(DictionaryMaxlength d, DictSlot slot)
         {
@@ -902,7 +903,7 @@ namespace OpenccNetLib
 
         /// <summary>
         /// Replaces a dictionary slot inside a <see cref="DictionaryMaxlength"/>
-        /// instance using a stable `OpenCC` slot name.
+        /// instance using a stable OpenCC slot name.
         ///
         /// <para>
         /// This helper centralizes slot assignment for base dictionary loading,
@@ -911,7 +912,7 @@ namespace OpenccNetLib
         /// </para>
         ///
         /// <para>
-        /// Slot names form part of the internal `OpenCC` dictionary contract used by
+        /// Slot names form part of the internal OpenCC dictionary contract used by
         /// <c>DictRefs</c>, starter indexes, and the starter-union caches owned by
         /// <see cref="ConversionPlanCache"/>.
         /// </para>
@@ -927,13 +928,13 @@ namespace OpenccNetLib
         /// Target <see cref="DictionaryMaxlength"/> instance.
         /// </param>
         /// <param name="slot">
-        /// `OpenCC` dictionary slot name.
+        /// OpenCC dictionary slot name.
         /// </param>
         /// <param name="value">
         /// Replacement dictionary value.
         /// </param>
         /// <exception cref="ArgumentException">
-        /// The specified slot name is not a supported `OpenCC` dictionary slot.
+        /// The specified slot name is not a supported OpenCC dictionary slot.
         /// </exception>
         private static void SetSlot(DictionaryMaxlength d, DictSlot slot, DictWithMaxLength value)
         {
@@ -978,7 +979,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Appends custom dictionary entries into an existing `OpenCC` dictionary slot.
+        /// Appends custom dictionary entries into an existing OpenCC dictionary slot.
         ///
         /// <para>
         /// Custom entries are loaded through the centralized dictionary loader and
@@ -989,7 +990,7 @@ namespace OpenccNetLib
         /// <para>
         /// This helper is intended for user terminology, organization-specific
         /// vocabulary, temporary conversion fixes, and domain-specific extensions
-        /// while preserving the existing `OpenCC` dictionary slot topology.
+        /// while preserving the existing OpenCC dictionary slot topology.
         /// </para>
         ///
         /// <para>
@@ -1003,13 +1004,13 @@ namespace OpenccNetLib
         /// Target <see cref="DictionaryMaxlength"/> instance.
         /// </param>
         /// <param name="slot">
-        /// `OpenCC` dictionary slot name.
+        /// OpenCC dictionary slot name.
         /// </param>
         /// <param name="path">
         /// Path to the custom dictionary text file.
         /// </param>
         /// <exception cref="ArgumentException">
-        /// The specified slot name is not a supported `OpenCC` dictionary slot.
+        /// The specified slot name is not a supported OpenCC dictionary slot.
         /// </exception>
         /// <exception cref="FileNotFoundException">
         /// The specified custom dictionary file could not be found.
@@ -1030,7 +1031,7 @@ namespace OpenccNetLib
         ///
         /// <para>
         /// This helper is used after mutating an existing dictionary, such as after
-        /// appending custom dictionary entries into a loaded `OpenCC` slot.
+        /// appending custom dictionary entries into a loaded OpenCC slot.
         /// </para>
         ///
         /// <para>
@@ -1061,20 +1062,20 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads `OpenCC` dictionary text files and constructs a fully normalized
+        /// Loads OpenCC dictionary text files and constructs a fully normalized
         /// <see cref="DictionaryMaxlength"/> instance.
         /// </summary>
         /// <param name="relativeBaseDir">
-        /// Directory containing the base `OpenCC` dictionary text files, resolved under
+        /// Directory containing the base OpenCC dictionary text files, resolved under
         /// <see cref="AppContext.BaseDirectory"/>. Defaults to <c>dicts</c>.
         /// </param>
         /// <param name="overrides">
         /// Optional dictionary slot -> file path mapping used to fully replace
-        /// specific `OpenCC` dictionary slots.
+        /// specific OpenCC dictionary slots.
         ///
         /// Override files completely replace the corresponding built-in slot.
         /// This mode is intended for advanced users maintaining proprietary or
-        /// fully customized `OpenCC` dictionary copies.
+        /// fully customized OpenCC dictionary copies.
         /// </param>
         /// <param name="appends">
         /// Optional dictionary slot -> file path mapping used to append custom
@@ -1093,9 +1094,9 @@ namespace OpenccNetLib
         /// </returns>
         /// <remarks>
         /// <para>
-        /// This method follows the `OpenCC` dictionary slot structure and does not
+        /// This method follows the OpenCC dictionary slot structure and does not
         /// support arbitrary dynamic dictionary slots such as <c>user_dict</c>.
-        /// Custom dictionaries must attach to existing `OpenCC` slots such as
+        /// Custom dictionaries must attach to existing OpenCC slots such as
         /// <c>st_phrases</c> or <c>ts_phrases</c>.
         /// </para>
         ///
@@ -1107,15 +1108,15 @@ namespace OpenccNetLib
         /// </para>
         ///
         /// <para>
-        /// All required base dictionary files under the specified directory must
-        /// exist. If any required file is missing, this method throws a
-        /// <see cref="FileNotFoundException"/> and does not return a partially
-        /// initialized <see cref="DictionaryMaxlength"/> instance.
+        /// All base dictionary files are required, except that a legacy directory may omit
+        /// all four Small Seal Script files. If any of those files is present, all four are
+        /// required. A legacy directory starts with empty Small Seal Script slots, which
+        /// can be populated with overrides or appends.
         /// </para>
         ///
         /// <para>
         /// Unknown custom dictionary slots throw an
-        /// <see cref="ArgumentException"/> to preserve the internal `OpenCC` slot
+        /// <see cref="ArgumentException"/> to preserve the internal OpenCC slot
         /// contract used by <c>DictRefs</c>, starter indexes, and the starter-union
         /// caches owned by <see cref="ConversionPlanCache"/>.
         /// </para>
@@ -1135,8 +1136,17 @@ namespace OpenccNetLib
 
             var instance = new DictionaryMaxlength();
 
+            var hasSealFiles = File.Exists(Path.Combine(baseDir, SlotFiles[DictSlot.SealCharacters]))
+                               || File.Exists(Path.Combine(baseDir, SlotFiles[DictSlot.SealCharactersRev]))
+                               || File.Exists(Path.Combine(baseDir, SlotFiles[DictSlot.SealVariants]))
+                               || File.Exists(Path.Combine(baseDir, SlotFiles[DictSlot.SealVariantsRev]));
+
             foreach (var slot in DictSlotExtensions.ActiveSlots)
             {
+                if (!hasSealFiles && slot is (DictSlot.SealCharacters or DictSlot.SealCharactersRev
+                        or DictSlot.SealVariants or DictSlot.SealVariantsRev))
+                    continue;
+
                 var file = SlotFiles[slot];
                 var path = Path.Combine(baseDir, file);
 
@@ -1169,7 +1179,7 @@ namespace OpenccNetLib
         }
 
         /// <summary>
-        /// Loads a dictionary from a UTF-8-compatible `OpenCC` text dictionary file.
+        /// Loads a dictionary from a UTF-8-compatible OpenCC text dictionary file.
         ///
         /// Each data line is tab-separated as <c>key[TAB]value</c>. Blank lines and
         /// lines beginning with <c>#</c> are ignored. If the value contains aliases or
@@ -1302,7 +1312,7 @@ namespace OpenccNetLib
         /// <remarks>
         /// <para>
         /// This method allows additional custom dictionary files and/or in-memory
-        /// dictionary pairs to be appended to or override specific `OpenCC` dictionary
+        /// dictionary pairs to be appended to or override specific OpenCC dictionary
         /// slots after the base dictionary has already been loaded.
         /// </para>
         ///
@@ -1777,7 +1787,7 @@ namespace OpenccNetLib
         /// <param name="path">Destination CBOR file path.</param>
         /// <param name="dictionary">
         /// Optional preloaded dictionary instance. When <see langword="null"/>, the
-        /// dictionary is built from the default `OpenCC` text dictionary sources via
+        /// dictionary is built from the default OpenCC text dictionary sources via
         /// <see cref="FromDicts"/>.
         /// </param>
         /// <remarks>
@@ -1813,11 +1823,11 @@ namespace OpenccNetLib
         /// </summary>
         /// <param name="dictionary">
         /// Optional preloaded dictionary instance. When <see langword="null"/>, the
-        /// dictionary is built from the default `OpenCC` text dictionary sources via
+        /// dictionary is built from the default OpenCC text dictionary sources via
         /// <see cref="FromDicts"/>.
         /// </param>
         /// <returns>
-        /// A CBOR payload containing all `OpenCC` dictionary slots and their precomputed
+        /// A CBOR payload containing all OpenCC dictionary slots and their precomputed
         /// length/starter metadata.
         /// </returns>
         /// <remarks>

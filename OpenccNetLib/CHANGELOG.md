@@ -25,13 +25,18 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added Unicode Compatibility mapping table entries.
 - Updated conversion dictionary data.
 
-### **Security**
+### Fixed
+
+- Preserve `DictionaryLib.FromDicts` compatibility with pre-1.8 text dictionary directories. A directory with
+  none of the four Small Seal Script files starts with those slots empty. A partial set still fails validation.
+- Correct the IntelliSense documentation for Small Seal Script dictionary directions and conversion diagnostics.
+
+### Security
 
 - Updated `System.Formats.Cbor` from `8.0.0` to `8.0.2` to address the moderate-severity security
   vulnerability [GHSA-vmv3-wvjp-wqpj](https://github.com/advisories/GHSA-vmv3-wvjp-wqpj) (`NU1902`).
 - Applied the patched dependency across both `netstandard2.0` and `net9.0` targets without changing the CBOR
   serialization format or public APIs.
-- Verified that NuGet Audit reports no known vulnerable packages across the supported target frameworks.
 
 ### Dictionary storage
 
@@ -398,8 +403,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 - Added flexible custom dictionary loading support for `DictionaryLib.FromDicts()` and related APIs.
 - Added public `DictSlot` enum for strongly typed custom dictionary slot selection.
-- Added append mode (`appends`) for loading custom user/company dictionaries on top of existing `OpenCC` dictionary slots.
-- Added override mode (`overrides`) for fully replacing individual `OpenCC` dictionary slots with custom dictionary files.
+- Added append mode (`appends`) for loading custom user/company dictionaries on top of existing `OpenCC` dictionary
+  slots.
+- Added override mode (`overrides`) for fully replacing individual `OpenCC` dictionary slots with custom dictionary
+  files.
 - Added post-load custom dictionary customization through `DictionaryLib.WithCustomDicts()`.
 - Added public `CustomDictSpec` and `CustomDictMode` APIs for strongly typed post-load dictionary customization.
 - Added support for applying custom dictionary files (`Paths`) and in-memory dictionary pairs (`Pairs`) to existing
@@ -414,7 +421,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
     - CBOR dictionaries
     - JSON dictionaries
     - pure file-based dictionaries created through `FromDicts()`
-- Added strict dictionary slot validation to preserve the `OpenCC` lexicon contract and prevent unsupported custom slots.
+- Added strict dictionary slot validation to preserve the `OpenCC` lexicon contract and prevent unsupported custom
+  slots.
 - Added custom dictionary tests covering:
     - append mode
     - override mode
@@ -447,7 +455,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   making custom dictionary validation and debugging clearer for advanced users.
 - Improved XML documentation across `DictionaryLib`, including dictionary metadata, custom dictionary loading, post-load
   customization, serialization overloads, path handling, exception contracts, and normalization behavior.
-- Custom dictionary loading now fully complies with the existing `OpenCC` dictionary slot structure instead of introducing
+- Custom dictionary loading now fully complies with the existing `OpenCC` dictionary slot structure instead of
+  introducing
   generic dynamic dictionary slots, keeping `DictionaryMaxlength`, `DictRefs`, and future acceleration structures
   stable.
 - Reused the existing centralized dictionary normalization and metadata rebuilding pipeline to keep appended and

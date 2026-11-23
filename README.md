@@ -17,6 +17,7 @@ projects with a focus on performance and minimal memory usage.
 - [Live Demo: CJK Conversion Tool](#live-demo-cjk-conversion-tool)
 - [Installation](#installation)
 - [Usage](#usage)
+    - [Small Seal Script conversion](#example-small-seal-script-conversion)
 - [Office Document & EPUB Conversion](#-office-document--epub-conversion)
     - [Supported formats](#-supported-formats)
     - [I/O Model Comparison](#io-model-comparison)
@@ -174,7 +175,7 @@ Console.WriteLine(cc.Convert("别随便录影侵犯个人隐私权"));
 // 別隨便錄影侵犯個人私隱權
 ```
 
-### Example: Small Seal Script Conversion (OpenccNetLib 1.8.0+)
+### Example: Small Seal Script Conversion
 
 OpenccNetLib 1.8.0 adds direct Simplified/Traditional Chinese ↔ Small Seal Script configurations.
 
@@ -185,27 +186,23 @@ Console.WriteLine(cc.Convert("你好，小篆“國際編碼18”", punctuation:
 // 你𿒛，𽌠𽴖「𾇓𿭖𿛛碼18」
 ```
 
-The reverse configurations convert Small Seal Script back to modern Chinese:
+Use the reverse configurations to convert Small Seal Script back to modern Chinese.
 
 ```csharp
-var cc = new Opencc(OpenccConfig.Seal2T);
+var cc = new Opencc(OpenccConfig.T2Seal);
+string sealText = cc.Convert("小篆");
+
+cc.SetConfig(OpenccConfig.Seal2T);
 string traditional = cc.Convert(sealText);
 
 cc.SetConfig(OpenccConfig.Seal2S);
 string simplified = cc.Convert(sealText);
 ```
 
-> [!NOTE]
-> **Small Seal Script** characters require a font with **Unicode 18.0 Small Seal Script** support.
-> If the converted text appears as tofu (`□`) or missing-glyph boxes, the conversion may still be correct; install
-> and select a font that contains the required **Small Seal Script glyphs**.
->
-> OpenccNetLib's `DeTofu` feature is not intended to replace or recover Small Seal Script characters. DeTofu provides
-> fallback mappings for supported CJK characters when appropriate; it cannot reconstruct a Small Seal Script code
-> point after an application or font has rendered it as a missing-glyph box.
->
-> Copying the converted text into an application using a **Unicode 18.0-compatible font** is a useful way to distinguish
-> a font-rendering problem from a conversion problem.
+Characters without a dictionary mapping pass through each conversion round. Reverse conversion uses preferred
+dictionary mappings, so a round trip can return a different modern variant. Displaying the result requires a font
+with glyphs for the Small Seal Script code points used by the bundled dictionaries. Preserve the original Unicode
+text for reverse conversion. A literal replacement box contains no information about the original character.
 
 ### Example: Switching Config Dynamically
 
@@ -230,7 +227,7 @@ Console.WriteLine(result);  // Output: 動態切換轉換方式
 
 // Invalid config falls back to "s2t"
 opencc.Config = "invalid_config";
-Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: invalid_config. Using default 's2t'.
+Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: "invalid_config". Using default 's2t'.
 ```
 
 ### Example: Frozen Converter
@@ -267,6 +264,9 @@ Frozen custom-spec converters apply their mappings to that built-in base and are
 ---
 
 ### Direct API Methods
+
+Direction-specific methods use the instance's dictionary and IDS settings and leave its configured direction intact.
+The Small Seal Script methods use their named direction even when the instance is configured for another direction.
 
 You can also use direct methods for specific conversions:
 
@@ -572,12 +572,12 @@ extension block. DeTofu is non-destructive: it never replaces unknown characters
 
 ### Error Handling
 
-If an error occurs (e.g., invalid config), use:
-
-```csharp
-string error = opencc.GetLastError();
-Console.WriteLine(error); // Output the last error message
-```
+Use `Opencc.TryParseConfig` to validate a string configuration before applying it. An invalid configuration
+supplied to a constructor or assigned to a mutable converter selects `s2t` and records a diagnostic.
+`Convert` returns an empty string for null or empty input and records a diagnostic. If conversion throws,
+`Convert` records and returns the error message. A successful configuration assignment clears the diagnostic.
+Successful conversions can leave an earlier diagnostic in place. Read the recorded message with
+`opencc.GetLastError()`.
 
 ### Language Detection
 
@@ -1112,6 +1112,19 @@ var opencc = new Opencc("s2t");
 | `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt`    |
 | `DictSlot.JPSCharactersRev`     | `jps_characters_rev`      | `JPShinjitaiCharactersRev.txt` |
 | `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`       |
+| `DictSlot.SealCharacters`       | `seal_characters`         | `SealCharacters.txt`          |
+| `DictSlot.SealCharactersRev`    | `seal_characters_rev`     | `SealCharactersRev.txt`       |
+| `DictSlot.SealVariants`         | `seal_variants`           | `SealVariants.txt`            |
+| `DictSlot.SealVariantsRev`      | `seal_variants_rev`       | `SealVariantsRev.txt`         |
+
+For conversion to Small Seal Script, `SealVariants` maps modern characters to the regular-script forms
+used by `SealCharactersRev`, which maps those forms to Small Seal Script. For conversion from Small Seal Script,
+`SealCharacters` maps to regular-script forms and `SealVariantsRev` maps those forms to modern variants.
+
+`DictionaryLib.FromDicts` accepts legacy text directories with none of the four Small Seal Script files.
+The corresponding slots start empty and can be populated with overrides or appends. If the directory contains
+any of those files, include the full set. Legacy JSON, Zstandard JSON, and CBOR artifacts also load with empty
+Small Seal Script slots when those fields are absent.
 
 Japanese Shinjitai dictionary layout follows upstream `OpenCC` commit `93ee7f7`: `JPShinjitaiCharacters.txt`
 is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse dictionary

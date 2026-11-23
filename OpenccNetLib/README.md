@@ -17,6 +17,7 @@ projects with a focus on performance and minimal memory usage.
 - [Live Demo: CJK Conversion Tool](#live-demo-cjk-conversion-tool)
 - [Installation](#installation)
 - [Usage](#usage)
+    - [Small Seal Script conversion](#example-small-seal-script-conversion)
 - [Office Document & EPUB Conversion](#-office-document--epub-conversion)
     - [Supported formats](#-supported-formats)
     - [I/O Model Comparison](#io-model-comparison)
@@ -49,6 +50,7 @@ projects with a focus on performance and minimal memory usage.
     - Taiwan Traditional (T) ↔ Simplified / Traditional
     - Hong Kong Traditional (HK) ↔ Simplified / Traditional
     - Japanese Kanji Shinjitai ↔ Traditional Kyujitai
+    - Chinese Simplified / Traditional ↔ Small Seal Script (OpenccNetLib 1.8.0+)
 - Accurate handling of **Supplementary Plane CJK (U+20000+)** characters  
   (correct surrogate-pair detection and matching)
 - Optional punctuation conversion
@@ -72,7 +74,7 @@ projects with a focus on performance and minimal memory usage.
 
 ---
 
-## **Live Demo: CJK Conversion Tool**
+## Live Demo: CJK Conversion Tool
 
 Try **OpenccNetLib** directly in your browser:
 
@@ -151,6 +153,10 @@ Console.WriteLine(traditional);
 | hk2t   | Traditional (Hong Kong) → Traditional           |
 | t2jp   | Traditional Kyujitai → Japanese Kanji Shinjitai |
 | jp2t   | Japanese Kanji Shinjitai → Traditional Kyujitai |
+| s2seal | Simplified Chinese → Small Seal Script          |
+| t2seal | Traditional Chinese → Small Seal Script         |
+| seal2s | Small Seal Script → Simplified Chinese          |
+| seal2t | Small Seal Script → Traditional Chinese         |
 
 ### Example: Convert with Punctuation
 
@@ -168,6 +174,35 @@ var cc = new Opencc(OpenccConfig.S2Hkp);
 Console.WriteLine(cc.Convert("别随便录影侵犯个人隐私权"));
 // 別隨便錄影侵犯個人私隱權
 ```
+
+### Example: Small Seal Script Conversion
+
+OpenccNetLib 1.8.0 adds direct Simplified/Traditional Chinese ↔ Small Seal Script configurations.
+
+```csharp
+var cc = new Opencc(OpenccConfig.T2Seal);
+
+Console.WriteLine(cc.Convert("你好，小篆“國際編碼18”", punctuation: true));
+// 你𿒛，𽌠𽴖「𾇓𿭖𿛛碼18」
+```
+
+Use the reverse configurations to convert Small Seal Script back to modern Chinese.
+
+```csharp
+var cc = new Opencc(OpenccConfig.T2Seal);
+string sealText = cc.Convert("小篆");
+
+cc.SetConfig(OpenccConfig.Seal2T);
+string traditional = cc.Convert(sealText);
+
+cc.SetConfig(OpenccConfig.Seal2S);
+string simplified = cc.Convert(sealText);
+```
+
+Characters without a dictionary mapping pass through each conversion round. Reverse conversion uses preferred
+dictionary mappings, so a round trip can return a different modern variant. Displaying the result requires a font
+with glyphs for the Small Seal Script code points used by the bundled dictionaries. Preserve the original Unicode
+text for reverse conversion. A literal replacement box contains no information about the original character.
 
 ### Example: Switching Config Dynamically
 
@@ -192,7 +227,7 @@ Console.WriteLine(result);  // Output: 動態切換轉換方式
 
 // Invalid config falls back to "s2t"
 opencc.Config = "invalid_config";
-Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: invalid_config. Using default 's2t'.
+Console.WriteLine(opencc.GetLastError());  // Output: Invalid config provided: "invalid_config". Using default 's2t'.
 ```
 
 ### Example: Frozen Converter
@@ -230,6 +265,9 @@ Frozen custom-spec converters apply their mappings to that built-in base and are
 
 ### Direct API Methods
 
+Direction-specific methods use the instance's dictionary and IDS settings and leave its configured direction intact.
+The Small Seal Script methods use their named direction even when the instance is configured for another direction.
+
 You can also use direct methods for specific conversions:
 
 ```csharp
@@ -238,7 +276,11 @@ var opencc = new Opencc();
 opencc.S2T("汉字");  // Simplified to Traditional    
 opencc.T2S("漢字");  // Traditional to Simplified     
 opencc.S2Tw("汉字"); // Simplified to Taiwan Traditional    
-opencc.T2Jp("漢字"); // Traditional to Japanese Kanji   
+opencc.T2Jp("漢字"); // Traditional to Japanese Kanji
+opencc.S2Seal("你好"); // Simplified Chinese to Small Seal Script (1.8.0+)
+opencc.T2Seal("你好"); // Traditional Chinese to Small Seal Script (1.8.0+)
+opencc.Seal2S(sealText); // Small Seal Script to Simplified Chinese (1.8.0+)
+opencc.Seal2T(sealText); // Small Seal Script to Traditional Chinese (1.8.0+)
 // ...and more
 ```
 
@@ -283,7 +325,8 @@ OpenccNetLib supports three optional preprocessing operations through the `Openc
 - `Opencc.NormalizeCompatExtended(...)` combines both tables in one pass. The compatibility-ideograph table has
   precedence, and emitted replacements are not normalized again, so mappings do not chain accidentally.
 
-These operations are text preprocessing, not `OpenCC` linguistic conversion, and they are not general-purpose Unicode NFC,
+These operations are text preprocessing, not `OpenCC` linguistic conversion, and they are not general-purpose Unicode
+NFC,
 NFD, NFKC, or NFKD normalization. They do not change dictionaries, phrase matching, regional selection, script
 detection, or `OpenCC` punctuation conversion. Unmapped text and malformed UTF-16 surrogates are preserved; when no
 mapping applies, the original string instance is returned.
@@ -366,7 +409,7 @@ Opencc.NormalizeCompatExtended(...)
 > # source<TAB>target
 > ‧	·
 > ︰	：
-> ⸺	—
+> 聼	聽
 > ```
 >
 > Both `source` and `target` must contain exactly one valid Unicode scalar. Sources must be non-ASCII. Malformed or
@@ -530,12 +573,12 @@ extension block. DeTofu is non-destructive: it never replaces unknown characters
 
 ### Error Handling
 
-If an error occurs (e.g., invalid config), use:
-
-```csharp
-string error = opencc.GetLastError();
-Console.WriteLine(error); // Output the last error message
-```
+Use `Opencc.TryParseConfig` to validate a string configuration before applying it. An invalid configuration
+supplied to a constructor or assigned to a mutable converter selects `s2t` and records a diagnostic.
+`Convert` returns an empty string for null or empty input and records a diagnostic. If conversion throws,
+`Convert` records and returns the error message. A successful configuration assignment clears the diagnostic.
+Successful conversions can leave an earlier diagnostic in place. Read the recorded message with
+`opencc.GetLastError()`.
 
 ### Language Detection
 
@@ -570,7 +613,8 @@ DictionaryMaxlength DictionaryLib.FromDicts(
     IDictionary<DictSlot, string> appends = null)
 ```
 
-OpenccNetLib follows the `OpenCC` lexicon structure. Custom dictionaries must attach to existing `OpenCC` dictionary slots
+OpenccNetLib follows the `OpenCC` lexicon structure. Custom dictionaries must attach to existing `OpenCC` dictionary
+slots
 such as `DictSlot.STPhrases` or `DictSlot.TSPhrases`; dynamic generic slots such as `user_dict` are intentionally
 rejected. Preserving the `OpenCC` dictionary topology keeps dictionary metadata, lookup acceleration structures, and
 runtime plans deterministic and compatible.
@@ -583,6 +627,11 @@ and override custom dictionary APIs.
 Direct Hong Kong phrase slots are customizable too. `DictSlot.HKPhrases` is used by `s2hkp` after
 Simplified-to-Traditional conversion, and `DictSlot.HKPhrasesRev` is used by `hk2sp` before Traditional-to-Simplified
 conversion.
+
+OpenccNetLib 1.8.0 also exposes the Small Seal Script slots for the same append/override workflows:
+`DictSlot.SealCharacters`, `DictSlot.SealCharactersRev`, `DictSlot.SealVariants`, and
+`DictSlot.SealVariantsRev`. This allows applications to customize preferred mappings, including reverse Seal candidates,
+without replacing the rest of the built-in dictionary.
 
 #### Per-instance custom dictionaries (OpenccNetLib 1.7.0)
 
@@ -1065,6 +1114,19 @@ var opencc = new Opencc("s2t");
 | `DictSlot.JPSCharacters`        | `jps_characters`          | `JPShinjitaiCharacters.txt`    |
 | `DictSlot.JPSCharactersRev`     | `jps_characters_rev`      | `JPShinjitaiCharactersRev.txt` |
 | `DictSlot.JPSPhrases`           | `jps_phrases`             | `JPShinjitaiPhrases.txt`       |
+| `DictSlot.SealCharacters`       | `seal_characters`         | `SealCharacters.txt`           |
+| `DictSlot.SealCharactersRev`    | `seal_characters_rev`     | `SealCharactersRev.txt`        |
+| `DictSlot.SealVariants`         | `seal_variants`           | `SealVariants.txt`             |
+| `DictSlot.SealVariantsRev`      | `seal_variants_rev`       | `SealVariantsRev.txt`          |
+
+For conversion to Small Seal Script, `SealVariants` maps modern characters to the regular-script forms
+used by `SealCharactersRev`, which maps those forms to Small Seal Script. For conversion from Small Seal Script,
+`SealCharacters` maps to regular-script forms and `SealVariantsRev` maps those forms to modern variants.
+
+`DictionaryLib.FromDicts` accepts legacy text directories with none of the four Small Seal Script files.
+The corresponding slots start empty and can be populated with overrides or appends. If the directory contains
+any of those files, include the full set. Legacy JSON, Zstandard JSON, and CBOR artifacts also load with empty
+Small Seal Script slots when those fields are absent.
 
 Japanese Shinjitai dictionary layout follows upstream `OpenCC` commit `93ee7f7`: `JPShinjitaiCharacters.txt`
 is the authoritative character mapping source, and `JPShinjitaiCharactersRev.txt` is the generated reverse dictionary
@@ -1091,7 +1153,8 @@ provider.
 #### Why no `user_dict` slot?
 
 OpenccNetLib intentionally preserves the `OpenCC` dictionary topology. Generic dynamic slots complicate conversion
-ordering, derived dictionary metadata, and cached lookup state. Existing `OpenCC` slots already provide deterministic and
+ordering, derived dictionary metadata, and cached lookup state. Existing `OpenCC` slots already provide deterministic
+and
 extensible customization points.
 
 ---
@@ -1466,7 +1529,8 @@ and custom post-processing are application policies; the document container laye
 - **Server and byte-stream friendly** — documents can enter and leave the converter entirely as `byte[]`.
 - **EPUB compliant** — required `mimetype` ordering and storage rules are preserved.
 - **Safe file publication** — file conversion validates a sibling temporary package before moving or replacing output.
-- **Composable text pipelines** — combine normalization, `OpenCC`, DeTofu, or application-specific transformations in one
+- **Composable text pipelines** — combine normalization, `OpenCC`, DeTofu, or application-specific transformations in
+  one
   delegate, independently of document container handling.
 - **One package-processing core** — convenient `Opencc` and custom delegate overloads share the same Office/EPUB logic.
 - **Backward compatible and reusable** — existing `Opencc` callers need no changes; applications can customize text
@@ -1638,6 +1702,10 @@ Creates a new converter using the strongly-typed `OpenccConfig` enum
 - `string Hk2T(string inputText, bool punctuation = false)`
 - `string T2Jp(string inputText, bool punctuation = false)`
 - `string Jp2T(string inputText, bool punctuation = false)`
+- `string S2Seal(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
+- `string T2Seal(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
+- `string Seal2S(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
+- `string Seal2T(string inputText, bool punctuation = false)` *(OpenccNetLib 1.8.0+)*
 
 #### ⚙️ Configuration
 
@@ -1774,6 +1842,25 @@ Loads `OpenCC` text dictionary files, optionally replacing slots with `overrides
   Loads and normalizes a CBOR dictionary payload.
 
 ##### `DictionaryLib` serialization APIs
+
+`StarterLenMask` remains populated runtime metadata for nonempty dictionaries. The library's JSON (including readable
+exports and Zstd JSON) and CBOR writers omit it when `LengthMask` is `1..3` and
+`LongLengths` is null or empty. This `O(1)` policy uses precomputed UTF-16 code-unit lengths: a Unicode scalar
+occupies one UTF-16 code unit when represented in the BMP, or two UTF-16 code units as a surrogate pair when
+supplementary. Serialization does not scan keys or mutate the runtime dictionary. Longer phrase/mixed-length tables
+retain their starter maps.
+
+UTF-16 length metadata alone cannot distinguish a supplementary scalar from two BMP characters;
+therefore custom tables containing only one- or two-unit keys also qualify. Loading uses the general
+starter builder, so two-BMP phrases still restore a mask under their first character, and supplementary
+keys restore `2UL` under their surrogate pair. No conversion algorithm or public API changes.
+
+The library loaders reconstruct omitted maps once at the metadata-normalization boundary. Existing
+semantics are preserved: absent and explicit-null maps both deserialize to null, empty maps remain
+empty until normalization, and all three are repaired; supplied nonempty maps are reused. New readers
+continue accepting old artifacts, including legacy CBOR casing and unknown fields. Compatibility of
+new slim artifacts with older library versions is not guaranteed. Direct application-owned JSON
+serialization is outside these library persistence helpers.
 
 The serialization helpers accept an optional `DictionaryMaxlength dictionary = null` parameter. When omitted, they load
 from the default `OpenCC` text dictionary sources with `FromDicts()`.
