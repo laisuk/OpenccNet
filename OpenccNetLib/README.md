@@ -16,6 +16,7 @@ projects with a focus on performance and minimal memory usage.
 - [Features](#features)
 - [Live Demo: CJK Conversion Tool](#live-demo-cjk-conversion-tool)
 - [Installation](#installation)
+    - [Using OpenccNetLib Without External Dictionary Files](#using-openccnetlib-without-external-dictionary-files)
 - [Usage](#usage)
     - [Small Seal Script conversion](#example-small-seal-script-conversion)
 - [Office Document & EPUB Conversion](#-office-document--epub-conversion)
@@ -90,9 +91,6 @@ Runs entirely locally in your browser via **WebAssembly** — no text or files a
 ## Installation
 
 - Add the library to your project via NuGet or reference the source code directly.
-- The built-in Zstandard dictionary is embedded in `OpenccNetLib`; normal conversion does not require dictionary files
-  beside the assembly. External files under `dicts\` are needed only for explicit loader, customization, and dictionary
-  generation workflows.
 
 Install via NuGet:
 
@@ -101,6 +99,33 @@ dotnet add package OpenccNetLib
 ```
 
 Or, clone and include the source files in your project.
+
+### Using OpenccNetLib Without External Dictionary Files
+
+Since OpenccNetLib 1.7.0, the library assembly has embedded the default Zstandard-compressed dictionary. Normal
+conversion uses that dictionary without needing the raw `dicts/*.txt` files shipped as NuGet content files.
+
+If your application does not use the packaged text dictionaries, you can optionally exclude them in your `.csproj`.
+
+```xml
+<PackageReference Include="OpenccNetLib"
+                  Version="1.8.0"
+                  ExcludeAssets="contentFiles"/>
+```
+
+This excludes the package's dictionary content from the consuming project (for example, `dicts [contents]` in JetBrains
+Rider) and keeps those files out of build and publish output, including single-file publishes. The built-in dictionary
+and conversion configurations work as usual.
+
+```csharp
+using OpenccNetLib;
+
+var cc = new Opencc("s2t");
+Console.WriteLine(cc.Convert("简体中文")); // 簡體中文
+```
+
+You can still load your own text dictionary directory with `DictionaryLib.FromDicts("path/to/dicts")` or supply files
+through the [custom dictionary APIs](#user-custom-dictionaries).
 
 ## Usage
 
