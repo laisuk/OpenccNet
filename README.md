@@ -75,16 +75,21 @@ projects with a focus on performance and minimal memory usage.
 
 ---
 
-## Live Demo: CJK Conversion Tool
+## **Live Demo: CJK Conversion Tool**
 
 Try **OpenccNetLib** directly in your browser:
 
 **[Launch the Live Demo](https://laisuk.github.io/OpenccNetLibWasmDemo/)**
 
-Supports CJK text conversion, punctuation conversion, Unicode compatibility normalization, text-file encodings, and
-**DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB** conversion.
+Supports CJK text conversion, punctuation conversion, Unicode compatibility normalization, automatic text-file encoding
+detection, and custom dictionaries.
 
-Runs entirely locally in your browser via **WebAssembly** — no text or files are uploaded.
+- **Document conversion:** DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB.
+- **Document text extraction:** DOCX / ODT / EPUB directly into the input editor for editing, normalization, and
+  conversion.
+
+Powered by **Blazor WebAssembly AOT**, all processing runs entirely locally in your browser — no text or files are
+uploaded.
 
 ---
 
