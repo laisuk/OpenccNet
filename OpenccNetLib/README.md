@@ -81,15 +81,34 @@ Try **OpenccNetLib** directly in your browser:
 
 **[Launch the Live Demo](https://laisuk.github.io/OpenccNetLibWasmDemo/)**
 
-Supports CJK text conversion, punctuation conversion, Unicode compatibility normalization, automatic text-file encoding
-detection, and custom dictionaries.
+A high-performance, browser-based Chinese text and document conversion tool featuring:
 
-- **Document conversion:** DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB.
-- **Document text extraction:** DOCX / ODT / EPUB directly into the input editor for editing, normalization, and
+- **Chinese text conversion:** All supported OpenccNetLib conversion configurations with optional punctuation
   conversion.
+- **Unicode normalization:** Basic and extended Unicode compatibility normalization.
+- **Custom dictionaries:** Multiple dictionary slots with Append and Override modes, validation, Apply and Reset.
+- **Text encoding:** Automatic TXT/MD encoding detection, manual encoding selection, and encoding recovery.
+- **Document conversion:** DOCX / XLSX / PPTX / ODT / ODS / ODP / EPUB / TXT / MD, with optional filename conversion.
+- **Document text extraction:** DOCX / ODT / EPUB / PDF directly into the input editor for editing, normalization, and
+  conversion.
+- **PDF-to-TXT conversion:** Extract and convert PDF text directly through the Drop Zone, with downloadable UTF-8 TXT
+  output and optional filename conversion.
+- **Advanced PDF extraction:** Optional page headers, untrusted text overlay filtering, CJK paragraph reflow, compact
+  paragraph spacing, and custom heading regex with live Rust-based validation.
+- **Responsive interface:** Large-text editing with CodeMirror and System, Light, and Dark themes.
 
-Powered by **Blazor WebAssembly AOT**, all processing runs entirely locally in your browser — no text or files are
-uploaded.
+### File workflows
+
+| Workflow      | Supported formats                                   | Result                                      |
+|---------------|-----------------------------------------------------|---------------------------------------------|
+| **Open File** | TXT, MD, DOCX, ODT, EPUB, PDF                       | Editable text in the input editor           |
+| **Drop Zone** | DOCX, XLSX, PPTX, ODT, ODS, ODP, EPUB, TXT, MD, PDF | Converted file download (UTF-8 TXT for PDF) |
+
+Powered by **Blazor WebAssembly AOT**, with independently lazy-loaded **PDFium WASM** and **Rust WASM** for PDF text
+extraction and CJK paragraph reflow.
+
+All processing runs entirely locally in your browser — **no text or files are uploaded, and no backend processing server
+is required.**
 
 ---
 
