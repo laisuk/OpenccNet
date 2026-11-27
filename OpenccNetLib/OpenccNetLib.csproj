@@ -48,7 +48,7 @@
                           Condition="'$(TargetFramework)' == 'netstandard2.0'"/>
         <PackageReference Include="System.Text.Json" Version="8.0.6"
                           Condition="'$(TargetFramework)' == 'netstandard2.0'"/>
-        <PackageReference Include="ZstdSharp.Port" Version="0.8.8"/>
+        <PackageReference Include="ZstdSharp.Port" Version="0.9.1" />
     </ItemGroup>
 
     <!-- Include icon file in package -->
