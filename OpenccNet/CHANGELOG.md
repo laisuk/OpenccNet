@@ -9,6 +9,12 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ## \[1.8.0 - Unreleased]
 
+### Added
+
+- Detect Unicode, Big5, GB18030-family, and Shift-JIS input automatically in `convert` when reading files.
+  Use `--in-enc` to select an encoding explicitly. Stdin defaults to UTF-8.
+- Report the detected input encoding to stderr. Use `convert --quiet` to suppress progress and success messages.
+
 ### Fixed
 
 - Publish `convert` and `pdf` text output atomically so a failed or canceled write preserves any existing output file.

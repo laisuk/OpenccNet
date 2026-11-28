@@ -20,6 +20,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\OpenccNetLib\OpenccNetLib.csproj"/>
+        <Compile Include="..\OpenccNet\CjkEncodingDetector.cs" Link="CjkEncodingDetector.cs" />
     </ItemGroup>
 
     <ItemGroup>

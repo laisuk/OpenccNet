@@ -52,10 +52,18 @@ internal static class ConvertCommand
             Description = "Punctuation conversion."
         };
 
-        var inputEncodingOption = new Option<string>("--in-enc")
+        var inputEncodingOption = new Option<string?>("--in-enc")
         {
-            DefaultValueFactory = _ => "UTF-8",
-            Description = "Encoding for input: UTF-8|UNICODE|GBK|GB2312|BIG5|Shift-JIS"
+            HelpName = "encoding",
+            Description = "Input text encoding.\n" +
+                          "Default: auto for files, UTF-8 for stdin.\n" +
+                          "Supported: auto, utf8, utf16, utf16le, utf16be, utf32,\n" +
+                          "gb18030, big5, shift-jis, and other .NET encodings."
+        };
+
+        var quietOption = new Option<bool>("--quiet", "-q")
+        {
+            Description = "Suppress progress and success messages."
         };
 
         var outputEncodingOption = new Option<string>("--out-enc")
@@ -143,7 +151,8 @@ internal static class ConvertCommand
             normCompatExtendedOption,
             customDictOption,
             inputEncodingOption,
-            outputEncodingOption
+            outputEncodingOption,
+            quietOption
         };
 
         convertCommand.Validators.Add(result =>
@@ -207,8 +216,9 @@ internal static class ConvertCommand
                 outputFile: parseResult.GetValue(outputFileOption),
                 config: parseResult.GetValue(configOption)!,
                 punctuation: parseResult.GetValue(punctOption),
-                inputEncoding: parseResult.GetValue(inputEncodingOption)!,
+                inputEncoding: parseResult.GetValue(inputEncodingOption),
                 outputEncoding: parseResult.GetValue(outputEncodingOption)!,
+                quiet: parseResult.GetValue(quietOption),
                 deTofu: deTofu,
                 deTofuFile: parseResult.GetValue(deTofuFileOption),
                 keepIds: parseResult.GetValue(keepIdsOption),
@@ -229,8 +239,9 @@ internal static class ConvertCommand
         string? outputFile,
         string config,
         bool punctuation,
-        string inputEncoding,
+        string? inputEncoding,
         string outputEncoding,
+        bool quiet,
         string? deTofu,
         string? deTofuFile,
         bool keepIds,
@@ -241,7 +252,10 @@ internal static class ConvertCommand
     {
         try
         {
-            var inputEnc = CliUtils.ResolveEncoding(inputEncoding);
+            var inputEnc = inputEncoding == null ||
+                           inputEncoding.Trim().Equals("auto", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : CliUtils.ResolveEncoding(inputEncoding);
             var outputEnc = CliUtils.ResolveEncoding(outputEncoding);
 
             if (!string.IsNullOrWhiteSpace(inputFile))
@@ -275,6 +289,7 @@ internal static class ConvertCommand
             var inputText = await ReadInputAsync(
                 inputFile,
                 inputEnc,
+                quiet,
                 cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -310,7 +325,8 @@ internal static class ConvertCommand
                     : string.Empty;
 
                 CliUtils.WriteSuccess(
-                    $"Conversion ({config}{optionText}): {inFrom} → {outTo}");
+                    $"Conversion ({config}{optionText}): {inFrom} → {outTo}",
+                    quiet);
             }
 
             return CliUtils.ExitSuccess;
@@ -332,15 +348,18 @@ internal static class ConvertCommand
 
     private static async Task<string> ReadInputAsync(
         string? inputFile,
-        Encoding inputEncoding,
+        Encoding? inputEncoding,
+        bool quiet,
         CancellationToken cancellationToken)
     {
         if (inputFile != null)
         {
-            return await File.ReadAllTextAsync(
-                inputFile,
-                inputEncoding,
-                cancellationToken);
+            return inputEncoding == null
+                ? await ReadDetectedFileAsync(inputFile, quiet, cancellationToken)
+                : await File.ReadAllTextAsync(
+                    inputFile,
+                    inputEncoding,
+                    cancellationToken);
         }
 
         if (!Console.IsInputRedirected)
@@ -354,8 +373,40 @@ internal static class ConvertCommand
 
         using var reader = new StreamReader(
             Console.OpenStandardInput(),
-            inputEncoding);
+            inputEncoding ?? Encoding.UTF8);
 
+        return await reader.ReadToEndAsync(cancellationToken);
+    }
+
+    private static async Task<string> ReadDetectedFileAsync(
+        string inputFile,
+        bool quiet,
+        CancellationToken cancellationToken)
+    {
+        using var stream = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize: 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var detected = await CjkEncodingDetector.DetectAsync(stream, cancellationToken);
+        var encoding = detected.Encoding switch
+        {
+            CjkEncodingDetector.EncodingKind.Ascii or CjkEncodingDetector.EncodingKind.Utf8
+                or CjkEncodingDetector.EncodingKind.Utf8Bom => Encoding.UTF8,
+            CjkEncodingDetector.EncodingKind.Utf16Le or CjkEncodingDetector.EncodingKind.Utf16LeBom => Encoding.Unicode,
+            CjkEncodingDetector.EncodingKind.Utf16Be or CjkEncodingDetector.EncodingKind.Utf16BeBom => Encoding
+                .BigEndianUnicode,
+            CjkEncodingDetector.EncodingKind.Utf32LeBom => Encoding.UTF32,
+            CjkEncodingDetector.EncodingKind.Utf32BeBom => new UTF32Encoding(bigEndian: true, byteOrderMark: true),
+            CjkEncodingDetector.EncodingKind.Big5 => Encoding.GetEncoding(950),
+            CjkEncodingDetector.EncodingKind.Gb18030 => Encoding.GetEncoding(54936),
+            CjkEncodingDetector.EncodingKind.ShiftJis => Encoding.GetEncoding(932),
+            _ => throw new InvalidDataException(
+                $"Could not determine the encoding of '{inputFile}'. Specify it with --in-enc <encoding>.")
+        };
+
+        lock (ConsoleLock)
+            CliUtils.WriteInfo($"Detected input encoding: {detected}.", quiet);
+
+        stream.Position = 0;
+        using var reader = new StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: false);
         return await reader.ReadToEndAsync(cancellationToken);
     }
 
