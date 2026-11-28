@@ -277,16 +277,18 @@ internal static class CliUtils
 
     /// <summary>
     /// Resolves a supported text encoding.
-    /// UTF-8 output is BOM-less, while UTF-16 and UTF-32 output include
-    /// a byte-order mark for reliable encoding detection.
-    /// Encoding names are matched case-insensitively and separator-insensitively.
+    /// UTF-8 output is BOM-less, while the explicitly mapped
+    /// UTF-16 and UTF-32 encodings include a byte-order mark.
+    /// Known aliases are matched case-insensitively and
+    /// separator-insensitively.
     /// </summary>
     internal static Encoding ResolveEncoding(string encodingName)
     {
         ArgumentNullException.ThrowIfNull(encodingName);
 
-        var name = encodingName
-            .Trim()
+        var originalName = encodingName.Trim();
+
+        var name = originalName
             .Replace("-", string.Empty)
             .Replace("_", string.Empty)
             .ToLowerInvariant();
@@ -317,7 +319,9 @@ internal static class CliUtils
                     bigEndian: false,
                     byteOrderMark: true),
 
-                _ => Encoding.GetEncoding(name)
+                "shiftjis" or "sjis" => Encoding.GetEncoding(932),
+
+                _ => Encoding.GetEncoding(originalName)
             };
         }
         catch (ArgumentException ex)

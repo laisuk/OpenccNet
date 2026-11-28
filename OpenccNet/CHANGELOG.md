@@ -7,6 +7,18 @@ the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ---
 
+## \[1.8.0 - Unreleased]
+
+### Fixed
+
+- Publish `convert` and `pdf` text output atomically so a failed or canceled write preserves any existing output file.
+- Preserve user-selected output encoding and BOM behavior in `convert`, and UTF-8 without BOM in `pdf`.
+- Fix encoding resolution for `Shift-JIS` and its aliases (`shift_jis`, `shiftjis`, and `sjis`).
+- Preserve original encoding names when resolving encodings through the .NET encoding provider, avoiding invalid names
+  caused by separator removal.
+
+---
+
 ## \[1.7.0] - 2026-09-18
 
 ### Added
