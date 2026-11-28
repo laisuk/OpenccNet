@@ -542,7 +542,7 @@ internal static class PdfCommand
         string text,
         CancellationToken cancellationToken)
     {
-        return File.WriteAllTextAsync(
+        return AtomicTextFile.WriteAllTextAsync(
             output,
             text,
             new UTF8Encoding(

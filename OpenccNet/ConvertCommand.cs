@@ -367,7 +367,7 @@ internal static class ConvertCommand
     {
         if (!string.IsNullOrEmpty(outputFile))
         {
-            await File.WriteAllTextAsync(
+            await AtomicTextFile.WriteAllTextAsync(
                 outputFile,
                 content,
                 outputEncoding,
